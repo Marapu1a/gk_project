@@ -3,12 +3,16 @@ import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import dotenv from 'dotenv';
 
+import authRoutes from './routes/auth';
+
 dotenv.config();
 
 const app = Fastify();
 
 app.register(cors, { origin: true, credentials: true });
 app.register(cookie);
+
+app.register(authRoutes, { prefix: '/auth' });
 
 app.get('/ping', async () => {
   return { message: 'pong from fastify' };
