@@ -79,7 +79,7 @@
   - react-hook-form + zod
   - axios
   - @tanstack/react-query
-  - shadcn/ui или mantine (на выбор)
+  - shadcn/ui или mantine
   - tailwindcss
 
 ### 🟢 Backend
@@ -97,12 +97,9 @@
 
 ### 🟠 Интеграция с GetCourse
 
-- REST API ([https://getcourse.ru/docs/api](https://getcourse.ru/docs/api))
-- Методы:
+- REST API
 
-  - account.get (получение пользователя)
-  - account.groups (роли)
-  - account.addGroup / removeGroup (работа с группами)
+Пока ничего не ясно, жду
 
 - Аутентификация: по email или через ссылку с токеном
 
@@ -110,7 +107,7 @@
 
 - Docker + docker-compose
 - VPS (например, Timeweb)
-- CI/CD: GitHub Actions (по желанию)
+- CI/CD: GitHub Actions
 - Хранение файлов: локально или S3-совместимый сторедж (например, Yandex)
 
 ## Структура проекта

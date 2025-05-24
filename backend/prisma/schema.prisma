@@ -12,7 +12,8 @@ model User {
   email     String   @unique
   firstName String
   lastName  String?
-  gcId      Int      @unique
+  gcId      Int?     @unique
+  role      Role     @default(STUDENT)
   createdAt DateTime @default(now())
 
   applications Application[]
@@ -38,6 +39,12 @@ model Certificate {
   type        CertificateType
 
   user User @relation(fields: [userId], references: [id])
+}
+
+enum Role {
+  STUDENT
+  SUPERVISOR
+  ADMIN
 }
 
 enum ApplicationStatus {

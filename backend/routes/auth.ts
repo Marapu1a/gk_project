@@ -1,43 +1,78 @@
-import { FastifyInstance } from 'fastify';
-import { getCourseRequest } from '../lib/getCourseClient';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import { FastifyInstance } from "fastify"
+import { PrismaClient, Role } from "@prisma/client"
+import jwt from "jsonwebtoken"
+import { createGCUser } from "../lib/getCourseClient"
 
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET!;
+const prisma = new PrismaClient()
 
-export default async function authRoutes(fastify: FastifyInstance) {
-  fastify.post('/email', async (req, reply) => {
-    const { email } = req.body as { email?: string };
+export default async function authRoutes(app: FastifyInstance) {
+  app.post("/auth/register", async (req, reply) => {
+    const { email, firstName, lastName, role = "STUDENT" } = req.body as {
+      email: string
+      firstName: string
+      lastName?: string
+      role?: Role
+    }
+
+    if (!email || !firstName) {
+      return reply.status(400).send({ error: "Email и имя обязательны" })
+    }
+
+    const exists = await prisma.user.findUnique({ where: { email } })
+    if (exists) return reply.status(409).send({ error: "Пользователь уже существует" })
+
+    let gcId: number | null = null
+
+    try {
+      const gcUserId = await createGCUser({ email, firstName, lastName, group: role })
+      gcId = parseInt(gcUserId)
+
+      if (isNaN(gcId)) {
+        return reply.status(500).send({ error: "Ошибка при создании пользователя в GetCourse" })
+      }
+    } catch (e: any) {
+      console.warn("GC error:", e?.message || e)
+      return reply.status(500).send({ error: "Ошибка при подключении к GetCourse" })
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        firstName,
+        lastName,
+        role,
+        ...(gcId !== undefined ? { gcId } : {}),
+      },
+    })
+
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET!,
+      { expiresIn: "7d" }
+    )
+
+    reply.send({ token, user })
+  })
+
+  app.post("/auth/login", async (req, reply) => {
+    const { email } = req.body as { email: string }
 
     if (!email) {
-      return reply.status(400).send({ error: 'Email is required' });
+      return reply.status(400).send({ error: "Email обязателен" })
     }
 
-    const gc = await getCourseRequest('account.profile.get', { email });
-
-    if (!gc.success || !gc.account) {
-      return reply.status(401).send({ error: 'Пользователь не найден в ГК' });
-    }
-
-    const profile = gc.account;
-
-
-    let user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email } })
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email,
-          firstName: profile.first_name,
-          lastName: profile.last_name,
-          gcId: profile.id,
-        },
-      });
+      return reply.status(404).send({ error: "Пользователь не найден" })
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      process.env.JWT_SECRET!,
+      { expiresIn: "7d" }
+    )
 
-    return { token };
-  });
+    reply.send({ token, user })
+  })
 }

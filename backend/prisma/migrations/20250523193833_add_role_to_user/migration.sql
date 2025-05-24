@@ -1,0 +1,6 @@
+-- CreateEnum
+CREATE TYPE "Role" AS ENUM ('STUDENT', 'SUPERVISOR', 'ADMIN');
+
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "role" "Role" NOT NULL DEFAULT 'STUDENT',
+ALTER COLUMN "gcId" DROP NOT NULL;
