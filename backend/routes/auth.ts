@@ -1,78 +1,9 @@
+// backend/routes/auth.ts
 import { FastifyInstance } from "fastify"
-import { PrismaClient, Role } from "@prisma/client"
-import jwt from "jsonwebtoken"
-import { createGCUser } from "../lib/getCourseClient"
-
-const prisma = new PrismaClient()
+import registerHandler from "../handlers/auth/register"
+import loginHandler from "../handlers/auth/login"
 
 export default async function authRoutes(app: FastifyInstance) {
-  app.post("/auth/register", async (req, reply) => {
-    const { email, firstName, lastName, role = "STUDENT" } = req.body as {
-      email: string
-      firstName: string
-      lastName?: string
-      role?: Role
-    }
-
-    if (!email || !firstName) {
-      return reply.status(400).send({ error: "Email и имя обязательны" })
-    }
-
-    const exists = await prisma.user.findUnique({ where: { email } })
-    if (exists) return reply.status(409).send({ error: "Пользователь уже существует" })
-
-    let gcId: number | null = null
-
-    try {
-      const gcUserId = await createGCUser({ email, firstName, lastName, group: role })
-      gcId = parseInt(gcUserId)
-
-      if (isNaN(gcId)) {
-        return reply.status(500).send({ error: "Ошибка при создании пользователя в GetCourse" })
-      }
-    } catch (e: any) {
-      console.warn("GC error:", e?.message || e)
-      return reply.status(500).send({ error: "Ошибка при подключении к GetCourse" })
-    }
-
-    const user = await prisma.user.create({
-      data: {
-        email,
-        firstName,
-        lastName,
-        role,
-        ...(gcId !== undefined ? { gcId } : {}),
-      },
-    })
-
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" }
-    )
-
-    reply.send({ token, user })
-  })
-
-  app.post("/auth/login", async (req, reply) => {
-    const { email } = req.body as { email: string }
-
-    if (!email) {
-      return reply.status(400).send({ error: "Email обязателен" })
-    }
-
-    const user = await prisma.user.findUnique({ where: { email } })
-
-    if (!user) {
-      return reply.status(404).send({ error: "Пользователь не найден" })
-    }
-
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" }
-    )
-
-    reply.send({ token, user })
-  })
+  app.post("/register", registerHandler)
+  app.post("/login", loginHandler)
 }
