@@ -1,7 +1,7 @@
 // backend/handlers/auth/register.ts
 import { FastifyRequest, FastifyReply } from "fastify"
 import { PrismaClient, Role } from "@prisma/client"
-import { createGCUser } from "../../lib/getCourseClient"
+import { createGCUser } from "../../lib/createGCUser"
 import jwt from "jsonwebtoken"
 
 const prisma = new PrismaClient()
@@ -18,15 +18,19 @@ export default async function registerHandler(req: FastifyRequest, reply: Fastif
     return reply.status(400).send({ error: "Email и имя обязательны" })
   }
 
-  const exists = await prisma.user.findUnique({ where: { email } })
-  if (exists) return reply.status(409).send({ error: "Пользователь уже существует" })
+  const existingUser = await prisma.user.findUnique({ where: { email } })
 
   let gcId: number | null = null
 
   try {
-    const gcUserId = await createGCUser({ email, firstName, lastName, group: role })
-    gcId = parseInt(gcUserId)
+    const gcUserId = await createGCUser({
+      email,
+      firstName,
+      lastName,
+      group: role.toUpperCase(),
+    })
 
+    gcId = parseInt(gcUserId)
     if (isNaN(gcId)) {
       return reply.status(500).send({ error: "Ошибка при создании пользователя в GetCourse" })
     }
@@ -35,15 +39,17 @@ export default async function registerHandler(req: FastifyRequest, reply: Fastif
     return reply.status(500).send({ error: "Ошибка при подключении к GetCourse" })
   }
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      firstName,
-      lastName,
-      role,
-      ...(gcId !== undefined ? { gcId } : {}),
-    },
-  })
+  const userData = {
+    email,
+    firstName,
+    lastName,
+    role,
+    gcId,
+  }
+
+  const user = existingUser
+    ? await prisma.user.update({ where: { email }, data: userData })
+    : await prisma.user.create({ data: userData })
 
   const token = jwt.sign(
     { userId: user.id, role: user.role },

@@ -17,5 +17,5 @@ export default async function getMeHandler(req: FastifyRequest, reply: FastifyRe
     return reply.status(404).send({ error: "Пользователь не найден" })
   }
 
-  reply.send({ user })
+  reply.send({ user: { ...user, ceu: 0 } })
 }
