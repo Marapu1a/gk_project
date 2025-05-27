@@ -2,31 +2,32 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import dotenv from 'dotenv'
-
-import authRoutes from './routes/auth'
-import userRoutes from './routes/users'
+import { authRoutes } from './routes/auth'
+import { userRoutes } from './routes/users'
+import { applicationRoutes } from './routes/applications'
 
 dotenv.config()
 
 const app = Fastify()
 
-app.register(cors, { origin: true, credentials: true })
+app.register(cors, {
+  origin: true,
+  credentials: true,
+})
+
 app.register(cookie)
+app.register(authRoutes)
+app.register(userRoutes)
+app.register(applicationRoutes)
 
-app.register(authRoutes, { prefix: '/auth' })
-app.register(userRoutes, { prefix: '/users' })
+app.get('/', async () => ({ ok: true }))
 
-app.get('/ping', async () => ({ message: 'pong from fastify' }))
+const PORT = process.env.PORT || 3000
 
-const start = async () => {
-  try {
-    const port = Number(process.env.PORT) || 3000
-    await app.listen({ port, host: '0.0.0.0' })
-    console.log(`🚀 Server running on http://localhost:${port}`)
-  } catch (err) {
-    app.log.error(err)
+app.listen({ port: +PORT, host: '0.0.0.0' }, (err, address) => {
+  if (err) {
+    console.error(err)
     process.exit(1)
   }
-}
-
-start()
+  console.log(`🚀 Server listening at ${address}`)
+})

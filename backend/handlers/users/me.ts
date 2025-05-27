@@ -1,21 +1,29 @@
-// backend/handlers/users/me.ts
-import { FastifyRequest, FastifyReply } from "fastify"
-import { PrismaClient } from "@prisma/client"
+import { FastifyRequest, FastifyReply } from 'fastify'
+import { prisma } from '../../lib/prisma'
+import { verifyJwt } from '../../utils/jwt'
 
-const prisma = new PrismaClient()
+export async function getMeHandler(req: FastifyRequest, reply: FastifyReply) {
+  const authHeader = req.headers.authorization
+  if (!authHeader) return reply.code(401).send({ error: 'Нет токена' })
 
-export default async function getMeHandler(req: FastifyRequest, reply: FastifyReply) {
-  const userId = req.user?.userId
+  const token = authHeader.replace('Bearer ', '')
+  const payload = verifyJwt<{ userId: string }>(token)
 
-  if (!userId) {
-    return reply.status(401).send({ error: "Не авторизован" })
-  }
+  if (!payload) return reply.code(401).send({ error: 'Недействительный токен' })
 
-  const user = await prisma.user.findUnique({ where: { id: userId } })
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      role: true,
+    },
+  })
 
-  if (!user) {
-    return reply.status(404).send({ error: "Пользователь не найден" })
-  }
+  if (!user) return reply.code(404).send({ error: 'Пользователь не найден' })
 
-  reply.send({ user: { ...user, ceu: 0 } })
+  return reply.send({ user })
 }

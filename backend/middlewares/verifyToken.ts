@@ -1,23 +1,14 @@
-// backend/middlewares/verifyToken.ts
-import { FastifyRequest, FastifyReply } from "fastify"
-import jwt from "jsonwebtoken"
+import { FastifyRequest, FastifyReply } from 'fastify'
+import { verifyJwt } from '../utils/jwt'
 
-export async function verifyToken(req: FastifyRequest, reply: FastifyReply) {
-  const authHeader = req.headers.authorization
+export async function verifyToken(request: FastifyRequest, reply: FastifyReply) {
+  const authHeader = request.headers.authorization
+  if (!authHeader) return reply.code(401).send({ error: 'Нет токена' })
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return reply.status(401).send({ error: "Отсутствует токен" })
-  }
+  const token = authHeader.replace('Bearer ', '')
+  const payload = verifyJwt<{ userId: string; role: string }>(token)
 
-  const token = authHeader.split(" ")[1]
+  if (!payload) return reply.code(401).send({ error: 'Неверный токен' })
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-      userId: string
-      role: string
-    }
-    req.user = decoded // 👈 прокидываем в `req`
-  } catch {
-    return reply.status(401).send({ error: "Недействительный токен" })
-  }
+  request.user = payload // 👈 Добавил `user` в FastifyRequest через декларацию
 }

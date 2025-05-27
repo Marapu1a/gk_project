@@ -1,8 +1,7 @@
-// backend/routes/users.ts
-import { FastifyInstance } from "fastify"
-import { verifyToken } from "../middlewares/verifyToken"
-import getMeHandler from "../handlers/users/me"
+import { FastifyInstance } from 'fastify'
+import { getMeHandler } from '../handlers/users/me'
+import { verifyToken } from '../middlewares/verifyToken'
 
-export default async function userRoutes(app: FastifyInstance) {
-  app.get("/me", { preHandler: verifyToken }, getMeHandler)
+export async function userRoutes(app: FastifyInstance) {
+  app.get('/users/me', { preHandler: verifyToken }, getMeHandler)
 }

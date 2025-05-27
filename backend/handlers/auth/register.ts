@@ -1,61 +1,41 @@
-// backend/handlers/auth/register.ts
-import { FastifyRequest, FastifyReply } from "fastify"
-import { PrismaClient, Role } from "@prisma/client"
-import { createGCUser } from "../../lib/createGCUser"
-import jwt from "jsonwebtoken"
+import { FastifyRequest, FastifyReply } from 'fastify'
+import bcrypt from 'bcrypt'
+import { prisma } from '../../lib/prisma'
+import { signJwt } from '../../utils/jwt'
 
-const prisma = new PrismaClient()
-
-export default async function registerHandler(req: FastifyRequest, reply: FastifyReply) {
-  const { email, firstName, lastName, role = "STUDENT" } = req.body as {
+export async function registerHandler(req: FastifyRequest, reply: FastifyReply) {
+  const { email, firstName, lastName, phone, password } = req.body as {
     email: string
     firstName: string
-    lastName?: string
-    role?: Role
+    lastName: string
+    phone?: string
+    password: string
   }
 
-  if (!email || !firstName) {
-    return reply.status(400).send({ error: "Email и имя обязательны" })
-  }
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing) return reply.code(400).send({ error: 'Email уже используется' })
 
-  const existingUser = await prisma.user.findUnique({ where: { email } })
+  const hashedPassword = await bcrypt.hash(password, 10)
 
-  let gcId: number | null = null
-
-  try {
-    const gcUserId = await createGCUser({
+  const user = await prisma.user.create({
+    data: {
       email,
       firstName,
       lastName,
-      group: role.toUpperCase(),
-    })
+      phone,
+      role: 'STUDENT',
+      password: hashedPassword,
+    },
+  })
 
-    gcId = parseInt(gcUserId)
-    if (isNaN(gcId)) {
-      return reply.status(500).send({ error: "Ошибка при создании пользователя в GetCourse" })
-    }
-  } catch (e: any) {
-    console.warn("GC error:", e?.message || e)
-    return reply.status(500).send({ error: "Ошибка при подключении к GetCourse" })
-  }
+  const token = signJwt({ userId: user.id, role: user.role })
 
-  const userData = {
-    email,
-    firstName,
-    lastName,
-    role,
-    gcId,
-  }
-
-  const user = existingUser
-    ? await prisma.user.update({ where: { email }, data: userData })
-    : await prisma.user.create({ data: userData })
-
-  const token = jwt.sign(
-    { userId: user.id, role: user.role },
-    process.env.JWT_SECRET!,
-    { expiresIn: "7d" }
-  )
-
-  reply.send({ token, user })
+  return reply.send({
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    },
+  })
 }

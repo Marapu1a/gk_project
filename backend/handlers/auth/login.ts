@@ -1,26 +1,27 @@
-import { FastifyRequest, FastifyReply } from "fastify"
-import { PrismaClient } from "@prisma/client"
-import jwt from "jsonwebtoken"
+import { FastifyRequest, FastifyReply } from 'fastify'
+import { prisma } from '../../lib/prisma'
+import { signJwt } from '../../utils/jwt'
+import bcrypt from 'bcrypt'
 
-const prisma = new PrismaClient()
-
-export default async function loginHandler(req: FastifyRequest, reply: FastifyReply) {
-  const { email } = req.body as { email: string }
-
-  if (!email) {
-    return reply.status(400).send({ error: "Email обязателен" })
-  }
+export async function loginHandler(req: FastifyRequest, reply: FastifyReply) {
+  const { email, password } = req.body as { email: string; password: string }
 
   const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) {
-    return reply.status(404).send({ error: "Пользователь не найден" })
-  }
+  if (!user) return reply.code(401).send({ error: 'Неверный email или пароль' })
 
-  const token = jwt.sign(
-    { userId: user.id, role: user.role },
-    process.env.JWT_SECRET!,
-    { expiresIn: "7d" }
-  )
+  const redirectTo =
+    user.role === 'ADMIN' ? '/admin' :
+      user.role === 'SUPERVISOR' ? '/supervisor' :
+        '/dashboard'
 
-  reply.send({ token, user })
+  const valid = await bcrypt.compare(password, user.password)
+  if (!valid) return reply.code(401).send({ error: 'Неверный email или пароль' })
+
+  const token = signJwt({ userId: user.id, role: user.role })
+
+  return reply.send({
+    token,
+    user: { id: user.id, email: user.email, role: user.role },
+    redirectTo
+  })
 }

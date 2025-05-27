@@ -1,9 +1,8 @@
-// backend/routes/auth.ts
-import { FastifyInstance } from "fastify"
-import registerHandler from "../handlers/auth/register"
-import loginHandler from "../handlers/auth/login"
+import { FastifyInstance } from 'fastify'
+import { registerHandler } from '../handlers/auth/register'
+import { loginHandler } from '../handlers/auth/login'
 
-export default async function authRoutes(app: FastifyInstance) {
-  app.post("/register", registerHandler)
-  app.post("/login", loginHandler)
+export async function authRoutes(app: FastifyInstance) {
+  app.post('/auth/register', registerHandler)
+  app.post('/auth/login', loginHandler)
 }

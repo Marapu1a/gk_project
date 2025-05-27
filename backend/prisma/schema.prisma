@@ -7,44 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  firstName String
-  lastName  String?
-  gcId      Int?     @unique
-  role      Role     @default(STUDENT)
-  createdAt DateTime @default(now())
-
-  applications Application[]
-  certificates Certificate[]
-}
-
-model Application {
-  id          String   @id @default(cuid())
-  userId      String
-  supervisor  String   // имя или ID супервизора
-  message     String?
-  status      ApplicationStatus @default(PENDING)
-  createdAt   DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id])
-}
-
-model Certificate {
-  id          String   @id @default(cuid())
-  userId      String
-  issuedAt    DateTime
-  expiresAt   DateTime
-  type        CertificateType
-
-  user User @relation(fields: [userId], references: [id])
-}
-
 enum Role {
   STUDENT
   SUPERVISOR
   ADMIN
+}
+
+enum GroupType {
+  MENTORSHIP
+  SUPERVISION
+  GENERAL
+}
+
+enum ApplicationType {
+  SUPERVISION
+  MENTORSHIP
 }
 
 enum ApplicationStatus {
@@ -53,8 +30,87 @@ enum ApplicationStatus {
   REJECTED
 }
 
-enum CertificateType {
-  USER
-  SUPERVISOR
-  MENTOR
+enum CertificateStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum CEUCategory {
+  PRACTICE
+  THEORY
+  ETHICS
+  OTHER
+}
+
+model User {
+  id                 String         @id @default(cuid())
+  email              String         @unique
+  firstName          String
+  lastName           String
+  password           String
+  phone              String?
+  role               Role           @default(STUDENT)
+  groups             UserGroup[]
+  applications       Application[]  @relation("StudentApplications")
+  supervisingApps    Application[]  @relation("SupervisorApplications")
+  certificates       Certificate[]
+  activeCertificate  Certificate?   @relation("ActiveCertificate")
+  ceuRecords         CEURecord[]
+  createdAt          DateTime       @default(now())
+}
+
+model Group {
+  id        String       @id @default(cuid())
+  name      String
+  type      GroupType
+  users     UserGroup[]
+  createdAt DateTime     @default(now())
+}
+
+model UserGroup {
+  id       String @id @default(cuid())
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+  group    Group  @relation(fields: [groupId], references: [id])
+  groupId  String
+}
+
+model Application {
+  id           String             @id @default(cuid())
+  type         ApplicationType
+  status       ApplicationStatus @default(PENDING)
+  hours        Int
+  student      User              @relation("StudentApplications", fields: [studentId], references: [id])
+  studentId    String
+  supervisor   User              @relation("SupervisorApplications", fields: [supervisorId], references: [id])
+  supervisorId String
+  createdAt    DateTime          @default(now())
+}
+
+model Certificate {
+  id              String             @id @default(cuid())
+  user            User               @relation(fields: [userId], references: [id])
+  userId          String
+  level           String
+  issuedAt        DateTime
+  expiresAt       DateTime
+  status          CertificateStatus @default(ACTIVE)
+  isActive        Boolean            @default(false)
+  activeForUser   User?              @relation("ActiveCertificate", fields: [activeForUserId], references: [id])
+  activeForUserId String?            @unique
+}
+
+model CEURecord {
+  id             String       @id @default(cuid())
+  user           User         @relation(fields: [userId], references: [id])
+  userId         String
+  title          String
+  date           DateTime
+  category       CEUCategory
+  points         Float
+  usedInCert     Boolean      @default(false)
+  valid          Boolean      @default(true)
+  fileUrl        String?
+  createdAt      DateTime     @default(now())
 }
