@@ -1,39 +1,52 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { prisma } from '../../lib/prisma'
+import { supervisionRequestSchema } from '../../schemas/supervision'
 
 export async function createApplicationHandler(req: FastifyRequest, reply: FastifyReply) {
-  const { type, supervisorId, hours } = req.body as {
-    type: 'SUPERVISION' | 'MENTORSHIP'
-    supervisorId: string
-    hours: number
+  const user = req.user
+  if (!user) return reply.code(401).send({ error: 'Не авторизован' })
+
+  const parsed = supervisionRequestSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return reply.code(400).send({ error: 'Неверные данные', details: parsed.error.flatten() })
   }
 
-  const userId = req.user?.userId
-  if (!userId) return reply.code(401).send({ error: 'Не авторизован' })
+  const { supervisorEmail, hoursInstructor, hoursCurator, hoursSupervisor } = parsed.data
 
-  // проверка на дубли (можно потом усилить)
-  const existing = await prisma.application.findFirst({
-    where: {
-      type,
-      studentId: userId,
-      supervisorId,
-      status: 'PENDING',
+  const supervisor = await prisma.user.findUnique({
+    where: { email: supervisorEmail },
+    include: {
+      groups: { include: { group: true } },
     },
   })
 
-  if (existing) {
-    return reply.code(400).send({ error: 'Заявка уже подана' })
+  if (!supervisor) {
+    return reply.code(404).send({ error: 'Супервизор с таким email не найден' })
   }
 
-  const app = await prisma.application.create({
+  const isSupervisor = supervisor.groups.some(g => g.group.name === 'Супервизоры')
+  if (!isSupervisor) {
+    return reply.code(400).send({ error: 'Указанный пользователь не является супервизором' })
+  }
+
+  const request = await prisma.supervisionRequest.create({
     data: {
-      type,
-      hours,
-      studentId: userId,
-      supervisorId,
-      status: 'PENDING',
+      studentId: user.userId,
+      supervisorId: supervisor.id,
+      hoursInstructor,
+      hoursCurator,
+      hoursSupervisor,
     },
   })
 
-  return reply.send({ application: app })
+  return reply.send({
+    id: request.id,
+    status: request.status,
+    createdAt: request.createdAt,
+    supervisor: {
+      id: supervisor.id,
+      email: supervisor.email,
+      fullName: `${supervisor.firstName} ${supervisor.lastName}`,
+    },
+  })
 }

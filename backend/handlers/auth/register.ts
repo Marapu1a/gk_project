@@ -2,18 +2,21 @@ import { FastifyRequest, FastifyReply } from 'fastify'
 import bcrypt from 'bcrypt'
 import { prisma } from '../../lib/prisma'
 import { signJwt } from '../../utils/jwt'
+import { registerSchema } from '../../schemas/auth'
 
 export async function registerHandler(req: FastifyRequest, reply: FastifyReply) {
-  const { email, firstName, lastName, phone, password } = req.body as {
-    email: string
-    firstName: string
-    lastName: string
-    phone?: string
-    password: string
+  const parsed = registerSchema.safeParse(req.body)
+
+  if (!parsed.success) {
+    return reply.code(400).send({ error: 'Некорректные данные', details: parsed.error.flatten() })
   }
 
+  const { email, firstName, lastName, phone, password } = parsed.data
+
   const existing = await prisma.user.findUnique({ where: { email } })
-  if (existing) return reply.code(400).send({ error: 'Email уже используется' })
+  if (existing) {
+    return reply.code(409).send({ error: 'Email уже используется' })
+  }
 
   const hashedPassword = await bcrypt.hash(password, 10)
 
@@ -36,6 +39,7 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       id: user.id,
       email: user.email,
       role: user.role,
+      fullName: `${user.firstName} ${user.lastName}`,
     },
   })
 }
