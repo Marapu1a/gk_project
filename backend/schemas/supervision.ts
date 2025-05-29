@@ -6,3 +6,10 @@ export const supervisionRequestSchema = z.object({
   hoursCurator: z.number().min(0),
   hoursSupervisor: z.number().min(0),
 })
+
+export const updateSupervisionStatusSchema = z.object({
+  status: z.enum(['APPROVED', 'REJECTED']),
+  approvedHoursInstructor: z.number().min(0).optional(),
+  approvedHoursCurator: z.number().min(0).optional(),
+  approvedHoursSupervisor: z.number().min(0).optional(),
+})

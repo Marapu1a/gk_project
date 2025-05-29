@@ -53,6 +53,11 @@ model SupervisionRequest {
   hoursInstructor     Float              @default(0)
   hoursCurator        Float              @default(0)
   hoursSupervisor     Float              @default(0)
+
+  approvedHoursInstructor Float?
+  approvedHoursCurator    Float?
+  approvedHoursSupervisor Float?
+
   student             User               @relation("SupervisionRequests", fields: [studentId], references: [id])
   studentId           String
   supervisor          User               @relation("SupervisedBy", fields: [supervisorId], references: [id])

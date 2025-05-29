@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 import { authRoutes } from './routes/auth'
 import { userRoutes } from './routes/users'
 import { applicationRoutes } from './routes/applications'
+import { ceuRoutes } from './routes/ceu'
 
 dotenv.config()
 
@@ -19,6 +20,7 @@ app.register(cookie)
 app.register(authRoutes)
 app.register(userRoutes)
 app.register(applicationRoutes)
+app.register(ceuRoutes)
 
 app.get('/', async () => ({ ok: true }))
 
