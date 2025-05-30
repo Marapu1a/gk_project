@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  const groups = ['Инструктор', 'Куратор', 'Супервизор', 'Опытный супервизор']
+  const groups = ['Инструктор', 'Куратор', 'Супервизор', 'Опытный Супервизор']
 
   for (const name of groups) {
     await prisma.group.upsert({
