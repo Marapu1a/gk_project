@@ -40,6 +40,8 @@ model User {
   role                Role                @default(STUDENT)
   supervisionRequests SupervisionRequest[] @relation("SupervisionRequests")
   supervisedRequests  SupervisionRequest[] @relation("SupervisedBy")
+  mentorshipRequestsSent     MentorshipRequest[] @relation("MentorRequests")
+  mentorshipRequestsReceived MentorshipRequest[] @relation("ApprovesMentorships")
   ceuRecords          CEURecord[]
   certificates        Certificate[]
   activeCertificate   Certificate?        @relation("ActiveCertificate")
@@ -63,6 +65,19 @@ model SupervisionRequest {
   supervisor          User               @relation("SupervisedBy", fields: [supervisorId], references: [id])
   supervisorId        String
   createdAt           DateTime           @default(now())
+}
+
+model MentorshipRequest {
+  id         String             @id @default(cuid())
+  hours      Float
+  status     SupervisionStatus @default(PENDING)
+  createdAt  DateTime          @default(now())
+
+  mentor     User              @relation("MentorRequests", fields: [mentorId], references: [id])
+  mentorId   String
+
+  approver   User              @relation("ApprovesMentorships", fields: [approverId], references: [id])
+  approverId String
 }
 
 model Certificate {

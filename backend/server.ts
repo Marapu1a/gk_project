@@ -8,6 +8,7 @@ import { applicationRoutes } from './routes/applications'
 import { ceuRoutes } from './routes/ceu'
 import { certificateRoutes } from './routes/certificates'
 import { groupRoutes } from './routes/groups'
+import { mentorshipRoutes } from './routes/mentorship'
 
 dotenv.config()
 
@@ -25,6 +26,7 @@ app.register(applicationRoutes)
 app.register(ceuRoutes)
 app.register(certificateRoutes)
 app.register(groupRoutes)
+app.register(mentorshipRoutes)
 
 app.get('/', async () => ({ ok: true }))
 
