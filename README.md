@@ -118,58 +118,11 @@
 5. ✅Рассмотрение созданных CEU-записей
 6. ✅Просмотр своих CEU-баллов
 7. ✅Выпуск сертификата
-8. Создание заявок на подтверждение часов менторства
-9. Рассмотрение заявок на подтверждение часов менторства
-10. API
-
-Текущая структура backend
-
-backend/
-├── handlers/
-│ ├── applications/
-│ │ ├── assigned.ts
-│ │ ├── create.ts
-│ │ ├── list.ts
-│ │ └── update-status.ts
-│ ├── auth/
-│ │ ├── login.ts
-│ │ └── register.ts
-│ ├── ceu/
-│ │ ├── create.ts
-│ │ ├── invalidate.ts
-│ │ └── list.ts
-│ └── users/
-│ ├── me.ts
-│ └── supervisionHours.ts
-├── lib/
-│ └── prisma.ts
-├── middlewares/
-│ ├── requireRole.ts
-│ └── verifyToken.ts
-├── prisma/
-│ ├── migrations/
-│ └── schema.prisma
-├── routes/
-│ ├── applications.ts
-│ ├── auth.ts
-│ ├── ceu.ts
-│ └── users.ts
-├── schemas/
-│ ├── auth.ts
-│ ├── ceu.ts
-│ └── supervision.ts
-├── types/
-│ └── fastify.d.ts
-├── utils/
-│ └── jwt.ts
-├── server.ts
-├── package.json
-└── tsconfig.json
+8. ✅Создание заявок на подтверждение часов менторства
+9. ✅Рассмотрение заявок на подтверждение часов менторства
 
 ---
 
 ## API
 
-- Публичные эндпоинты: `/registry`, `/certificates`, `/ceu`, `/hours`
-- Приватные эндпоинты для UI, защищённые JWT-токеном
 - Все действия логируются и верифицируются по ролям
