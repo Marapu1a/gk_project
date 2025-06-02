@@ -2,14 +2,14 @@
 
 ## 🔗 Оглавление
 
-1. [Общее описание и Prisma schema](./doc/backend-schema-doc)
-2. [Авторизация (`/auth`)](./doc/routes-auth)
-3. [Пользовательские данные (`/users`)](./doc/routes-users)
-4. [Заявки на супервизию (`/supervision-requests`)](./doc/routes-applications)
-5. [CEU-файлы (`/ceu-records`, `/ceu/my`)](./doc/routes-ceu)
-6. [Сертификаты (`/certificates`)](./doc/routes-certificates)
-7. [Группы (`/groups`)](./doc/routes-groups)
-8. [Менторские часы (`/mentorship-requests`)](./doc/routes-mentorship)
+1. [Общее описание и Prisma schema](./doc/backend-schema-doc.md)
+2. [Авторизация (`/auth`)](./doc/routes-auth.md)
+3. [Пользовательские данные (`/users`)](./doc/routes-users.md)
+4. [Заявки на супервизию (`/supervision-requests`)](./doc/routes-applications.md)
+5. [CEU-файлы (`/ceu-records`, `/ceu/my`)](./doc/routes-ceu.md)
+6. [Сертификаты (`/certificates`)](./doc/routes-certificates.md)
+7. [Группы (`/groups`)](./doc/routes-groups.md)
+8. [Менторские часы (`/mentorship-requests`)](./doc/routes-mentorship.md)
 
 ## 🧭 Навигация
 
