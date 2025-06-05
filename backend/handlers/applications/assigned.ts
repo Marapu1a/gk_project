@@ -10,7 +10,7 @@ export async function listAssignedRequestsHandler(req: FastifyRequest, reply: Fa
   const isSupervisor = await prisma.userGroup.findFirst({
     where: {
       userId: user.userId,
-      group: { name: 'Супервизоры' },
+      group: { name: 'Супервизор' },
     },
   })
 

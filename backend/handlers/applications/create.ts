@@ -24,7 +24,7 @@ export async function createApplicationHandler(req: FastifyRequest, reply: Fasti
     return reply.code(404).send({ error: 'Супервизор с таким email не найден' })
   }
 
-  const isSupervisor = supervisor.groups.some(g => g.group.name === 'Супервизоры')
+  const isSupervisor = supervisor.groups.some(g => g.group.name === 'Супервизор')
   if (!isSupervisor) {
     return reply.code(400).send({ error: 'Указанный пользователь не является супервизором' })
   }

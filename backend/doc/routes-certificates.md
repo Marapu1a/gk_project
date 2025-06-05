@@ -129,7 +129,7 @@ app.post('/certificates', { preHandler: verifyToken }, createCertificate);
 [
   {
     "id": "...",
-    "name": "Супервизоры"
+    "name": "Супервизор"
   },
   ...
 ]
