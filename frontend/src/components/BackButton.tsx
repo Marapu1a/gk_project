@@ -7,7 +7,7 @@ export default function BackButton() {
     <button
       type="button"
       onClick={() => navigate(-1)}
-      className="text-gray-600 hover:underline text-sm"
+      className="text-blue-dark hover:underline text-sm mt-6 font-sans"
     >
       ← Назад
     </button>

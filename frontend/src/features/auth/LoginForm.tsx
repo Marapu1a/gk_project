@@ -31,39 +31,50 @@ export function LoginForm() {
 
   return (
     <>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-md mx-auto mt-10">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="max-w-md mx-auto mt-12 font-sans space-y-5"
+      >
+        {/* Email */}
         <input
-          {...register('email')}
+          type="email"
+          autoComplete="email"
           placeholder="Email"
-          className="w-full border px-3 py-2 rounded"
+          {...register('email')}
+          className="input"
         />
-        {errors.email && <p className="text-red-600 text-sm">{errors.email.message}</p>}
+        {errors.email && <p className="text-error">{errors.email.message}</p>}
 
+        {/* Password */}
         <input
-          {...register('password')}
           type="password"
+          autoComplete="current-password"
           placeholder="Пароль"
-          className="w-full border px-3 py-2 rounded"
+          {...register('password')}
+          className="input"
         />
-        {errors.password && <p className="text-red-600 text-sm">{errors.password.message}</p>}
+        {errors.password && <p className="text-error">{errors.password.message}</p>}
 
+        {/* Submit */}
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="btn btn-brand w-full disabled:opacity-50"
         >
           {mutation.isPending ? 'Вход...' : 'Войти'}
         </button>
 
-        <p className="text-sm text-center text-gray-600">
-          <Link to="/forgot-password" className="text-blue-600 hover:underline">
+        {/* Forgot Password */}
+        <p className="text-sm text-center text-blue-dark">
+          <Link to="/forgot-password" className="text-brand hover:underline font-medium">
             Забыли пароль?
           </Link>
         </p>
 
-        {mutation.isError && <p className="text-red-600 text-sm">{'Неверный email или пароль'}</p>}
+        {/* Error */}
+        {mutation.isError && <p className="text-error text-center">Неверный email или пароль</p>}
+        <BackButton />
       </form>
-      <BackButton />
     </>
   );
 }

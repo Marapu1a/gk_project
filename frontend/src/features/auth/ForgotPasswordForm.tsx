@@ -26,33 +26,44 @@ export function ForgotPasswordForm() {
   };
 
   if (sent) {
-    return <p className="text-green-600">Если email существует, инструкция отправлена</p>;
+    return (
+      <p className="text-center text-brand font-medium mt-10">
+        Если email существует, инструкция отправлена
+      </p>
+    );
   }
 
   return (
     <>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-md mx-auto mt-10">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="max-w-md mx-auto mt-12 font-sans space-y-5"
+      >
+        {/* Email */}
         <input
-          {...register('email')}
           type="email"
+          autoComplete="email"
           placeholder="Ваш email"
-          className="w-full border px-3 py-2 rounded"
+          {...register('email')}
+          className="input"
         />
-        {errors.email && <p className="text-red-600 text-sm">{errors.email.message}</p>}
+        {errors.email && <p className="text-error">{errors.email.message}</p>}
 
+        {/* Submit */}
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="btn btn-brand w-full disabled:opacity-50"
         >
           {mutation.isPending ? 'Отправка...' : 'Восстановить пароль'}
         </button>
 
+        {/* Error */}
         {mutation.isError && (
-          <p className="text-red-600 text-sm">Произошла ошибка. Попробуйте позже.</p>
+          <p className="text-error text-center">Произошла ошибка. Попробуйте позже.</p>
         )}
+        <BackButton />
       </form>
-      <BackButton />
     </>
   );
 }

@@ -30,69 +30,64 @@ export function RegisterForm() {
 
   return (
     <>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-md mx-auto mt-10">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="max-w-md mx-auto mt-12 font-sans space-y-5"
+      >
         <input
-          {...register('email')}
+          type="email"
+          autoComplete="email"
           placeholder="Email"
-          className="w-full border px-3 py-2 rounded"
+          {...register('email')}
+          className="input"
         />
-        {errors.email && <p className="text-red-600 text-sm">{errors.email.message}</p>}
+        {errors.email && <p className="text-error">{errors.email.message}</p>}
+
+        <input type="text" placeholder="Имя" {...register('firstName')} className="input" />
+        {errors.firstName && <p className="text-error">{errors.firstName.message}</p>}
+
+        <input type="text" placeholder="Фамилия" {...register('lastName')} className="input" />
+        {errors.lastName && <p className="text-error">{errors.lastName.message}</p>}
+
+        <input type="tel" placeholder="Телефон" {...register('phone')} className="input" />
+        {errors.phone && <p className="text-error">{errors.phone.message}</p>}
 
         <input
-          {...register('firstName')}
-          placeholder="Имя"
-          className="w-full border px-3 py-2 rounded"
-        />
-        {errors.firstName && <p className="text-red-600 text-sm">{errors.firstName.message}</p>}
-
-        <input
-          {...register('lastName')}
-          placeholder="Фамилия"
-          className="w-full border px-3 py-2 rounded"
-        />
-        {errors.lastName && <p className="text-red-600 text-sm">{errors.lastName.message}</p>}
-
-        <input
-          {...register('phone')}
-          placeholder="Телефон"
-          className="w-full border px-3 py-2 rounded"
-        />
-        {errors.phone && <p className="text-red-600 text-sm">{errors.phone.message}</p>}
-
-        <input
-          {...register('password')}
           type="password"
+          autoComplete="new-password"
           placeholder="Пароль"
-          className="w-full border px-3 py-2 rounded"
+          {...register('password')}
+          className="input"
         />
-        {errors.password && <p className="text-red-600 text-sm">{errors.password.message}</p>}
+        {errors.password && <p className="text-error">{errors.password.message}</p>}
 
         <input
-          {...register('confirmPassword')}
           type="password"
+          autoComplete="new-password"
           placeholder="Повторите пароль"
-          className="w-full border px-3 py-2 rounded"
+          {...register('confirmPassword')}
+          className="input"
         />
-        {errors.confirmPassword && (
-          <p className="text-red-600 text-sm">{errors.confirmPassword.message}</p>
-        )}
+        {errors.confirmPassword && <p className="text-error">{errors.confirmPassword.message}</p>}
 
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="btn btn-brand w-full disabled:opacity-50"
         >
           {mutation.isPending ? 'Регистрация...' : 'Зарегистрироваться'}
         </button>
 
-        {mutation.isError && <p className="text-red-600">Ошибка: {mutation.error?.message}</p>}
+        {mutation.isError && (
+          <p className="text-error text-center">Ошибка: {mutation.error?.message}</p>
+        )}
+        <p className="text-sm text-center text-blue-dark">
+          Уже есть аккаунт?
+          <Link to="/login" className="ml-1 text-brand hover:underline font-medium">
+            Войти
+          </Link>
+        </p>
       </form>
-      <p className="text-sm text-center text-gray-600">
-        Уже есть аккаунт?{' '}
-        <Link to="/login" className="text-blue-600 hover:underline">
-          Войти
-        </Link>
-      </p>
     </>
   );
 }

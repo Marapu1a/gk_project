@@ -34,40 +34,49 @@ export function ResetPasswordForm() {
     mutation.mutate(data);
   };
 
-  if (!token) return <p className="text-red-600">Ссылка недействительна</p>;
+  if (!token) {
+    return <p className="text-error text-center mt-10">Ссылка недействительна</p>;
+  }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-md mx-auto mt-10">
+    <form onSubmit={handleSubmit(onSubmit)} className="max-w-md mx-auto mt-12 font-sans space-y-5">
+      {/* Новый пароль */}
       <input
-        {...register('password')}
         type="password"
+        autoComplete="new-password"
         placeholder="Новый пароль"
-        className="w-full border px-3 py-2 rounded"
+        {...register('password')}
+        className="input"
       />
-      {errors.password && <p className="text-red-600 text-sm">{errors.password.message}</p>}
+      {errors.password && <p className="text-error">{errors.password.message}</p>}
 
+      {/* Подтверждение */}
       <input
-        {...register('confirmPassword')}
         type="password"
+        autoComplete="new-password"
         placeholder="Повторите пароль"
-        className="w-full border px-3 py-2 rounded"
+        {...register('confirmPassword')}
+        className="input"
       />
-      {errors.confirmPassword && (
-        <p className="text-red-600 text-sm">{errors.confirmPassword.message}</p>
-      )}
+      {errors.confirmPassword && <p className="text-error">{errors.confirmPassword.message}</p>}
 
+      {/* Кнопка */}
       <button
         type="submit"
         disabled={mutation.isPending}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+        className="btn btn-brand w-full disabled:opacity-50"
       >
         {mutation.isPending ? 'Сброс...' : 'Сбросить пароль'}
       </button>
 
+      {/* Уведомления */}
       {mutation.isSuccess && (
-        <p className="text-green-600">Пароль обновлён. Перенаправляем на вход...</p>
+        <p className="text-brand text-center mt-4">Пароль обновлён. Перенаправляем на вход...</p>
       )}
-      {mutation.isError && <p className="text-red-600 text-sm">Ошибка. Возможно, токен устарел.</p>}
+
+      {mutation.isError && (
+        <p className="text-error text-center mt-4">Ошибка. Возможно, токен устарел.</p>
+      )}
     </form>
   );
 }
