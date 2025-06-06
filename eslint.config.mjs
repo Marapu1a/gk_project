@@ -7,19 +7,24 @@ import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
   {
-    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
-    plugins: {
-      js,
-      prettier: eslintPluginPrettier,
-    },
+    files: ['**/*.{js,cjs,mjs,ts,cts,mts}'],
     languageOptions: {
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
       globals: {
         ...globals.browser,
         ...globals.node,
       },
     },
+    plugins: {
+      js,
+      prettier: eslintPluginPrettier,
+    },
     rules: {
       ...js.configs.recommended.rules,
+      'eol-last': ['error', 'always'],
       'prettier/prettier': 'error',
     },
   },

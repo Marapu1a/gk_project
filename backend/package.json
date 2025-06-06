@@ -10,7 +10,6 @@
   },
   "type": "commonjs",
   "dependencies": {
-    "-": "^0.0.1",
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.0.1",
     "@prisma/client": "^6.8.2",

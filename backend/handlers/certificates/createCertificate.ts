@@ -65,16 +65,18 @@ export async function createCertificate(req: FastifyRequest, reply: FastifyReply
     },
   });
 
-  // 6. Ответ + автоматическое добавление в группы
-  await addUserToGroup(targetUser.id, level); // добавить в основную группу
+  // 6. Проверка до добавления в основную группу
+  const alreadyInMainGroup = await isUserInGroup(targetUser.id, level);
 
-  if (isSameLevelRenewal) {
-    const alreadyInMainGroup = await isUserInGroup(targetUser.id, level);
-    if (alreadyInMainGroup) {
-      await addUserToGroup(targetUser.id, `Опытный ${level}`);
-    }
+  // 7. Добавить в основную группу
+  await addUserToGroup(targetUser.id, level);
+
+  // 8. Если это продление и пользователь уже был в группе — добавить в опытную
+  if (isSameLevelRenewal && alreadyInMainGroup) {
+    await addUserToGroup(targetUser.id, `Опытный ${level}`);
   }
 
+  // 9. Ответ
   reply.send({
     success: true,
     certificate: cert,

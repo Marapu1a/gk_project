@@ -21,11 +21,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsInitialized(true);
   }, []);
 
-  useEffect(() => {
-    const stored = getAuthToken();
-    setToken(stored || null);
-  }, []);
-
   const login = (token: string) => {
     saveAuth(token);
     setToken(token);

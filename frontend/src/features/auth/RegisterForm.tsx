@@ -3,12 +3,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema } from '@/validators/auth';
 import type { RegisterFormData } from '@/validators/auth';
 import { useRegisterMutation } from '@/hooks/useRegisterMutation';
-import { saveAuth } from '@/utils/auth';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function RegisterForm() {
   const navigate = useNavigate();
   const mutation = useRegisterMutation();
+  const { login } = useAuth();
 
   const {
     register,
@@ -22,7 +23,7 @@ export function RegisterForm() {
     const { confirmPassword, ...payload } = data;
     mutation.mutate(payload, {
       onSuccess: (res) => {
-        saveAuth(res.token);
+        login(res.token);
         navigate('/dashboard');
       },
     });
