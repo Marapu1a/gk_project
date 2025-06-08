@@ -117,6 +117,7 @@ model CEURecord {
 model Group {
   id        String       @id @default(cuid())
   name      String       @unique
+  rank      Int          @default(0)
   users     UserGroup[]
   createdAt DateTime     @default(now())
 }
@@ -127,4 +128,5 @@ model UserGroup {
   userId   String
   group    Group  @relation(fields: [groupId], references: [id])
   groupId  String
+  createdAt DateTime @default(now())
 }
