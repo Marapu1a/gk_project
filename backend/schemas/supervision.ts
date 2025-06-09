@@ -1,15 +1,13 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
-export const supervisionRequestSchema = z.object({
-  supervisorEmail: z.string().email(),
-  hoursInstructor: z.number().min(0),
-  hoursCurator: z.number().min(0),
-  hoursSupervisor: z.number().min(0),
-})
-
-export const updateSupervisionStatusSchema = z.object({
-  status: z.enum(['APPROVED', 'REJECTED']),
-  approvedHoursInstructor: z.number().min(0).optional(),
-  approvedHoursCurator: z.number().min(0).optional(),
-  approvedHoursSupervisor: z.number().min(0).optional(),
-})
+export const createSupervisionSchema = z.object({
+  fileId: z.string().optional(),
+  entries: z
+    .array(
+      z.object({
+        type: z.enum(['INSTRUCTOR', 'CURATOR', 'SUPERVISOR']),
+        value: z.number().positive(),
+      })
+    )
+    .min(1),
+});

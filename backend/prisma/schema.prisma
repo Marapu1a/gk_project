@@ -1,3 +1,4 @@
+// schema.prisma (переработанная с атомарными записями CEU и часов)
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,14 +9,23 @@ datasource db {
 }
 
 enum Role {
-  STUDENT
-  ADMIN
+  STUDENT     // обычный пользователь
+  REVIEWER    // проверяет CEU и супервизию
+  ADMIN       // полный доступ
 }
 
-enum CertificateStatus {
-  ACTIVE
-  REVOKED
-  EXPIRED
+enum RecordStatus {
+  UNCONFIRMED
+  CONFIRMED
+  REJECTED
+  SPENT
+}
+
+enum CEUCategory {
+  ETHICS
+  CULTURAL_DIVERSITY
+  SUPERVISION
+  GENERAL
 }
 
 enum PracticeLevel {
@@ -24,94 +34,93 @@ enum PracticeLevel {
   SUPERVISOR
 }
 
-enum SupervisionStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
 model User {
-  id                  String              @id @default(cuid())
-  email               String              @unique
-  firstName           String
-  lastName            String
+  id                  String   @id @default(cuid())
+  email               String   @unique
   password            String
+  fullName            String
   phone               String?
-  role                Role                @default(STUDENT)
-  supervisionRequests SupervisionRequest[] @relation("SupervisionRequests")
-  supervisedRequests  SupervisionRequest[] @relation("SupervisedBy")
-  mentorshipRequestsSent     MentorshipRequest[] @relation("MentorRequests")
-  mentorshipRequestsReceived MentorshipRequest[] @relation("ApprovesMentorships")
-  ceuRecords          CEURecord[]
+  birthDate           DateTime?
+  country             String?
+  city                String?
+  avatarUrl           String?
+  isEmailConfirmed    Boolean  @default(false)
+  role                Role     @default(STUDENT)
+
   certificates        Certificate[]
-  activeCertificate   Certificate?        @relation("ActiveCertificate")
+  ceuRecords          CEURecord[]
+  supervisionRecords  SupervisionRecord[]
   groups              UserGroup[]
-  createdAt           DateTime            @default(now())
-}
 
-model SupervisionRequest {
-  id                  String             @id @default(cuid())
-  status              SupervisionStatus  @default(PENDING)
-  hoursInstructor     Float              @default(0)
-  hoursCurator        Float              @default(0)
-  hoursSupervisor     Float              @default(0)
+  reviewedCEUEntries       CEUEntry[]          @relation("ReviewedCEUEntry")
+  reviewedSupervisionHours SupervisionHour[]   @relation("ReviewedSupervisionHour")
 
-  approvedHoursInstructor Float?
-  approvedHoursCurator    Float?
-  approvedHoursSupervisor Float?
-
-  student             User               @relation("SupervisionRequests", fields: [studentId], references: [id])
-  studentId           String
-  supervisor          User               @relation("SupervisedBy", fields: [supervisorId], references: [id])
-  supervisorId        String
-  createdAt           DateTime           @default(now())
-}
-
-model MentorshipRequest {
-  id         String             @id @default(cuid())
-  hours      Float
-  status     SupervisionStatus @default(PENDING)
-  createdAt  DateTime          @default(now())
-
-  mentor     User              @relation("MentorRequests", fields: [mentorId], references: [id])
-  mentorId   String
-
-  approver   User              @relation("ApprovesMentorships", fields: [approverId], references: [id])
-  approverId String
+  createdAt           DateTime @default(now())
 }
 
 model Certificate {
-  id               String             @id @default(cuid())
-  user             User               @relation(fields: [userId], references: [id])
-  userId           String
-  level            String
-  issuedAt         DateTime
-  expiresAt        DateTime
-  status           CertificateStatus  @default(ACTIVE)
-  fileUrl          String?
-  isActive         Boolean            @default(false)
-  activeForUser    User?              @relation("ActiveCertificate", fields: [activeForUserId], references: [id])
-  activeForUserId  String?            @unique
+  id         String   @id @default(cuid())
+  number     String   @unique
+  title      String
+  fileUrl    String
+  issuedAt   DateTime
+  expiresAt  DateTime
+
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+
 }
 
 model CEURecord {
-  id                 String   @id @default(cuid())
-  user               User     @relation(fields: [userId], references: [id])
-  userId             String
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  fileId     String?
+  eventName  String
+  eventDate  DateTime
+  createdAt  DateTime @default(now())
 
-  file_id            String?
-  spentOnCertificate Boolean  @default(false)
+  entries    CEUEntry[]
+}
 
-  ceu_ethics         Float    @default(0)
-  ceu_cult_diver     Float    @default(0)
-  ceu_superv         Float    @default(0)
-  ceu_general        Float    @default(0)
+model CEUEntry {
+  id         String   @id @default(cuid())
+  recordId   String
+  record     CEURecord @relation(fields: [recordId], references: [id])
 
-  event_name         String
-  event_date         DateTime
+  category   CEUCategory
+  value      Float
+  status     RecordStatus @default(UNCONFIRMED)
 
-  is_valid           Boolean  @default(true)
-  createdAt          DateTime @default(now())
+  reviewerId String?
+  reviewer   User?    @relation("ReviewedCEUEntry", fields: [reviewerId], references: [id])
+  reviewedAt DateTime?
+  rejectedReason String?
+}
+
+model SupervisionRecord {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  fileId     String?
+  createdAt  DateTime @default(now())
+
+  hours      SupervisionHour[]
+}
+
+model SupervisionHour {
+  id         String   @id @default(cuid())
+  recordId   String
+  record     SupervisionRecord @relation(fields: [recordId], references: [id])
+
+  type       PracticeLevel
+  value      Float
+  status     RecordStatus @default(UNCONFIRMED)
+
+  reviewerId String?
+  reviewer   User?    @relation("ReviewedSupervisionHour", fields: [reviewerId], references: [id])
+  reviewedAt DateTime?
+  rejectedReason String?
 }
 
 model Group {
@@ -123,10 +132,10 @@ model Group {
 }
 
 model UserGroup {
-  id       String @id @default(cuid())
-  user     User   @relation(fields: [userId], references: [id])
-  userId   String
-  group    Group  @relation(fields: [groupId], references: [id])
-  groupId  String
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id])
   createdAt DateTime @default(now())
 }

@@ -18,15 +18,12 @@ export async function forgotPasswordHandler(req: FastifyRequest, reply: FastifyR
   const { email } = parsed.data;
 
   const user = await prisma.user.findUnique({ where: { email } });
-
   if (!user) return reply.code(200).send({ success: true });
 
-  const resetToken = jwt.sign(
-    { userId: user.id },
-    process.env.RESET_PASSWORD_SECRET!,
-    { expiresIn: '15m' }
-  );
+  const secret = process.env.RESET_PASSWORD_SECRET;
+  if (!secret) return reply.code(500).send({ error: 'Секрет не задан' });
 
+  const resetToken = jwt.sign({ userId: user.id }, secret, { expiresIn: '15m' });
   const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
   try {
@@ -42,4 +39,3 @@ export async function forgotPasswordHandler(req: FastifyRequest, reply: FastifyR
     return reply.code(500).send({ error: 'Не удалось отправить письмо' });
   }
 }
-

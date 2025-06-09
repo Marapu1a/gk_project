@@ -2,13 +2,20 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import dotenv from 'dotenv'
+
+import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
+
 import { authRoutes } from './routes/auth'
-import { userRoutes } from './routes/users'
-import { applicationRoutes } from './routes/applications'
 import { ceuRoutes } from './routes/ceu'
+import { supervisionRoutes } from './routes/supervision'
+import { applicationsCEURoutes } from './routes/applicationsCEU';
+import { applicationsHoursRoutes } from './routes/applicationsHours';
 import { certificateRoutes } from './routes/certificates'
-import { groupRoutes } from './routes/groups'
+import { groupsRoutes } from './routes/groups'
 import { mentorshipRoutes } from './routes/mentorship'
+import { uploadRoutes } from './routes/upload';
 
 dotenv.config()
 
@@ -19,13 +26,21 @@ app.register(cors, {
   credentials: true,
 })
 
+app.register(multipart);
+app.register(fastifyStatic, {
+  root: path.resolve(__dirname, '../uploads'),
+  prefix: '/uploads/',
+});
+
 app.register(cookie)
 app.register(authRoutes)
-app.register(userRoutes)
-app.register(applicationRoutes)
 app.register(ceuRoutes)
+app.register(supervisionRoutes)
+app.register(uploadRoutes)
+app.register(applicationsCEURoutes)
+app.register(applicationsHoursRoutes)
 app.register(certificateRoutes)
-app.register(groupRoutes)
+app.register(groupsRoutes)
 app.register(mentorshipRoutes)
 
 app.get('/', async () => ({ ok: true }))

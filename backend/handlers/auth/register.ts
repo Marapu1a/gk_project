@@ -13,7 +13,7 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       .send({ error: 'Некорректные данные', details: parsed.error.flatten() });
   }
 
-  const { email, firstName, lastName, phone, password } = parsed.data;
+  const { email, fullName, phone, password } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -25,15 +25,13 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
   const user = await prisma.user.create({
     data: {
       email,
-      firstName,
-      lastName,
+      password: hashedPassword,
+      fullName,
       phone,
       role: 'STUDENT',
-      password: hashedPassword,
     },
   });
 
-  // 👇 Добавление в группу "Студент"
   const studentGroup = await prisma.group.findFirst({
     where: { name: 'Студент' },
   });
@@ -57,7 +55,7 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       id: user.id,
       email: user.email,
       role: user.role,
-      fullName: `${user.firstName} ${user.lastName}`,
+      fullName: user.fullName,
     },
   });
 }

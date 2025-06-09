@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "Group" ADD COLUMN     "rank" INTEGER NOT NULL DEFAULT 0;
