@@ -36,5 +36,23 @@ export async function updateUserGroupsHandler(
     data: groupIds.map(groupId => ({ userId, groupId })),
   });
 
+  // После обновления групп
+  const supervisorGroup = await prisma.group.findFirst({ where: { name: 'Супервизор' } });
+
+  if (supervisorGroup && user.role !== 'ADMIN') {
+    const isNowReviewer = groupIds.includes(supervisorGroup.id);
+
+    // Обновим только если реально нужно менять
+    if (
+      (isNowReviewer && user.role !== 'REVIEWER') ||
+      (!isNowReviewer && user.role === 'REVIEWER')
+    ) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: isNowReviewer ? 'REVIEWER' : 'STUDENT' },
+      });
+    }
+  }
+
   return reply.send({ success: true });
 }

@@ -23,7 +23,7 @@ export async function createCeuHandler(req: FastifyRequest, reply: FastifyReply)
         create: entries.map(entry => ({
           category: entry.category,
           value: entry.value,
-          status: RecordStatus.UNCONFIRMED,
+          status: RecordStatus.CONFIRMED,
         })),
       },
     },

@@ -7,7 +7,6 @@ src/
 │ │ └── RegisterForm.tsx
 │ ├── validation/
 │ │ └── registerSchema.ts
-│ └── hooks/
 │ └── useRegister.ts
 ├── pages/
 │ └── RegisterPage.tsx

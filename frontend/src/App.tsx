@@ -1,8 +1,12 @@
 // src/App.tsx
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import MainLayout from './layouts/MainLayout';
 import RegisterPage from './pages/RegisterPage';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import CeuRequestPage from './pages/CeuRequestPage';
+import SupervisionRequestPage from './pages/SupervisionRequestPage';
 
 const queryClient = new QueryClient();
 
@@ -12,7 +16,10 @@ const router = createBrowserRouter([
     element: <MainLayout />,
     children: [
       { path: 'register', element: <RegisterPage /> },
-      // добавим login, dashboard и т.д. позже
+      { path: 'login', element: <LoginPage /> },
+      { path: 'dashboard', element: <DashboardPage /> },
+      { path: 'ceu/create', element: <CeuRequestPage /> },
+      { path: 'supervision/create', element: <SupervisionRequestPage /> },
     ],
   },
 ]);

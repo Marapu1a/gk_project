@@ -5,10 +5,12 @@ import { registerSchema } from '../validation/registerSchema';
 import type { RegisterDto } from '../validation/registerSchema';
 import { registerUser } from '../api/register';
 import { useMutation } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 
 export function RegisterForm() {
+  const navigate = useNavigate();
   const form = useForm<RegisterDto>({
     resolver: zodResolver(registerSchema),
   });
@@ -17,7 +19,8 @@ export function RegisterForm() {
     mutationFn: registerUser,
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
-      // todo: перенаправление по роли
+      alert('Регистрация прошла успешно!');
+      navigate(data.redirectTo);
     },
     onError: (error) => {
       console.error(error);
@@ -84,6 +87,13 @@ export function RegisterForm() {
       <button type="submit" disabled={mutation.isPending} className="btn btn-brand">
         Зарегистрироваться
       </button>
+
+      <p className="text-sm mt-2">
+        Уже зарегистрированы?{' '}
+        <Link to="/login" className="text-brand underline">
+          Войти
+        </Link>
+      </p>
     </form>
   );
 }
