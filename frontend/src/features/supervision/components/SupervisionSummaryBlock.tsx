@@ -9,12 +9,11 @@ export function SupervisionSummaryBlock() {
   if (loadingSummary || loadingUnconfirmed) return <p>Загрузка часов супервизии...</p>;
   if (!summary || !unconfirmed) return <p className="text-error">Ошибка загрузки супервизии</p>;
 
-  const categories = ['instructor', 'curator', 'supervisor'] as const;
+  const categories = ['instructor', 'curator'] as const;
 
   const categoryLabels: Record<(typeof categories)[number], string> = {
-    instructor: 'Instructor',
-    curator: 'Curator',
-    supervisor: 'Supervisor',
+    instructor: 'Инструктор',
+    curator: 'Куратор',
   };
 
   return (

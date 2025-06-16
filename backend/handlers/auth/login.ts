@@ -21,12 +21,12 @@ export async function loginHandler(req: FastifyRequest, reply: FastifyReply) {
 
   const token = signJwt({ userId: user.id, role: user.role });
   const redirectMap = {
-    ADMIN: 'admin',
-    REVIEWER: 'review',
-    STUDENT: 'dashboard',
+    ADMIN: '/admin',
+    REVIEWER: '/review',
+    STUDENT: '/dashboard',
   };
 
-  const redirectTo = redirectMap[user.role] ?? 'dashboard';
+  const redirectTo = redirectMap[user.role] ?? '/dashboard';
 
   return reply.send({
     token,

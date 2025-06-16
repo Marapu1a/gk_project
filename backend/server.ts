@@ -10,11 +10,9 @@ import path from 'path';
 import { authRoutes } from './routes/auth'
 import { ceuRoutes } from './routes/ceu'
 import { supervisionRoutes } from './routes/supervision'
-import { applicationsCEURoutes } from './routes/applicationsCEU';
-import { applicationsHoursRoutes } from './routes/applicationsHours';
-import { certificateRoutes } from './routes/certificates'
+// import { certificateRoutes } from './routes/certificates'
 import { groupsRoutes } from './routes/groups'
-import { mentorshipRoutes } from './routes/mentorship'
+// import { mentorshipRoutes } from './routes/mentorship'
 import { uploadRoutes } from './routes/upload';
 
 dotenv.config()
@@ -37,11 +35,9 @@ app.register(authRoutes)
 app.register(ceuRoutes)
 app.register(supervisionRoutes)
 app.register(uploadRoutes)
-app.register(applicationsCEURoutes)
-app.register(applicationsHoursRoutes)
-app.register(certificateRoutes)
+// app.register(certificateRoutes)
 app.register(groupsRoutes)
-app.register(mentorshipRoutes)
+// app.register(mentorshipRoutes)
 
 app.get('/', async () => ({ ok: true }))
 

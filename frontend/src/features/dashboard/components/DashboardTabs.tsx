@@ -16,12 +16,9 @@ export function DashboardTabs() {
             Добавить часы супервизии
           </Link>
         </li>
-        <li>
-          <button className="btn btn-brand">Мои заявки</button>
-        </li>
-        <li>
+        <Link to={'/history'}>
           <button className="btn btn-brand">История</button>
-        </li>
+        </Link>
       </ul>
     </div>
   );

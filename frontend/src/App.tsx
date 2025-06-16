@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import CeuRequestPage from './pages/CeuRequestPage';
 import SupervisionRequestPage from './pages/SupervisionRequestPage';
+import HistoryPage from './pages/HistoryPage';
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'ceu/create', element: <CeuRequestPage /> },
       { path: 'supervision/create', element: <SupervisionRequestPage /> },
+      { path: 'history', element: <HistoryPage /> },
     ],
   },
 ]);

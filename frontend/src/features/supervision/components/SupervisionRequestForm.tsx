@@ -1,6 +1,7 @@
 // src/features/supervision/components/SupervisionRequestForm.tsx
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { supervisionRequestSchema } from '../validation/supervisionRequestSchema';
 import type { SupervisionRequestFormData } from '../validation/supervisionRequestSchema';
 import { useSubmitSupervisionRequest } from '../hooks/useSubmitSupervisionRequest';
@@ -36,6 +37,8 @@ export function SupervisionRequestForm() {
     name: 'entries',
   });
 
+  const queryClient = useQueryClient();
+
   const mutation = useSubmitSupervisionRequest();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,6 +62,8 @@ export function SupervisionRequestForm() {
     try {
       await mutation.mutateAsync(data);
       reset();
+      queryClient.invalidateQueries({ queryKey: ['supervision', 'summary'] });
+      queryClient.invalidateQueries({ queryKey: ['supervision', 'unconfirmed'] });
       setCurrentFileId('');
       setUploadStatus('idle');
       alert('Заявка отправлена');
@@ -98,7 +103,6 @@ export function SupervisionRequestForm() {
                 <select {...register(`entries.${index}.type`)} className="input">
                   <option value="INSTRUCTOR">Инструктор</option>
                   <option value="CURATOR">Куратор</option>
-                  <option value="SUPERVISOR">Супервизор</option>
                 </select>
                 <input
                   type="number"

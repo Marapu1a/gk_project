@@ -12,10 +12,10 @@ export function CeuSummaryBlock() {
   const categories = ['ethics', 'cultDiver', 'supervision', 'general'] as const;
 
   const categoryLabels: Record<(typeof categories)[number], string> = {
-    ethics: 'Ethics',
-    cultDiver: 'Cultural Diversity',
-    supervision: 'Supervision',
-    general: 'General',
+    ethics: 'Этика',
+    cultDiver: 'Культурное разнообразие',
+    supervision: 'Супервизия',
+    general: 'Общие баллы',
   };
 
   return (

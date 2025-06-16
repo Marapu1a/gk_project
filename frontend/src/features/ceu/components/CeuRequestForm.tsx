@@ -1,5 +1,6 @@
 // src/features/ceu/components/CeuRequestForm.tsx
 import { useForm, useFieldArray } from 'react-hook-form';
+import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ceuRequestSchema } from '../validation/ceuRequestSchema';
 import type { CeuRequestFormData } from '../validation/ceuRequestSchema';
@@ -28,8 +29,12 @@ export function CeuRequestForm() {
     name: 'entries',
   });
 
+  const queryClient = useQueryClient();
+
   const onSubmit = async (data: CeuRequestFormData) => {
     await submitCeuRequest(data);
+    queryClient.invalidateQueries({ queryKey: ['ceu', 'summary'] });
+    queryClient.invalidateQueries({ queryKey: ['ceu', 'unconfirmed'] });
     reset();
     alert('Заявка отправлена');
   };
@@ -60,10 +65,10 @@ export function CeuRequestForm() {
           {fields.map((field, index) => (
             <div key={field.id} className="flex gap-2 items-center">
               <select {...register(`entries.${index}.category`)} className="input">
-                <option value="ETHICS">Ethics</option>
-                <option value="CULTURAL_DIVERSITY">Cultural Diversity</option>
-                <option value="SUPERVISION">Supervision</option>
-                <option value="GENERAL">General</option>
+                <option value="ETHICS">Этика</option>
+                <option value="CULTURAL_DIVERSITY">Культурное разнообразие</option>
+                <option value="SUPERVISION">Супервизия</option>
+                <option value="GENERAL">Общие баллы</option>
               </select>
               <input
                 type="number"
