@@ -1,4 +1,3 @@
-// src/features/dashboard/components/Dashboard.tsx
 import { useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { UserInfo } from './UserInfo';
@@ -20,14 +19,18 @@ export function Dashboard() {
   if (isError || !user) return <p className="text-error">Не удалось загрузить данные</p>;
 
   return (
-    <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold text-blue-dark">Личный кабинет</h1>
+    <div className="p-6 space-y-8 max-w-6xl mx-auto">
+      <h1 className="text-3xl font-bold text-blue-dark">Личный кабинет</h1>
 
-      <DashboardTabs />
+      <DashboardTabs user={user} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <UserInfo user={user} />
-        <ProgressSummary user={user} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white border rounded-xl shadow-sm p-6">
+          <UserInfo user={user} />
+        </div>
+        <div className="bg-white border rounded-xl shadow-sm p-6">
+          <ProgressSummary />
+        </div>
       </div>
     </div>
   );

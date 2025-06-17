@@ -1,4 +1,3 @@
-// src/features/supervision/components/SupervisionRequestForm.tsx
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,13 +31,8 @@ export function SupervisionRequestForm() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'entries',
-  });
-
+  const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
   const queryClient = useQueryClient();
-
   const mutation = useSubmitSupervisionRequest();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,34 +67,32 @@ export function SupervisionRequestForm() {
   };
 
   return (
-    <>
-      <div className="space-y-4">
+    <div className="p-6 max-w-3xl mx-auto space-y-6 bg-white border border-blue-dark/10 rounded-xl shadow-sm">
+      <h1 className="text-2xl font-bold text-blue-dark">Новая заявка на супервизию</h1>
+
+      <div>
+        <label className="block font-medium mb-1">Файл подтверждения</label>
+        <input type="file" onChange={handleFileUpload} className="input" />
+        {uploadStatus === 'uploading' && (
+          <p className="text-blue-500 text-sm mt-1">Загрузка файла...</p>
+        )}
+        {uploadStatus === 'success' && <p className="text-green-600 text-sm mt-1">Файл загружен</p>}
+        {uploadStatus === 'error' && <p className="text-error">Ошибка загрузки файла</p>}
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
-          <label>Файл подтверждения</label>
-          <input type="file" onChange={handleFileUpload} className="input" />
-          {uploadStatus === 'uploading' && (
-            <p className="text-blue-500 text-sm">Загрузка файла...</p>
-          )}
-          {uploadStatus === 'success' && <p className="text-green-600 text-sm">Файл загружен</p>}
-          {uploadStatus === 'error' && (
-            <p className="text-red-500 text-sm">Ошибка загрузки файла</p>
-          )}
+          <label className="block font-medium mb-1">Email супервизора</label>
+          <input type="email" {...register('supervisorEmail')} className="input" />
+          {errors.supervisorEmail && <p className="text-error">{errors.supervisorEmail.message}</p>}
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label>Email супервизора</label>
-            <input type="email" {...register('supervisorEmail')} className="input" />
-            {errors.supervisorEmail && (
-              <p className="text-red-500 text-sm">{errors.supervisorEmail.message}</p>
-            )}
-          </div>
-
+        <div>
+          <label className="block font-medium mb-2">Часы супервизии</label>
           <div className="space-y-2">
-            <label>Часы супервизии:</label>
             {fields.map((field, index) => (
               <div key={field.id} className="flex gap-2 items-center">
-                <select {...register(`entries.${index}.type`)} className="input">
+                <select {...register(`entries.${index}.type`)} className="input w-40">
                   <option value="INSTRUCTOR">Инструктор</option>
                   <option value="CURATOR">Куратор</option>
                 </select>
@@ -111,27 +103,36 @@ export function SupervisionRequestForm() {
                   {...register(`entries.${index}.value`, { valueAsNumber: true })}
                   className="input w-24"
                 />
-                <button type="button" onClick={() => remove(index)} className="btn btn-danger">
+                <button
+                  type="button"
+                  onClick={() => remove(index)}
+                  className="px-3 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 transition"
+                >
                   Удалить
                 </button>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={() => append({ type: 'INSTRUCTOR', value: 1 })}
-              className="btn btn-brand"
-            >
-              Добавить часы
-            </button>
-            {errors.entries && <p className="text-red-500 text-sm">{errors.entries.message}</p>}
           </div>
-
-          <button type="submit" disabled={isSubmitting || !currentFileId} className="btn btn-brand">
-            Отправить заявку
+          <button
+            type="button"
+            onClick={() => append({ type: 'INSTRUCTOR', value: 1 })}
+            className="btn btn-brand mt-2"
+          >
+            Добавить часы
           </button>
-        </form>
-        <BackButton />
-      </div>
-    </>
+          {errors.entries && <p className="text-error mt-1">{errors.entries.message}</p>}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSubmitting || !currentFileId}
+          className="btn btn-brand w-full"
+        >
+          Отправить заявку
+        </button>
+      </form>
+
+      <BackButton />
+    </div>
   );
 }

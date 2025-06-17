@@ -6,8 +6,9 @@ import type { RegisterDto } from '../validation/registerSchema';
 import { registerUser } from '../api/register';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import PhoneInput from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
+import { isValidPhoneNumber } from 'libphonenumber-js';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 export function RegisterForm() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export function RegisterForm() {
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
       alert('Регистрация прошла успешно!');
-      navigate(data.redirectTo);
+      navigate('/dashboard');
     },
     onError: (error) => {
       console.error(error);
@@ -49,10 +50,23 @@ export function RegisterForm() {
 
       <div>
         <Controller
-          control={form.control}
           name="phone"
+          control={form.control}
           render={({ field }) => (
-            <PhoneInput {...field} defaultCountry="RU" className="input" placeholder="Телефон" />
+            <PhoneInput
+              {...field}
+              country={'ru'}
+              enableSearch={true}
+              inputClass="input"
+              containerClass="!w-full"
+              inputStyle={{ width: '100%' }}
+              specialLabel=""
+              placeholder="Телефон"
+              isValid={(value: string) => {
+                // проверка через zod всё равно сработает, это только визуальный индикатор
+                return isValidPhoneNumber('+' + value);
+              }}
+            />
           )}
         />
         {form.formState.errors.phone && (

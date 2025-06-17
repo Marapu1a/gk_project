@@ -8,6 +8,9 @@ import DashboardPage from './pages/DashboardPage';
 import CeuRequestPage from './pages/CeuRequestPage';
 import SupervisionRequestPage from './pages/SupervisionRequestPage';
 import HistoryPage from './pages/HistoryPage';
+import SupervisionReviewPage from './pages/SupervisionReviewPage';
+import CeuReviewPage from './pages/CeuReviewPage';
+import GroupAssignmentPage from './pages/GroupAssignmentPage';
 
 const queryClient = new QueryClient();
 
@@ -22,6 +25,9 @@ const router = createBrowserRouter([
       { path: 'ceu/create', element: <CeuRequestPage /> },
       { path: 'supervision/create', element: <SupervisionRequestPage /> },
       { path: 'history', element: <HistoryPage /> },
+      { path: 'review/supervision', element: <SupervisionReviewPage /> },
+      { path: 'review/ceu', element: <CeuReviewPage /> },
+      { path: 'groups', element: <GroupAssignmentPage /> },
     ],
   },
 ]);

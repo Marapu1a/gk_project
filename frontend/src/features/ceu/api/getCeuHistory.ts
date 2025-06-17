@@ -6,6 +6,7 @@ export interface CeuHistoryItem {
   category: 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
   value: number;
   status: 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'SPENT';
+  rejectedReason: string;
   eventDate: string;
   eventName: string;
 }

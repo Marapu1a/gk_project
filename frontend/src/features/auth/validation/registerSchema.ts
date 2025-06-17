@@ -22,8 +22,9 @@ export const registerSchema = z
       .transform(capitalizeWords),
     phone: z
       .string()
+      .transform((val) => (val.startsWith('+') ? val : '+' + val))
       .refine((val) => isValidPhoneNumber(val), {
-        message: 'Неверный номер телефона',
+        message: 'Неверный номер',
       }),
     password: z.string().min(6, 'Минимум 6 символов'),
     confirmPassword: z.string(),

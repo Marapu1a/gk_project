@@ -1,6 +1,3 @@
-import { useEffect } from 'react';
-
-// src/features/dashboard/components/UserInfo.tsx
 interface User {
   fullName: string;
   email: string;
@@ -15,22 +12,19 @@ const roleLabels: Record<User['role'], string> = {
 };
 
 export function UserInfo({ user }: { user: User }) {
-  useEffect(() => {
-    console.log(user);
-  });
   return (
-    <div className="border p-4 rounded shadow-sm">
+    <div className="space-y-2 text-sm">
       <h2 className="text-xl font-semibold mb-2 text-blue-dark">Информация о пользователе</h2>
-      <p className="mb-1">
+      <p>
         <strong>Имя:</strong> {user.fullName}
       </p>
-      <p className="mb-1">
+      <p>
         <strong>Email:</strong> {user.email}
       </p>
-      <p className="mb-1">
+      <p>
         <strong>Роль:</strong> {roleLabels[user.role] || user.role}
       </p>
-      <p className="mb-1">
+      <p>
         <strong>Группа:</strong> {user.activeGroup?.name || '—'}
       </p>
 

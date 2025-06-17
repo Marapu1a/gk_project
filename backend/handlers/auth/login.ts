@@ -20,13 +20,6 @@ export async function loginHandler(req: FastifyRequest, reply: FastifyReply) {
   if (!valid) return reply.code(401).send(INVALID_MSG);
 
   const token = signJwt({ userId: user.id, role: user.role });
-  const redirectMap = {
-    ADMIN: '/admin',
-    REVIEWER: '/review',
-    STUDENT: '/dashboard',
-  };
-
-  const redirectTo = redirectMap[user.role] ?? '/dashboard';
 
   return reply.send({
     token,
@@ -36,6 +29,5 @@ export async function loginHandler(req: FastifyRequest, reply: FastifyReply) {
       role: user.role,
       fullName: user.fullName,
     },
-    redirectTo,
   });
 }

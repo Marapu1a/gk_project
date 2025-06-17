@@ -14,6 +14,7 @@ export async function ceuHistoryHandler(req: FastifyRequest, reply: FastifyReply
       category: true,
       value: true,
       status: true,
+      rejectedReason: true,
       record: {
         select: {
           eventDate: true,
@@ -31,6 +32,7 @@ export async function ceuHistoryHandler(req: FastifyRequest, reply: FastifyReply
       status: e.status,
       eventDate: e.record.eventDate,
       eventName: e.record.eventName,
+      rejectedReason: e.rejectedReason,
     }))
   );
 }

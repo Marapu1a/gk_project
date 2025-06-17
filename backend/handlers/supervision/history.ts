@@ -14,6 +14,8 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
       type: true,
       value: true,
       status: true,
+      reviewedAt: true,
+      rejectedReason: true,
       record: {
         select: {
           createdAt: true,
@@ -29,6 +31,8 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
       value: h.value,
       status: h.status,
       createdAt: h.record.createdAt,
+      reviewedAt: h.reviewedAt,
+      rejectedReason: h.rejectedReason,
     }))
   );
 }

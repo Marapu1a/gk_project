@@ -11,7 +11,16 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     return reply.code(400).send({ error: 'Неверные данные', details: parsed.error.flatten() });
   }
 
-  const { fileId, entries } = parsed.data;
+  const { fileId, entries, supervisorEmail } = parsed.data;
+
+  const reviewer = await prisma.user.findUnique({
+    where: { email: supervisorEmail },
+    select: { id: true },
+  });
+
+  if (!reviewer) {
+    return reply.code(400).send({ error: 'Супервизор с таким email не найден' });
+  }
 
   const record = await prisma.supervisionRecord.create({
     data: {
@@ -22,6 +31,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
           type,
           value,
           status: RecordStatus.UNCONFIRMED,
+          reviewerId: reviewer.id,
         })),
       },
     },

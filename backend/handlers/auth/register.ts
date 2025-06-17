@@ -49,14 +49,6 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
 
   const token = signJwt({ userId: user.id, role: user.role });
 
-  const redirectMap = {
-    ADMIN: '/admin',
-    REVIEWER: '/review',
-    STUDENT: '/dashboard',
-  };
-
-  const redirectTo = redirectMap[user.role] ?? '/dashboard';
-
   return reply.send({
     token,
     user: {
@@ -65,6 +57,5 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       role: user.role,
       fullName: user.fullName,
     },
-    redirectTo,
   });
 }

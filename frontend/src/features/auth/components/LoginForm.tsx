@@ -1,4 +1,3 @@
-// src/features/auth/components/LoginForm.tsx
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema } from '../validation/loginSchema';
@@ -18,11 +17,11 @@ export function LoginForm() {
     mutationFn: loginUser,
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
-      navigate(data.redirectTo);
+      navigate('/dashboard');
     },
-    onError: (error) => {
-      console.error(error);
-      // todo: пользовательское сообщение об ошибке
+    onError: (error: any) => {
+      const message = error?.response?.data?.error || 'Ошибка входа';
+      form.setError('root.serverError', { message });
     },
   });
 
@@ -50,6 +49,10 @@ export function LoginForm() {
           <p className="text-error">{form.formState.errors.password.message}</p>
         )}
       </div>
+
+      {form.formState.errors.root?.serverError && (
+        <p className="text-error">{form.formState.errors.root.serverError.message}</p>
+      )}
 
       <button type="submit" disabled={mutation.isPending} className="btn btn-brand">
         Войти

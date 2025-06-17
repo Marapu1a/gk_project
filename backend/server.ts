@@ -22,7 +22,8 @@ const app = Fastify()
 app.register(cors, {
   origin: true,
   credentials: true,
-})
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+});
 
 app.register(multipart);
 app.register(fastifyStatic, {
