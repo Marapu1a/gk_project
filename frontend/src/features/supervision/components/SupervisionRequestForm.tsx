@@ -1,112 +1,115 @@
+import { useEffect, useMemo, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchCurrentUser } from '@/features/auth/api/me';
 import { supervisionRequestSchema } from '../validation/supervisionRequestSchema';
 import type { SupervisionRequestFormData } from '../validation/supervisionRequestSchema';
 import { useSubmitSupervisionRequest } from '../hooks/useSubmitSupervisionRequest';
 import { BackButton } from '@/components/BackButton';
-import { useState } from 'react';
-import { uploadFile } from '../api/uploadFile';
-import { deleteFile } from '../api/deleteFile';
+import { useNavigate } from 'react-router-dom';
 
 export function SupervisionRequestForm() {
-  const [currentFileId, setCurrentFileId] = useState<string>('');
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>(
-    'idle',
-  );
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const mutation = useSubmitSupervisionRequest();
+  const hasInitialized = useRef(false);
 
   const {
-    register,
-    handleSubmit,
-    control,
-    reset,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<SupervisionRequestFormData>({
+    data: user,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ['me'],
+    queryFn: fetchCurrentUser,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const form = useForm<SupervisionRequestFormData>({
     resolver: zodResolver(supervisionRequestSchema),
     defaultValues: {
       supervisorEmail: '',
-      entries: [{ type: 'INSTRUCTOR', value: 1 }],
-      fileId: '',
+      entries: [],
     },
   });
 
+  const { register, handleSubmit, control, formState, reset } = form;
+  const { errors, isSubmitting } = formState;
   const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
-  const queryClient = useQueryClient();
-  const mutation = useSubmitSupervisionRequest();
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const isMentor = useMemo(() => {
+    const names = user?.groups?.map((g: { name: string }) => g.name) ?? [];
+    return names.includes('Супервизор') || names.includes('Опытный Супервизор');
+  }, [user]);
 
-    setUploadStatus('uploading');
-    try {
-      if (currentFileId) await deleteFile(currentFileId);
-      const fileId = await uploadFile(file);
-      setCurrentFileId(fileId);
-      setValue('fileId', fileId);
-      setUploadStatus('success');
-    } catch (err) {
-      console.error(err);
-      setUploadStatus('error');
+  useEffect(() => {
+    if (user && !hasInitialized.current) {
+      reset({
+        supervisorEmail: '',
+        entries: [{ type: isMentor ? 'SUPERVISOR' : 'INSTRUCTOR', value: 1 }],
+      });
+      hasInitialized.current = true;
     }
-  };
+  }, [user, isMentor, reset]);
 
   const onSubmit = async (data: SupervisionRequestFormData) => {
     try {
       await mutation.mutateAsync(data);
-      reset();
       queryClient.invalidateQueries({ queryKey: ['supervision', 'summary'] });
       queryClient.invalidateQueries({ queryKey: ['supervision', 'unconfirmed'] });
-      setCurrentFileId('');
-      setUploadStatus('idle');
       alert('Заявка отправлена');
-    } catch (err) {
+      navigate('/dashboard');
+    } catch (err: any) {
       console.error('Ошибка при отправке формы:', err);
+      alert(err?.response?.data?.error || 'Ошибка отправки');
     }
   };
 
+  if (isLoading) return <p>Загрузка...</p>;
+  if (isError || !user) return <p className="text-error">Ошибка загрузки пользователя</p>;
+
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6 bg-white border border-blue-dark/10 rounded-xl shadow-sm">
-      <h1 className="text-2xl font-bold text-blue-dark">Новая заявка на супервизию</h1>
-
-      <div>
-        <label className="block font-medium mb-1">Файл подтверждения</label>
-        <input type="file" onChange={handleFileUpload} className="input" />
-        {uploadStatus === 'uploading' && (
-          <p className="text-blue-500 text-sm mt-1">Загрузка файла...</p>
-        )}
-        {uploadStatus === 'success' && <p className="text-green-600 text-sm mt-1">Файл загружен</p>}
-        {uploadStatus === 'error' && <p className="text-error">Ошибка загрузки файла</p>}
-      </div>
+      <h1 className="text-2xl font-bold text-blue-dark">
+        {isMentor ? 'Новая заявка на менторство' : 'Новая заявка на супервизию'}
+      </h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
-          <label className="block font-medium mb-1">Email супервизора</label>
+          <label className="block font-medium mb-1">
+            Email {isMentor ? 'опытного супервизора' : 'супервизора'}
+          </label>
           <input type="email" {...register('supervisorEmail')} className="input" />
           {errors.supervisorEmail && <p className="text-error">{errors.supervisorEmail.message}</p>}
         </div>
 
         <div>
-          <label className="block font-medium mb-2">Часы супервизии</label>
+          <label className="block font-medium mb-2">
+            {isMentor ? 'Часы менторства' : 'Часы супервизии'}
+          </label>
           <div className="space-y-2">
             {fields.map((field, index) => (
               <div key={field.id} className="flex gap-2 items-center">
-                <select {...register(`entries.${index}.type`)} className="input w-40">
-                  <option value="INSTRUCTOR">Инструктор</option>
-                  <option value="CURATOR">Куратор</option>
-                </select>
+                {isMentor ? (
+                  <input type="hidden" value="SUPERVISOR" {...register(`entries.${index}.type`)} />
+                ) : (
+                  <select {...register(`entries.${index}.type`)} className="input w-40">
+                    <option value="INSTRUCTOR">Инструктор</option>
+                    <option value="CURATOR">Куратор</option>
+                  </select>
+                )}
                 <input
                   type="number"
                   step="0.1"
-                  max={99}
+                  max={200}
                   {...register(`entries.${index}.value`, { valueAsNumber: true })}
                   className="input w-24"
                 />
                 <button
                   type="button"
                   onClick={() => remove(index)}
-                  className="px-3 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 transition"
+                  disabled={isSubmitting}
+                  className="px-3 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 transition disabled:opacity-50"
                 >
                   Удалить
                 </button>
@@ -115,8 +118,9 @@ export function SupervisionRequestForm() {
           </div>
           <button
             type="button"
-            onClick={() => append({ type: 'INSTRUCTOR', value: 1 })}
-            className="btn btn-brand mt-2"
+            onClick={() => append({ type: isMentor ? 'SUPERVISOR' : 'INSTRUCTOR', value: 1 })}
+            disabled={isSubmitting}
+            className="btn btn-brand mt-2 disabled:opacity-50"
           >
             Добавить часы
           </button>
@@ -125,8 +129,8 @@ export function SupervisionRequestForm() {
 
         <button
           type="submit"
-          disabled={isSubmitting || !currentFileId}
-          className="btn btn-brand w-full"
+          disabled={isSubmitting}
+          className="btn btn-brand w-full disabled:opacity-50"
         >
           Отправить заявку
         </button>

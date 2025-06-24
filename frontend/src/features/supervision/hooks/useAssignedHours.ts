@@ -11,7 +11,6 @@ export type SupervisionHourWithUser = {
       fullName: string;
       email: string;
     };
-    fileId: string;
   };
 };
 

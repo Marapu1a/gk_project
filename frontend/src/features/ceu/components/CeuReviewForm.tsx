@@ -6,6 +6,7 @@ import { BackButton } from '@/components/BackButton';
 export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
   const updateMutation = useUpdateCEUEntry();
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const backendUrl = import.meta.env.VITE_API_URL;
 
   const handleStatusChange = (
     entryId: string,
@@ -49,21 +50,31 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
               <p className="text-sm text-gray-500">
                 Дата: {new Date(record.eventDate).toLocaleDateString()}
               </p>
+              <p className="text-sm">
+                <a
+                  href={`${backendUrl}/${record.fileId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand underline"
+                >
+                  Открыть файл подтверждения
+                </a>
+              </p>
 
-              <table className="w-full text-sm">
+              <table className="w-full text-sm border-t">
                 <thead>
-                  <tr>
-                    <th>Категория</th>
-                    <th>Баллы</th>
-                    <th>Статус</th>
-                    <th>Рецензент</th>
-                    <th>Причина</th>
-                    <th>Действие</th>
+                  <tr className="text-left border-b">
+                    <th className="whitespace-nowrap">Категория</th>
+                    <th className="text-center whitespace-nowrap">Баллы</th>
+                    <th className="text-center whitespace-nowrap">Статус</th>
+                    <th className="text-center whitespace-nowrap">Рецензент</th>
+                    <th className="text-center whitespace-nowrap">Причина</th>
+                    <th className="text-center whitespace-nowrap">Действие</th>
                   </tr>
                 </thead>
                 <tbody>
                   {record.entries.map((entry) => (
-                    <tr key={entry.id}>
+                    <tr key={entry.id} className="border-t">
                       <td>{categoryMap[entry.category] || entry.category}</td>
                       <td className="text-center">{entry.value}</td>
                       <td className="text-center">{statusMap[entry.status] || entry.status}</td>
@@ -82,14 +93,16 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                           />
                           <div className="flex gap-2">
                             <button
-                              className="btn btn-xs bg-green-600 text-white"
+                              className="btn btn-xs bg-green-600 text-white disabled:opacity-50"
                               onClick={() => handleStatusChange(entry.id, 'CONFIRMED')}
+                              disabled={updateMutation.isPending}
                             >
                               Подтвердить
                             </button>
                             <button
-                              className="btn btn-xs bg-red-600 text-white"
+                              className="btn btn-xs bg-red-600 text-white disabled:opacity-50"
                               onClick={() => handleStatusChange(entry.id, 'REJECTED')}
+                              disabled={updateMutation.isPending}
                             >
                               Отклонить
                             </button>
@@ -104,6 +117,7 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
           ))}
         </div>
       )}
+
       <BackButton />
     </div>
   );

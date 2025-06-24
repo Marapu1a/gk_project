@@ -4,13 +4,24 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ceuRequestSchema } from '../validation/ceuRequestSchema';
 import type { CeuRequestFormData } from '../validation/ceuRequestSchema';
 import { submitCeuRequest } from '../api/submitCeuRequest';
+import { uploadFile } from '../api/uploadFile';
+import { deleteFile } from '../api/deleteFile';
 import { BackButton } from '@/components/BackButton';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/Button';
 
 export function CeuRequestForm() {
+  const [currentFileId, setCurrentFileId] = useState<string>('');
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>(
+    'idle',
+  );
+
   const {
     register,
     handleSubmit,
     control,
+    setValue,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CeuRequestFormData>({
@@ -18,20 +29,45 @@ export function CeuRequestForm() {
     defaultValues: {
       eventName: '',
       eventDate: '',
-      file: undefined,
+      fileId: '',
       entries: [{ category: 'GENERAL', value: 1 }],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadStatus('uploading');
+    try {
+      if (currentFileId) await deleteFile(currentFileId);
+      const fileId = await uploadFile(file);
+      setCurrentFileId(fileId);
+      setValue('fileId', fileId);
+      setUploadStatus('success');
+    } catch (err) {
+      console.error(err);
+      setUploadStatus('error');
+    }
+  };
 
   const onSubmit = async (data: CeuRequestFormData) => {
-    await submitCeuRequest(data);
-    queryClient.invalidateQueries({ queryKey: ['ceu', 'summary'] });
-    queryClient.invalidateQueries({ queryKey: ['ceu', 'unconfirmed'] });
-    reset();
-    alert('Заявка отправлена');
+    try {
+      await submitCeuRequest(data);
+      queryClient.invalidateQueries({ queryKey: ['ceu', 'summary'] });
+      queryClient.invalidateQueries({ queryKey: ['ceu', 'unconfirmed'] });
+      setCurrentFileId('');
+      setUploadStatus('idle');
+      reset();
+      alert('Заявка отправлена');
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Ошибка при отправке формы:', err);
+    }
   };
 
   return (
@@ -39,6 +75,20 @@ export function CeuRequestForm() {
       <h1 className="text-2xl font-bold text-blue-dark">Новая заявка на CEU</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div>
+          <label className="block font-medium mb-1">Файл подтверждения</label>
+          <input type="file" onChange={handleFileUpload} className="input" />
+          {uploadStatus === 'uploading' && (
+            <p className="text-blue-500 text-sm mt-1">Загрузка файла...</p>
+          )}
+          {uploadStatus === 'success' && (
+            <p className="text-green-600 text-sm mt-1">Файл загружен</p>
+          )}
+          {uploadStatus === 'error' && (
+            <p className="text-error text-sm mt-1">Ошибка загрузки файла</p>
+          )}
+        </div>
+
         <div>
           <label className="block font-medium mb-1">Название мероприятия</label>
           <input type="text" {...register('eventName')} className="input" />
@@ -72,26 +122,32 @@ export function CeuRequestForm() {
                 <button
                   type="button"
                   onClick={() => remove(index)}
-                  className="px-3 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 transition"
+                  disabled={isSubmitting}
+                  className={`px-3 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 transition ${
+                    isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
                   Удалить
                 </button>
               </div>
             ))}
           </div>
-          <button
+
+          <Button
             type="button"
             onClick={() => append({ category: 'GENERAL', value: 1 })}
-            className="btn btn-brand mt-2"
+            disabled={isSubmitting}
+            className="mt-2"
           >
             Добавить баллы
-          </button>
+          </Button>
+
           {errors.entries && <p className="text-error mt-1">{errors.entries.message}</p>}
         </div>
 
-        <button type="submit" disabled={isSubmitting} className="btn btn-brand w-full">
+        <Button type="submit" loading={isSubmitting} disabled={!currentFileId} className="w-full">
           Отправить заявку
-        </button>
+        </Button>
       </form>
 
       <BackButton />

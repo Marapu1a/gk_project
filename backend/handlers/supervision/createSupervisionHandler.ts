@@ -15,11 +15,54 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
 
   const reviewer = await prisma.user.findUnique({
     where: { email: supervisorEmail },
-    select: { id: true },
+    include: {
+      groups: {
+        include: {
+          group: true,
+        },
+      },
+    },
   });
 
   if (!reviewer) {
     return reply.code(400).send({ error: 'Супервизор с таким email не найден' });
+  }
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      groups: {
+        include: {
+          group: true,
+        },
+      },
+    },
+  });
+
+  if (!currentUser) {
+    return reply.code(400).send({ error: 'Пользователь не найден' });
+  }
+
+  // Извлекаем названия групп
+  const userGroups = currentUser.groups.map((g) => g.group.name);
+  const reviewerGroups = reviewer.groups.map((g) => g.group.name);
+
+  const isCurrentSupervisor = userGroups.includes('Супервизор');
+  const isReviewerExperienced = reviewerGroups.includes('Опытный Супервизор');
+  const isReviewerSupervisor = reviewerGroups.includes('Супервизор') || isReviewerExperienced;
+
+  if (isCurrentSupervisor) {
+    if (!isReviewerExperienced) {
+      return reply.code(400).send({
+        error: 'Супервизоры могут отправлять часы только опытным супервизорам',
+      });
+    }
+  } else {
+    if (!isReviewerSupervisor) {
+      return reply.code(400).send({
+        error: 'Проверяющий должен быть супервизором или выше',
+      });
+    }
   }
 
   const record = await prisma.supervisionRecord.create({

@@ -20,8 +20,10 @@ type CEURecord = {
   id: string;
   eventName: string;
   eventDate: string;
+  fileId: string;
   entries: CEUEntry[];
 };
+
 
 export type CEUReviewResponse = {
   user: {

@@ -1,3 +1,6 @@
+import { useLogout } from '../hooks/useLogout';
+import { Button } from '@/components/Button';
+
 interface User {
   fullName: string;
   email: string;
@@ -12,6 +15,8 @@ const roleLabels: Record<User['role'], string> = {
 };
 
 export function UserInfo({ user }: { user: User }) {
+  const logout = useLogout();
+
   return (
     <div className="space-y-2 text-sm">
       <h2 className="text-xl font-semibold mb-2 text-blue-dark">Информация о пользователе</h2>
@@ -28,15 +33,9 @@ export function UserInfo({ user }: { user: User }) {
         <strong>Группа:</strong> {user.activeGroup?.name || '—'}
       </p>
 
-      <button
-        className="btn btn-brand mt-4"
-        onClick={() => {
-          localStorage.removeItem('token');
-          window.location.href = '/login';
-        }}
-      >
+      <Button onClick={logout} className="mt-4">
         Выйти
-      </button>
+      </Button>
     </div>
   );
 }

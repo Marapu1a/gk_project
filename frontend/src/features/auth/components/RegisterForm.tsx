@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
+import { Button } from '@/components/Button';
 
 export function RegisterForm() {
   const navigate = useNavigate();
@@ -98,9 +99,9 @@ export function RegisterForm() {
         )}
       </div>
 
-      <button type="submit" disabled={mutation.isPending} className="btn btn-brand">
+      <Button type="submit" loading={mutation.isPending}>
         Зарегистрироваться
-      </button>
+      </Button>
 
       <p className="text-sm mt-2">
         Уже зарегистрированы?{' '}

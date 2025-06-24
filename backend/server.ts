@@ -25,7 +25,11 @@ app.register(cors, {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 });
 
-app.register(multipart);
+app.register(multipart, {
+  limits: {
+    fileSize: 20 * 1024 * 1024, // 20 MB
+  },
+});
 app.register(fastifyStatic, {
   root: path.resolve(__dirname, '../uploads'),
   prefix: '/uploads/',

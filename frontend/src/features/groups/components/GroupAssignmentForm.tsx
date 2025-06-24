@@ -44,7 +44,6 @@ export function GroupAssignmentForm() {
     const selectedGroups = data?.allGroups
       .filter((group) => selectedGroupIds.includes(group.id))
       .sort((a, b) => b.rank - a.rank);
-
     return selectedGroups?.[0]?.name || '—';
   };
 
@@ -64,7 +63,7 @@ export function GroupAssignmentForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <button type="submit" className="btn btn-brand" disabled={!email}>
+        <button type="submit" className="btn btn-brand" disabled={!email.trim()}>
           Показать
         </button>
       </form>
@@ -102,14 +101,14 @@ export function GroupAssignmentForm() {
                         type="checkbox"
                         checked={selectedGroupIds.includes(group.id)}
                         onChange={() => toggleGroup(group.id)}
-                        disabled={isDisabled}
+                        disabled={isDisabled || mutation.isPending}
                       />
                     </td>
                     <td className="p-3 text-center">
                       {isDisabled ? (
                         <span className="text-error text-xs italic">Недостаточно прав</span>
                       ) : (
-                        '✓'
+                        <span className="text-green-700">✓</span>
                       )}
                     </td>
                   </tr>
@@ -123,7 +122,7 @@ export function GroupAssignmentForm() {
           </p>
 
           <button onClick={handleSave} className="btn btn-brand" disabled={mutation.isPending}>
-            Сохранить изменения
+            {mutation.isPending ? 'Сохраняем...' : 'Сохранить изменения'}
           </button>
 
           {mutation.isSuccess && <p className="text-sm text-green-600">Сохранено успешно</p>}

@@ -7,8 +7,7 @@
     "postinstall": "prisma generate"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts",
-    "seedCEU": "ts-node prisma/seedCEU.ts"
+    "seed": "ts-node prisma/seed.ts"
   },
   "type": "commonjs",
   "dependencies": {

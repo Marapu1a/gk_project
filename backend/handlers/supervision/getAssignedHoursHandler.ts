@@ -13,9 +13,13 @@ export async function getAssignedHoursHandler(req: FastifyRequest, reply: Fastif
       reviewerId,
       status: 'UNCONFIRMED',
     },
-    include: {
+    select: {
+      id: true,
+      type: true,
+      value: true,
+      status: true,
       record: {
-        include: {
+        select: {
           user: {
             select: {
               id: true,

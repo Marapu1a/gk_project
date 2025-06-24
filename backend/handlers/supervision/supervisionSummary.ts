@@ -42,6 +42,12 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
   });
 
   const usable = aggregateHours(hours);
+
+  // Добавляем стартовое значение для SUPERVISOR, если пользователь — "Супервизор"
+  if (primaryGroup.name === 'Супервизор') {
+    usable.supervisor += usable.instructor + usable.curator;
+  }
+
   const nextGroup = getNextGroupName(primaryGroup.name);
   const required = nextGroup ? hourRequirementsByGroup[nextGroup] : null;
   const percent = required ? computePercent(usable, required) : null;
@@ -86,8 +92,8 @@ function getNextGroupName(current: string): string | null {
 }
 
 const hourRequirementsByGroup: Record<string, SupervisionSummary> = {
-  'Инструктор': { instructor: 10, curator: 0, supervisor: 0 },
-  'Куратор': { instructor: 15, curator: 5, supervisor: 0 },
-  'Супервизор': { instructor: 20, curator: 10, supervisor: 5 },
-  'Опытный Супервизор': { instructor: 25, curator: 15, supervisor: 10 },
+  'Инструктор': { instructor: 150, curator: 150, supervisor: 0 },
+  'Куратор': { instructor: 300, curator: 300, supervisor: 0 },
+  'Супервизор': { instructor: 500, curator: 500, supervisor: 0 },
+  'Опытный Супервизор': { instructor: 0, curator: 0, supervisor: 2000 },
 };

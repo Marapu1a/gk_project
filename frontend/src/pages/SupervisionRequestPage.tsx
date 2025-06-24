@@ -4,7 +4,6 @@ import { SupervisionRequestForm } from '@/features/supervision/components/Superv
 export default function SupervisionRequestPage() {
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4 text-blue-dark">Создание заявки на супервизию</h1>
       <SupervisionRequestForm />
     </div>
   );

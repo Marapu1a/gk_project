@@ -1,3 +1,4 @@
+// src/features/supervision/components/SupervisionReviewForm.tsx
 import { useAssignedHours } from '../hooks/useAssignedHours';
 import { useUpdateHourStatus } from '../hooks/useUpdateHourStatus';
 import { useState } from 'react';
@@ -6,7 +7,6 @@ export function SupervisionReviewForm() {
   const { data } = useAssignedHours();
   const mutation = useUpdateHourStatus();
   const [rejectedReasonMap, setRejectedReasonMap] = useState<Record<string, string>>({});
-  const backendUrl = import.meta.env.VITE_API_URL;
 
   const typeMap: Record<string, string> = {
     INSTRUCTOR: 'Инструктор',
@@ -41,7 +41,6 @@ export function SupervisionReviewForm() {
             <th className="text-left p-3 border-b border-blue-dark/20">Email</th>
             <th className="text-center p-3 border-b border-blue-dark/20">Тип</th>
             <th className="text-center p-3 border-b border-blue-dark/20">Часы</th>
-            <th className="text-center p-3 border-b border-blue-dark/20">Файл</th>
             <th className="text-center p-3 border-b border-blue-dark/20">Действия</th>
           </tr>
         </thead>
@@ -52,16 +51,6 @@ export function SupervisionReviewForm() {
               <td className="p-3">{hour.record.user.email}</td>
               <td className="p-3 text-center">{typeMap[hour.type] || hour.type}</td>
               <td className="p-3 text-center">{hour.value}</td>
-              <td className="p-3 text-center">
-                <a
-                  href={`${backendUrl}/${hour.record.fileId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-brand underline"
-                >
-                  Открыть
-                </a>
-              </td>
               <td className="p-3">
                 <div className="flex flex-col items-center gap-2">
                   <input

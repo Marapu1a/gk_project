@@ -38,6 +38,7 @@ export async function getCEUByEmailHandler(
       id: true,
       eventName: true,
       eventDate: true,
+      fileId: true,
       entries: {
         select: {
           id: true,

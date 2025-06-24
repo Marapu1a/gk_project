@@ -5,6 +5,7 @@ import type { LoginDto } from '../validation/loginSchema';
 import { loginUser } from '../api/login';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/Button';
 
 export function LoginForm() {
   const navigate = useNavigate();
@@ -48,15 +49,20 @@ export function LoginForm() {
         {form.formState.errors.password && (
           <p className="text-error">{form.formState.errors.password.message}</p>
         )}
+        <div className="mt-1 text-right">
+          <Link to="/forgot-password" className="text-sm text-brand underline">
+            Забыли пароль?
+          </Link>
+        </div>
       </div>
 
       {form.formState.errors.root?.serverError && (
         <p className="text-error">{form.formState.errors.root.serverError.message}</p>
       )}
 
-      <button type="submit" disabled={mutation.isPending} className="btn btn-brand">
+      <Button type="submit" loading={mutation.isPending}>
         Войти
-      </button>
+      </Button>
 
       <p className="text-sm mt-2">
         Нет аккаунта?{' '}
