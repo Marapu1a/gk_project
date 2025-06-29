@@ -12,7 +12,7 @@ import { ceuRoutes } from './routes/ceu'
 import { supervisionRoutes } from './routes/supervision'
 // import { certificateRoutes } from './routes/certificates'
 import { groupsRoutes } from './routes/groups'
-// import { mentorshipRoutes } from './routes/mentorship'
+import { documentReviewRoutes } from './routes/documentReview';
 import { uploadRoutes } from './routes/upload';
 
 dotenv.config()
@@ -42,7 +42,7 @@ app.register(supervisionRoutes)
 app.register(uploadRoutes)
 // app.register(certificateRoutes)
 app.register(groupsRoutes)
-// app.register(mentorshipRoutes)
+app.register(documentReviewRoutes);
 
 app.get('/', async () => ({ ok: true }))
 

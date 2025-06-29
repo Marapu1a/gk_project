@@ -21,20 +21,29 @@ export function ProgressSummary() {
   const activeGroup = user?.activeGroup?.name?.toLowerCase();
   const target = activeGroup ? GROUP_PROGRESS_PATH[activeGroup] : null;
 
+  const isSupervisor = activeGroup === 'супервизор';
+  const isSeniorSupervisor = activeGroup === 'опытный супервизор';
+
   return (
     <div className="space-y-4 text-sm">
       <h2 className="text-xl font-semibold text-blue-dark">Прогресс CEU и супервизии</h2>
 
-      {activeGroup === 'опытный супервизор' ? (
+      {activeGroup && (
         <p className="italic">
-          Вы копите баллы для <strong>продления супервизорского сертификата</strong>
+          Ваш текущий уровень: <strong>{user.activeGroup.name}</strong>
         </p>
-      ) : (
-        target && (
-          <p className="italic">
-            Вы копите баллы и часы для перехода в категорию: <strong>{target}</strong>
-          </p>
-        )
+      )}
+
+      {isSupervisor && (
+        <p className="text-sm text-red-600 italic">
+          Не забывайте проходить <strong>менторство</strong>!
+        </p>
+      )}
+
+      {target && !isSeniorSupervisor && !isSupervisor && (
+        <p className="italic">
+          Вы копите баллы и часы для перехода в категорию: <strong>{target}</strong>
+        </p>
       )}
 
       <CeuSummaryBlock />

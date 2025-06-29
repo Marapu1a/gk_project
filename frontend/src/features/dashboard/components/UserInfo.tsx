@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useLogout } from '../hooks/useLogout';
 import { Button } from '@/components/Button';
 
@@ -16,6 +17,7 @@ const roleLabels: Record<User['role'], string> = {
 
 export function UserInfo({ user }: { user: User }) {
   const logout = useLogout();
+  const navigate = useNavigate();
 
   return (
     <div className="space-y-2 text-sm">
@@ -32,6 +34,16 @@ export function UserInfo({ user }: { user: User }) {
       <p>
         <strong>Группа:</strong> {user.activeGroup?.name || '—'}
       </p>
+
+      {user.role === 'ADMIN' ? (
+        <Button onClick={() => navigate('/admin/document-review')} className="mt-2 mr-2">
+          Проверка документов
+        </Button>
+      ) : (
+        <Button onClick={() => navigate('/document-review')} className="mt-2 mr-2">
+          Загрузить документы на проверку
+        </Button>
+      )}
 
       <Button onClick={logout} className="mt-4">
         Выйти

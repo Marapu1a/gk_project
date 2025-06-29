@@ -43,7 +43,6 @@ export function SupervisionSummaryBlock({ user }: Props) {
             <tr>
               <th className="p-2 text-center">Всего</th>
               <th className="p-2 text-center">На проверке</th>
-              {/* <th className="p-2 text-center">Прогресс</th> */}
             </tr>
           </thead>
           <tbody>
@@ -53,7 +52,6 @@ export function SupervisionSummaryBlock({ user }: Props) {
                 {summary.required?.supervisor ?? '—'}
               </td>
               <td className="p-2 text-center">{unconfirmed.supervisor}</td>
-              {/* <td className="p-2 text-center">{summary.percent?.supervisor ?? 0}%</td> */}
             </tr>
           </tbody>
         </table>

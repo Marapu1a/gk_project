@@ -54,6 +54,7 @@ model User {
 
   reviewedCEUEntries       CEUEntry[]          @relation("ReviewedCEUEntry")
   reviewedSupervisionHours SupervisionHour[]   @relation("ReviewedSupervisionHour")
+  documentReviewRequests   DocumentReviewRequest[]
 
   createdAt           DateTime @default(now())
 }
@@ -138,4 +139,19 @@ model UserGroup {
   groupId   String
   group     Group    @relation(fields: [groupId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model DocumentReviewRequest {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  documentDetails Json
+  status          RecordStatus  @default(UNCONFIRMED)
+  paid            Boolean       @default(false)
+  reviewerEmail   String?
+  submittedAt     DateTime      @default(now())
+  reviewedAt      DateTime?
+  comment         String?
+
+  @@unique([userId, status], name: "one_active_request_per_user")
 }

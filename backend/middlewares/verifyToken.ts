@@ -6,7 +6,7 @@ export async function verifyToken(request: FastifyRequest, reply: FastifyReply) 
   if (!authHeader) return reply.code(401).send({ error: 'Нет токена' })
 
   const token = authHeader.replace('Bearer ', '')
-  const payload = verifyJwt<{ userId: string; role: string }>(token)
+  const payload = verifyJwt<{ userId: string; role: string, email: string }>(token)
 
   if (!payload) return reply.code(401).send({ error: 'Неверный токен' })
 

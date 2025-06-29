@@ -14,6 +14,8 @@ import SupervisionReviewPage from './pages/SupervisionReviewPage';
 import CeuReviewPage from './pages/CeuReviewPage';
 import GroupAssignmentPage from './pages/GroupAssignmentPage';
 import MentorshipReviewPage from './pages/MentorshipReviewPage';
+import DocumentReviewRequestPage from './pages/DocumentReviewRequestPage';
+import AdminDocumentReviewPage from './pages/AdminDocumentReviewPage';
 
 const queryClient = new QueryClient();
 
@@ -34,6 +36,8 @@ const router = createBrowserRouter([
       { path: 'review/mentorship', element: <MentorshipReviewPage /> },
       { path: 'review/ceu', element: <CeuReviewPage /> },
       { path: 'groups', element: <GroupAssignmentPage /> },
+      { path: 'document-review', element: <DocumentReviewRequestPage /> },
+      { path: 'admin/document-review', element: <AdminDocumentReviewPage /> },
     ],
   },
 ]);
