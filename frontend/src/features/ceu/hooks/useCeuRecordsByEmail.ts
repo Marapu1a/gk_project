@@ -24,7 +24,6 @@ type CEURecord = {
   entries: CEUEntry[];
 };
 
-
 export type CEUReviewResponse = {
   user: {
     id: string;
@@ -34,12 +33,17 @@ export type CEUReviewResponse = {
   records: CEURecord[];
 };
 
-export function useCEURecordsByEmail(email: string, enabled: boolean) {
+export function useCEURecordsByEmail(
+  email: string,
+  enabled: boolean,
+  fromDate?: string,
+  toDate?: string
+) {
   return useQuery<CEUReviewResponse>({
-    queryKey: ['ceu', 'review', email],
+    queryKey: ['ceu', 'review', email, fromDate, toDate],
     queryFn: async () => {
       const res = await api.get('/ceu/by-email', {
-        params: { email },
+        params: { email, fromDate, toDate },
       });
       return res.data;
     },

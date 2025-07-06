@@ -14,8 +14,11 @@ import SupervisionReviewPage from './pages/SupervisionReviewPage';
 import CeuReviewPage from './pages/CeuReviewPage';
 import GroupAssignmentPage from './pages/GroupAssignmentPage';
 import MentorshipReviewPage from './pages/MentorshipReviewPage';
-import DocumentReviewRequestPage from './pages/DocumentReviewRequestPage';
-import AdminDocumentReviewPage from './pages/AdminDocumentReviewPage';
+import DocumentReviewPage from './pages/DocumentReviewPage';
+import AdminDocumentReviewListPage from './pages/AdminDocumentReviewListPage';
+import AdminDocumentReviewDetailsPage from './pages/AdminDocumentReviewDetailsPage';
+import UsersPage from './pages/UsersPage';
+import UserDetailsPage from '@/pages/UserDetailsPage';
 
 const queryClient = new QueryClient();
 
@@ -36,8 +39,11 @@ const router = createBrowserRouter([
       { path: 'review/mentorship', element: <MentorshipReviewPage /> },
       { path: 'review/ceu', element: <CeuReviewPage /> },
       { path: 'groups', element: <GroupAssignmentPage /> },
-      { path: 'document-review', element: <DocumentReviewRequestPage /> },
-      { path: 'admin/document-review', element: <AdminDocumentReviewPage /> },
+      { path: 'document-review', element: <DocumentReviewPage /> },
+      { path: 'admin/document-review', element: <AdminDocumentReviewListPage /> },
+      { path: 'admin/document-review/:id', element: <AdminDocumentReviewDetailsPage /> },
+      { path: 'users', element: <UsersPage /> },
+      { path: 'admin/users/:id', element: <UserDetailsPage /> },
     ],
   },
 ]);

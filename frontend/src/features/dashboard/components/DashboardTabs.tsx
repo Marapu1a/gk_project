@@ -20,36 +20,49 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
       <h2 className="text-2xl font-bold text-blue-dark">Навигация</h2>
 
       {/* Верхний фиксированный ряд */}
-      <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-        <li>
-          <Link to="/ceu/create" className="btn btn-brand w-full">
-            <div className="flex items-center justify-center gap-2">
-              <BookOpenCheck size={18} />
-              <span>Добавить CEU-баллы</span>
-            </div>
-          </Link>
-        </li>
-        <li>
-          <Link to="/supervision/create" className="btn btn-brand w-full">
-            <div className="flex items-center justify-center gap-2">
-              <Timer size={18} />
-              <span>
-                {isSupervisor || isExperiencedSupervisor
-                  ? 'Добавить часы менторства'
-                  : 'Добавить часы супервизии'}
-              </span>
-            </div>
-          </Link>
-        </li>
-        <li>
-          <Link to="/history" className="btn btn-brand w-full">
-            <div className="flex items-center justify-center gap-2">
-              <Clock size={18} />
-              <span>История</span>
-            </div>
-          </Link>
-        </li>
-      </ul>
+      {user.role !== 'ADMIN' ? (
+        <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <li>
+            <Link to="/ceu/create" className="btn btn-brand w-full">
+              <div className="flex items-center justify-center gap-2">
+                <BookOpenCheck size={18} />
+                <span>Добавить CEU-баллы</span>
+              </div>
+            </Link>
+          </li>
+          <li>
+            <Link to="/supervision/create" className="btn btn-brand w-full">
+              <div className="flex items-center justify-center gap-2">
+                <Timer size={18} />
+                <span>
+                  {isSupervisor || isExperiencedSupervisor
+                    ? 'Добавить часы менторства'
+                    : 'Добавить часы супервизии'}
+                </span>
+              </div>
+            </Link>
+          </li>
+          <li>
+            <Link to="/history" className="btn btn-brand w-full">
+              <div className="flex items-center justify-center gap-2">
+                <Clock size={18} />
+                <span>История</span>
+              </div>
+            </Link>
+          </li>
+        </ul>
+      ) : (
+        <ul className="grid grid-cols-1 gap-3">
+          <li>
+            <Link to="/users" className="btn btn-brand w-full">
+              <div className="flex items-center justify-center gap-2">
+                <Users size={18} />
+                <span>Пользователи</span>
+              </div>
+            </Link>
+          </li>
+        </ul>
+      )}
 
       {/* Нижний гибкий ряд */}
       {(user.role === 'REVIEWER' || user.role === 'ADMIN') && (

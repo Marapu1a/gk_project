@@ -4,6 +4,8 @@ import { prisma } from '../../lib/prisma';
 interface GetCEUByEmailQuery extends RouteGenericInterface {
   Querystring: {
     email: string;
+    fromDate?: string;
+    toDate?: string;
   };
 }
 
@@ -12,7 +14,7 @@ export async function getCEUByEmailHandler(
   reply: FastifyReply
 ) {
   const { user } = req;
-  const email = req.query.email;
+  const { email, fromDate, toDate } = req.query;
 
   if (!user?.userId || (user.role !== 'REVIEWER' && user.role !== 'ADMIN')) {
     return reply.code(403).send({ error: 'Доступ запрещён' });
@@ -32,7 +34,13 @@ export async function getCEUByEmailHandler(
   }
 
   const records = await prisma.cEURecord.findMany({
-    where: { userId: targetUser.id },
+    where: {
+      userId: targetUser.id,
+      eventDate: {
+        gte: fromDate ? new Date(fromDate) : undefined,
+        lte: toDate ? new Date(toDate) : undefined,
+      },
+    },
     orderBy: { eventDate: 'desc' },
     select: {
       id: true,

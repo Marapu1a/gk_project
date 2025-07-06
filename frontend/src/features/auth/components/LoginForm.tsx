@@ -33,7 +33,7 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4 max-w-md">
       <div>
-        <input {...form.register('email')} placeholder="Email" className="input" />
+        <input {...form.register('email')} type="email" placeholder="Email" className="input" />
         {form.formState.errors.email && (
           <p className="text-error">{form.formState.errors.email.message}</p>
         )}

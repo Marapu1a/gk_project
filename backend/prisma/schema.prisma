@@ -35,28 +35,29 @@ enum PracticeLevel {
 }
 
 model User {
-  id                  String   @id @default(cuid())
-  email               String   @unique
-  password            String
-  fullName            String
-  phone               String?
-  birthDate           DateTime?
-  country             String?
-  city                String?
-  avatarUrl           String?
-  isEmailConfirmed    Boolean  @default(false)
-  role                Role     @default(STUDENT)
+  id                       String   @id @default(cuid())
+  email                    String   @unique
+  password                 String
+  fullName                 String
+  phone                    String?
+  birthDate                DateTime?
+  country                  String?
+  city                     String?
+  avatarUrl                String?
+  isEmailConfirmed         Boolean  @default(false)
+  role                     Role     @default(STUDENT)
 
-  certificates        Certificate[]
-  ceuRecords          CEURecord[]
-  supervisionRecords  SupervisionRecord[]
-  groups              UserGroup[]
+  certificates             Certificate[]
+  ceuRecords               CEURecord[]
+  supervisionRecords       SupervisionRecord[]
+  groups                   UserGroup[]
+  uploadedFiles            UploadedFile[]
 
   reviewedCEUEntries       CEUEntry[]          @relation("ReviewedCEUEntry")
   reviewedSupervisionHours SupervisionHour[]   @relation("ReviewedSupervisionHour")
   documentReviewRequests   DocumentReviewRequest[]
 
-  createdAt           DateTime @default(now())
+  createdAt                DateTime @default(now())
 }
 
 model Certificate {
@@ -142,16 +143,33 @@ model UserGroup {
 }
 
 model DocumentReviewRequest {
-  id              String        @id @default(cuid())
-  userId          String
-  user            User          @relation(fields: [userId], references: [id])
-  documentDetails Json
-  status          RecordStatus  @default(UNCONFIRMED)
-  paid            Boolean       @default(false)
-  reviewerEmail   String?
-  submittedAt     DateTime      @default(now())
-  reviewedAt      DateTime?
-  comment         String?
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
 
-  @@unique([userId, status], name: "one_active_request_per_user")
+  status         RecordStatus  @default(UNCONFIRMED)
+  paid           Boolean       @default(false)
+  reviewerEmail  String?
+  submittedAt    DateTime      @default(now())
+  reviewedAt     DateTime?
+  comment        String?
+
+  documents      UploadedFile[]
 }
+
+model UploadedFile {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  fileId    String   @unique
+  name      String
+  mimeType  String
+  type      String?
+  comment   String?
+  createdAt DateTime @default(now())
+
+  requestId String?
+  request   DocumentReviewRequest? @relation(fields: [requestId], references: [id])
+}
+

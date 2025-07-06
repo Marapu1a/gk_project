@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
 export const ceuRequestSchema = z.object({
-  eventName: z.string().min(3, 'Введите название мероприятия'),
+  eventName: z.string().trim().min(3, 'Введите название мероприятия'),
 
   eventDate: z
     .string()
+    .min(1, 'Дата обязательна')
     .refine(
       (val) => {
         const date = new Date(val);
@@ -15,7 +16,7 @@ export const ceuRequestSchema = z.object({
       'Дата должна быть между 2010 годом и сегодня',
     ),
 
-  fileId: z.string().min(1, 'Файл обязателен'),
+  fileId: z.string().nonempty('Файл обязателен'),
 
   entries: z
     .array(

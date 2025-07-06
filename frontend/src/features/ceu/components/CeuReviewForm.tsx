@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useUpdateCEUEntry } from '../hooks/useUpdateCeuEntry';
 import type { CEUReviewResponse } from '../hooks/useCeuRecordsByEmail';
-import { BackButton } from '@/components/BackButton';
+import { Button } from '@/components/Button';
 
 export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
   const updateMutation = useUpdateCEUEntry();
@@ -13,6 +13,12 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
     status: 'CONFIRMED' | 'REJECTED' | 'UNCONFIRMED',
   ) => {
     const rejectedReason = reasons[entryId];
+
+    if (status === 'REJECTED' && (!rejectedReason || rejectedReason.trim() === '')) {
+      alert('Пожалуйста, укажите причину отклонения.');
+      return;
+    }
+
     updateMutation.mutate({ id: entryId, status, rejectedReason });
   };
 
@@ -32,8 +38,8 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold mb-2 text-blue-dark">Пользователь</h2>
+      <div className="space-y-2">
+        <h2 className="text-xl font-semibold text-blue-dark">Пользователь</h2>
         <p>
           <strong>Имя:</strong> {data.user.fullName} <br />
           <strong>Email:</strong> {data.user.email}
@@ -43,28 +49,30 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
       {data.records.length === 0 ? (
         <p className="text-sm text-gray-600">Нет добавленных CEU-баллов</p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {data.records.map((record) => (
-            <div key={record.id} className="border rounded-xl p-4 shadow-sm space-y-2">
-              <h3 className="text-lg font-semibold">{record.eventName}</h3>
-              <p className="text-sm text-gray-500">
-                Дата: {new Date(record.eventDate).toLocaleDateString()}
-              </p>
-              <p className="text-sm">
-                <a
-                  href={`${backendUrl}/${record.fileId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-brand underline"
-                >
-                  Открыть файл подтверждения
-                </a>
-              </p>
+            <div key={record.id} className="border rounded-xl p-4 shadow-sm space-y-4">
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold">{record.eventName}</h3>
+                <p className="text-sm text-gray-500">
+                  Дата: {new Date(record.eventDate).toLocaleDateString()}
+                </p>
+                <p className="text-sm">
+                  <a
+                    href={`${backendUrl}/uploads/${record.fileId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-brand underline"
+                  >
+                    Открыть файл подтверждения
+                  </a>
+                </p>
+              </div>
 
               <table className="w-full text-sm border-t">
                 <thead>
                   <tr className="text-left border-b">
-                    <th className="whitespace-nowrap">Категория</th>
+                    <th className="whitespace-nowrap py-2">Категория</th>
                     <th className="text-center whitespace-nowrap">Баллы</th>
                     <th className="text-center whitespace-nowrap">Статус</th>
                     <th className="text-center whitespace-nowrap">Рецензент</th>
@@ -75,13 +83,13 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                 <tbody>
                   {record.entries.map((entry) => (
                     <tr key={entry.id} className="border-t">
-                      <td>{categoryMap[entry.category] || entry.category}</td>
+                      <td className="py-2">{categoryMap[entry.category] || entry.category}</td>
                       <td className="text-center">{entry.value}</td>
                       <td className="text-center">{statusMap[entry.status] || entry.status}</td>
                       <td className="text-center">{entry.reviewer?.email || '—'}</td>
                       <td className="text-center text-red-500">{entry.rejectedReason || '—'}</td>
-                      <td className="text-center">
-                        <div className="flex flex-col gap-1 items-center">
+                      <td className="text-center py-2">
+                        <div className="flex flex-col gap-2 items-center">
                           <input
                             type="text"
                             placeholder="Причина"
@@ -92,20 +100,22 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                             }
                           />
                           <div className="flex gap-2">
-                            <button
-                              className="btn btn-xs bg-green-600 text-white disabled:opacity-50"
+                            <Button
+                              type="button"
                               onClick={() => handleStatusChange(entry.id, 'CONFIRMED')}
-                              disabled={updateMutation.isPending}
+                              loading={updateMutation.isPending}
+                              className="btn btn-xs bg-green-600 text-white hover:bg-green-700"
                             >
                               Подтвердить
-                            </button>
-                            <button
-                              className="btn btn-xs bg-red-600 text-white disabled:opacity-50"
+                            </Button>
+                            <Button
+                              type="button"
                               onClick={() => handleStatusChange(entry.id, 'REJECTED')}
-                              disabled={updateMutation.isPending}
+                              loading={updateMutation.isPending}
+                              className="btn btn-xs bg-red-600 text-white hover:bg-red-700"
                             >
                               Отклонить
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </td>
@@ -117,8 +127,6 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
           ))}
         </div>
       )}
-
-      <BackButton />
     </div>
   );
 }

@@ -1,6 +1,8 @@
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { ceuRequestSchema } from '../validation/ceuRequestSchema';
 import type { CeuRequestFormData } from '../validation/ceuRequestSchema';
 import { submitCeuRequest } from '../api/submitCeuRequest';
@@ -97,8 +99,22 @@ export function CeuRequestForm() {
 
         <div>
           <label className="block font-medium mb-1">Дата мероприятия</label>
-          <input type="date" {...register('eventDate')} className="input" />
-          {errors.eventDate && <p className="text-error mt-1">{errors.eventDate.message}</p>}
+          <Controller
+            control={control}
+            name="eventDate"
+            render={({ field }) => (
+              <DatePicker
+                selected={field.value ? new Date(field.value) : null}
+                onChange={(date) => field.onChange(date?.toISOString().split('T')[0])}
+                dateFormat="yyyy-MM-dd"
+                placeholderText="Выберите дату"
+                className="input"
+              />
+            )}
+          />
+          {errors.eventDate && (
+            <p className="text-error mt-1">{errors.eventDate.message as string}</p>
+          )}
         </div>
 
         <div>

@@ -1,94 +1,83 @@
-import { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useDocumentReviewRequests } from '../hooks/useDocumentReviewRequests';
-import { useDocumentReviewRequestsByEmail } from '../hooks/useDocumentReviewRequestsByEmail';
-import { Button } from '@/components/Button';
-import { DocumentReviewModal } from './DocumentReviewModal';
-import { BackButton } from '@/components/BackButton';
+import { useDeleteFile } from '../hooks/useDeleteFile';
+import { useUpdateFileType } from '../hooks/useUpdateFileType';
+import { documentTypeLabels } from '../utils/documentTypeLabels';
 
-export function DocumentReviewTable() {
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+type Props = {
+  files: {
+    id: string;
+    fileId: string;
+    name: string;
+    mimeType: string;
+    type?: string;
+    comment?: string;
+  }[];
+};
 
-  const queryClient = useQueryClient();
+const backendUrl = import.meta.env.VITE_API_URL;
 
-  // Debounce
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedSearch(search), 500);
-    return () => clearTimeout(handler);
-  }, [search]);
+export function DocumentReviewTable({ files }: Props) {
+  const deleteFile = useDeleteFile();
+  const updateFileType = useUpdateFileType();
 
-  const { data: allRequests, isLoading: loadingAll } = useDocumentReviewRequests();
-  const { data: searchRequests, isLoading: loadingSearch } = useDocumentReviewRequestsByEmail(
-    debouncedSearch,
-    debouncedSearch.length > 0,
-  );
+  const handleDelete = (id: string) => {
+    if (confirm('Удалить файл?')) {
+      deleteFile.mutate(id);
+    }
+  };
 
-  const isLoading = debouncedSearch.length > 0 ? loadingSearch : loadingAll;
-  const requests = (debouncedSearch.length > 0 ? searchRequests : allRequests) || [];
-
-  const handleClose = async () => {
-    setSelectedRequest(null);
-    await queryClient.invalidateQueries({ queryKey: ['documentReviewRequests'] });
+  const handleTypeChange = (id: string, type: string) => {
+    updateFileType.mutate({ fileId: id, type });
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <input
-          type="text"
-          placeholder="Поиск по email"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="input max-w-sm"
-        />
-      </div>
+    <div className="space-y-2">
+      {files.map((file) => (
+        <div
+          key={file.id}
+          className="flex items-center gap-4 p-3 border border-green-light rounded bg-green-light/10"
+        >
+          {file.mimeType.startsWith('image/') ? (
+            <img
+              src={`${backendUrl}/uploads/${file.fileId}`}
+              alt={file.name}
+              className="w-16 h-16 object-cover rounded border"
+            />
+          ) : file.mimeType === 'application/pdf' ? (
+            <div className="w-16 h-16 flex items-center justify-center border rounded bg-red-100 text-red-600 font-bold">
+              PDF
+            </div>
+          ) : (
+            <span className="text-xs">{file.name}</span>
+          )}
 
-      {isLoading ? (
-        <p>Загрузка...</p>
-      ) : requests.length > 0 ? (
-        <table className="w-full border border-blue-dark/10 rounded-md overflow-hidden">
-          <thead className="bg-blue-soft text-blue-dark text-left text-xs uppercase">
-            <tr>
-              <th className="p-2">Пользователь</th>
-              <th className="p-2">Статус</th>
-              <th className="p-2">Оплачено</th>
-              <th className="p-2">Комментарий</th>
-              <th className="p-2">Дата подачи</th>
-              <th className="p-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((req: any) => (
-              <tr key={req.id} className="border-t border-blue-dark/10">
-                <td className="p-2">
-                  <div className="text-sm font-medium">{req.user.fullName}</div>
-                  <div className="text-xs text-gray-500">{req.user.email}</div>
-                </td>
-                <td className="p-2 text-sm">{req.status}</td>
-                <td className="p-2 text-sm">{req.paid ? 'Да' : 'Нет'}</td>
-                <td className="p-2 text-sm">{req.comment || '—'}</td>
-                <td className="p-2 text-sm">
-                  {new Date(req.submittedAt).toLocaleDateString('ru-RU')}
-                </td>
-                <td className="p-2">
-                  <Button onClick={() => setSelectedRequest(req)}>Подробнее</Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <BackButton />
-        </table>
-      ) : (
-        <>
-          <p>Заявки отсутствуют.</p>
+          <div className="flex-1 space-y-1">
+            <p className="text-sm font-medium">{file.name}</p>
+            <select
+              value={file.type || ''}
+              onChange={(e) => handleTypeChange(file.id, e.target.value)}
+              className="input w-full"
+            >
+              <option value="">Выберите тип</option>
+              {Object.entries(documentTypeLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
 
-          <BackButton />
-        </>
-      )}
+            {file.comment && <p className="text-xs text-gray-600">{file.comment}</p>}
+          </div>
 
-      {selectedRequest && <DocumentReviewModal request={selectedRequest} onClose={handleClose} />}
+          <button
+            type="button"
+            onClick={() => handleDelete(file.id)}
+            className="text-red-500 hover:text-red-700 text-lg font-bold"
+            title="Удалить файл"
+          >
+            ×
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
