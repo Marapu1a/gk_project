@@ -32,5 +32,5 @@ export async function createCeuHandler(req: FastifyRequest, reply: FastifyReply)
     },
   });
 
-  return reply.code(201).send({ success: true, ceuRecord });
+  return reply.code(201).send({ success: true, ceuRecord, submittedBy: user.email, });
 }

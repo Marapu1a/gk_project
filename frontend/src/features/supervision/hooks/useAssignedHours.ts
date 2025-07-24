@@ -8,6 +8,7 @@ export type SupervisionHourWithUser = {
   status: 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED';
   record: {
     user: {
+      id: string;
       fullName: string;
       email: string;
     };

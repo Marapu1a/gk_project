@@ -5,13 +5,23 @@ import { Button } from '@/components/Button';
 import { BackButton } from '@/components/BackButton';
 import { FileUploader } from './FileUploader';
 import { DocumentReviewTable } from './DocumentReviewTable';
+import { useQuery } from '@tanstack/react-query';
+import { fetchCurrentUser } from '@/features/auth/api/me';
+import { getModerators } from '@/features/notifications/api/moderators';
+import { postNotification } from '@/features/notifications/api/notifications';
 
 export function DocumentReviewForm() {
   const [comment, setComment] = useState('');
   const createRequest = useCreateDocReviewReq();
   const { data: files = [] } = useGetUploadedFiles();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { data: user } = useQuery({
+    queryKey: ['me'],
+    queryFn: fetchCurrentUser,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (files.length === 0) {
@@ -21,7 +31,29 @@ export function DocumentReviewForm() {
 
     const fileIds = files.map((f: { id: any }) => f.id);
 
-    createRequest.mutate({ fileIds, comment });
+    try {
+      await createRequest.mutateAsync({ fileIds, comment });
+
+      const moderators = await getModerators(); // Возвращает всех с правами REVIEW или ADMIN
+
+      await Promise.all(
+        moderators
+          .filter((mod) => mod.role === 'ADMIN') // Жёсткая фильтрация только по ADMIN
+          .map((admin) =>
+            postNotification({
+              userId: admin.id,
+              type: 'DOCUMENT',
+              message: `Новая заявка на проверку документов от ${user?.email}`,
+              link: '/review/documents',
+            }),
+          ),
+      );
+
+      alert('Заявка отправлена');
+    } catch (err) {
+      console.error('Ошибка при отправке заявки:', err);
+      alert('Ошибка при отправке');
+    }
   };
 
   return (

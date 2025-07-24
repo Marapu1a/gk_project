@@ -6,6 +6,8 @@ import { fetchCurrentUser } from '@/features/auth/api/me';
 import { supervisionRequestSchema } from '../validation/supervisionRequestSchema';
 import type { SupervisionRequestFormData } from '../validation/supervisionRequestSchema';
 import { useSubmitSupervisionRequest } from '../hooks/useSubmitSupervisionRequest';
+import { getUserByEmail } from '@/features/notifications/api/getUserByEmail';
+import { postNotification } from '@/features/notifications/api/notifications';
 import { BackButton } from '@/components/BackButton';
 import { useNavigate } from 'react-router-dom';
 
@@ -55,6 +57,21 @@ export function SupervisionRequestForm() {
   const onSubmit = async (data: SupervisionRequestFormData) => {
     try {
       await mutation.mutateAsync(data);
+
+      const supervisor = await getUserByEmail(data.supervisorEmail);
+
+      if (!supervisor?.id) {
+        alert('Супервизор не найден');
+        return;
+      }
+
+      await postNotification({
+        userId: supervisor.id,
+        type: 'SUPERVISION',
+        message: `Новая заявка на ${isMentor ? 'менторство' : 'супервизию'} от ${user.email}`,
+        link: '/review/supervision',
+      });
+
       queryClient.invalidateQueries({ queryKey: ['supervision', 'summary'] });
       queryClient.invalidateQueries({ queryKey: ['supervision', 'unconfirmed'] });
       alert('Заявка отправлена');

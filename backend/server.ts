@@ -16,6 +16,8 @@ import { documentReviewRoutes } from './routes/documentReview';
 import { documentReviewRoutesAdmin } from './routes/documentReviewAdmin';
 import { uploadRoutes } from './routes/upload';
 import { usersRoutes } from './routes/admin';
+import { notificationsRoutes } from './routes/notifications';
+import { moderatorsRoutes } from './routes/users';
 
 
 dotenv.config()
@@ -48,6 +50,8 @@ app.register(groupsRoutes)
 app.register(documentReviewRoutes);
 app.register(documentReviewRoutesAdmin);
 app.register(usersRoutes);
+app.register(notificationsRoutes);
+app.register(moderatorsRoutes);
 
 app.get('/', async () => ({ ok: true }))
 

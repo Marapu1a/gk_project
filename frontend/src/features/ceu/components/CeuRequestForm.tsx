@@ -1,23 +1,22 @@
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ceuRequestSchema } from '../validation/ceuRequestSchema';
 import type { CeuRequestFormData } from '../validation/ceuRequestSchema';
 import { submitCeuRequest } from '../api/submitCeuRequest';
-import { uploadFile } from '../api/uploadFile';
-import { deleteFile } from '../api/deleteFile';
+
+import { getModerators } from '@/features/notifications/api/moderators';
+import { postNotification } from '@/features/notifications/api/notifications';
 import { BackButton } from '@/components/BackButton';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/Button';
+import { FileUpload } from '@/utils/FileUpload';
 
 export function CeuRequestForm() {
   const [currentFileId, setCurrentFileId] = useState<string>('');
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>(
-    'idle',
-  );
 
   const {
     register,
@@ -40,30 +39,27 @@ export function CeuRequestForm() {
   const queryClient = useQueryClient();
   const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadStatus('uploading');
-    try {
-      if (currentFileId) await deleteFile(currentFileId);
-      const fileId = await uploadFile(file);
-      setCurrentFileId(fileId);
-      setValue('fileId', fileId);
-      setUploadStatus('success');
-    } catch (err) {
-      console.error(err);
-      setUploadStatus('error');
-    }
-  };
-
   const onSubmit = async (data: CeuRequestFormData) => {
     try {
-      await submitCeuRequest(data);
+      const response = await submitCeuRequest(data);
+      const moderators = await getModerators();
+
+      const senderEmail = response.submittedBy;
+
+      await Promise.all(
+        moderators.map((mod) =>
+          postNotification({
+            userId: mod.id,
+            type: 'CEU',
+            message: `Новая заявка от ${senderEmail} на проверку CEU-баллов`,
+            link: '/review/ceu',
+          }),
+        ),
+      );
+
       queryClient.invalidateQueries({ queryKey: ['ceu', 'summary'] });
       queryClient.invalidateQueries({ queryKey: ['ceu', 'unconfirmed'] });
       setCurrentFileId('');
-      setUploadStatus('idle');
       reset();
       alert('Заявка отправлена');
       navigate('/dashboard');
@@ -79,15 +75,16 @@ export function CeuRequestForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
           <label className="block font-medium mb-1">Файл подтверждения</label>
-          <input type="file" onChange={handleFileUpload} className="input" />
-          {uploadStatus === 'uploading' && (
-            <p className="text-blue-500 text-sm mt-1">Загрузка файла...</p>
-          )}
-          {uploadStatus === 'success' && (
-            <p className="text-green-600 text-sm mt-1">Файл загружен</p>
-          )}
-          {uploadStatus === 'error' && (
-            <p className="text-error text-sm mt-1">Ошибка загрузки файла</p>
+          <FileUpload
+            multiple={false}
+            onChange={(ids) => {
+              const id = ids[0];
+              setCurrentFileId(id);
+              setValue('fileId', id);
+            }}
+          />
+          {!currentFileId && (
+            <p className="text-error text-sm mt-1">Файл обязателен для отправки</p>
           )}
         </div>
 

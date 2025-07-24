@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { postNotification } from '@/features/notifications/api/notifications';
 import { useUpdateCEUEntry } from '../hooks/useUpdateCeuEntry';
 import type { CEUReviewResponse } from '../hooks/useCeuRecordsByEmail';
 import { Button } from '@/components/Button';
@@ -19,7 +20,26 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
       return;
     }
 
-    updateMutation.mutate({ id: entryId, status, rejectedReason });
+    updateMutation.mutate(
+      { id: entryId, status, rejectedReason },
+      {
+        onSuccess: async () => {
+          const message =
+            status === 'CONFIRMED'
+              ? 'Ваши CEU-баллы подтверждены'
+              : status === 'REJECTED'
+                ? `Ваши CEU-баллы отклонены: ${rejectedReason}`
+                : 'Статус CEU-баллов изменён';
+
+          await postNotification({
+            userId: data.user.id,
+            type: 'CEU',
+            message,
+            link: '/history',
+          });
+        },
+      },
+    );
   };
 
   const statusMap: Record<string, string> = {
@@ -104,7 +124,8 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                               type="button"
                               onClick={() => handleStatusChange(entry.id, 'CONFIRMED')}
                               loading={updateMutation.isPending}
-                              className="btn btn-xs bg-green-600 text-white hover:bg-green-700"
+                              disabled={entry.status === 'CONFIRMED'}
+                              className="btn btn-xs bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Подтвердить
                             </Button>

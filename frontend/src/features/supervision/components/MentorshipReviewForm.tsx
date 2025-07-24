@@ -1,11 +1,13 @@
 import { BackButton } from '@/components/BackButton';
 import { useAssignedHours } from '../hooks/useAssignedHours';
 import { useUpdateHourStatus } from '../hooks/useUpdateHourStatus';
+import { useCreateNotification } from '@/features/notifications/hooks/useNotifications';
 import { useState } from 'react';
 
 export function MentorshipReviewForm() {
   const { data, isLoading } = useAssignedHours();
   const mutation = useUpdateHourStatus();
+  const createNotification = useCreateNotification();
   const [rejectedReasonMap, setRejectedReasonMap] = useState<Record<string, string>>({});
 
   if (isLoading) return <p>Загрузка...</p>;
@@ -13,18 +15,31 @@ export function MentorshipReviewForm() {
 
   const mentorshipHours = data.filter((h) => h.type === 'SUPERVISOR');
 
-  const handleReject = (id: string) => {
+  const handleReject = (id: string, userId: string) => {
+    const reason = rejectedReasonMap[id] || '';
     mutation.mutate({
       id,
       status: 'REJECTED',
-      rejectedReason: rejectedReasonMap[id] || '',
+      rejectedReason: reason,
+    });
+
+    createNotification.mutate({
+      userId,
+      type: 'MENTORSHIP',
+      message: `Заявка на менторство отклонена: ${reason}`,
     });
   };
 
-  const handleConfirm = (id: string) => {
+  const handleConfirm = (id: string, userId: string) => {
     mutation.mutate({
       id,
       status: 'CONFIRMED',
+    });
+
+    createNotification.mutate({
+      userId,
+      type: 'MENTORSHIP',
+      message: `Заявка на менторство подтверждена`,
     });
   };
 
@@ -66,14 +81,14 @@ export function MentorshipReviewForm() {
                     />
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleConfirm(hour.id)}
+                        onClick={() => handleConfirm(hour.id, hour.record.user.id)}
                         className="btn bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
                         disabled={mutation.isPending}
                       >
                         Подтвердить
                       </button>
                       <button
-                        onClick={() => handleReject(hour.id)}
+                        onClick={() => handleReject(hour.id, hour.record.user.id)}
                         className="btn bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
                         disabled={mutation.isPending || !rejectedReasonMap[hour.id]?.trim()}
                       >

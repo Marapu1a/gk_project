@@ -10,6 +10,7 @@ import {
 import { BackButton } from '@/components/BackButton';
 import { Button } from '@/components/Button';
 import { documentTypeLabels } from '@/utils/documentTypeLabels';
+import { postNotification } from '@/features/notifications/api/notifications';
 
 const backendUrl = import.meta.env.VITE_API_URL;
 
@@ -28,13 +29,24 @@ export function AdminDocumentReviewDetails() {
   if (error) return <p className="text-error">Ошибка загрузки</p>;
   if (!request) return <p className="text-error">Заявка не найдена</p>;
 
-  const handleStatusUpdate = () => {
-    updateStatus.mutate({
+  const handleStatusUpdate = async () => {
+    await updateStatus.mutateAsync({
       id: request.id,
       status: newStatus,
       comment: newStatus === 'REJECTED' ? rejectComment : undefined,
     });
-    alert('Статус изменён.');
+
+    await postNotification({
+      userId: request.user.id,
+      type: 'DOCUMENT',
+      message:
+        newStatus === 'REJECTED'
+          ? 'Ваша заявка на проверку документов отклонена'
+          : 'Ваша заявка на проверку документов подтверждена',
+      link: '/documents',
+    });
+
+    alert('Статус изменён, оповещение отправлено.');
   };
 
   const handlePaidUpdate = () => {

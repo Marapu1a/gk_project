@@ -2,6 +2,7 @@
 import { useAssignedHours } from '../hooks/useAssignedHours';
 import { useUpdateHourStatus } from '../hooks/useUpdateHourStatus';
 import { useState } from 'react';
+import { postNotification } from '@/features/notifications/api/notifications';
 
 export function SupervisionReviewForm() {
   const { data } = useAssignedHours();
@@ -15,18 +16,34 @@ export function SupervisionReviewForm() {
     EXPERIENCED_SUPERVISOR: 'Опытный супервизор',
   };
 
-  const handleReject = (id: string) => {
-    mutation.mutate({
+  const handleConfirm = async (id: string, userId: string, userEmail: string) => {
+    await mutation.mutateAsync({
       id,
-      status: 'REJECTED',
-      rejectedReason: rejectedReasonMap[id] || '',
+      status: 'CONFIRMED',
+    });
+
+    await postNotification({
+      userId,
+      type: 'SUPERVISION',
+      message: `Ваши часы супервизии подтверждены (${userEmail})`,
+      link: '/history',
     });
   };
 
-  const handleConfirm = (id: string) => {
-    mutation.mutate({
+  const handleReject = async (id: string, reason: string, userId: string, userEmail: string) => {
+    if (!reason.trim()) return;
+
+    await mutation.mutateAsync({
       id,
-      status: 'CONFIRMED',
+      status: 'REJECTED',
+      rejectedReason: reason,
+    });
+
+    await postNotification({
+      userId,
+      type: 'SUPERVISION',
+      message: `Часы супервизии отклонены (${userEmail}) — причина: ${reason}`,
+      link: '/my/supervision',
     });
   };
 
@@ -69,7 +86,9 @@ export function SupervisionReviewForm() {
                   )}
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleConfirm(hour.id)}
+                      onClick={() =>
+                        handleConfirm(hour.id, hour.record.user.id, hour.record.user.email)
+                      }
                       className="btn"
                       style={{ backgroundColor: 'var(--color-green-dark)', color: 'white' }}
                       disabled={mutation.isPending}
@@ -77,7 +96,14 @@ export function SupervisionReviewForm() {
                       Подтвердить
                     </button>
                     <button
-                      onClick={() => handleReject(hour.id)}
+                      onClick={() =>
+                        handleReject(
+                          hour.id,
+                          rejectedReasonMap[hour.id],
+                          hour.record.user.id,
+                          hour.record.user.email,
+                        )
+                      }
                       className="btn"
                       style={{ backgroundColor: '#e3342f', color: 'white' }}
                       disabled={mutation.isPending || !rejectedReasonMap[hour.id]}

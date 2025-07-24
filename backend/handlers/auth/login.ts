@@ -19,7 +19,7 @@ export async function loginHandler(req: FastifyRequest, reply: FastifyReply) {
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return reply.code(401).send(INVALID_MSG);
 
-  const token = signJwt({ userId: user.id, role: user.role });
+  const token = signJwt({ userId: user.id, role: user.role, email: user.email, });
 
   return reply.send({
     token,
