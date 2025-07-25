@@ -20,17 +20,18 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
     return reply.code(415).send({ error: 'Недопустимый тип файла' });
   }
 
+  const { category = 'misc' } = req.query as { category?: string };
+
   const ext = path.extname(data.filename);
   const fileName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`;
-  const dir = path.resolve(process.cwd(), '../uploads', user.userId);
+  const dir = path.resolve(process.cwd(), '../uploads', user.userId, category);
   const filePath = path.join(dir, fileName);
 
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(filePath, await data.toBuffer());
 
-  const fileId = `${user.userId}/${fileName}`;
+  const fileId = `${user.userId}/${category}/${fileName}`;
 
-  // ✅ Запись в БД
   const uploaded = await prisma.uploadedFile.create({
     data: {
       userId: user.userId,
@@ -42,3 +43,4 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
 
   return reply.code(201).send(uploaded);
 }
+

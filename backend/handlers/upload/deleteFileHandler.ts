@@ -24,6 +24,15 @@ export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply
     return reply.code(403).send({ error: 'Нет доступа к этому файлу' });
   }
 
+  // ⛔ Блокируем удаление, если файл уже используется в заявке
+  const usedInCeu = await prisma.cEURecord.findFirst({
+    where: { fileId: id },
+  });
+
+  if (usedInCeu) {
+    return reply.code(400).send({ error: 'Файл уже прикреплён к заявке и не может быть удалён' });
+  }
+
   const filePath = path.join(process.cwd(), '../uploads', file.fileId);
 
   try {

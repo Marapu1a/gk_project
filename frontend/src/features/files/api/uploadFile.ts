@@ -1,15 +1,9 @@
 import { api } from '@/lib/axios';
 
-export async function uploadFile(file: File): Promise<{
-  id: string;
-  fileId: string;
-  name: string;
-  mimeType: string;
-}> {
+export async function uploadFile(file: File, category: string) {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await api.post('/upload', formData);
-
-  return response.data;
+  const response = await api.post(`/upload?category=${category}`, formData);
+  return response.data; // UploadedFile
 }

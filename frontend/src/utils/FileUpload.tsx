@@ -1,74 +1,70 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { deleteFile } from '@/features/files/api/deleteFile';
-import { useQueryClient } from '@tanstack/react-query';
 
-type Props = {
-  multiple?: boolean;
-  onChange: (fileIds: string[]) => void;
+export type UploadedFile = {
+  id: string;
+  fileId: string;
+  name: string;
+  mimeType: string;
 };
 
-export function FileUpload({ multiple = false, onChange }: Props) {
-  const [uploading, setUploading] = useState(false);
-  const [fileIds, setFileIds] = useState<string[]>([]);
-  const [previews, setPreviews] = useState<
-    { id: string; name: string; mimeType: string; fileId: string }[]
-  >([]);
+interface FileUploadProps {
+  category: string;
+  onChange: (file: UploadedFile | null) => void;
+  disabled?: boolean;
+}
 
-  const queryClient = useQueryClient();
+export function FileUpload({ category, onChange, disabled }: FileUploadProps) {
+  const [file, setFile] = useState<UploadedFile | null>(null);
+  const [uploading, setUploading] = useState(false);
   const backendUrl = import.meta.env.VITE_API_URL;
 
-  const handleDrop = async (acceptedFiles: File[]) => {
+  // Подтягиваем файл из localStorage при монтировании
+  useEffect(() => {
+    const saved = localStorage.getItem(`file:${category}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setFile(parsed);
+        onChange(parsed);
+      } catch {
+        localStorage.removeItem(`file:${category}`);
+      }
+    }
+  }, []);
+
+  const handleDrop = async (accepted: File[]) => {
+    if (!accepted.length || disabled) return;
+
+    if (file) {
+      try {
+        await deleteFile(file.id);
+      } catch (err) {
+        console.warn('Ошибка при удалении предыдущего файла:', err);
+      }
+    }
+
     setUploading(true);
-    const newIds: string[] = [];
-    const newPreviews: typeof previews = [];
-
-    for (const file of acceptedFiles) {
-      try {
-        const uploaded = await uploadFile(file); // ← возвращает объект
-        newIds.push(uploaded.id);
-        newPreviews.push({
-          id: uploaded.id,
-          name: uploaded.name,
-          mimeType: uploaded.mimeType,
-          fileId: uploaded.fileId,
-        });
-      } catch (err) {
-        console.error('Ошибка загрузки:', err);
-      }
+    try {
+      const uploaded = await uploadFile(accepted[0], category);
+      setFile(uploaded);
+      onChange(uploaded);
+      localStorage.setItem(`file:${category}`, JSON.stringify(uploaded));
+    } catch (err) {
+      console.error('Ошибка загрузки файла:', err);
     }
-
-    const finalIds = multiple ? [...fileIds, ...newIds] : newIds;
-    const finalPreviews = multiple ? [...previews, ...newPreviews] : newPreviews;
-
-    if (!multiple && fileIds.length > 0) {
-      try {
-        await deleteFile(fileIds[0]);
-      } catch (err) {
-        console.warn('Ошибка при удалении предыдущего файла');
-      }
-    }
-
-    setFileIds(finalIds);
-    setPreviews(finalPreviews);
-    onChange(finalIds);
-
-    queryClient.invalidateQueries({ queryKey: ['uploadedFiles'] });
     setUploading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    const confirmDelete = confirm('Удалить файл?');
-    if (!confirmDelete) return;
-
+  const handleDelete = async () => {
+    if (!file || disabled) return;
     try {
-      await deleteFile(id);
-      const newIds = fileIds.filter((f) => f !== id);
-      const newPrevs = previews.filter((f) => f.id !== id);
-      setFileIds(newIds);
-      setPreviews(newPrevs);
-      onChange(newIds);
+      await deleteFile(file.id);
+      setFile(null);
+      onChange(null);
+      localStorage.removeItem(`file:${category}`);
     } catch (err) {
       console.error('Ошибка удаления файла:', err);
     }
@@ -76,50 +72,54 @@ export function FileUpload({ multiple = false, onChange }: Props) {
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: handleDrop,
-    multiple,
+    multiple: false,
     accept: { 'application/pdf': [], 'image/*': [] },
+    disabled,
   });
 
   return (
     <div className="space-y-3">
       <div
         {...getRootProps()}
-        className="p-4 border-2 border-dashed border-gray-400 rounded text-center text-sm text-gray-600 cursor-pointer hover:bg-gray-50"
+        className={`p-4 border-2 border-dashed rounded text-center text-sm cursor-pointer transition ${
+          disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+        } ${file ? 'border-gray-300 text-gray-500' : 'border-gray-400 text-gray-600'}`}
       >
         <input {...getInputProps()} />
-        {uploading ? 'Загрузка...' : 'Перетащите файл или кликните для выбора'}
+        {uploading
+          ? 'Загрузка...'
+          : file
+            ? 'Заменить файл'
+            : 'Перетащите файл или кликните для выбора'}
       </div>
 
-      {previews.length > 0 && (
-        <div className="space-y-2">
-          {previews.map((file) => (
-            <div key={file.id} className="flex items-center gap-4 p-2 border rounded bg-gray-100">
-              {file.mimeType.startsWith('image/') ? (
-                <img
-                  src={`${backendUrl}/uploads/${file.fileId}`}
-                  alt={file.name}
-                  className="w-16 h-16 object-cover rounded border"
-                />
-              ) : file.mimeType === 'application/pdf' ? (
-                <div className="w-16 h-16 flex items-center justify-center border rounded bg-red-100 text-red-600 font-bold">
-                  PDF
-                </div>
-              ) : (
-                <div className="text-sm">{file.name}</div>
-              )}
-
-              <div className="flex-1 text-sm text-gray-700">{file.name}</div>
-
-              <button
-                type="button"
-                onClick={() => handleDelete(file.id)}
-                className="text-red-500 hover:text-red-700 text-lg font-bold"
-                title="Удалить"
-              >
-                ×
-              </button>
+      {file && (
+        <div className="flex items-center gap-4 p-2 border rounded bg-gray-100">
+          {file.mimeType.startsWith('image/') ? (
+            <img
+              src={`${backendUrl}/uploads/${file.fileId}`}
+              alt={file.name}
+              className="w-16 h-16 object-cover rounded border"
+            />
+          ) : file.mimeType === 'application/pdf' ? (
+            <div className="w-16 h-16 flex items-center justify-center border rounded bg-red-100 text-red-600 font-bold">
+              PDF
             </div>
-          ))}
+          ) : (
+            <div className="text-sm">{file.name}</div>
+          )}
+
+          <div className="flex-1 text-sm text-gray-700 truncate">{file.name}</div>
+
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="text-red-500 hover:text-red-700 text-lg font-bold"
+            title="Удалить"
+            disabled={disabled}
+          >
+            ×
+          </button>
         </div>
       )}
     </div>

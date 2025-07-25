@@ -1,10 +1,10 @@
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+
 import { ceuRequestSchema } from '../validation/ceuRequestSchema';
 import type { CeuRequestFormData } from '../validation/ceuRequestSchema';
 import { submitCeuRequest } from '../api/submitCeuRequest';
@@ -16,13 +16,12 @@ import { Button } from '@/components/Button';
 import { FileUpload } from '@/utils/FileUpload';
 
 export function CeuRequestForm() {
-  const [currentFileId, setCurrentFileId] = useState<string>('');
-
   const {
     register,
     handleSubmit,
     control,
     setValue,
+    watch,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CeuRequestFormData>({
@@ -35,6 +34,7 @@ export function CeuRequestForm() {
     },
   });
 
+  const fileId = watch('fileId');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
@@ -44,14 +44,12 @@ export function CeuRequestForm() {
       const response = await submitCeuRequest(data);
       const moderators = await getModerators();
 
-      const senderEmail = response.submittedBy;
-
       await Promise.all(
         moderators.map((mod) =>
           postNotification({
             userId: mod.id,
             type: 'CEU',
-            message: `Новая заявка от ${senderEmail} на проверку CEU-баллов`,
+            message: `Новая заявка от ${response.submittedBy} на проверку CEU-баллов`,
             link: '/review/ceu',
           }),
         ),
@@ -59,12 +57,14 @@ export function CeuRequestForm() {
 
       queryClient.invalidateQueries({ queryKey: ['ceu', 'summary'] });
       queryClient.invalidateQueries({ queryKey: ['ceu', 'unconfirmed'] });
-      setCurrentFileId('');
+
+      localStorage.removeItem('file:ceu');
       reset();
       alert('Заявка отправлена');
       navigate('/dashboard');
     } catch (err) {
       console.error('Ошибка при отправке формы:', err);
+      alert('Ошибка при отправке формы');
     }
   };
 
@@ -73,27 +73,27 @@ export function CeuRequestForm() {
       <h1 className="text-2xl font-bold text-blue-dark">Новая заявка на CEU</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Файл подтверждения */}
         <div>
           <label className="block font-medium mb-1">Файл подтверждения</label>
+
           <FileUpload
-            multiple={false}
-            onChange={(ids) => {
-              const id = ids[0];
-              setCurrentFileId(id);
-              setValue('fileId', id);
-            }}
+            category="ceu"
+            onChange={(file) => setValue('fileId', file?.fileId || '')}
+            disabled={isSubmitting}
           />
-          {!currentFileId && (
-            <p className="text-error text-sm mt-1">Файл обязателен для отправки</p>
-          )}
+
+          {!fileId && <p className="text-error text-sm mt-1">Файл обязателен для отправки</p>}
         </div>
 
+        {/* Название мероприятия */}
         <div>
           <label className="block font-medium mb-1">Название мероприятия</label>
           <input type="text" {...register('eventName')} className="input" />
           {errors.eventName && <p className="text-error mt-1">{errors.eventName.message}</p>}
         </div>
 
+        {/* Дата мероприятия */}
         <div>
           <label className="block font-medium mb-1">Дата мероприятия</label>
           <Controller
@@ -114,6 +114,7 @@ export function CeuRequestForm() {
           )}
         </div>
 
+        {/* CEU-баллы */}
         <div>
           <label className="block font-medium mb-2">CEU-баллы</label>
           <div className="space-y-2">
@@ -158,7 +159,8 @@ export function CeuRequestForm() {
           {errors.entries && <p className="text-error mt-1">{errors.entries.message}</p>}
         </div>
 
-        <Button type="submit" loading={isSubmitting} disabled={!currentFileId} className="w-full">
+        {/* Кнопка отправки */}
+        <Button type="submit" loading={isSubmitting} disabled={!fileId} className="w-full">
           Отправить заявку
         </Button>
       </form>
