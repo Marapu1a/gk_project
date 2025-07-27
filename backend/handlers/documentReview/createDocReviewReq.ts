@@ -33,7 +33,10 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
     return reply.code(400).send({ error: 'Некоторые файлы не найдены или вам не принадлежат' });
   }
 
-  // Создание заявки
+  if (files.some((f) => f.type === null)) {
+    return reply.code(400).send({ error: 'У всех файлов должен быть выбран тип документа' });
+  }
+
   const reqNew = await prisma.documentReviewRequest.create({
     data: {
       userId: user.userId,
@@ -41,7 +44,6 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
     },
   });
 
-  // Привязка файлов
   await prisma.uploadedFile.updateMany({
     where: { id: { in: fileIds } },
     data: { requestId: reqNew.id },

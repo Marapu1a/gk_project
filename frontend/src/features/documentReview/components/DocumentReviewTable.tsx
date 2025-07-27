@@ -1,34 +1,16 @@
-import { useDeleteFile } from '../hooks/useDeleteFile';
-import { useUpdateFileType } from '../hooks/useUpdateFileType';
-import { documentTypeLabels } from '../utils/documentTypeLabels';
-
-type Props = {
-  files: {
-    id: string;
-    fileId: string;
-    name: string;
-    mimeType: string;
-    type?: string;
-    comment?: string;
-  }[];
-};
+import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
+import { type UploadedFile } from '@/utils/MultiFileUpload';
 
 const backendUrl = import.meta.env.VITE_API_URL;
 
-export function DocumentReviewTable({ files }: Props) {
-  const deleteFile = useDeleteFile();
-  const updateFileType = useUpdateFileType();
+interface Props {
+  files: UploadedFile[];
+  onDelete: (id: string) => void;
+  onTypeChange: (id: string, type: DocumentType) => void;
+  disabled?: boolean;
+}
 
-  const handleDelete = (id: string) => {
-    if (confirm('Удалить файл?')) {
-      deleteFile.mutate(id);
-    }
-  };
-
-  const handleTypeChange = (id: string, type: string) => {
-    updateFileType.mutate({ fileId: id, type });
-  };
-
+export function DocumentReviewTable({ files, onDelete, onTypeChange, disabled }: Props) {
   return (
     <div className="space-y-2">
       {files.map((file) => (
@@ -51,11 +33,12 @@ export function DocumentReviewTable({ files }: Props) {
           )}
 
           <div className="flex-1 space-y-1">
-            <p className="text-sm font-medium">{file.name}</p>
+            <p className="text-sm font-medium truncate">{file.name}</p>
             <select
               value={file.type || ''}
-              onChange={(e) => handleTypeChange(file.id, e.target.value)}
+              onChange={(e) => onTypeChange(file.id, e.target.value as DocumentType)}
               className="input w-full"
+              disabled={disabled}
             >
               <option value="">Выберите тип</option>
               {Object.entries(documentTypeLabels).map(([value, label]) => (
@@ -64,15 +47,14 @@ export function DocumentReviewTable({ files }: Props) {
                 </option>
               ))}
             </select>
-
-            {file.comment && <p className="text-xs text-gray-600">{file.comment}</p>}
           </div>
 
           <button
             type="button"
-            onClick={() => handleDelete(file.id)}
+            onClick={() => onDelete(file.id)}
             className="text-red-500 hover:text-red-700 text-lg font-bold"
             title="Удалить файл"
+            disabled={disabled}
           >
             ×
           </button>

@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useGetDocReviewRequestById } from '../hooks/useGetDocReviewRequestById';
 import { useUpdateDocReviewRequestStatus } from '../hooks/useUpdateDocReviewRequestStatus';
 import { useUpdateDocReviewRequestPaid } from '../hooks/useUpdateDocReviewRequestPaid';
@@ -19,6 +19,7 @@ export function AdminDocumentReviewDetails() {
   const { data: request, isLoading, error } = useGetDocReviewRequestById(id);
   const updateStatus = useUpdateDocReviewRequestStatus();
   const updatePaid = useUpdateDocReviewRequestPaid();
+  const navigate = useNavigate();
 
   const [newStatus, setNewStatus] = useState<'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED'>(
     'UNCONFIRMED',
@@ -30,23 +31,39 @@ export function AdminDocumentReviewDetails() {
   if (!request) return <p className="text-error">Заявка не найдена</p>;
 
   const handleStatusUpdate = async () => {
-    await updateStatus.mutateAsync({
-      id: request.id,
-      status: newStatus,
-      comment: newStatus === 'REJECTED' ? rejectComment : undefined,
-    });
+    if (newStatus === 'REJECTED' && rejectComment.trim() === '') {
+      alert('Пожалуйста, укажите причину отклонения.');
+      return;
+    }
 
-    await postNotification({
-      userId: request.user.id,
-      type: 'DOCUMENT',
-      message:
-        newStatus === 'REJECTED'
-          ? 'Ваша заявка на проверку документов отклонена'
-          : 'Ваша заявка на проверку документов подтверждена',
-      link: '/documents',
-    });
+    if (newStatus === 'CONFIRMED' && !request.paid) {
+      alert('Нельзя подтвердить заявку без оплаты.');
+      return;
+    }
 
-    alert('Статус изменён, оповещение отправлено.');
+    try {
+      await updateStatus.mutateAsync({
+        id: request.id,
+        status: newStatus,
+        comment: newStatus === 'REJECTED' ? rejectComment : undefined,
+      });
+
+      await postNotification({
+        userId: request.user.id,
+        type: 'DOCUMENT',
+        message:
+          newStatus === 'REJECTED'
+            ? 'Ваша заявка на проверку документов отклонена'
+            : 'Ваша заявка на проверку документов подтверждена',
+        link: '/document-review',
+      });
+
+      alert('Статус изменён, оповещение отправлено.');
+      navigate('/admin/document-review');
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.response?.data?.error || 'Ошибка при обновлении статуса');
+    }
   };
 
   const handlePaidUpdate = () => {

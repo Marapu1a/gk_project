@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { useCreateDocReviewReq } from '../hooks/useCreateDocReviewReq';
-import { useGetUploadedFiles } from '../hooks/useGetUploadedFiles';
 import { Button } from '@/components/Button';
 import { BackButton } from '@/components/BackButton';
-import { FileUploader } from './FileUploader';
-import { DocumentReviewTable } from './DocumentReviewTable';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { getModerators } from '@/features/notifications/api/moderators';
 import { postNotification } from '@/features/notifications/api/notifications';
+import { MultiFileUpload, type UploadedFile } from '@/utils/MultiFileUpload';
 
 export function DocumentReviewForm() {
   const [comment, setComment] = useState('');
+  const [files, setFiles] = useState<UploadedFile[]>([]);
   const createRequest = useCreateDocReviewReq();
-  const { data: files = [] } = useGetUploadedFiles();
 
   const { data: user } = useQuery({
     queryKey: ['me'],
@@ -29,24 +27,27 @@ export function DocumentReviewForm() {
       return;
     }
 
-    const fileIds = files.map((f: { id: any }) => f.id);
+    if (files.some((f) => !f.type)) {
+      alert('У всех файлов должен быть выбран тип документа');
+      return;
+    }
+
+    const fileIds = files.map((f) => f.id);
 
     try {
       await createRequest.mutateAsync({ fileIds, comment });
 
-      const moderators = await getModerators(); // Возвращает всех с правами REVIEW или ADMIN
+      const moderators = await getModerators();
 
       await Promise.all(
-        moderators
-          .filter((mod) => mod.role === 'ADMIN') // Жёсткая фильтрация только по ADMIN
-          .map((admin) =>
-            postNotification({
-              userId: admin.id,
-              type: 'DOCUMENT',
-              message: `Новая заявка на проверку документов от ${user?.email}`,
-              link: '/review/documents',
-            }),
-          ),
+        moderators.map((mod) =>
+          postNotification({
+            userId: mod.id,
+            type: 'DOCUMENT',
+            message: `Новая заявка на проверку документов от ${user.email}`,
+            link: '/admin/document-review',
+          }),
+        ),
       );
 
       alert('Заявка отправлена');
@@ -63,9 +64,7 @@ export function DocumentReviewForm() {
     >
       <h1 className="text-2xl font-bold text-blue-dark">Новая заявка на проверку документов</h1>
 
-      <FileUploader onUploaded={() => {}} />
-
-      {files.length > 0 && <DocumentReviewTable files={files} />}
+      <MultiFileUpload onChange={setFiles} />
 
       <div>
         <label className="block mb-1 font-medium">Комментарий</label>
