@@ -23,6 +23,7 @@ export function ProgressSummary() {
 
   const isSupervisor = activeGroup === 'супервизор';
   const isSeniorSupervisor = activeGroup === 'опытный супервизор';
+  const isAboveCeu = isSupervisor || isSeniorSupervisor;
 
   return (
     <div className="space-y-4 text-sm">
@@ -40,13 +41,13 @@ export function ProgressSummary() {
         </p>
       )}
 
-      {target && !isSeniorSupervisor && !isSupervisor && (
+      {target && !isAboveCeu && (
         <p className="italic">
           Вы копите баллы и часы для перехода в категорию: <strong>{target}</strong>
         </p>
       )}
 
-      <CeuSummaryBlock />
+      {!isAboveCeu && <CeuSummaryBlock />}
       <SupervisionSummaryBlock user={user} />
     </div>
   );

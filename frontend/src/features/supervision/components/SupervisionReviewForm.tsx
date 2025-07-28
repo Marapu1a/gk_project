@@ -62,59 +62,61 @@ export function SupervisionReviewForm() {
           </tr>
         </thead>
         <tbody>
-          {data.map((hour) => (
-            <tr key={hour.id} className="hover:bg-gray-50">
-              <td className="p-3">{hour.record.user.fullName}</td>
-              <td className="p-3">{hour.record.user.email}</td>
-              <td className="p-3 text-center">{typeMap[hour.type] || hour.type}</td>
-              <td className="p-3 text-center">{hour.value}</td>
-              <td className="p-3">
-                <div className="flex flex-col items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Причина отклонения"
-                    className="input w-48"
-                    value={rejectedReasonMap[hour.id] || ''}
-                    onChange={(e) =>
-                      setRejectedReasonMap((prev) => ({ ...prev, [hour.id]: e.target.value }))
-                    }
-                  />
-                  {!rejectedReasonMap[hour.id] && (
-                    <p className="text-error text-xs italic mt-1">
-                      Укажите причину перед отклонением
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() =>
-                        handleConfirm(hour.id, hour.record.user.id, hour.record.user.email)
+          {data
+            .filter((h) => h.type === 'INSTRUCTOR' || h.type === 'CURATOR')
+            .map((hour) => (
+              <tr key={hour.id} className="hover:bg-gray-50">
+                <td className="p-3">{hour.record.user.fullName}</td>
+                <td className="p-3">{hour.record.user.email}</td>
+                <td className="p-3 text-center">{typeMap[hour.type] || hour.type}</td>
+                <td className="p-3 text-center">{hour.value}</td>
+                <td className="p-3">
+                  <div className="flex flex-col items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Причина отклонения"
+                      className="input w-48"
+                      value={rejectedReasonMap[hour.id] || ''}
+                      onChange={(e) =>
+                        setRejectedReasonMap((prev) => ({ ...prev, [hour.id]: e.target.value }))
                       }
-                      className="btn"
-                      style={{ backgroundColor: 'var(--color-green-dark)', color: 'white' }}
-                      disabled={mutation.isPending}
-                    >
-                      Подтвердить
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleReject(
-                          hour.id,
-                          rejectedReasonMap[hour.id],
-                          hour.record.user.id,
-                          hour.record.user.email,
-                        )
-                      }
-                      className="btn"
-                      style={{ backgroundColor: '#e3342f', color: 'white' }}
-                      disabled={mutation.isPending || !rejectedReasonMap[hour.id]}
-                    >
-                      Отклонить
-                    </button>
+                    />
+                    {!rejectedReasonMap[hour.id] && (
+                      <p className="text-error text-xs italic mt-1">
+                        Укажите причину перед отклонением
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() =>
+                          handleConfirm(hour.id, hour.record.user.id, hour.record.user.email)
+                        }
+                        className="btn"
+                        style={{ backgroundColor: 'var(--color-green-dark)', color: 'white' }}
+                        disabled={mutation.isPending}
+                      >
+                        Подтвердить
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleReject(
+                            hour.id,
+                            rejectedReasonMap[hour.id],
+                            hour.record.user.id,
+                            hour.record.user.email,
+                          )
+                        }
+                        className="btn"
+                        style={{ backgroundColor: '#e3342f', color: 'white' }}
+                        disabled={mutation.isPending || !rejectedReasonMap[hour.id]}
+                      >
+                        Отклонить
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </td>
-            </tr>
-          ))}
+                </td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </div>

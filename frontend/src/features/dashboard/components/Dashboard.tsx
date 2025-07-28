@@ -23,9 +23,6 @@ export function Dashboard() {
   if (isLoading) return <p>Загрузка...</p>;
   if (isError || !user) return <p className="text-error">Не удалось загрузить данные</p>;
 
-  console.log('Пользователь:', user);
-  console.log('Модалка open:', openNotif);
-
   return (
     <div className="p-6 space-y-8 max-w-6xl mx-auto">
       <div className="flex justify-end">

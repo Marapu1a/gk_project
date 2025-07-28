@@ -56,14 +56,14 @@ export function SupervisionRequestForm() {
 
   const onSubmit = async (data: SupervisionRequestFormData) => {
     try {
-      await mutation.mutateAsync(data);
-
       const supervisor = await getUserByEmail(data.supervisorEmail);
 
       if (!supervisor?.id) {
         alert('Супервизор не найден');
         return;
       }
+
+      await mutation.mutateAsync(data);
 
       await postNotification({
         userId: supervisor.id,

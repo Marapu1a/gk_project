@@ -95,8 +95,8 @@ function getNextGroupName(current: string): string | null {
 }
 
 const requirementsByGroup: Record<string, CEUSummary> = {
-  'Инструктор': { ethics: 2, cultDiver: 1, supervision: 1, general: 4 },
-  'Куратор': { ethics: 3, cultDiver: 1, supervision: 2, general: 5 },
-  'Супервизор': { ethics: 4, cultDiver: 2, supervision: 3, general: 6 },
-  'Опытный Супервизор': { ethics: 5, cultDiver: 2, supervision: 4, general: 7 },
+  'Инструктор': { ethics: 1, cultDiver: 1, supervision: 0, general: 2 },
+  'Куратор': { ethics: 2, cultDiver: 2, supervision: 0, general: 4 },
+  'Супервизор': { ethics: 2, cultDiver: 2, supervision: 2, general: 6 },
+  'Опытный Супервизор': { ethics: 0, cultDiver: 0, supervision: 0, general: 0 },
 };

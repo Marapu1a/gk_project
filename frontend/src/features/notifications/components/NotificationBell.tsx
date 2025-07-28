@@ -5,9 +5,6 @@ export function NotificationBell({ onClick }: { onClick: () => void }) {
   const { data: notifications } = useNotifications();
   const count = notifications?.length || 0;
 
-  console.log('🔔 NotificationBell — notifications:', notifications);
-  console.log('🔔 NotificationBell — count:', count);
-
   return (
     <button onClick={onClick} className="relative">
       <Bell className="w-6 h-6" />

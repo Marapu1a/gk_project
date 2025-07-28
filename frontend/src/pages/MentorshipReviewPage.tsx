@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { MentorshipReviewForm } from '@/features/supervision/components/MentorshipReviewForm';
+import { BackButton } from '@/components/BackButton';
 
 export default function MentorshipReviewPage() {
   const {
@@ -26,9 +27,13 @@ export default function MentorshipReviewPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-blue-dark mb-4">Проверка менторства</h1>
-      <MentorshipReviewForm />
-    </div>
+    <>
+      <div className="p-6 max-w-5xl mx-auto">
+        <h1 className="text-2xl font-bold text-blue-dark mb-4">Проверка менторства</h1>
+        <MentorshipReviewForm />
+      </div>
+
+      <BackButton />
+    </>
   );
 }
