@@ -62,6 +62,8 @@ model User {
 
   reviewedCEUEntries       CEUEntry[]          @relation("ReviewedCEUEntry")
   reviewedSupervisionHours SupervisionHour[]   @relation("ReviewedSupervisionHour")
+  confirmedCertificates    Certificate[]       @relation("CertificateConfirmedBy")
+
   documentReviewRequests   DocumentReviewRequest[]
 
   notifications Notification[]
@@ -80,16 +82,31 @@ model Notification {
 }
 
 model Certificate {
-  id         String   @id @default(cuid())
-  number     String   @unique
-  title      String
-  fileUrl    String
-  issuedAt   DateTime
-  expiresAt  DateTime
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
 
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  groupId       String
+  group         Group          @relation(fields: [groupId], references: [id])
 
+  fileId        String         @unique
+  file          UploadedFile   @relation(fields: [fileId], references: [id])
+
+  issuedAt      DateTime
+  expiresAt     DateTime
+
+  isRenewal     Boolean        @default(false)
+
+  previousId    String?        @unique
+  previous      Certificate?   @relation("CertificateHistory", fields: [previousId], references: [id])
+  next          Certificate?   @relation("CertificateHistory")
+
+
+  confirmedById String?
+  confirmedBy   User?          @relation("CertificateConfirmedBy", fields: [confirmedById], references: [id])
+
+  comment       String?
+  createdAt     DateTime       @default(now())
 }
 
 model CEURecord {
@@ -145,11 +162,12 @@ model SupervisionHour {
 }
 
 model Group {
-  id        String       @id @default(cuid())
-  name      String       @unique
-  rank      Int          @default(0)
-  users     UserGroup[]
-  createdAt DateTime     @default(now())
+  id           String       @id @default(cuid())
+  name         String       @unique
+  rank         Int          @default(0)
+  users        UserGroup[]
+  certificates Certificate[]
+  createdAt    DateTime     @default(now())
 }
 
 model UserGroup {
@@ -177,18 +195,19 @@ model DocumentReviewRequest {
 }
 
 model UploadedFile {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
 
-  fileId    String   @unique
-  name      String
-  mimeType  String
-  type      String?
-  comment   String?
-  createdAt DateTime @default(now())
+  fileId      String   @unique
+  name        String
+  certificate Certificate?
+  mimeType    String
+  type        String?
+  comment     String?
+  createdAt   DateTime @default(now())
 
   requestId String?
-  request   DocumentReviewRequest? @relation(fields: [requestId], references: [id])
+  request       DocumentReviewRequest? @relation(fields: [requestId], references: [id])
 }
 

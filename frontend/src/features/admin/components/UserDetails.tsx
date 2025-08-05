@@ -9,6 +9,8 @@ type Props = {
 export function UserDetails({ userId }: Props) {
   const { data, isLoading, error } = useUserDetails(userId);
 
+  console.log(data);
+
   if (isLoading) return <p>Загрузка данных пользователя...</p>;
   if (error) return <p className="text-error">Ошибка загрузки данных</p>;
   if (!data) return <p className="text-error">Пользователь не найден</p>;
