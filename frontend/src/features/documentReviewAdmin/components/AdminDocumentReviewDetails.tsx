@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useGetDocReviewRequestById } from '../hooks/useGetDocReviewRequestById';
 import { useUpdateDocReviewRequestStatus } from '../hooks/useUpdateDocReviewRequestStatus';
-import { useUpdateDocReviewRequestPaid } from '../hooks/useUpdateDocReviewRequestPaid';
 import { useState } from 'react';
 import {
   documentReviewStatusLabels,
@@ -11,20 +11,31 @@ import { BackButton } from '@/components/BackButton';
 import { Button } from '@/components/Button';
 import { documentTypeLabels } from '@/utils/documentTypeLabels';
 import { postNotification } from '@/features/notifications/api/notifications';
+import { PaymentStatusToggle } from '@/features/payment/components/PaymentStatusToggle';
+import { useUserPaymentsById } from '@/features/payment/hooks/useUserPaymentsById';
 
 const backendUrl = import.meta.env.VITE_API_URL;
+
+const paymentStatusText: Record<string, string> = {
+  UNPAID: 'Не оплачено',
+  PENDING: 'Ожидает проверки',
+  PAID: 'Оплачено',
+};
 
 export function AdminDocumentReviewDetails() {
   const { id } = useParams<{ id: string }>();
   const { data: request, isLoading, error } = useGetDocReviewRequestById(id);
   const updateStatus = useUpdateDocReviewRequestStatus();
-  const updatePaid = useUpdateDocReviewRequestPaid();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [newStatus, setNewStatus] = useState<'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED'>(
     'UNCONFIRMED',
   );
   const [rejectComment, setRejectComment] = useState('');
+
+  const { data: payments } = useUserPaymentsById(request?.user?.id);
+  const documentPayment = payments?.find((p) => p.type === 'DOCUMENT_REVIEW');
 
   if (isLoading) return <p>Загрузка...</p>;
   if (error) return <p className="text-error">Ошибка загрузки</p>;
@@ -36,7 +47,7 @@ export function AdminDocumentReviewDetails() {
       return;
     }
 
-    if (newStatus === 'CONFIRMED' && !request.paid) {
+    if (newStatus === 'CONFIRMED' && documentPayment?.status !== 'PAID') {
       alert('Нельзя подтвердить заявку без оплаты.');
       return;
     }
@@ -58,6 +69,8 @@ export function AdminDocumentReviewDetails() {
         link: '/document-review',
       });
 
+      await queryClient.invalidateQueries({ queryKey: ['userPayments', request.user.id] });
+
       alert('Статус изменён, оповещение отправлено.');
       navigate('/admin/document-review');
     } catch (err: any) {
@@ -66,33 +79,32 @@ export function AdminDocumentReviewDetails() {
     }
   };
 
-  const handlePaidUpdate = () => {
-    updatePaid.mutate({
-      id: request.id,
-      paid: !request.paid,
-    });
-  };
-
   return (
     <div className="space-y-8 p-6 bg-white border border-blue-dark/10 rounded-xl shadow-sm max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold text-blue-dark">Заявка {request.id.slice(0, 6)}</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <p>Email: {request.user?.email}</p>
         <p>
-          <strong>Email:</strong> {request.user?.email}
-        </p>
-        <p>
-          <strong>Статус:</strong>{' '}
+          Статус:{' '}
           <span className={documentReviewStatusColors[request.status] || ''}>
             {documentReviewStatusLabels[request.status] || request.status}
           </span>
         </p>
-        <p>
-          <strong>Оплачено:</strong> {request.paid ? 'Да' : 'Нет'}
-        </p>
-        <p>
-          <strong>Комментарий:</strong> {request.comment || '—'}
-        </p>
+        <div className="space-y-1">
+          <p>
+            <span className="font-medium">Оплата:</span>{' '}
+            {documentPayment ? (
+              paymentStatusText[documentPayment.status] || documentPayment.status
+            ) : (
+              <span className="text-gray-600">Нет информации</span>
+            )}
+          </p>
+
+          {documentPayment && <PaymentStatusToggle payment={documentPayment} isAdmin={true} />}
+        </div>
+
+        <p>Комментарий: {request.comment || '—'}</p>
       </div>
 
       <div className="space-y-4">
@@ -175,17 +187,9 @@ export function AdminDocumentReviewDetails() {
         <Button
           onClick={handleStatusUpdate}
           loading={updateStatus.isPending}
-          className="w-full md:w-auto mr-1"
-        >
-          Сохранить статус
-        </Button>
-
-        <Button
-          onClick={handlePaidUpdate}
-          loading={updatePaid.isPending}
           className="w-full md:w-auto"
         >
-          {request.paid ? 'Отметить как неоплачено' : 'Отметить как оплачено'}
+          Сохранить статус
         </Button>
       </div>
 

@@ -10,6 +10,15 @@ CREATE TYPE "CEUCategory" AS ENUM ('ETHICS', 'CULTURAL_DIVERSITY', 'SUPERVISION'
 -- CreateEnum
 CREATE TYPE "PracticeLevel" AS ENUM ('INSTRUCTOR', 'CURATOR', 'SUPERVISOR');
 
+-- CreateEnum
+CREATE TYPE "PaymentType" AS ENUM ('DOCUMENT_REVIEW', 'EXAM_ACCESS', 'REGISTRATION', 'FULL_PACKAGE');
+
+-- CreateEnum
+CREATE TYPE "PaymentStatus" AS ENUM ('UNPAID', 'PENDING', 'PAID');
+
+-- CreateEnum
+CREATE TYPE "NotificationType" AS ENUM ('CEU', 'SUPERVISION', 'MENTORSHIP', 'DOCUMENT');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -29,14 +38,43 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
+CREATE TABLE "Payment" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" "PaymentType" NOT NULL,
+    "status" "PaymentStatus" NOT NULL DEFAULT 'UNPAID',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "confirmedAt" TIMESTAMP(3),
+    "comment" TEXT,
+
+    CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Notification" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" "NotificationType" NOT NULL,
+    "message" TEXT NOT NULL,
+    "link" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Certificate" (
     "id" TEXT NOT NULL,
-    "number" TEXT NOT NULL,
-    "title" TEXT NOT NULL,
-    "fileUrl" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "groupId" TEXT NOT NULL,
+    "fileId" TEXT NOT NULL,
     "issuedAt" TIMESTAMP(3) NOT NULL,
     "expiresAt" TIMESTAMP(3) NOT NULL,
-    "userId" TEXT NOT NULL,
+    "isRenewal" BOOLEAN NOT NULL DEFAULT false,
+    "previousId" TEXT,
+    "confirmedById" TEXT,
+    "comment" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Certificate_pkey" PRIMARY KEY ("id")
 );
@@ -115,7 +153,6 @@ CREATE TABLE "UserGroup" (
 CREATE TABLE "DocumentReviewRequest" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "documentDetails" JSONB NOT NULL,
     "status" "RecordStatus" NOT NULL DEFAULT 'UNCONFIRMED',
     "paid" BOOLEAN NOT NULL DEFAULT false,
     "reviewerEmail" TEXT,
@@ -126,20 +163,56 @@ CREATE TABLE "DocumentReviewRequest" (
     CONSTRAINT "DocumentReviewRequest_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "UploadedFile" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "fileId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "type" TEXT,
+    "comment" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "requestId" TEXT,
+
+    CONSTRAINT "UploadedFile_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Certificate_number_key" ON "Certificate"("number");
+CREATE UNIQUE INDEX "Certificate_fileId_key" ON "Certificate"("fileId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Certificate_previousId_key" ON "Certificate"("previousId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Group_name_key" ON "Group"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "DocumentReviewRequest_userId_status_key" ON "DocumentReviewRequest"("userId", "status");
+CREATE UNIQUE INDEX "UploadedFile_fileId_key" ON "UploadedFile"("fileId");
+
+-- AddForeignKey
+ALTER TABLE "Payment" ADD CONSTRAINT "Payment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Certificate" ADD CONSTRAINT "Certificate_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Certificate" ADD CONSTRAINT "Certificate_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Certificate" ADD CONSTRAINT "Certificate_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES "UploadedFile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Certificate" ADD CONSTRAINT "Certificate_previousId_fkey" FOREIGN KEY ("previousId") REFERENCES "Certificate"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Certificate" ADD CONSTRAINT "Certificate_confirmedById_fkey" FOREIGN KEY ("confirmedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CEURecord" ADD CONSTRAINT "CEURecord_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -167,3 +240,9 @@ ALTER TABLE "UserGroup" ADD CONSTRAINT "UserGroup_groupId_fkey" FOREIGN KEY ("gr
 
 -- AddForeignKey
 ALTER TABLE "DocumentReviewRequest" ADD CONSTRAINT "DocumentReviewRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UploadedFile" ADD CONSTRAINT "UploadedFile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UploadedFile" ADD CONSTRAINT "UploadedFile_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "DocumentReviewRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;

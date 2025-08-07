@@ -34,6 +34,19 @@ enum PracticeLevel {
   SUPERVISOR
 }
 
+enum PaymentType {
+  DOCUMENT_REVIEW
+  EXAM_ACCESS
+  REGISTRATION
+  FULL_PACKAGE
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+}
+
 enum NotificationType {
   CEU
   SUPERVISION
@@ -66,9 +79,23 @@ model User {
 
   documentReviewRequests   DocumentReviewRequest[]
 
-  notifications Notification[]
+  payments                 Payment[]
+  notifications            Notification[]
 
   createdAt                DateTime @default(now())
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+
+  type        PaymentType
+  status      PaymentStatus @default(UNPAID)
+
+  createdAt   DateTime      @default(now())
+  confirmedAt DateTime?     // если статус PAID
+  comment     String?       // опционально
 }
 
 model Notification {
@@ -101,11 +128,12 @@ model Certificate {
   previous      Certificate?   @relation("CertificateHistory", fields: [previousId], references: [id])
   next          Certificate?   @relation("CertificateHistory")
 
-
   confirmedById String?
   confirmedBy   User?          @relation("CertificateConfirmedBy", fields: [confirmedById], references: [id])
 
   comment       String?
+  number        String
+  title         String
   createdAt     DateTime       @default(now())
 }
 

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLogout } from '../hooks/useLogout';
 import { Button } from '@/components/Button';
 import { QualificationStatusBlock } from '@/features/certificate/components/QualificationStatusBlock';
+import { UserPaymentDashboard } from '@/features/payment/components/UserPaymentDashboard';
 
 interface User {
   fullName: string;
@@ -51,6 +52,7 @@ export function UserInfo({ user }: { user: User }) {
       </Button>
 
       <QualificationStatusBlock activeGroupName={user.activeGroup?.name} />
+      <UserPaymentDashboard activeGroupName={user.activeGroup?.name || ''} />
     </div>
   );
 }

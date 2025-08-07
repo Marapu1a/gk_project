@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { prisma } from '../../lib/prisma';
 import { signJwt } from '../../utils/jwt';
 import { registerSchema } from '../../schemas/auth';
+import { PaymentType, PaymentStatus } from '@prisma/client';
 
 export async function registerHandler(req: FastifyRequest, reply: FastifyReply) {
   const parsed = registerSchema.safeParse(req.body);
@@ -30,6 +31,20 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       phone,
       role: 'STUDENT',
     },
+  });
+
+  // 👇 Добавляем все типы оплаты
+  await prisma.payment.createMany({
+    data: [
+      PaymentType.DOCUMENT_REVIEW,
+      PaymentType.EXAM_ACCESS,
+      PaymentType.REGISTRATION,
+      PaymentType.FULL_PACKAGE,
+    ].map((type) => ({
+      userId: user.id,
+      type,
+      status: PaymentStatus.UNPAID,
+    })),
   });
 
   const studentGroup = await prisma.group.findFirst({
