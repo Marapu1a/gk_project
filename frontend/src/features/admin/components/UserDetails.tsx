@@ -1,78 +1,45 @@
-import { DetailBlock } from './DetailBlock';
-import { useUserDetails } from '../hooks/useUserDetails';
+import { useParams } from 'react-router-dom';
+import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
+import UserBasicBlock from './UserBasicBlock';
+import CEUBlock from './CEUBlock';
+import SupervisionBlock from './SupervisionBlock';
+import PaymentsBlock from './PaymentsBlock';
+import DocReviewBlock from './DocReviewBlock';
+import DetailBlock from './DetailBlock';
+
 import { BackButton } from '@/components/BackButton';
 
-type Props = {
-  userId: string;
-};
+export default function UserDetails() {
+  const { id } = useParams<{ id: string }>();
+  const { data, isLoading, error } = useUserDetails(id || '');
 
-export function UserDetails({ userId }: Props) {
-  const { data, isLoading, error } = useUserDetails(userId);
-
-  console.log(data);
-
-  if (isLoading) return <p>Загрузка данных пользователя...</p>;
-  if (error) return <p className="text-error">Ошибка загрузки данных</p>;
-  if (!data) return <p className="text-error">Пользователь не найден</p>;
-
-  const formatDate = (date: string) => new Date(date).toLocaleDateString('ru-RU');
+  if (isLoading) return <p>Загрузка...</p>;
+  if (error || !data) return <p className="text-error">Ошибка загрузки пользователя</p>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-blue-dark">Детали пользователя</h1>
 
-      <div className="border rounded-xl shadow-sm p-6 space-y-6 bg-white">
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-green-brand">Основная информация</h2>
-          <p>
-            <strong>Имя:</strong> {data.fullName}
-          </p>
-          <p>
-            <strong>Email:</strong> {data.email}
-          </p>
-          <p>
-            <strong>Роль:</strong> {data.role}
-          </p>
-          <p>
-            <strong>Группы:</strong> {data.groups.map((g) => g.name).join(', ') || '—'}
-          </p>
-          <p>
-            <strong>Создан:</strong> {formatDate(data.createdAt)}
-          </p>
-        </div>
-
-        <DetailBlock
-          title="CEU-заявки"
-          items={data.ceuRecords.map((r) => ({
-            id: r.id,
-            name: `${r.eventName} (${formatDate(r.eventDate)})`,
-          }))}
+      <div className="space-y-6 bg-white p-6 rounded-xl shadow-sm border">
+        <UserBasicBlock
+          fullName={data.fullName}
+          email={data.email}
+          phone={data.phone}
+          birthDate={data.birthDate}
+          country={data.country}
+          city={data.city}
+          role={data.role}
+          createdAt={data.createdAt}
+          isEmailConfirmed={data.isEmailConfirmed}
+          groupName={
+            data.groups.length > 0 ? data.groups.sort((a, b) => a.rank - b.rank)[0].name : null
+          }
         />
-
-        <DetailBlock
-          title="Часы супервизии"
-          items={data.supervisionRecords.map((r) => ({
-            id: r.id,
-            name: formatDate(r.createdAt),
-          }))}
-        />
-
-        <DetailBlock
-          title="Сертификаты"
-          items={data.certificates.map((c) => ({
-            id: c.id,
-            name: `${c.title} (#${c.number})`,
-          }))}
-        />
-
-        <DetailBlock
-          title="Загруженные файлы"
-          items={data.uploadedFiles.map((f) => ({
-            id: f.id,
-            name: f.name,
-            fileId: f.fileId,
-          }))}
-        />
+        <CEUBlock ceuRecords={data.ceuRecords} />
+        <SupervisionBlock supervisionRecords={data.supervisionRecords} />
+        <PaymentsBlock payments={data.payments} />
+        <DocReviewBlock requests={data.documentReviewRequests} />
+        <DetailBlock title="Загруженные файлы" items={data.uploadedFiles} userId={data.id} />
       </div>
 
       <BackButton />

@@ -1,16 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { getUsers } from '../api/getUsers';
-import type { GetUsersResponse } from '../api/getUsers';
 
-export function useUsers(params: {
-  role?: string;
-  group?: string;
-  search?: string;
-  page?: number;
-  perPage?: number;
-}) {
-  return useQuery<GetUsersResponse>({
-    queryKey: ['users', params],
+export function useUsers(params: { search?: string; page?: number; perPage?: number }) {
+  return useQuery({
+    queryKey: ['admin', 'users', params],
     queryFn: () => getUsers(params),
+    placeholderData: (prev) => prev,
+    staleTime: 5 * 60 * 1000,
   });
 }

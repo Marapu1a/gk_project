@@ -1,6 +1,6 @@
 // src/pages/UserDetailsPage.tsx
 import { useParams } from 'react-router-dom';
-import { UserDetails } from '@/features/admin/components/UserDetails';
+import UserDetails from '@/features/admin/components/UserDetails';
 
 export default function UserDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -9,7 +9,7 @@ export default function UserDetailsPage() {
 
   return (
     <div className="p-6">
-      <UserDetails userId={id} />
+      <UserDetails />
     </div>
   );
 }
