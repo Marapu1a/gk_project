@@ -11,6 +11,7 @@ export type CurrentUser = {
   country: string | null;
   city: string | null;
   avatarUrl: string | null;
+  bio: string | null;
   groups: { id: string; name: string }[];
   activeGroup: { id: string; name: string; rank: number } | null;
 };

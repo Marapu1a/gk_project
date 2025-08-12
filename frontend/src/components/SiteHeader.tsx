@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export default function SiteHeader() {
   return (
     <header className="bg-white header-shadow">
@@ -9,19 +11,21 @@ export default function SiteHeader() {
 
         {/* Навигация */}
         <nav className="flex gap-[20.3px] items-center">
-          <a href="https://основной-сайт.рф/o-nas" className="nav-btn">
+          <a href="https://reestrpap.ru/about" className="nav-btn">
             О нас
           </a>
-          <a href="https://основной-сайт.рф/reestr" className="nav-btn">
+
+          <Link to="/registry" className="nav-btn">
             Реестр
-          </a>
-          <a href="https://основной-сайт.рф/sertifikatsiya" className="nav-btn">
+          </Link>
+
+          <a href="https://reestrpap.ru/certification" className="nav-btn">
             О сертификации
           </a>
-          <a href="https://основной-сайт.рф/tarify" className="nav-btn">
+          <a href="https://reestrpap.ru/pricing" className="nav-btn">
             Тарифы
           </a>
-          <a href="https://основной-сайт.рф/kontakty" className="nav-btn">
+          <a href="https://reestrpap.ru/contacts" className="nav-btn">
             Контакты
           </a>
         </nav>

@@ -44,7 +44,6 @@ export default function UserDetails() {
           groupName={
             data.groups.length > 0 ? data.groups.sort((a, b) => a.rank - b.rank)[0].name : null
           }
-          isEmailConfirmed={data.isEmailConfirmed}
         />
 
         <ActiveCertificateBlock certificates={data.certificates || []} />

@@ -75,6 +75,7 @@ model User {
   avatarUrl                String?
   isEmailConfirmed         Boolean  @default(false)
   role                     Role     @default(STUDENT)
+  bio                      String?
 
   certificates             Certificate[]
   ceuRecords               CEURecord[]

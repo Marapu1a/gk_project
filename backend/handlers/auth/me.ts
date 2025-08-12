@@ -19,6 +19,7 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
       country: true,
       city: true,
       avatarUrl: true,
+      bio: true,
       groups: {
         include: {
           group: { select: { id: true, name: true, rank: true } },
@@ -49,6 +50,7 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     country: dbUser.country,
     city: dbUser.city,
     avatarUrl: dbUser.avatarUrl,
+    bio: dbUser.bio,
     groups: groupList.map(({ id, name }) => ({ id, name })),
     activeGroup,
   });

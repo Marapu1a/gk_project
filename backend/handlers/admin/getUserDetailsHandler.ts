@@ -114,8 +114,16 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
           mimeType: true,
           type: true,
           comment: true,
-          createdAt: true
-        }
+          createdAt: true,
+          certificate: {
+            select: {
+              title: true,
+              number: true,
+              issuedAt: true,
+              expiresAt: true,
+            },
+          },
+        },
       },
 
       documentReviewRequests: {

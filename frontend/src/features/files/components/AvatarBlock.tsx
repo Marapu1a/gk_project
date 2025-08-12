@@ -24,11 +24,13 @@ export function AvatarBlock({ userId, avatarUrl, readOnly }: Props) {
 
   return (
     <div className="flex items-start gap-4">
-      <img
-        src={avatarUrl ? `${avatarUrl}?v=${ver}` : '/placeholder-avatar.svg'}
-        alt="avatar"
-        className="w-24 h-24 rounded-full object-cover border shadow-sm"
-      />
+      <div className="relative w-28 h-20 rounded-2xl bg-white overflow-hidden">
+        <img
+          src={avatarUrl ? `${avatarUrl}?v=${ver}` : '/avatar_placeholder.svg'}
+          alt="avatar"
+          className="absolute inset-0 w-full h-full object-contain"
+        />
+      </div>
 
       {!readOnly && (
         <div className="space-y-2">

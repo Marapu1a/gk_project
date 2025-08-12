@@ -20,7 +20,7 @@ import { notificationsRoutes } from './routes/notifications';
 import { moderatorsRoutes } from './routes/users';
 import { paymentRoutes } from './routes/payment';
 import { examApplicationRoutes } from './routes/examApplications';
-
+import { registryRoutes } from './routes/registry';
 
 dotenv.config()
 
@@ -56,6 +56,7 @@ app.register(notificationsRoutes);
 app.register(moderatorsRoutes);
 app.register(paymentRoutes);
 app.register(examApplicationRoutes);
+app.register(registryRoutes);
 
 app.get('/', async () => ({ ok: true }))
 

@@ -1,3 +1,5 @@
+// src/features/user/components/UserInfo.tsx
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLogout } from '../hooks/useLogout';
 import { Button } from '@/components/Button';
@@ -5,7 +7,9 @@ import { QualificationStatusBlock } from '@/features/certificate/components/Qual
 import { UserPaymentDashboard } from '@/features/payment/components/UserPaymentDashboard';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
-import { AvatarBlock } from '@/features/files/components/AvatarBlock';
+import { AvatarDisplay } from '@/features/files/components/AvatarDisplay';
+import { AvatarUploadModal } from '@/features/files/components/AvatarUploadModal';
+import { BioEditModal } from '@/features/user/components/BioEditModal';
 
 const roleLabels = {
   STUDENT: 'Ученик',
@@ -17,6 +21,9 @@ export function UserInfo() {
   const { data: user, isLoading } = useCurrentUser();
   const logout = useLogout();
   const navigate = useNavigate();
+
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const [bioOpen, setBioOpen] = useState(false);
 
   const { data: payments = [], isLoading: payLoading } = useUserPayments();
 
@@ -39,8 +46,14 @@ export function UserInfo() {
 
       {/* Body */}
       <div className="px-6 py-5 space-y-3 text-sm">
-        {/* Аватар */}
-        <AvatarBlock userId={user.id} avatarUrl={user.avatarUrl} readOnly={false} />
+        {/* Аватар (как в реестре) */}
+        <div className="flex items-start gap-4">
+          <AvatarDisplay src={user.avatarUrl} alt={user.fullName} />
+          <button className="btn btn-accent" onClick={() => setAvatarOpen(true)}>
+            Изменить аватар
+          </button>
+        </div>
+        {avatarOpen && <AvatarUploadModal userId={user.id} onClose={() => setAvatarOpen(false)} />}
 
         <p>
           <strong>Имя:</strong> {user.fullName}
@@ -54,6 +67,26 @@ export function UserInfo() {
         <p>
           <strong>Группа:</strong> {user.activeGroup?.name || '—'}
         </p>
+
+        {/* О себе */}
+        {user.bio ? (
+          <div className="rounded-2xl p-4" style={{ background: 'var(--color-blue-soft)' }}>
+            <div className="text-sm text-blue-dark whitespace-pre-wrap">{user.bio}</div>
+          </div>
+        ) : (
+          <div
+            className="rounded-xl p-3 text-sm"
+            style={{ background: 'var(--color-blue-soft)', border: '1px solid rgba(31,48,94,0.2)' }}
+          >
+            <p>Вы можете добавить краткое описание «О себе» (до 500 символов).</p>
+          </div>
+        )}
+        <button className="btn btn-accent" onClick={() => setBioOpen(true)}>
+          {user.bio ? 'Изменить «О себе»' : 'Добавить «О себе»'}
+        </button>
+        {bioOpen && (
+          <BioEditModal userId={user.id} initial={user.bio} onClose={() => setBioOpen(false)} />
+        )}
 
         {isAdmin ? (
           <Button onClick={() => navigate('/admin/document-review')} className="mt-2 mr-2">

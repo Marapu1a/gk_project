@@ -23,6 +23,8 @@ import ExamApplicationsPage from './pages/ExamApplicationsPage';
 import UserDetailsPage from '@/pages/UserDetailsPage';
 import CertificateIssuePage from '@/pages/CertificateIssuePage';
 import MyCertificatesPage from '@/pages/MyCertificatesPage';
+import RegistryPage from './pages/RegistryPage';
+import RegistryProfilePage from '@/pages/RegistryProfilePage';
 
 const queryClient = new QueryClient();
 
@@ -51,6 +53,8 @@ const router = createBrowserRouter([
       { path: 'exam-applications', element: <ExamApplicationsPage /> },
       { path: 'certificate', element: <CertificateIssuePage /> },
       { path: 'my-certificate', element: <MyCertificatesPage /> },
+      { path: 'registry', element: <RegistryPage /> },
+      { path: 'registry/:userId', element: <RegistryProfilePage /> },
     ],
   },
 ]);

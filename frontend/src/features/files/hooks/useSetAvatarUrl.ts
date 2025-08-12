@@ -14,7 +14,9 @@ export function useSetAvatarUrl(userId: string) {
     mutationFn: (url: string | null) => setAvatarUrl(userId, url),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['me'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'user', userId] }); // <-- ВАЖНО
-    }
+      qc.invalidateQueries({ queryKey: ['admin', 'user', userId] });
+      qc.invalidateQueries({ queryKey: ['registry'] });              // ← важно
+      qc.invalidateQueries({ queryKey: ['registry-profile', userId] }); // если есть деталь
+    },
   });
 }

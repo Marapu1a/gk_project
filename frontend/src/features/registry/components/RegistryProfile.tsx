@@ -1,0 +1,157 @@
+// src/features/registry/features/RegistryProfile.tsx
+import { useState } from 'react';
+import { useRegistryProfile } from '../hooks/useRegistryProfile';
+import { AvatarDisplay } from '@/features/files/components/AvatarDisplay';
+
+type Props = { userId: string };
+
+const backendUrl = import.meta.env.VITE_API_URL;
+
+export function RegistryProfile({ userId }: Props) {
+  const { data: p, isLoading, error } = useRegistryProfile(userId);
+  const [open, setOpen] = useState(false);
+
+  if (isLoading) return <div>Загрузка…</div>;
+  if (error || !p) return <div>Профиль не найден</div>;
+
+  const cert = p.certificate;
+  const certUrl = cert ? `${backendUrl}/uploads/${cert.fileId}` : '';
+  const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('ru-RU') : '—');
+
+  function since(d: string) {
+    const now = new Date();
+    const start = new Date(d);
+    let years = now.getFullYear() - start.getFullYear();
+    let months = now.getMonth() - start.getMonth();
+    let days = now.getDate() - start.getDate();
+    if (days < 0) months -= 1;
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    const parts = [];
+    if (years > 0) parts.push(`${years} ${decl(years, ['год', 'года', 'лет'])}`);
+    if (months > 0) parts.push(`${months} ${decl(months, ['месяц', 'месяца', 'месяцев'])}`);
+    if (!parts.length) parts.push('меньше месяца');
+    return parts.join(' ');
+  }
+  function decl(n: number, forms: [string, string, string]) {
+    const n10 = n % 10,
+      n100 = n % 100;
+    if (n10 === 1 && n100 !== 11) return forms[0];
+    if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return forms[1];
+    return forms[2];
+  }
+
+  return (
+    <div
+      className="rounded-2xl border bg-white p-6 space-y-6 header-shadow"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      {/* Шапка */}
+      <div className="flex items-start gap-4">
+        <AvatarDisplay src={p.avatarUrl} alt={p.fullName} />
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-blue-dark">{p.fullName}</h1>
+          <div className="text-sm text-gray-600">
+            {[p.country, p.city].filter(Boolean).join(', ') || '—'}
+          </div>
+          <div className="text-xs text-gray-500">
+            Регистрация: {fmt(p.createdAt)} · {since(p.createdAt)} назад
+          </div>
+        </div>
+      </div>
+
+      {/* О себе */}
+      {p.bio ? (
+        <div className="rounded-2xl p-4" style={{ background: 'var(--color-blue-soft)' }}>
+          <div className="text-sm text-blue-dark whitespace-pre-wrap">{p.bio}</div>
+        </div>
+      ) : null}
+
+      {/* Сертификат */}
+      {cert ? (
+        <div
+          className="rounded-2xl border p-5 space-y-4"
+          style={{ borderColor: 'var(--color-green-light)' }}
+        >
+          <h2 className="text-xl font-semibold text-blue-dark">Сертификат</h2>
+
+          {/* Двухколоночный блок, тянется по высоте */}
+          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_360px] items-stretch">
+            {/* Инфо */}
+            <div
+              className="rounded-xl p-4 bg-white header-shadow"
+              style={{ border: '1px solid var(--color-green-light)' }}
+            >
+              <dl className="text-base leading-6 space-y-3">
+                <div>
+                  <dt className="text-gray-500">Название</dt>
+                  <dd className="font-medium text-blue-dark">{cert.title}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Номер</dt>
+                  <dd className="font-medium">№ {cert.number}</dd>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <dt className="text-gray-500">Выдан</dt>
+                    <dd className="font-medium">{fmt(cert.issuedAt)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Действителен до</dt>
+                    <dd className="font-medium">{fmt(cert.expiresAt)}</dd>
+                  </div>
+                </div>
+              </dl>
+            </div>
+
+            {/* Превью (кликабельно), тянется по высоте колонки */}
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="rounded-xl border p-3 bg-white hover:bg-gray-50 flex flex-col justify-between"
+              style={{ borderColor: 'var(--color-green-light)' }}
+              aria-label="Открыть сертификат"
+            >
+              <div className="relative w-full flex-1 min-h-[220px] rounded-lg bg-white overflow-hidden">
+                <img
+                  src={certUrl}
+                  alt="certificate"
+                  className="absolute inset-0 w-full h-full object-contain"
+                />
+              </div>
+              <div className="mt-3 text-xs text-blue-dark text-center">
+                Открыть в полном размере
+              </div>
+            </button>
+          </div>
+
+          {/* Модалка A4 */}
+          {open && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
+              <div className="relative bg-white rounded-2xl p-4 w-[min(90vw,900px)] header-shadow">
+                <div
+                  className="relative mx-auto"
+                  style={{ width: '794px', maxWidth: '100%', aspectRatio: '1 / 1.414' }}
+                >
+                  <img
+                    src={certUrl}
+                    alt="certificate-full"
+                    className="absolute inset-0 w-full h-full object-contain"
+                  />
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button className="btn" onClick={() => setOpen(false)}>
+                    Закрыть
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}

@@ -96,7 +96,7 @@ export function UsersTable() {
       {/* Body */}
       <div className="p-6">
         {users.length === 0 ? (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-blue-dark">
             Ничего не найдено{search ? ` по «${search}»` : ''}.
           </p>
         ) : (
@@ -122,15 +122,16 @@ export function UsersTable() {
                   return (
                     <tr
                       key={u.id}
-                      className="border-t hover:bg-gray-50"
+                      className="border-t"
                       style={{ borderColor: 'var(--color-green-light)' }}
                     >
                       <td className="p-3 truncate">{u.fullName || '—'}</td>
                       <td className="p-3 truncate">{u.email}</td>
                       <td className="p-3">
                         <span
-                          className="rounded-full px-2 py-0.5 text-xs text-white"
+                          className="rounded-full px-2 py-0.5 text-xs"
                           style={{
+                            color: 'var(--color-white)',
                             background: isAdmin
                               ? 'var(--color-green-brand)'
                               : 'var(--color-blue-dark)',
@@ -149,7 +150,7 @@ export function UsersTable() {
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => onToggle(u)}
-                            className="btn btn-accent disabled:opacity-50"
+                            className="btn btn-accent"
                             disabled={isRowPending}
                             title={isAdmin ? 'Снять администратора' : 'Сделать админом'}
                           >
