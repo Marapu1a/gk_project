@@ -18,6 +18,7 @@ import DocumentReviewPage from './pages/DocumentReviewPage';
 import AdminDocumentReviewListPage from './pages/AdminDocumentReviewListPage';
 import AdminDocumentReviewDetailsPage from './pages/AdminDocumentReviewDetailsPage';
 import UsersPage from './pages/UsersPage';
+import ExamApplicationsPage from './pages/ExamApplicationsPage';
 import UserDetailsPage from '@/pages/UserDetailsPage';
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
       { path: 'admin/document-review/:id', element: <AdminDocumentReviewDetailsPage /> },
       { path: 'users', element: <UsersPage /> },
       { path: 'admin/users/:id', element: <UserDetailsPage /> },
+      { path: 'exam-applications', element: <ExamApplicationsPage /> },
     ],
   },
 ]);

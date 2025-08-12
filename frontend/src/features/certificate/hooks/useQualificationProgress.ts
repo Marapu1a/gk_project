@@ -28,7 +28,7 @@ type QualificationProgress = {
 
 export function useQualificationProgress(
   activeGroupName: string | undefined
-): QualificationProgress {
+): QualificationProgress & { examPaid: boolean } {
   const { data: ceuSummary, isLoading: ceuLoading } = useCeuSummary() as {
     data: CeuSummaryResponse;
     isLoading: boolean;
@@ -74,6 +74,11 @@ export function useQualificationProgress(
     docReview?.status === 'CONFIRMED' &&
     documentPayment?.status === 'PAID';
 
+  const examPaid =
+    (payments ?? []).some(
+      (p) => p.type === 'EXAM_ACCESS' && p.status === 'PAID'
+    );
+
   const reasons: string[] = [];
 
   if (mode === 'EXAM') {
@@ -92,5 +97,6 @@ export function useQualificationProgress(
     documentsReady,
     loading: ceuLoading || supervisionLoading || docLoading || paymentsLoading,
     reasons,
+    examPaid,
   };
 }

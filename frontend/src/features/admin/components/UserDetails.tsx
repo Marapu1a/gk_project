@@ -6,7 +6,6 @@ import SupervisionBlock from './SupervisionBlock';
 import PaymentsBlock from './PaymentsBlock';
 import DocReviewBlock from './DocReviewBlock';
 import DetailBlock from './DetailBlock';
-
 import { BackButton } from '@/components/BackButton';
 
 export default function UserDetails() {
@@ -30,14 +29,15 @@ export default function UserDetails() {
           city={data.city}
           role={data.role}
           createdAt={data.createdAt}
-          isEmailConfirmed={data.isEmailConfirmed}
           groupName={
             data.groups.length > 0 ? data.groups.sort((a, b) => a.rank - b.rank)[0].name : null
           }
+          isEmailConfirmed={data.isEmailConfirmed}
         />
-        <CEUBlock ceuRecords={data.ceuRecords} />
-        <SupervisionBlock supervisionRecords={data.supervisionRecords} />
-        <PaymentsBlock payments={data.payments} />
+
+        <CEUBlock ceuRecords={data.ceuRecords} userId={data.id} />
+        <SupervisionBlock supervisionRecords={data.supervisionRecords} userId={data.id} />
+        <PaymentsBlock payments={data.payments} userId={data.id} />
         <DocReviewBlock requests={data.documentReviewRequests} />
         <DetailBlock title="Загруженные файлы" items={data.uploadedFiles} userId={data.id} />
       </div>

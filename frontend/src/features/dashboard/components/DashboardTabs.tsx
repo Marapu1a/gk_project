@@ -63,6 +63,15 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
               </div>
             </Link>
           </li>
+
+          <li>
+            <Link to="/exam-applications" className="btn btn-brand w-full">
+              <div className="flex items-center justify-center gap-2">
+                <FileSearch size={18} />
+                <span>Заявки на экзамен</span>
+              </div>
+            </Link>
+          </li>
         </ul>
       )}
 

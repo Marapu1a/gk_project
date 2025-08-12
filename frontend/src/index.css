@@ -57,6 +57,33 @@ body {
   background-color: var(--color-green-dark);
 }
 
+/* === Buttons: accent & danger === */
+.btn-accent {
+  background-color: var(--color-blue-dark);
+  color: var(--color-white);
+}
+
+.btn-accent:hover {
+  background-color: var(--color-blue-darker);
+}
+
+.btn-danger {
+  background-color: #ef4444;
+  /* красный 500 */
+  color: var(--color-white);
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+  /* красный 600 */
+}
+
+/* Общие состояния (на всякий случай) */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ==========================================================================
    ✏️ Инпуты и формы
    ========================================================================== */

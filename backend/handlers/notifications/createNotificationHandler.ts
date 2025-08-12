@@ -4,7 +4,7 @@ import { prisma } from '../../lib/prisma';
 export async function createNotificationHandler(req: FastifyRequest, reply: FastifyReply) {
   const body = req.body as {
     userId: string;
-    type: 'CEU' | 'SUPERVISION' | 'MENTORSHIP' | 'DOCUMENT';
+    type: 'CEU' | 'SUPERVISION' | 'MENTORSHIP' | 'DOCUMENT' | 'EXAM' | 'PAYMENT';
     message: string;
     link?: string;
   };

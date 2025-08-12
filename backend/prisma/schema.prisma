@@ -41,6 +41,13 @@ enum PaymentType {
   FULL_PACKAGE
 }
 
+enum ExamStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum PaymentStatus {
   UNPAID
   PENDING
@@ -52,6 +59,8 @@ enum NotificationType {
   SUPERVISION
   MENTORSHIP
   DOCUMENT
+  EXAM
+  PAYMENT
 }
 
 model User {
@@ -79,6 +88,7 @@ model User {
 
   documentReviewRequests   DocumentReviewRequest[]
 
+  examApplication          ExamApplication?
   payments                 Payment[]
   notifications            Notification[]
 
@@ -106,6 +116,15 @@ model Notification {
   message   String
   link      String?
   createdAt DateTime         @default(now())
+}
+
+model ExamApplication {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    ExamStatus @default(NOT_SUBMITTED)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model Certificate {

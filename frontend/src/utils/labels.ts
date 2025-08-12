@@ -33,6 +33,7 @@ export const paymentTypeLabels: Record<string, string> = {
 export const paymentStatusLabels: Record<string, string> = {
   PAID: 'Оплачен',
   UNPAID: 'Не оплачен',
+  PENDING: 'Ожидает подтверждения',
 };
 
 // Документы (типы)

@@ -1,21 +1,21 @@
+// src/features/payment/hooks/useUpdatePaymentStatus.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updatePaymentStatus } from '../api/updatePaymentStatus';
 
-export function useUpdatePaymentStatus() {
-  const queryClient = useQueryClient();
+export function useUpdatePaymentStatus(userId: string) {
+  const qc = useQueryClient();
+  const userKey = ['admin', 'user', userId] as const;
 
   return useMutation({
-    mutationFn: ({
-      id,
-      status,
-      comment,
-    }: {
+    mutationFn: ({ id, status, comment }: {
       id: string;
       status: 'UNPAID' | 'PENDING' | 'PAID';
       comment?: string;
     }) => updatePaymentStatus(id, status, comment),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payments', 'user'] });
+      qc.invalidateQueries({ queryKey: userKey });
+      // если где-то есть отдельный список платежей
+      qc.invalidateQueries({ queryKey: ['payments', 'user', userId] });
     },
   });
 }
