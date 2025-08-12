@@ -17,6 +17,10 @@
   --color-white: #FFFFFF;
 
   --font-sans: 'Manrope', sans-serif;
+
+  --sonner-success: var(--color-green-brand);
+  --sonner-error: #ef4444;
+  --sonner-primary: var(--color-blue-dark);
 }
 
 /* ==========================================================================
@@ -57,7 +61,6 @@ body {
   background-color: var(--color-green-dark);
 }
 
-/* === Buttons: accent & danger === */
 .btn-accent {
   background-color: var(--color-blue-dark);
   color: var(--color-white);
@@ -69,16 +72,13 @@ body {
 
 .btn-danger {
   background-color: #ef4444;
-  /* красный 500 */
   color: var(--color-white);
 }
 
 .btn-danger:hover {
   background-color: #dc2626;
-  /* красный 600 */
 }
 
-/* Общие состояния (на всякий случай) */
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -127,7 +127,6 @@ body {
 /* ==========================================================================
    🧭 Header навигация
    ========================================================================== */
-
 .nav-btn {
   display: inline-block;
   background-color: var(--color-blue-dark);
@@ -149,15 +148,9 @@ body {
   border-color: var(--color-blue-darker);
 }
 
-
-.nav-btn:hover {
-  background-color: var(--color-blue-darker);
-}
-
 /* ==========================================================================
    🧭 Header (тень)
    ========================================================================== */
-
 .header-shadow {
   box-shadow: 0px 10px 15px 0px rgba(0, 0, 0, 0.1);
 }
@@ -170,4 +163,29 @@ body {
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* ==========================================================================
+   🔔 Sonner Toasts кастомизация
+   ========================================================================== */
+[data-sonner-toaster] {
+  font-family: var(--font-sans);
+}
+
+[data-sonner-toast] {
+  border: 1px solid var(--color-green-light);
+  border-radius: 12px;
+}
+
+[data-sonner-toast][data-type="success"] {
+  border-left: 4px solid var(--color-green-brand);
+}
+
+[data-sonner-toast][data-type="error"] {
+  border-left: 4px solid #ef4444;
+}
+
+[data-sonner-toast][data-type="info"],
+[data-sonner-toast][data-type="warning"] {
+  border-left: 4px solid var(--color-blue-dark);
 }

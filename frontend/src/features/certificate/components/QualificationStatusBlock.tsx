@@ -27,14 +27,23 @@ export function QualificationStatusBlock({
     documentsReady,
     loading,
     reasons,
-    examPaid, // может быть undefined — ок
+    examPaid,
   } = useQualificationProgress(activeGroupName) as any;
 
   const { data: app, isLoading: appLoading } = useMyExamApp();
   const patchStatus = usePatchExamAppStatus();
   const queryClient = useQueryClient();
 
-  if (loading || appLoading) return <p>Загрузка статуса сертификации...</p>;
+  if (loading || appLoading) {
+    return (
+      <div
+        className="rounded-2xl border header-shadow bg-white p-6 text-sm"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        Загрузка статуса сертификации...
+      </div>
+    );
+  }
 
   const canSubmit =
     isEligible === true &&
@@ -49,7 +58,7 @@ export function QualificationStatusBlock({
       {
         onSuccess: async () => {
           try {
-            const moderators = await getModerators(); // админы/модераторы
+            const moderators = await getModerators();
             await Promise.all(
               moderators.map((m) =>
                 postNotification({
@@ -69,90 +78,101 @@ export function QualificationStatusBlock({
   };
 
   return (
-    <div className="border rounded-xl p-4 space-y-4 bg-white shadow">
-      <h3 className="text-lg font-semibold text-blue-dark">
-        Сертификация ({mode === 'EXAM' ? 'Первичная' : 'Продление'})
-      </h3>
+    <div
+      className="rounded-2xl border header-shadow bg-white"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      {/* Header */}
+      <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
+        <h3 className="text-lg font-semibold text-blue-dark">
+          Сертификация ({mode === 'EXAM' ? 'Первичная' : 'Продление'})
+        </h3>
+      </div>
 
-      {targetGroup && (
-        <p>
-          <strong>Целевая группа:</strong> {targetGroup}
-        </p>
-      )}
-
-      <ul className="space-y-1">
-        <li className="flex items-center gap-2">
-          {ceuReady ? (
-            <CheckCircle className="text-green-600" size={18} />
-          ) : (
-            <XCircle className="text-red-600" size={18} />
-          )}
-          CEU-баллы: {ceuReady ? 'достаточно' : 'недостаточно'}
-        </li>
-        <li className="flex items-center gap-2">
-          {supervisionReady ? (
-            <CheckCircle className="text-green-600" size={18} />
-          ) : (
-            <XCircle className="text-red-600" size={18} />
-          )}
-          Часы супервизии: {supervisionReady ? 'достаточно' : 'недостаточно'}
-        </li>
-        <li className="flex items-center gap-2">
-          {documentsReady ? (
-            <CheckCircle className="text-green-600" size={18} />
-          ) : (
-            <XCircle className="text-red-600" size={18} />
-          )}
-          Документы: {documentsReady ? 'подтверждены' : 'не подтверждены'}
-        </li>
-      </ul>
-
-      <p>
-        <strong>Общий статус:</strong>{' '}
-        {isEligible ? (
-          <span className="text-green-700 font-semibold">допущен к сертификации</span>
-        ) : (
-          <span className="text-red-700 font-semibold">не допущен</span>
+      {/* Body */}
+      <div className="px-6 py-5 space-y-4 text-sm">
+        {targetGroup && (
+          <p>
+            <strong>Целевая группа:</strong> {targetGroup}
+          </p>
         )}
-      </p>
 
-      {app && (
+        <ul className="space-y-1">
+          <li className="flex items-center gap-2">
+            {ceuReady ? (
+              <CheckCircle className="text-green-600" size={18} />
+            ) : (
+              <XCircle className="text-red-600" size={18} />
+            )}
+            CEU-баллы: {ceuReady ? 'достаточно' : 'недостаточно'}
+          </li>
+          <li className="flex items-center gap-2">
+            {supervisionReady ? (
+              <CheckCircle className="text-green-600" size={18} />
+            ) : (
+              <XCircle className="text-red-600" size={18} />
+            )}
+            Часы супервизии: {supervisionReady ? 'достаточно' : 'недостаточно'}
+          </li>
+          <li className="flex items-center gap-2">
+            {documentsReady ? (
+              <CheckCircle className="text-green-600" size={18} />
+            ) : (
+              <XCircle className="text-red-600" size={18} />
+            )}
+            Документы: {documentsReady ? 'подтверждены' : 'не подтверждены'}
+          </li>
+        </ul>
+
         <p>
-          <strong>Заявка на экзамен:</strong>{' '}
-          <span className="font-semibold">
-            {statusLabels[app.status as keyof typeof statusLabels]}
-          </span>
-        </p>
-      )}
-
-      {canSubmit ? (
-        <button onClick={onSubmit} className="btn btn-brand" disabled={patchStatus.isPending}>
-          {patchStatus.isPending ? 'Отправляем…' : 'Отправить заявку на экзамен'}
-        </button>
-      ) : (
-        <div className="text-sm text-gray-600 space-y-1">
-          {app ? (
-            <div>
-              Заявка уже в статусе: {statusLabels[app.status as keyof typeof statusLabels]}.
-            </div>
+          <strong>Общий статус:</strong>{' '}
+          {isEligible ? (
+            <span className="text-green-700 font-semibold">допущен к сертификации</span>
           ) : (
-            <div>Заявка отсутствует.</div>
+            <span className="text-red-700 font-semibold">не допущен</span>
           )}
-          {isEligible !== true && <div>Нет допуска — сначала выполните условия.</div>}
-          {examPaid !== true && <div>Нет оплаты экзамена — оплатите, чтобы отправить заявку.</div>}
-        </div>
-      )}
+        </p>
 
-      {!isEligible && reasons?.length > 0 && (
-        <div>
-          <p className="font-semibold text-red-700">Причины недопуска:</p>
-          <ul className="list-disc pl-5 text-sm">
-            {reasons.map((reason: string, idx: number) => (
-              <li key={idx}>{reason}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+        {app && (
+          <p>
+            <strong>Заявка на экзамен:</strong>{' '}
+            <span className="font-semibold">
+              {statusLabels[app.status as keyof typeof statusLabels]}
+            </span>
+          </p>
+        )}
+
+        {canSubmit ? (
+          <button onClick={onSubmit} className="btn btn-brand" disabled={patchStatus.isPending}>
+            {patchStatus.isPending ? 'Отправляем…' : 'Отправить заявку на экзамен'}
+          </button>
+        ) : (
+          <div className="text-sm text-gray-600 space-y-1">
+            {app ? (
+              <div>
+                Заявка уже в статусе: {statusLabels[app.status as keyof typeof statusLabels]}.
+              </div>
+            ) : (
+              <div>Заявка отсутствует.</div>
+            )}
+            {isEligible !== true && <div>Нет допуска — сначала выполните условия.</div>}
+            {examPaid !== true && (
+              <div>Нет оплаты экзамена — оплатите, чтобы отправить заявку.</div>
+            )}
+          </div>
+        )}
+
+        {!isEligible && reasons?.length > 0 && (
+          <div>
+            <p className="font-semibold text-red-700">Причины недопуска:</p>
+            <ul className="list-disc pl-5 text-sm">
+              {reasons.map((reason: string, idx: number) => (
+                <li key={idx}>{reason}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

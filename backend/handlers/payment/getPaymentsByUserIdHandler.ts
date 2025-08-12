@@ -12,7 +12,14 @@ export async function getPaymentsByUserIdHandler(req: FastifyRequest, reply: Fas
   const payments = await prisma.payment.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
+    include: { user: { select: { email: true } } },
   });
 
-  return reply.send(payments);
+  // отдаем плоскую структуру: userEmail + без вложенного user
+  const result = payments.map(({ user, ...p }) => ({
+    ...p,
+    userEmail: user?.email ?? null,
+  }));
+
+  return reply.send(result);
 }

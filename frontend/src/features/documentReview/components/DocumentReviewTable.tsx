@@ -1,5 +1,6 @@
 import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
 import { type UploadedFile } from '@/utils/MultiFileUpload';
+import { X } from 'lucide-react';
 
 const backendUrl = import.meta.env.VITE_API_URL;
 
@@ -16,7 +17,8 @@ export function DocumentReviewTable({ files, onDelete, onTypeChange, disabled }:
       {files.map((file) => (
         <div
           key={file.id}
-          className="flex items-center gap-4 p-3 border border-green-light rounded bg-green-light/10"
+          className="flex items-center gap-4 p-3 rounded border bg-green-light/10"
+          style={{ borderColor: 'var(--color-green-light)' }}
         >
           {file.mimeType.startsWith('image/') ? (
             <img
@@ -32,7 +34,7 @@ export function DocumentReviewTable({ files, onDelete, onTypeChange, disabled }:
             <span className="text-xs">{file.name}</span>
           )}
 
-          <div className="flex-1 space-y-1">
+          <div className="flex-1 space-y-1 min-w-0">
             <p className="text-sm font-medium truncate">{file.name}</p>
             <select
               value={file.type || ''}
@@ -52,11 +54,11 @@ export function DocumentReviewTable({ files, onDelete, onTypeChange, disabled }:
           <button
             type="button"
             onClick={() => onDelete(file.id)}
-            className="text-red-500 hover:text-red-700 text-lg font-bold"
+            className="p-1 text-red-500 hover:text-red-700 transition"
             title="Удалить файл"
             disabled={disabled}
           >
-            ×
+            <X className="w-5 h-5" />
           </button>
         </div>
       ))}

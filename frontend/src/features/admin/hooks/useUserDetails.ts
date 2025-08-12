@@ -7,5 +7,7 @@ export function useUserDetails(id: string) {
     queryFn: () => getUserDetails(id),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }

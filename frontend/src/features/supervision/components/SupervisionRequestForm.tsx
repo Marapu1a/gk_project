@@ -10,6 +10,7 @@ import { getUserByEmail } from '@/features/notifications/api/getUserByEmail';
 import { postNotification } from '@/features/notifications/api/notifications';
 import { BackButton } from '@/components/BackButton';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export function SupervisionRequestForm() {
   const navigate = useNavigate();
@@ -59,7 +60,7 @@ export function SupervisionRequestForm() {
       const supervisor = await getUserByEmail(data.supervisorEmail);
 
       if (!supervisor?.id) {
-        alert('Супервизор не найден');
+        toast.error('Супервизор не найден');
         return;
       }
 
@@ -74,11 +75,12 @@ export function SupervisionRequestForm() {
 
       queryClient.invalidateQueries({ queryKey: ['supervision', 'summary'] });
       queryClient.invalidateQueries({ queryKey: ['supervision', 'unconfirmed'] });
-      alert('Заявка отправлена');
+
+      toast.success('Заявка отправлена');
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Ошибка при отправке формы:', err);
-      alert(err?.response?.data?.error || 'Ошибка отправки');
+      toast.error(err?.response?.data?.error || 'Ошибка отправки');
     }
   };
 

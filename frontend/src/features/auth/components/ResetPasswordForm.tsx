@@ -5,6 +5,7 @@ import { resetPassword } from '../api/passwordReset';
 import { z } from 'zod';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/Button';
+import { toast } from 'sonner';
 
 type FormData = z.infer<typeof resetPasswordSchema>;
 
@@ -16,9 +17,11 @@ export function ResetPasswordForm() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(resetPasswordSchema),
+    mode: 'onSubmit',
   });
 
   if (!token) {
@@ -29,35 +32,60 @@ export function ResetPasswordForm() {
     );
   }
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = handleSubmit(async (data) => {
     try {
       await resetPassword({ token, password: data.password });
-      alert('Пароль успешно изменён');
+      toast.success('Пароль обновлён');
       navigate('/login');
-    } catch (err) {
-      console.error(err);
-      alert('Ссылка устарела или недействительна');
+    } catch (err: any) {
+      const message = err?.response?.data?.error || 'Ссылка устарела или недействительна';
+      setError('root.serverError', { message });
+      toast.error(message);
     }
-  };
+  });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-md mx-auto mt-10">
-      <h1 className="text-xl font-bold text-blue-dark">Сброс пароля</h1>
-
-      <div>
-        <input
-          type="password"
-          placeholder="Новый пароль (мин. 6 символов)"
-          title="Минимум 6 символов"
-          className="input w-full"
-          {...register('password')}
-        />
-        {errors.password && <p className="text-error mt-1">{errors.password.message}</p>}
+    <div
+      className="w-full max-w-md mx-auto mt-10 rounded-2xl border header-shadow bg-white"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      {/* Header */}
+      <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
+        <h1 className="text-xl font-semibold text-blue-dark">Сброс пароля</h1>
       </div>
 
-      <Button type="submit" loading={isSubmitting} className="w-full">
-        Установить новый пароль
-      </Button>
-    </form>
+      {/* Body */}
+      <form onSubmit={onSubmit} className="px-6 py-5 space-y-4">
+        {errors.root?.serverError && (
+          <div
+            className="text-error text-sm border rounded-md p-3"
+            style={{ borderColor: 'var(--color-green-light)' }}
+          >
+            {errors.root.serverError.message}
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="password" className="block mb-1 text-sm text-blue-dark">
+            Новый пароль
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            className="input w-full"
+            placeholder="Мин. 6 символов"
+            disabled={isSubmitting}
+            aria-invalid={!!errors.password}
+            {...register('password')}
+          />
+          {errors.password && <p className="text-error mt-1">{errors.password.message}</p>}
+        </div>
+
+        <Button type="submit" loading={isSubmitting} disabled={isSubmitting} className="w-full">
+          Установить новый пароль
+        </Button>
+      </form>
+    </div>
   );
 }

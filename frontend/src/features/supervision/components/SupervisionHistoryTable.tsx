@@ -17,20 +17,41 @@ const statusMap: Record<string, string> = {
 export function SupervisionHistoryTable() {
   const { data, isLoading, error } = useSupervisionHistory();
 
-  if (isLoading) return <p>Загрузка истории часов...</p>;
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border header-shadow bg-white p-6 text-sm">
+        Загрузка истории часов…
+      </div>
+    );
+  }
+
   if (error || !data || !Array.isArray(data)) {
     console.error('Invalid supervision history data:', data);
-    return <p className="text-error">Ошибка загрузки истории</p>;
+    return (
+      <div className="rounded-2xl border header-shadow bg-white p-6 text-error">
+        Ошибка загрузки истории
+      </div>
+    );
   }
 
   return (
-    <div className="border border-blue-dark/10 bg-white p-6 rounded-xl shadow-sm space-y-4">
-      <h3 className="text-xl font-semibold text-blue-dark">История супервизии</h3>
+    <div
+      className="rounded-2xl border header-shadow bg-white overflow-hidden"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      {/* Header */}
+      <div
+        className="px-6 py-4 border-b flex items-center justify-between"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        <h2 className="text-xl font-semibold text-blue-dark">История супервизии</h2>
+      </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border border-gray-200">
+      {/* Body */}
+      <div className="p-6 overflow-x-auto">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="bg-blue-soft text-sm font-medium">
+            <tr className="text-blue-dark" style={{ background: 'var(--color-blue-soft)' }}>
               <th className="p-2 text-center">Дата</th>
               <th className="p-2 text-center">Тип</th>
               <th className="p-2 text-center">Часы</th>
@@ -41,7 +62,11 @@ export function SupervisionHistoryTable() {
           </thead>
           <tbody>
             {data.map((hour) => (
-              <tr key={hour.id} className="border-t border-gray-100 hover:bg-gray-50">
+              <tr
+                key={hour.id}
+                className="border-t hover:bg-gray-50"
+                style={{ borderColor: 'var(--color-green-light)' }}
+              >
                 <td className="p-2 text-center">
                   {format(new Date(hour.createdAt), 'dd.MM.yyyy')}
                 </td>

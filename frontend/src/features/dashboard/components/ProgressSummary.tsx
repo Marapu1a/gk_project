@@ -26,29 +26,47 @@ export function ProgressSummary() {
   const isAboveCeu = isSupervisor || isSeniorSupervisor;
 
   return (
-    <div className="space-y-4 text-sm">
-      <h2 className="text-xl font-semibold text-blue-dark">Прогресс CEU и супервизии</h2>
+    <div
+      className="rounded-2xl border header-shadow bg-white"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      {/* Header */}
+      <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
+        <h2 className="text-xl font-semibold text-blue-dark">Прогресс CEU и супервизии</h2>
+      </div>
 
-      {activeGroup && (
-        <p className="italic">
-          Ваш текущий уровень: <strong>{user.activeGroup.name}</strong>
-        </p>
-      )}
+      {/* Body */}
+      <div className="px-6 py-5 space-y-4 text-sm">
+        {user?.activeGroup?.name && (
+          <div className="rounded-xl p-3" style={{ background: 'var(--color-blue-soft)' }}>
+            <p>
+              Текущий уровень: <strong>{user.activeGroup.name}</strong>
+            </p>
+          </div>
+        )}
 
-      {isSupervisor && (
-        <p className="text-sm text-red-600 italic">
-          Не забывайте проходить <strong>менторство</strong>!
-        </p>
-      )}
+        {isSupervisor && (
+          <div
+            className="rounded-xl p-3 border"
+            style={{ borderColor: 'var(--color-green-light)' }}
+          >
+            <p className="text-red-600">
+              Напоминание: не забывайте проходить <strong>менторство</strong>.
+            </p>
+          </div>
+        )}
 
-      {target && !isAboveCeu && (
-        <p className="italic">
-          Вы копите баллы и часы для перехода в категорию: <strong>{target}</strong>
-        </p>
-      )}
+        {target && !isAboveCeu && (
+          <div className="rounded-xl p-3" style={{ background: 'var(--color-blue-soft)' }}>
+            <p>
+              Цель перехода: <strong>{target}</strong>
+            </p>
+          </div>
+        )}
 
-      {!isAboveCeu && <CeuSummaryBlock />}
-      <SupervisionSummaryBlock user={user} />
+        {!isAboveCeu && <CeuSummaryBlock />}
+        <SupervisionSummaryBlock user={user} />
+      </div>
     </div>
   );
 }

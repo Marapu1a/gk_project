@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { postNotification } from '@/features/notifications/api/notifications';
 import { usePatchExamAppStatus } from '../hooks/usePatchExamAppStatus';
-import { StatusPill } from '@/components/StatusPill';
+import { toast } from 'sonner';
 
 type ExamStatus = 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -31,8 +31,9 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
   const mutate = usePatchExamAppStatus();
 
   const doChange = (next: ExamStatus) => {
+    // обязательный коммент при отклонении
     if (next === 'REJECTED' && !comment.trim()) {
-      alert('Нужен комментарий для отклонения.');
+      toast.error('Нужен комментарий для отклонения.');
       return;
     }
 
@@ -47,6 +48,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
                 ? `Заявка на экзамен отклонена: ${comment.trim()}`
                 : 'Заявка на экзамен сброшена, можно подать заново';
 
+          let notifFailed = false;
           try {
             await postNotification({
               userId: app.userId,
@@ -54,10 +56,20 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
               message,
               link: '/dashboard',
             });
+          } catch {
+            notifFailed = true;
           } finally {
             queryClient.invalidateQueries({ queryKey: ['exam-apps'] });
             onClose();
+            toast.success(message);
+            if (notifFailed) {
+              toast.info('Статус изменён, но уведомление отправить не удалось.');
+            }
           }
+        },
+        onError: (err: any) => {
+          const msg = err?.response?.data?.error || 'Не удалось изменить статус';
+          toast.error(msg);
         },
       },
     );
@@ -96,9 +108,6 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
             <div className="text-blue-dark font-medium">Статус:</div>
             <div className="inline-flex items-center gap-2">
               <span>{statusLabel[app.status]}</span>
-              {app.status === 'APPROVED' && <StatusPill tone="green">OK</StatusPill>}
-              {app.status === 'REJECTED' && <StatusPill tone="red">ERR</StatusPill>}
-              {app.status === 'PENDING' && <StatusPill>WAIT</StatusPill>}
             </div>
 
             <div className="text-blue-dark font-medium">Обновлено:</div>
@@ -116,6 +125,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
               onChange={(e) => setComment(e.target.value)}
               placeholder="Причина решения…"
               style={{ resize: 'vertical' }}
+              disabled={disabled}
             />
           </div>
         </div>

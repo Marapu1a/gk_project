@@ -5,8 +5,12 @@ export function CeuSummaryBlock() {
   const { data: summary, isLoading: loadingSummary } = useCeuSummary();
   const { data: unconfirmed, isLoading: loadingUnconfirmed } = useCeuUnconfirmed();
 
-  if (loadingSummary || loadingUnconfirmed) return <p>Загрузка CEU...</p>;
-  if (!summary || !unconfirmed) return <p className="text-error">Ошибка загрузки CEU</p>;
+  if (loadingSummary || loadingUnconfirmed) {
+    return <p className="text-sm text-blue-dark">Загрузка CEU…</p>;
+  }
+  if (!summary || !unconfirmed) {
+    return <p className="text-error">Ошибка загрузки CEU</p>;
+  }
 
   const categories = ['ethics', 'cultDiver', 'supervision', 'general'] as const;
 
@@ -17,33 +21,64 @@ export function CeuSummaryBlock() {
     general: 'Общие баллы',
   };
 
+  const fmtPercent = (v?: number) => (typeof v === 'number' ? Math.min(Math.max(v, 0), 100) : 0);
+
   return (
-    <div className="space-y-2 text-sm">
+    <div className="space-y-3 text-sm">
       <h3 className="text-lg font-semibold text-blue-dark">CEU-баллы</h3>
-      <table className="w-full border border-blue-dark/10 rounded-md overflow-hidden">
-        <thead className="bg-blue-soft text-blue-dark text-left text-xs uppercase">
-          <tr>
-            <th className="p-2">Категория</th>
-            <th className="p-2 text-center">Требуется</th>
-            <th className="p-2 text-center">Доступно</th>
-            <th className="p-2 text-center">%</th>
-            <th className="p-2 text-center">На проверке</th>
-          </tr>
-        </thead>
-        <tbody>
-          {categories.map((cat) => (
-            <tr key={cat} className="border-t border-blue-dark/10">
-              <td className="p-2">{categoryLabels[cat]}</td>
-              <td className="p-2 text-center">{summary.required?.[cat] ?? '—'}</td>
-              <td className="p-2 text-center">{summary.usable[cat]}</td>
-              <td className="p-2 text-center">
-                {summary.percent ? Math.min(summary.percent[cat], 100) : '—'}
-              </td>
-              <td className="p-2 text-center">{unconfirmed[cat]}</td>
+
+      <div
+        className="overflow-x-auto rounded-2xl border"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-blue-dark" style={{ background: 'var(--color-blue-soft)' }}>
+              <th className="p-2 text-left">Категория</th>
+              <th className="p-2 text-center">Требуется</th>
+              <th className="p-2 text-center">Доступно</th>
+              <th className="p-2 text-center">Прогресс</th>
+              <th className="p-2 text-center">На проверке</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {categories.map((cat) => {
+              const percentValue = fmtPercent(summary.percent?.[cat]);
+              return (
+                <tr
+                  key={cat}
+                  className="border-t"
+                  style={{ borderColor: 'var(--color-green-light)' }}
+                >
+                  <td className="p-2">{categoryLabels[cat]}</td>
+                  <td className="p-2 text-center">{summary.required?.[cat] ?? '—'}</td>
+                  <td className="p-2 text-center">{summary.usable[cat]}</td>
+                  <td className="p-2 text-center">
+                    <div className="w-full max-w-[100px] mx-auto">
+                      <div
+                        className="h-2 rounded-full bg-gray-200 overflow-hidden"
+                        style={{ backgroundColor: 'var(--color-green-light)' }}
+                      >
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${percentValue}%`,
+                            backgroundColor: 'var(--color-green-brand)',
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-600">{percentValue}%</span>
+                    </div>
+                  </td>
+                  <td className="p-2 text-center">
+                    {unconfirmed[cat] > 0 ? unconfirmed[cat] : '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

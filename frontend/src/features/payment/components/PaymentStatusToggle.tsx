@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getModerators } from '@/features/notifications/api/moderators';
 import { postNotification } from '@/features/notifications/api/notifications';
 import type { PaymentItem } from '../api/getUserPayments';
+import { toast } from 'sonner';
 
 const PAYMENT_STATUS = {
   UNPAID: 'UNPAID',
@@ -23,6 +24,14 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
   const userEmail = payment.userEmail ?? payment.user?.email ?? '—';
   const adminUserLink = `/admin/users/${payment.userId}`;
 
+  const confirmToast = (message: string) =>
+    new Promise<boolean>((resolve) => {
+      toast(message, {
+        action: { label: 'Да', onClick: () => resolve(true) },
+        cancel: { label: 'Отмена', onClick: () => resolve(false) },
+      });
+    });
+
   const handleClick = async () => {
     const nextStatus = isAdmin
       ? payment.status === PAYMENT_STATUS.PAID
@@ -32,38 +41,46 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
         ? PAYMENT_STATUS.PENDING
         : PAYMENT_STATUS.UNPAID;
 
-    // ✅ Подтверждение для юзера (чтобы не спамил уведомлениями)
-    if (!isAdmin) {
-      const question =
-        nextStatus === 'PENDING'
-          ? 'Отправить отметку «Я оплатил»? Админам придёт уведомление.'
-          : 'Отменить вашу отметку об оплате?';
-      if (!window.confirm(question)) return;
-    }
+    // подтверждение для обоих ролей — действие чувствительное
+    const question = isAdmin
+      ? nextStatus === 'PAID'
+        ? `Подтвердить оплату для ${userEmail}?`
+        : `Снять оплату на перепроверку для ${userEmail}?`
+      : nextStatus === 'PENDING'
+        ? 'Отправить отметку «Я оплатил(а)»? Администраторам придёт уведомление.'
+        : 'Отменить вашу отметку об оплате?';
+
+    if (!(await confirmToast(question))) return;
 
     try {
       await mutation.mutateAsync({ id: payment.id, status: nextStatus });
 
       if (isAdmin) {
-        // Админ меняет статус — уведомляем пользователя, указываем его email
+        // админ → уведомляем пользователя
         const msg =
           nextStatus === 'PAID'
-            ? `Оплата подтверждена (${userEmail})`
-            : `Оплата снята на перепроверку (${userEmail})`;
-        await postNotification({
-          userId: payment.userId,
-          type: 'PAYMENT',
-          message: msg,
-          link: '/dashboard',
-        });
+            ? `Оплата для ${userEmail} подтверждена`
+            : `Оплата снята на перепроверку администратором`;
+        try {
+          await postNotification({
+            userId: payment.userId,
+            type: 'PAYMENT',
+            message: msg,
+            link: '/dashboard',
+          });
+        } catch {
+          toast.info('Статус обновлён, но уведомление пользователю не доставлено.');
+        }
+        toast.success(msg);
       } else {
-        // Пользователь меняет статус — уведомляем модераторов, линк на страницу пользователя
+        // пользователь → уведомляем модераторов
         const moderators = await getModerators();
         const msg =
           nextStatus === 'PENDING'
             ? `Новая отметка об оплате от ${userEmail}`
             : `Пользователь ${userEmail} отменил отметку об оплате`;
-        await Promise.all(
+
+        const results = await Promise.allSettled(
           moderators.map((m) =>
             postNotification({
               userId: m.id,
@@ -73,11 +90,17 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
             }),
           ),
         );
+        const failed = results.some((r) => r.status === 'rejected');
+        if (failed) toast.info('Статус обновлён, но часть уведомлений админам не ушла.');
+        toast.success(
+          nextStatus === 'PENDING' ? 'Отметка отправлена на подтверждение' : 'Отметка отменена',
+        );
       }
 
       await queryClient.invalidateQueries({ queryKey });
-    } catch (err) {
-      console.error('Ошибка при обновлении статуса оплаты:', err);
+    } catch (err: any) {
+      const message = err?.response?.data?.error || 'Ошибка обновления статуса оплаты';
+      toast.error(message);
     }
   };
 
@@ -103,7 +126,7 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
           ? 'Снять оплату'
           : 'Подтвердить оплату'
         : payment.status === PAYMENT_STATUS.UNPAID
-          ? 'Я оплатил'
+          ? 'Я оплатил(а)'
           : 'Отменить'}
     </button>
   );

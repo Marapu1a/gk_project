@@ -10,7 +10,7 @@ import path from 'path';
 import { authRoutes } from './routes/auth'
 import { ceuRoutes } from './routes/ceu'
 import { supervisionRoutes } from './routes/supervision'
-// import { certificateRoutes } from './routes/certificates'
+import { certificatesRoutes } from './routes/certificates';
 import { groupsRoutes } from './routes/groups'
 import { documentReviewRoutes } from './routes/documentReview';
 import { documentReviewRoutesAdmin } from './routes/documentReviewAdmin';
@@ -42,13 +42,13 @@ app.register(fastifyStatic, {
   prefix: '/uploads/',
 });
 
-app.register(cookie)
-app.register(authRoutes)
-app.register(ceuRoutes)
-app.register(supervisionRoutes)
-app.register(uploadRoutes)
-// app.register(certificateRoutes)
-app.register(groupsRoutes)
+app.register(cookie);
+app.register(authRoutes);
+app.register(ceuRoutes);
+app.register(supervisionRoutes);
+app.register(uploadRoutes);
+app.register(certificatesRoutes);
+app.register(groupsRoutes);
 app.register(documentReviewRoutes);
 app.register(documentReviewRoutesAdmin);
 app.register(usersRoutes);

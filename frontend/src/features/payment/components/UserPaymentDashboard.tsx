@@ -28,54 +28,64 @@ type Props = {
 };
 
 export function UserPaymentDashboard({ activeGroupName }: Props) {
-  const { data, isLoading } = useUserPayments();
+  const { data: payments, isLoading } = useUserPayments();
+  if (isLoading || !payments) return null;
 
-  if (isLoading || !data) return null;
+  const ordered = ORDERED_TYPES.map((t) => payments.find((p) => p.type === t)).filter(
+    Boolean,
+  ) as PaymentItem[];
 
   return (
-    <div className="bg-white border rounded shadow p-6 max-w-2xl mx-auto space-y-4">
-      <h2 className="text-xl font-bold text-blue-dark mb-2">
-        Мои оплаты {activeGroupName ? `(Текущий уровень: ${activeGroupName})` : ''}
-      </h2>
+    <div
+      className="w-full rounded-2xl border header-shadow bg-white"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      {/* Header */}
+      <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
+        <h2 className="text-xl font-bold text-blue-dark">
+          Мои оплаты {activeGroupName ? `(Текущий уровень: ${activeGroupName})` : ''}
+        </h2>
+      </div>
 
-      {ORDERED_TYPES.map((type) => {
-        const payment = data.find((p) => p.type === type);
-        if (!payment) return null;
+      {/* Body */}
+      <div className="px-6 py-5 space-y-4">
+        {ordered.map((payment, idx) => {
+          const link = getPaymentLink(payment.type, activeGroupName);
 
-        const link = getPaymentLink(type, activeGroupName);
+          return (
+            <div
+              key={payment.id}
+              className={`flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 ${
+                idx === 0 ? '' : 'border-t'
+              }`}
+              style={{ borderColor: 'var(--color-green-light)' }}
+            >
+              <div className="flex flex-col gap-1">
+                <div className="font-semibold">{LABELS[payment.type]}</div>
 
-        return (
-          <div
-            key={payment.id}
-            className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-t pt-4 first:border-t-0 first:pt-0"
-          >
-            <div className="flex flex-col gap-1">
-              <div className="font-semibold">{LABELS[payment.type]}</div>
+                <div className="text-sm text-gray-600">
+                  Статус: <span className="font-medium">{STATUS_LABELS[payment.status]}</span>
+                </div>
 
-              <div className="text-sm text-gray-600">
-                Статус: <span className="font-medium">{STATUS_LABELS[payment.status]}</span>
-              </div>
-
-              {link !== '#' && (
-                <div className="text-sm">
+                {link !== '#' && (
                   <a
                     href={link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-brand hover:underline"
+                    className="text-sm text-brand hover:underline"
                   >
                     Перейти к оплате
                   </a>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            <div className="mt-3 sm:mt-0">
-              <PaymentStatusToggle payment={payment} isAdmin={false} />
+              <div className="mt-3 sm:mt-0">
+                <PaymentStatusToggle payment={payment} isAdmin={false} />
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

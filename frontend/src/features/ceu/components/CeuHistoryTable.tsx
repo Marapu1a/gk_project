@@ -4,15 +4,41 @@ import { format } from 'date-fns';
 export function CeuHistoryTable() {
   const { data, isLoading, error } = useCeuHistory();
 
-  if (isLoading) return <p>Загрузка истории баллов...</p>;
-  if (error || !data) return <p className="text-error">Ошибка загрузки истории</p>;
+  if (isLoading) {
+    return (
+      <div
+        className="rounded-2xl border header-shadow bg-white p-6 text-sm"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        Загрузка истории баллов...
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div
+        className="rounded-2xl border header-shadow bg-white p-6 text-error"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        Ошибка загрузки истории
+      </div>
+    );
+  }
 
   return (
-    <div className="border border-blue-dark/10 bg-white p-6 rounded-xl shadow-sm space-y-4">
-      <h3 className="text-xl font-semibold text-blue-dark">История CEU-баллов</h3>
+    <div
+      className="rounded-2xl border header-shadow bg-white overflow-hidden"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      {/* Header */}
+      <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
+        <h3 className="text-xl font-semibold text-blue-dark">История CEU-баллов</h3>
+      </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border border-gray-200">
+      {/* Body */}
+      <div className="overflow-x-auto p-6">
+        <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
           <thead>
             <tr className="bg-blue-soft text-left text-sm font-medium">
               <th className="p-2">Мероприятие</th>

@@ -4,23 +4,35 @@ import UserBasicBlock from './UserBasicBlock';
 import CEUBlock from './CEUBlock';
 import SupervisionBlock from './SupervisionBlock';
 import PaymentsBlock from './PaymentsBlock';
-import DocReviewBlock from './DocReviewBlock';
 import DetailBlock from './DetailBlock';
+import ActiveCertificateBlock from './ActiveCertificateBlock';
 import { BackButton } from '@/components/BackButton';
 
 export default function UserDetails() {
   const { id } = useParams<{ id: string }>();
-  const { data, isLoading, error } = useUserDetails(id || '');
+  const { data, isLoading, error } = useUserDetails(id ?? '');
 
-  if (isLoading) return <p>Загрузка...</p>;
-  if (error || !data) return <p className="text-error">Ошибка загрузки пользователя</p>;
+  if (isLoading) return <p className="text-sm text-blue-dark p-6">Загрузка…</p>;
+  if (error || !data) return <p className="text-error p-6">Ошибка загрузки пользователя</p>;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-blue-dark">Детали пользователя</h1>
+    <div
+      className="rounded-2xl border header-shadow bg-white overflow-hidden max-w-5xl mx-auto"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      {/* Header */}
+      <div
+        className="px-6 py-4 border-b flex items-center justify-between"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        <h1 className="text-2xl font-bold text-blue-dark">Детали пользователя</h1>
+        <BackButton />
+      </div>
 
-      <div className="space-y-6 bg-white p-6 rounded-xl shadow-sm border">
+      {/* Body */}
+      <div className="p-6 space-y-6">
         <UserBasicBlock
+          userId={data.id}
           fullName={data.fullName}
           email={data.email}
           phone={data.phone}
@@ -35,14 +47,16 @@ export default function UserDetails() {
           isEmailConfirmed={data.isEmailConfirmed}
         />
 
+        <ActiveCertificateBlock certificates={data.certificates || []} />
+
         <CEUBlock ceuRecords={data.ceuRecords} userId={data.id} />
+
         <SupervisionBlock supervisionRecords={data.supervisionRecords} userId={data.id} />
+
         <PaymentsBlock payments={data.payments} userId={data.id} />
-        <DocReviewBlock requests={data.documentReviewRequests} />
+
         <DetailBlock title="Загруженные файлы" items={data.uploadedFiles} userId={data.id} />
       </div>
-
-      <BackButton />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { BookOpenCheck, Timer, Clock, ListChecks, FileSearch, Users } from 'lucide-react';
+import { BookOpenCheck, Timer, Clock, ListChecks, FileSearch, Users, Award } from 'lucide-react';
 
 type DashboardTabsProps = {
   user: {
@@ -18,8 +18,11 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
   const isExperiencedSupervisor = hasGroup('Опытный Супервизор');
 
   return (
-    <div className="bg-blue-soft border border-blue-dark/20 p-6 rounded-xl shadow-md space-y-6">
-      <h2 className="text-2xl font-bold text-blue-dark">Навигация</h2>
+    <div
+      className="rounded-2xl border header-shadow bg-white p-6 space-y-6"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      <h2 className="text-2xl font-semibold text-blue-dark">Навигация</h2>
 
       {/* Верхний ряд — действия пользователя */}
       {!isAdmin ? (
@@ -69,6 +72,15 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
               <div className="flex items-center justify-center gap-2">
                 <FileSearch size={18} />
                 <span>Заявки на экзамен</span>
+              </div>
+            </Link>
+          </li>
+
+          <li>
+            <Link to="/certificate" className="btn btn-brand w-full">
+              <div className="flex items-center justify-center gap-2">
+                <Award size={18} />
+                <span>Выдать сертификат</span>
               </div>
             </Link>
           </li>

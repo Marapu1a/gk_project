@@ -31,52 +31,92 @@ export function Dashboard() {
     return paid('REGISTRATION') || paid('FULL_PACKAGE');
   }, [payments]);
 
-  if (isLoading || paymentsLoading) return <p>Загрузка...</p>;
-  if (isError || !user) return <p className="text-error">Не удалось загрузить данные</p>;
+  if (isLoading || paymentsLoading) {
+    return (
+      <div className="container-fixed p-6">
+        <div
+          className="w-full max-w-3xl rounded-2xl border header-shadow bg-white p-6 text-sm text-blue-dark"
+          style={{ borderColor: 'var(--color-green-light)' }}
+        >
+          Загрузка…
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !user) {
+    return (
+      <div className="container-fixed p-6">
+        <div
+          className="w-full max-w-3xl rounded-2xl border header-shadow bg-white p-6"
+          style={{ borderColor: 'var(--color-green-light)' }}
+        >
+          <p className="text-error">Не удалось загрузить данные</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-8 max-w-6xl mx-auto">
-      <div className="flex justify-end">
-        <NotificationBell onClick={() => setOpenNotif(true)} />
+    <div className="container-fixed p-6 space-y-6">
+      {/* Header */}
+      <div
+        className="rounded-2xl border header-shadow bg-white"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        <div
+          className="px-6 py-4 border-b flex items-center justify-between"
+          style={{ borderColor: 'var(--color-green-light)' }}
+        >
+          <h1 className="text-2xl font-semibold text-blue-dark">Личный кабинет</h1>
+          <NotificationBell onClick={() => setOpenNotif(true)} />
+        </div>
+
+        {!isAdmin && !registrationPaid && (
+          <div className="px-6 py-4">
+            <div
+              className="rounded-xl p-4"
+              style={{
+                background: 'var(--color-blue-soft)',
+                border: '1px solid rgba(31,48,94,0.2)',
+              }}
+            >
+              <p className="text-sm">
+                Для доступа к функциям сертификации нужна оплата{' '}
+                <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
+              </p>
+              <div className="mt-2">
+                <Link to="/payments" className="text-brand hover:underline">
+                  Перейти к оплате
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <NotificationModal open={openNotif} onClose={() => setOpenNotif(false)} />
+      {/* Tabs */}
+      {(isAdmin || registrationPaid) && <DashboardTabs user={user} />}
 
-      <h1 className="text-3xl font-bold text-blue-dark">Личный кабинет</h1>
-
-      {isAdmin || registrationPaid ? (
-        <DashboardTabs user={user} />
-      ) : (
-        <div className="bg-blue-soft border border-blue-dark/20 rounded-xl p-4">
-          <p className="text-sm">
-            Для доступа к функциям сертификации нужна оплата{' '}
-            <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
-          </p>
-          <div className="mt-2">
-            <Link to="/payments" className="text-brand hover:underline">
-              Перейти к оплате
-            </Link>
-          </div>
-        </div>
-      )}
-
+      {/* Info + Progress */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white border rounded-xl shadow-sm p-6">
-          <UserInfo user={user} />
-        </div>
+        <UserInfo user={user} />
 
         {isAdmin || registrationPaid ? (
-          <div className="bg-white border rounded-xl shadow-sm p-6">
-            <ProgressSummary />
-          </div>
+          <ProgressSummary />
         ) : (
-          <div className="bg-white border rounded-xl shadow-sm p-6">
+          <div
+            className="rounded-2xl border header-shadow bg-white p-6"
+            style={{ borderColor: 'var(--color-green-light)' }}
+          >
             <p className="text-sm text-gray-600">
               Прогресс сертификации станет доступен после оплаты регистрации.
             </p>
           </div>
         )}
       </div>
+
+      <NotificationModal open={openNotif} onClose={() => setOpenNotif(false)} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useGetDocReviewRequestById } from '../hooks/useGetDocReviewRequestById';
 import { useUpdateDocReviewRequestStatus } from '../hooks/useUpdateDocReviewRequestStatus';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   documentReviewStatusLabels,
   documentReviewStatusColors,
@@ -37,18 +38,18 @@ export function AdminDocumentReviewDetails() {
   const { data: payments } = useUserPaymentsById(request?.user?.id);
   const documentPayment = payments?.find((p) => p.type === 'DOCUMENT_REVIEW');
 
-  if (isLoading) return <p>Загрузка...</p>;
-  if (error) return <p className="text-error">Ошибка загрузки</p>;
-  if (!request) return <p className="text-error">Заявка не найдена</p>;
+  if (isLoading) return <p className="p-6">Загрузка...</p>;
+  if (error) return <p className="p-6 text-error">Ошибка загрузки</p>;
+  if (!request) return <p className="p-6 text-error">Заявка не найдена</p>;
 
   const handleStatusUpdate = async () => {
     if (newStatus === 'REJECTED' && rejectComment.trim() === '') {
-      alert('Пожалуйста, укажите причину отклонения.');
+      toast.error('Укажите причину отклонения.');
       return;
     }
 
     if (newStatus === 'CONFIRMED' && documentPayment?.status !== 'PAID') {
-      alert('Нельзя подтвердить заявку без оплаты.');
+      toast.error('Нельзя подтвердить заявку без оплаты.');
       return;
     }
 
@@ -71,129 +72,143 @@ export function AdminDocumentReviewDetails() {
 
       await queryClient.invalidateQueries({ queryKey: ['userPayments', request.user.id] });
 
-      alert('Статус изменён, оповещение отправлено.');
+      toast.success('Статус изменён, оповещение отправлено.');
       navigate('/admin/document-review');
     } catch (err: any) {
       console.error(err);
-      alert(err?.response?.data?.error || 'Ошибка при обновлении статуса');
+      toast.error(err?.response?.data?.error || 'Ошибка при обновлении статуса');
     }
   };
 
   return (
-    <div className="space-y-8 p-6 bg-white border border-blue-dark/10 rounded-xl shadow-sm max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-blue-dark">Заявка {request.id.slice(0, 6)}</h1>
+    <div
+      className="rounded-2xl border header-shadow bg-white overflow-hidden max-w-4xl mx-auto"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      {/* Header */}
+      <div
+        className="px-6 py-4 border-b flex items-center justify-between"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        <h1 className="text-xl font-bold text-blue-dark">Заявка {request.id.slice(0, 6)}</h1>
+        <BackButton />
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-        <p>Email: {request.user?.email}</p>
-        <p>
-          Статус:{' '}
-          <span className={documentReviewStatusColors[request.status] || ''}>
-            {documentReviewStatusLabels[request.status] || request.status}
-          </span>
-        </p>
-        <div className="space-y-1">
+      {/* Body */}
+      <div className="p-6 space-y-8">
+        {/* Info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <p>Email: {request.user?.email}</p>
           <p>
-            <span className="font-medium">Оплата:</span>{' '}
-            {documentPayment ? (
-              paymentStatusText[documentPayment.status] || documentPayment.status
-            ) : (
-              <span className="text-gray-600">Нет информации</span>
-            )}
+            Статус:{' '}
+            <span className={documentReviewStatusColors[request.status] || ''}>
+              {documentReviewStatusLabels[request.status] || request.status}
+            </span>
           </p>
-
-          {documentPayment && <PaymentStatusToggle payment={documentPayment} isAdmin={true} />}
+          <div className="space-y-1">
+            <p>
+              <span className="font-medium">Оплата:</span>{' '}
+              {documentPayment ? (
+                paymentStatusText[documentPayment.status] || documentPayment.status
+              ) : (
+                <span className="text-gray-600">Нет информации</span>
+              )}
+            </p>
+            {documentPayment && <PaymentStatusToggle payment={documentPayment} isAdmin={true} />}
+          </div>
+          <p>Комментарий: {request.comment || '—'}</p>
         </div>
 
-        <p>Комментарий: {request.comment || '—'}</p>
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-blue-dark">Файлы</h2>
-        {request.documents.length === 0 ? (
-          <p className="text-sm text-gray-600">Нет файлов</p>
-        ) : (
-          <ul className="space-y-3">
-            {request.documents.map((doc: any) => (
-              <li
-                key={doc.id}
-                className="flex items-center gap-4 p-3 border border-green-light rounded bg-green-light/10"
-              >
-                {doc.mimeType.startsWith('image/') ? (
-                  <img
-                    src={`${backendUrl}/uploads/${doc.fileId}`}
-                    alt={doc.name}
-                    className="w-20 h-20 object-cover rounded border"
-                  />
-                ) : doc.mimeType === 'application/pdf' ? (
-                  <div className="w-20 h-20 flex items-center justify-center border rounded bg-red-100 text-red-600 font-bold">
-                    PDF
-                  </div>
-                ) : (
-                  <span className="text-xs">{doc.name}</span>
-                )}
-
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium">
-                    <a
-                      href={`${backendUrl}/uploads/${doc.fileId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-brand underline"
-                    >
-                      {doc.name}
-                    </a>
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    Тип: {documentTypeLabels[doc.type || 'OTHER'] || doc.type}
-                  </p>
-                  {doc.comment && (
-                    <p className="text-xs text-gray-600">Комментарий: {doc.comment}</p>
+        {/* Files */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-blue-dark">Файлы</h2>
+          {request.documents.length === 0 ? (
+            <p className="text-sm text-gray-600">Нет файлов</p>
+          ) : (
+            <ul className="space-y-3">
+              {request.documents.map((doc: any) => (
+                <li
+                  key={doc.id}
+                  className="flex items-center gap-4 p-3 border rounded bg-green-light/10"
+                  style={{ borderColor: 'var(--color-green-light)' }}
+                >
+                  {doc.mimeType.startsWith('image/') ? (
+                    <img
+                      src={`${backendUrl}/uploads/${doc.fileId}`}
+                      alt={doc.name}
+                      className="w-20 h-20 object-cover rounded border"
+                    />
+                  ) : doc.mimeType === 'application/pdf' ? (
+                    <div className="w-20 h-20 flex items-center justify-center border rounded bg-red-100 text-red-600 font-bold">
+                      PDF
+                    </div>
+                  ) : (
+                    <span className="text-xs">{doc.name}</span>
                   )}
-                </div>
-              </li>
+
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium">
+                      <a
+                        href={`${backendUrl}/uploads/${doc.fileId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand underline"
+                      >
+                        {doc.name}
+                      </a>
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Тип: {documentTypeLabels[doc.type || 'OTHER'] || doc.type}
+                    </p>
+                    {doc.comment && (
+                      <p className="text-xs text-gray-600">Комментарий: {doc.comment}</p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Status change */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-blue-dark">Изменить статус</h2>
+          <select
+            value={newStatus}
+            onChange={(e) =>
+              setNewStatus(e.target.value as 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED')
+            }
+            className="input w-full md:w-1/2"
+          >
+            {Object.entries(documentReviewStatusLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
-          </ul>
-        )}
+          </select>
+
+          {newStatus === 'REJECTED' && (
+            <div>
+              <label className="block mb-1 text-sm font-medium">Комментарий при отклонении</label>
+              <input
+                type="text"
+                value={rejectComment}
+                onChange={(e) => setRejectComment(e.target.value)}
+                className="input w-full md:w-1/2"
+                placeholder="Введите причину отклонения"
+              />
+            </div>
+          )}
+
+          <Button
+            onClick={handleStatusUpdate}
+            loading={updateStatus.isPending}
+            className="w-full md:w-auto"
+          >
+            Сохранить статус
+          </Button>
+        </div>
       </div>
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-blue-dark">Изменить статус</h2>
-
-        <select
-          value={newStatus}
-          onChange={(e) => setNewStatus(e.target.value as 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED')}
-          className="input w-full"
-        >
-          {Object.entries(documentReviewStatusLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-
-        {newStatus === 'REJECTED' && (
-          <div>
-            <label className="block mb-1 text-sm font-medium">Комментарий при отклонении</label>
-            <input
-              type="text"
-              value={rejectComment}
-              onChange={(e) => setRejectComment(e.target.value)}
-              className="input w-full"
-              placeholder="Введите причину отклонения"
-            />
-          </div>
-        )}
-
-        <Button
-          onClick={handleStatusUpdate}
-          loading={updateStatus.isPending}
-          className="w-full md:w-auto"
-        >
-          Сохранить статус
-        </Button>
-      </div>
-
-      <BackButton />
     </div>
   );
 }

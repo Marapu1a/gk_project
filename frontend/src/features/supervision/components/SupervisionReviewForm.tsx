@@ -1,8 +1,8 @@
-// src/features/supervision/components/SupervisionReviewForm.tsx
 import { useAssignedHours } from '../hooks/useAssignedHours';
 import { useUpdateHourStatus } from '../hooks/useUpdateHourStatus';
 import { useState } from 'react';
 import { postNotification } from '@/features/notifications/api/notifications';
+import { toast } from 'sonner';
 
 export function SupervisionReviewForm() {
   const { data } = useAssignedHours();
@@ -17,34 +17,37 @@ export function SupervisionReviewForm() {
   };
 
   const handleConfirm = async (id: string, userId: string, userEmail: string) => {
-    await mutation.mutateAsync({
-      id,
-      status: 'CONFIRMED',
-    });
-
-    await postNotification({
-      userId,
-      type: 'SUPERVISION',
-      message: `Ваши часы супервизии подтверждены (${userEmail})`,
-      link: '/history',
-    });
+    try {
+      await mutation.mutateAsync({ id, status: 'CONFIRMED' });
+      await postNotification({
+        userId,
+        type: 'SUPERVISION',
+        message: `Ваши часы супервизии подтверждены (${userEmail})`,
+        link: '/history',
+      });
+      toast.success(`Часы супервизии для ${userEmail} подтверждены`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Ошибка подтверждения');
+    }
   };
 
   const handleReject = async (id: string, reason: string, userId: string, userEmail: string) => {
-    if (!reason.trim()) return;
-
-    await mutation.mutateAsync({
-      id,
-      status: 'REJECTED',
-      rejectedReason: reason,
-    });
-
-    await postNotification({
-      userId,
-      type: 'SUPERVISION',
-      message: `Часы супервизии отклонены (${userEmail}) — причина: ${reason}`,
-      link: '/my/supervision',
-    });
+    if (!reason.trim()) {
+      toast.error('Укажите причину отклонения');
+      return;
+    }
+    try {
+      await mutation.mutateAsync({ id, status: 'REJECTED', rejectedReason: reason });
+      await postNotification({
+        userId,
+        type: 'SUPERVISION',
+        message: `Часы супервизии отклонены (${userEmail}) — причина: ${reason}`,
+        link: '/my/supervision',
+      });
+      toast.success(`Часы супервизии для ${userEmail} отклонены`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Ошибка отклонения');
+    }
   };
 
   if (!data || data.length === 0) return null;
@@ -81,11 +84,6 @@ export function SupervisionReviewForm() {
                         setRejectedReasonMap((prev) => ({ ...prev, [hour.id]: e.target.value }))
                       }
                     />
-                    {!rejectedReasonMap[hour.id] && (
-                      <p className="text-error text-xs italic mt-1">
-                        Укажите причину перед отклонением
-                      </p>
-                    )}
                     <div className="flex gap-2">
                       <button
                         onClick={() =>
@@ -108,7 +106,7 @@ export function SupervisionReviewForm() {
                         }
                         className="btn"
                         style={{ backgroundColor: '#e3342f', color: 'white' }}
-                        disabled={mutation.isPending || !rejectedReasonMap[hour.id]}
+                        disabled={mutation.isPending}
                       >
                         Отклонить
                       </button>

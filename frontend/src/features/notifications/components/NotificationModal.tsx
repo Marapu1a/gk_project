@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNotifications, useDeleteNotification } from '../hooks/useNotifications';
+import { X } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function NotificationModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data = [] } = useNotifications();
@@ -14,17 +16,34 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
 
   if (!open) return null;
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Удалить уведомление?')) deleteNotif.mutate(id);
+  const confirmToast = (message: string) =>
+    new Promise<boolean>((resolve) => {
+      toast(message, {
+        action: { label: 'Да', onClick: () => resolve(true) },
+        cancel: { label: 'Отмена', onClick: () => resolve(false) },
+      });
+    });
+
+  const handleDelete = async (id: string) => {
+    if (!(await confirmToast('Удалить уведомление?'))) return;
+    try {
+      await deleteNotif.mutateAsync(id);
+      toast.success('Уведомление удалено');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Не удалось удалить уведомление');
+    }
   };
 
   const handleDeleteAll = async () => {
     if (!data.length) return;
-    if (!window.confirm('Удалить все уведомления?')) return;
+    if (!(await confirmToast('Удалить все уведомления?'))) return;
     try {
       setDeletingAll(true);
-      await Promise.all(data.map((n) => deleteNotif.mutateAsync(n.id)));
+      await Promise.allSettled(data.map((n) => deleteNotif.mutateAsync(n.id)));
       await qc.invalidateQueries({ queryKey: ['notifications'] });
+      toast.success('Все уведомления удалены');
+    } catch {
+      toast.error('Не все уведомления удалось удалить');
     } finally {
       setDeletingAll(false);
     }
@@ -51,9 +70,15 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
 
   const modal = (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center px-4">
-      <div className="bg-white rounded-xl border shadow-sm w-full max-w-md overflow-hidden">
+      <div
+        className="w-full max-w-md rounded-2xl border bg-white header-shadow overflow-hidden"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div
+          className="flex items-center justify-between px-6 py-4 border-b"
+          style={{ borderColor: 'var(--color-green-light)' }}
+        >
           <h2 className="text-xl font-semibold text-blue-dark">Уведомления</h2>
           <div className="flex items-center gap-2">
             {data.length > 0 && (
@@ -67,10 +92,10 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
             )}
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+              className="text-gray-400 hover:text-gray-600"
               aria-label="Закрыть"
             >
-              ×
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -83,7 +108,8 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
             data.slice(0, 10).map((n) => (
               <div
                 key={n.id}
-                className="group flex items-start gap-3 bg-white border border-blue-dark/10 rounded-xl px-4 py-3 hover:shadow-sm hover:border-blue-dark/30 transition"
+                className="group flex items-start gap-3 bg-white border rounded-xl px-4 py-3 hover:shadow-sm transition"
+                style={{ borderColor: 'var(--color-green-light)' }}
               >
                 <span
                   className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium text-white ${typeBadgeClass(
@@ -111,11 +137,12 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
 
                 <button
                   onClick={() => handleDelete(n.id)}
-                  className="ml-1 text-gray-400 hover:text-red-600 font-bold"
+                  className="ml-1 text-gray-400 hover:text-red-600"
                   aria-label="Удалить"
                   title="Удалить"
+                  disabled={deleteNotif.isPending}
                 >
-                  ×
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             ))
@@ -125,6 +152,5 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
     </div>
   );
 
-  // Портал к <body>, чтобы избавиться от влияния контейнеров с padding/transform
   return createPortal(modal, document.body);
 }

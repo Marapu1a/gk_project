@@ -9,10 +9,19 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.userId },
-    include: {
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      fullName: true,
+      phone: true,
+      birthDate: true,
+      country: true,
+      city: true,
+      avatarUrl: true,
       groups: {
         include: {
-          group: true,
+          group: { select: { id: true, name: true, rank: true } },
         },
       },
     },
@@ -23,11 +32,7 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
   }
 
   const groupList = dbUser.groups
-    .map(({ group }) => ({
-      id: group.id,
-      name: group.name,
-      rank: group.rank,
-    }))
+    .map(({ group }) => ({ id: group.id, name: group.name, rank: group.rank }))
     .sort((a, b) => b.rank - a.rank);
 
   const activeGroup = groupList[0]
@@ -39,6 +44,11 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     email: dbUser.email,
     role: dbUser.role,
     fullName: dbUser.fullName,
+    phone: dbUser.phone,
+    birthDate: dbUser.birthDate,
+    country: dbUser.country,
+    city: dbUser.city,
+    avatarUrl: dbUser.avatarUrl,
     groups: groupList.map(({ id, name }) => ({ id, name })),
     activeGroup,
   });

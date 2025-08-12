@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserGroupsByEmail } from '../hooks/useUserGroupsByEmail';
 import { useUpdateUserGroups } from '../hooks/useUpdateUserGroups';
 import { fetchCurrentUser } from '@/features/auth/api/me';
+import { toast } from 'sonner';
+import { BackButton } from '@/components/BackButton';
 
 export function GroupAssignmentForm() {
   const [email, setEmail] = useState('');
@@ -19,9 +21,7 @@ export function GroupAssignmentForm() {
   });
 
   useEffect(() => {
-    if (data) {
-      setSelectedGroupIds(data.currentGroupIds);
-    }
+    if (data) setSelectedGroupIds(data.currentGroupIds);
   }, [data]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -35,100 +35,135 @@ export function GroupAssignmentForm() {
     );
   };
 
-  const handleSave = () => {
+  const confirmToast = (message: string) =>
+    new Promise<boolean>((resolve) => {
+      toast(message, {
+        action: { label: 'Да', onClick: () => resolve(true) },
+        cancel: { label: 'Отмена', onClick: () => resolve(false) },
+      });
+    });
+
+  const handleSave = async () => {
     if (!data?.user.id) return;
-    mutation.mutate(selectedGroupIds);
+    const ok = await confirmToast('Сохранить изменения групп пользователя?');
+    if (!ok) return;
+
+    try {
+      await mutation.mutateAsync(selectedGroupIds);
+      toast.success('Группы обновлены');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Ошибка при сохранении');
+    }
   };
 
   const getActiveGroupName = () => {
-    const selectedGroups = data?.allGroups
-      .filter((group) => selectedGroupIds.includes(group.id))
+    const selected = data?.allGroups
+      .filter((g) => selectedGroupIds.includes(g.id))
       .sort((a, b) => b.rank - a.rank);
-    return selectedGroups?.[0]?.name || '—';
+    return selected?.[0]?.name || '—';
   };
 
   const maxAssignableRank =
     currentUser?.role === 'ADMIN' ? Infinity : (currentUser?.activeGroup?.rank ?? 0);
 
   return (
-    <div className="overflow-x-auto border rounded-xl shadow-sm">
-      <form
-        onSubmit={handleSubmit}
-        className="flex gap-2 p-3 items-center border-b border-blue-dark/20"
+    <div
+      className="rounded-2xl border header-shadow bg-white overflow-hidden"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      <div
+        className="px-6 py-4 border-b flex items-center gap-3"
+        style={{ borderColor: 'var(--color-green-light)' }}
       >
-        <input
-          type="email"
-          placeholder="Введите email"
-          className="input w-64"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <button type="submit" className="btn btn-brand" disabled={!email.trim()}>
-          Показать
-        </button>
-      </form>
+        <h2 className="text-xl font-semibold text-blue-dark">Назначение групп</h2>
 
-      {isLoading && <p className="text-sm text-gray-500 p-3">Загрузка...</p>}
-      {error && <p className="text-error p-3">Ошибка загрузки</p>}
-
-      {data && (
-        <div className="p-3 space-y-4">
-          <div className="text-sm">
-            <p>
-              <strong>Имя:</strong> {data.user.fullName}
-            </p>
-            <p>
-              <strong>Email:</strong> {data.user.email}
-            </p>
-          </div>
-
-          <table className="w-full text-sm">
-            <thead className="bg-blue-soft">
-              <tr>
-                <th className="text-left p-3 border-b border-blue-dark/20">Группа</th>
-                <th className="text-center p-3 border-b border-blue-dark/20">Входит</th>
-                <th className="text-center p-3 border-b border-blue-dark/20">Разрешено?</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.allGroups.map((group) => {
-                const isDisabled = group.rank > maxAssignableRank;
-                return (
-                  <tr key={group.id} className="hover:bg-gray-50">
-                    <td className="p-3">{group.name}</td>
-                    <td className="p-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedGroupIds.includes(group.id)}
-                        onChange={() => toggleGroup(group.id)}
-                        disabled={isDisabled || mutation.isPending}
-                      />
-                    </td>
-                    <td className="p-3 text-center">
-                      {isDisabled ? (
-                        <span className="text-error text-xs italic">Недостаточно прав</span>
-                      ) : (
-                        <span className="text-green-700">✓</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          <p className="text-sm italic">
-            Текущая активная группа: <strong>{getActiveGroupName()}</strong>
-          </p>
-
-          <button onClick={handleSave} className="btn btn-brand" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Сохраняем...' : 'Сохранить изменения'}
+        <form onSubmit={handleSubmit} className="ml-auto flex gap-2 items-center">
+          <input
+            type="email"
+            placeholder="Введите email"
+            className="input w-64"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button type="submit" className="btn btn-brand" disabled={!email.trim()}>
+            Показать
           </button>
+        </form>
+      </div>
 
-          {mutation.isSuccess && <p className="text-sm text-green-600">Сохранено успешно</p>}
-          {mutation.isError && <p className="text-error">Ошибка при сохранении</p>}
-        </div>
-      )}
+      <div className="p-6 space-y-4">
+        {isLoading && <p className="text-sm text-blue-dark">Загрузка…</p>}
+        {error && <p className="text-error">Ошибка загрузки</p>}
+
+        {data && (
+          <>
+            <div className="text-sm">
+              <p>
+                <strong>Имя:</strong> {data.user.fullName}
+              </p>
+              <p>
+                <strong>Email:</strong> {data.user.email}
+              </p>
+            </div>
+
+            <div
+              className="overflow-x-auto rounded-2xl border"
+              style={{ borderColor: 'var(--color-green-light)' }}
+            >
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-blue-dark" style={{ background: 'var(--color-blue-soft)' }}>
+                    <th className="p-3 text-left">Группа</th>
+                    <th className="p-3 text-center">Входит</th>
+                    <th className="p-3 text-center">Разрешено?</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.allGroups.map((group) => {
+                    const isDisabled = group.rank > maxAssignableRank;
+                    const checked = selectedGroupIds.includes(group.id);
+                    return (
+                      <tr
+                        key={group.id}
+                        className="border-t hover:bg-gray-50"
+                        style={{ borderColor: 'var(--color-green-light)' }}
+                      >
+                        <td className="p-3">{group.name}</td>
+                        <td className="p-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleGroup(group.id)}
+                            disabled={isDisabled || mutation.isPending}
+                          />
+                        </td>
+                        <td className="p-3 text-center">
+                          {isDisabled ? (
+                            <span className="text-error text-xs italic">Недостаточно прав</span>
+                          ) : (
+                            <span className="text-green-700">✓</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-sm italic">
+              Текущая активная группа: <strong>{getActiveGroupName()}</strong>
+            </p>
+
+            <div className="flex gap-2">
+              <button onClick={handleSave} className="btn btn-brand" disabled={mutation.isPending}>
+                {mutation.isPending ? 'Сохраняем…' : 'Сохранить изменения'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+      <BackButton />
     </div>
   );
 }

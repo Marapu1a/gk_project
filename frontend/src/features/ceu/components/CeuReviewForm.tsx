@@ -2,21 +2,21 @@ import { useState } from 'react';
 import { postNotification } from '@/features/notifications/api/notifications';
 import { useUpdateCEUEntry } from '../hooks/useUpdateCeuEntry';
 import type { CEUReviewResponse } from '../hooks/useCeuRecordsByEmail';
-import { Button } from '@/components/Button';
+import { toast } from 'sonner';
 
 export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
   const updateMutation = useUpdateCEUEntry();
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const backendUrl = import.meta.env.VITE_API_URL;
 
-  const handleStatusChange = (
+  const handleStatusChange = async (
     entryId: string,
     status: 'CONFIRMED' | 'REJECTED' | 'UNCONFIRMED',
   ) => {
     const rejectedReason = reasons[entryId];
 
     if (status === 'REJECTED' && (!rejectedReason || rejectedReason.trim() === '')) {
-      alert('Пожалуйста, укажите причину отклонения.');
+      toast.error('Укажите причину отклонения.');
       return;
     }
 
@@ -31,12 +31,25 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                 ? `Ваши CEU-баллы отклонены: ${rejectedReason}`
                 : 'Статус CEU-баллов изменён';
 
-          await postNotification({
-            userId: data.user.id,
-            type: 'CEU',
-            message,
-            link: '/history',
-          });
+          let notifFailed = false;
+          try {
+            await postNotification({
+              userId: data.user.id,
+              type: 'CEU',
+              message,
+              link: '/history',
+            });
+          } catch {
+            notifFailed = true;
+          } finally {
+            toast.success(message);
+            if (notifFailed)
+              toast.info('Статус обновлён, но уведомление пользователю не отправилось.');
+          }
+        },
+        onError: (err: any) => {
+          const msg = err?.response?.data?.error || 'Не удалось обновить статус';
+          toast.error(msg);
         },
       },
     );
@@ -58,22 +71,39 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-xl font-semibold text-blue-dark">Пользователь</h2>
-        <p>
+      {/* Карточка пользователя */}
+      <div
+        className="rounded-2xl border header-shadow bg-white p-6"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        <h2 className="text-xl font-semibold text-blue-dark mb-2">Пользователь</h2>
+        <p className="text-sm">
           <strong>Имя:</strong> {data.user.fullName} <br />
           <strong>Email:</strong> {data.user.email}
         </p>
       </div>
 
       {data.records.length === 0 ? (
-        <p className="text-sm text-gray-600">Нет добавленных CEU-баллов</p>
+        <div
+          className="rounded-2xl border header-shadow bg-white p-6 text-sm text-gray-600"
+          style={{ borderColor: 'var(--color-green-light)' }}
+        >
+          Нет добавленных CEU-баллов
+        </div>
       ) : (
         <div className="space-y-6">
           {data.records.map((record) => (
-            <div key={record.id} className="border rounded-xl p-4 shadow-sm space-y-4">
-              <div className="space-y-1">
-                <h3 className="text-lg font-semibold">{record.eventName}</h3>
+            <div
+              key={record.id}
+              className="rounded-2xl border header-shadow bg-white overflow-hidden"
+              style={{ borderColor: 'var(--color-green-light)' }}
+            >
+              {/* Header */}
+              <div
+                className="px-6 py-4 border-b"
+                style={{ borderColor: 'var(--color-green-light)' }}
+              >
+                <h3 className="text-lg font-semibold text-blue-dark">{record.eventName}</h3>
                 <p className="text-sm text-gray-500">
                   Дата: {new Date(record.eventDate).toLocaleDateString()}
                 </p>
@@ -89,61 +119,72 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                 </p>
               </div>
 
-              <table className="w-full text-sm border-t">
-                <thead>
-                  <tr className="text-left border-b">
-                    <th className="whitespace-nowrap py-2">Категория</th>
-                    <th className="text-center whitespace-nowrap">Баллы</th>
-                    <th className="text-center whitespace-nowrap">Статус</th>
-                    <th className="text-center whitespace-nowrap">Рецензент</th>
-                    <th className="text-center whitespace-nowrap">Причина</th>
-                    <th className="text-center whitespace-nowrap">Действие</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {record.entries.map((entry) => (
-                    <tr key={entry.id} className="border-t">
-                      <td className="py-2">{categoryMap[entry.category] || entry.category}</td>
-                      <td className="text-center">{entry.value}</td>
-                      <td className="text-center">{statusMap[entry.status] || entry.status}</td>
-                      <td className="text-center">{entry.reviewer?.email || '—'}</td>
-                      <td className="text-center text-red-500">{entry.rejectedReason || '—'}</td>
-                      <td className="text-center py-2">
-                        <div className="flex flex-col gap-2 items-center">
-                          <input
-                            type="text"
-                            placeholder="Причина"
-                            className="input input-sm w-40"
-                            value={reasons[entry.id] || ''}
-                            onChange={(e) =>
-                              setReasons((prev) => ({ ...prev, [entry.id]: e.target.value }))
-                            }
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              onClick={() => handleStatusChange(entry.id, 'CONFIRMED')}
-                              loading={updateMutation.isPending}
-                              disabled={entry.status === 'CONFIRMED'}
-                              className="btn btn-xs bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              Подтвердить
-                            </Button>
-                            <Button
-                              type="button"
-                              onClick={() => handleStatusChange(entry.id, 'REJECTED')}
-                              loading={updateMutation.isPending}
-                              className="btn btn-xs bg-red-600 text-white hover:bg-red-700"
-                            >
-                              Отклонить
-                            </Button>
-                          </div>
-                        </div>
-                      </td>
+              {/* Body */}
+              <div className="p-6 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left" style={{ background: 'var(--color-blue-soft)' }}>
+                      <th className="p-2 whitespace-nowrap">Категория</th>
+                      <th className="p-2 text-center whitespace-nowrap">Баллы</th>
+                      <th className="p-2 text-center whitespace-nowrap">Статус</th>
+                      <th className="p-2 text-center whitespace-nowrap">Рецензент</th>
+                      <th className="p-2 text-center whitespace-nowrap">Причина</th>
+                      <th className="p-2 text-center whitespace-nowrap">Действие</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {record.entries.map((entry) => (
+                      <tr
+                        key={entry.id}
+                        className="border-t"
+                        style={{ borderColor: 'var(--color-green-light)' }}
+                      >
+                        <td className="p-2">{categoryMap[entry.category] || entry.category}</td>
+                        <td className="p-2 text-center">{entry.value}</td>
+                        <td className="p-2 text-center">
+                          {statusMap[entry.status] || entry.status}
+                        </td>
+                        <td className="p-2 text-center">{entry.reviewer?.email || '—'}</td>
+                        <td className="p-2 text-center text-red-500">
+                          {entry.rejectedReason || '—'}
+                        </td>
+                        <td className="p-2 text-center">
+                          <div className="flex flex-col items-center gap-2">
+                            <input
+                              type="text"
+                              placeholder="Причина"
+                              className="input w-44"
+                              value={reasons[entry.id] || ''}
+                              onChange={(e) =>
+                                setReasons((prev) => ({ ...prev, [entry.id]: e.target.value }))
+                              }
+                              disabled={updateMutation.isPending}
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(entry.id, 'CONFIRMED')}
+                                disabled={updateMutation.isPending || entry.status === 'CONFIRMED'}
+                                className="btn btn-brand"
+                              >
+                                Подтвердить
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(entry.id, 'REJECTED')}
+                                disabled={updateMutation.isPending}
+                                className="btn btn-danger"
+                              >
+                                Отклонить
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ))}
         </div>
