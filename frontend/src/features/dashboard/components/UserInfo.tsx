@@ -81,7 +81,7 @@ export function UserInfo() {
             <p>Вы можете добавить краткое описание «О себе» (до 500 символов).</p>
           </div>
         )}
-        <button className="btn btn-accent" onClick={() => setBioOpen(true)}>
+        <button className="btn btn-accent mr-2" onClick={() => setBioOpen(true)}>
           {user.bio ? 'Изменить «О себе»' : 'Добавить «О себе»'}
         </button>
         {bioOpen && (

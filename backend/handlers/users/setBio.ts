@@ -14,8 +14,9 @@ export async function setUserBioHandler(
   const { userId } = req.params;
   const raw = (req.body?.bio ?? '').toString().trim();
 
-  const me = (req as any).user;
-  if (!me || (me.id !== userId && me.role !== 'ADMIN')) {
+  // 🔧 важное исправление: в токене userId, а не id
+  const actor = req.user as any;
+  if (!actor || (actor.userId !== userId && actor.role !== 'ADMIN')) {
     return reply.code(403).send({ error: 'Доступ запрещён' });
   }
 
