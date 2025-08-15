@@ -33,7 +33,7 @@ export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply
     return reply.code(400).send({ error: 'Файл уже прикреплён к заявке и не может быть удалён' });
   }
 
-  const filePath = path.join(process.cwd(), '../uploads', file.fileId);
+  const filePath = path.join(process.cwd(), '..', 'frontend', 'public', 'uploads', file.fileId);
 
   try {
     await fs.unlink(filePath);

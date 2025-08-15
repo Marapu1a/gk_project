@@ -4,7 +4,6 @@ import { useMyCertificates } from '../hooks/useMyCertificates';
 
 export function MyCertificatesBlock() {
   const { data, isLoading, error } = useMyCertificates(true);
-  const backendUrl = import.meta.env.VITE_API_URL;
   const [showHistory, setShowHistory] = useState(false);
 
   const certs = data ?? [];
@@ -30,7 +29,7 @@ export function MyCertificatesBlock() {
       </div>
     );
 
-  const link = `${backendUrl}/uploads/${active.file.fileId}`;
+  const link = `/uploads/${active.file.fileId}`;
 
   const StatusPill = ({ active }: { active: boolean }) => (
     <span
@@ -119,7 +118,7 @@ export function MyCertificatesBlock() {
                     </div>
                   </div>
                   <a
-                    href={`${backendUrl}/uploads/${c.file.fileId}`}
+                    href={`/uploads/${c.file.fileId}`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-sm text-brand underline"

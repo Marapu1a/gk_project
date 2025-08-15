@@ -21,8 +21,6 @@ type Props = {
   userId?: string; // опционально — для точной инвалидации
 };
 
-const backendUrl = import.meta.env.VITE_API_URL;
-
 export default function SupervisionBlock({ supervisionRecords, userId }: Props) {
   if (!supervisionRecords || supervisionRecords.length === 0) return null;
 
@@ -85,7 +83,7 @@ export default function SupervisionBlock({ supervisionRecords, userId }: Props) 
             <div className="font-medium">Дата: {formatDate(rec.createdAt)}</div>
             {rec.fileId && (
               <a
-                href={`${backendUrl}/uploads/${rec.fileId}`}
+                href={`/uploads/${rec.fileId}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand underline text-sm"

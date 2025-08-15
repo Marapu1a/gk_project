@@ -11,7 +11,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "noEmit": true,
+    "noEmit": false,
     "typeRoots": ["./node_modules/@types", "./backend/types"]
   },
   "include": ["**/*.ts"],

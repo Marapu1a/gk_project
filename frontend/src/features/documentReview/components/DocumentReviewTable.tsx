@@ -2,8 +2,6 @@ import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabel
 import { type UploadedFile } from '@/utils/MultiFileUpload';
 import { X } from 'lucide-react';
 
-const backendUrl = import.meta.env.VITE_API_URL;
-
 interface Props {
   files: UploadedFile[];
   onDelete: (id: string) => void;
@@ -22,7 +20,7 @@ export function DocumentReviewTable({ files, onDelete, onTypeChange, disabled }:
         >
           {file.mimeType.startsWith('image/') ? (
             <img
-              src={`${backendUrl}/uploads/${file.fileId}`}
+              src={`$/uploads/${file.fileId}`}
               alt={file.name}
               className="w-16 h-16 object-cover rounded border"
             />

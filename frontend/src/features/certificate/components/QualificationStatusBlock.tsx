@@ -8,7 +8,7 @@ import { CheckCircle, XCircle } from 'lucide-react';
 
 const statusLabels: Record<'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED', string> = {
   NOT_SUBMITTED: 'не отправлена',
-  PENDING: 'ожидает',
+  PENDING: 'на проверке',
   APPROVED: 'подтверждена',
   REJECTED: 'отклонена',
 };
@@ -59,12 +59,13 @@ export function QualificationStatusBlock({
         onSuccess: async () => {
           try {
             const moderators = await getModerators();
+            const email = app.user?.email || 'без email';
             await Promise.all(
               moderators.map((m) =>
                 postNotification({
                   userId: m.id,
                   type: 'EXAM',
-                  message: 'Новая заявка на экзамен',
+                  message: `Новая заявка на экзамен от ${email}`,
                   link: '/exam-applications',
                 }),
               ),
@@ -133,25 +134,14 @@ export function QualificationStatusBlock({
           )}
         </p>
 
-        {app && (
-          <p>
-            <strong>Заявка на экзамен:</strong>{' '}
-            <span className="font-semibold">
-              {statusLabels[app.status as keyof typeof statusLabels]}
-            </span>
-          </p>
-        )}
-
         {canSubmit ? (
           <button onClick={onSubmit} className="btn btn-brand" disabled={patchStatus.isPending}>
             {patchStatus.isPending ? 'Отправляем…' : 'Отправить заявку на экзамен'}
           </button>
         ) : (
-          <div className="text-sm text-gray-600 space-y-1">
+          <div className="font-semibold">
             {app ? (
-              <div>
-                Заявка уже в статусе: {statusLabels[app.status as keyof typeof statusLabels]}.
-              </div>
+              <div>Заявка на экзамен: {statusLabels[app.status as keyof typeof statusLabels]}.</div>
             ) : (
               <div>Заявка отсутствует.</div>
             )}

@@ -24,7 +24,7 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
 
   const ext = path.extname(data.filename);
   const fileName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`;
-  const dir = path.resolve(process.cwd(), '../uploads', user.userId, category);
+  const dir = path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads', user.userId, category);
   const filePath = path.join(dir, fileName);
 
   await fs.mkdir(dir, { recursive: true });

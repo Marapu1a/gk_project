@@ -15,8 +15,6 @@ import { postNotification } from '@/features/notifications/api/notifications';
 import { PaymentStatusToggle } from '@/features/payment/components/PaymentStatusToggle';
 import { useUserPaymentsById } from '@/features/payment/hooks/useUserPaymentsById';
 
-const backendUrl = import.meta.env.VITE_API_URL;
-
 const paymentStatusText: Record<string, string> = {
   UNPAID: 'Не оплачено',
   PENDING: 'Ожидает проверки',
@@ -134,7 +132,7 @@ export function AdminDocumentReviewDetails() {
                 >
                   {doc.mimeType.startsWith('image/') ? (
                     <img
-                      src={`${backendUrl}/uploads/${doc.fileId}`}
+                      src={`/uploads/${doc.fileId}`}
                       alt={doc.name}
                       className="w-20 h-20 object-cover rounded border"
                     />
@@ -149,7 +147,7 @@ export function AdminDocumentReviewDetails() {
                   <div className="flex-1 space-y-1">
                     <p className="text-sm font-medium">
                       <a
-                        href={`${backendUrl}/uploads/${doc.fileId}`}
+                        href={`/uploads/${doc.fileId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-brand underline"

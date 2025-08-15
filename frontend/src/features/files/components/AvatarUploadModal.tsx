@@ -11,11 +11,10 @@ type Props = {
 export function AvatarUploadModal({ userId, onClose }: Props) {
   const [file, setFile] = useState<UploadedFile | null>(null);
   const setAvatar = useSetAvatarUrl(userId);
-  const backendUrl = import.meta.env.VITE_API_URL;
   const resetKeyRef = useRef(0);
 
   const handleSave = async () => {
-    const url = file ? `${backendUrl}/uploads/${file.fileId}` : null;
+    const url = file ? `/uploads/${file.fileId}` : null;
     await setAvatar.mutateAsync(url);
     onClose();
     // сброс для следующего открытия модалки

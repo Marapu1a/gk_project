@@ -4,8 +4,6 @@ import { useRegistryProfile } from '../hooks/useRegistryProfile';
 
 type Props = { userId: string };
 
-const backendUrl = import.meta.env.VITE_API_URL;
-
 export function RegistryProfile({ userId }: Props) {
   const { data: p, isLoading, error } = useRegistryProfile(userId);
   const [open, setOpen] = useState(false);
@@ -14,7 +12,7 @@ export function RegistryProfile({ userId }: Props) {
   if (error || !p) return <div>Профиль не найден</div>;
 
   const cert = p.certificate;
-  const certUrl = cert ? `${backendUrl}/uploads/${cert.fileId}` : '';
+  const certUrl = cert ? `/uploads/${cert.fileId}` : '';
   const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('ru-RU') : '—');
 
   function since(d: string) {

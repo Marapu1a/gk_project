@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
   const updateMutation = useUpdateCEUEntry();
   const [reasons, setReasons] = useState<Record<string, string>>({});
-  const backendUrl = import.meta.env.VITE_API_URL;
 
   const handleStatusChange = async (
     entryId: string,
@@ -109,7 +108,7 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                 </p>
                 <p className="text-sm">
                   <a
-                    href={`${backendUrl}/uploads/${record.fileId}`}
+                    href={`/uploads/${record.fileId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-brand underline"

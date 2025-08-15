@@ -1,8 +1,6 @@
 import { useDeleteFile } from '../hooks/useDeleteFile';
 import { toast } from 'sonner';
 
-const backendUrl = import.meta.env.VITE_API_URL;
-
 type Item = {
   id: string;
   name: string;
@@ -126,7 +124,7 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
 
         {it.fileId && (
           <a
-            href={`${backendUrl}/uploads/${it.fileId}`}
+            href={`/uploads/${it.fileId}`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-accent text-xs py-1 px-2 whitespace-nowrap"
@@ -211,7 +209,7 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
                       {item.fileId ? (
                         <>
                           <a
-                            href={`${backendUrl}/uploads/${item.fileId}`}
+                            href={`/uploads/${item.fileId}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-brand underline truncate"

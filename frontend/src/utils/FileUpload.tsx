@@ -37,7 +37,6 @@ export function FileUpload({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null); // локальное превью для image/*
-  const backendUrl = import.meta.env.VITE_API_URL;
 
   const objectUrlRef = useRef<string | null>(null);
   const makeObjectPreview = (blob?: File | null) => {
@@ -148,7 +147,7 @@ export function FileUpload({
   });
 
   // URL для превью изображений: сначала локальный objectURL, дальше — сервер
-  const serverUrl = file ? `${backendUrl}/uploads/${file.fileId}` : null;
+  const serverUrl = file ? `$/uploads/${file.fileId}` : null;
   const imagePreviewSrc = previewUrl ?? serverUrl ?? '';
 
   return (

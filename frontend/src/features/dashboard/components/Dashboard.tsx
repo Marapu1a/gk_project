@@ -7,7 +7,6 @@ import { ProgressSummary } from './ProgressSummary';
 import { DashboardTabs } from './DashboardTabs';
 import { NotificationBell } from '@/features/notifications/components/NotificationBell';
 import { NotificationModal } from '@/features/notifications/components/NotificationModal';
-import { Link } from 'react-router-dom';
 
 export function Dashboard() {
   const {
@@ -19,6 +18,26 @@ export function Dashboard() {
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000,
   });
+
+  function scrollToBottomAndHighlight() {
+    const root = document.scrollingElement as HTMLElement | null;
+    const bottom = document.getElementById('page-bottom');
+    if (!root || !bottom) return;
+
+    // когда докрутили до низа — шлём событие
+    const io = new IntersectionObserver(
+      (entries, o) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          o.disconnect();
+          window.dispatchEvent(new CustomEvent('highlight-payments'));
+        }
+      },
+      { threshold: 0.01 },
+    );
+
+    io.observe(bottom);
+    root.scrollTo({ top: root.scrollHeight, behavior: 'smooth' });
+  }
 
   const { data: payments = [], isLoading: paymentsLoading } = useUserPayments();
   const [openNotif, setOpenNotif] = useState(false);
@@ -85,11 +104,9 @@ export function Dashboard() {
                 Для доступа к функциям сертификации нужна оплата{' '}
                 <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
               </p>
-              <div className="mt-2">
-                <Link to="/payments" className="text-brand hover:underline">
-                  Перейти к оплате
-                </Link>
-              </div>
+              <button className="text-brand hover:underline" onClick={scrollToBottomAndHighlight}>
+                Перейти к оплате
+              </button>
             </div>
           </div>
         )}
@@ -100,7 +117,7 @@ export function Dashboard() {
 
       {/* Info + Progress */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <UserInfo user={user} />
+        <UserInfo />
 
         {isAdmin || registrationPaid ? (
           <ProgressSummary />
@@ -117,6 +134,7 @@ export function Dashboard() {
       </div>
 
       <NotificationModal open={openNotif} onClose={() => setOpenNotif(false)} />
+      <div id="page-bottom" style={{ height: 1 }} />
     </div>
   );
 }

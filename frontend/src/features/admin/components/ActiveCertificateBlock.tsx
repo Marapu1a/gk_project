@@ -1,5 +1,4 @@
 // src/features/admin/components/ActiveCertificateBlock.tsx
-const backendUrl = import.meta.env.VITE_API_URL;
 
 export type Cert = {
   id: string;
@@ -81,7 +80,7 @@ export default function ActiveCertificateBlock({ certificates = [] }: { certific
           {active.file && (
             <div className="mt-4">
               <a
-                href={`${backendUrl}/uploads/${active.file.fileId}`}
+                href={`/uploads/${active.file.fileId}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-brand"

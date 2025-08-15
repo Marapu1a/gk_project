@@ -11,8 +11,7 @@ export function AvatarBlock({ userId, avatarUrl, readOnly }: Props) {
   const setAvatar = useSetAvatarUrl(userId);
 
   const handleChange = async (file: UploadedFile | null) => {
-    const backendUrl = import.meta.env.VITE_API_URL;
-    const url = file ? `${backendUrl}/uploads/${file.fileId}` : null;
+    const url = file ? `$/uploads/${file.fileId}` : null;
 
     // уже такое же значение — ничего не делаем
     if (url === lastUrlRef.current) return;

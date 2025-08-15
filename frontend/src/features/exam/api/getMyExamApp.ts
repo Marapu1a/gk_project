@@ -8,6 +8,10 @@ export type ExamApp = {
   status: ExamStatus;
   createdAt: string;
   updatedAt: string;
+  user: {
+    email: string;
+    fullName: string;
+  };
 };
 
 export async function getMyExamApp() {

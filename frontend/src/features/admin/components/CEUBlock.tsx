@@ -22,8 +22,6 @@ type Props = {
   }[];
 };
 
-const backendUrl = import.meta.env.VITE_API_URL;
-
 export default function CEUBlock({ ceuRecords, userId }: Props) {
   if (!ceuRecords || ceuRecords.length === 0) return null;
 
@@ -92,7 +90,7 @@ export default function CEUBlock({ ceuRecords, userId }: Props) {
               {rec.fileId && (
                 <div className="text-sm">
                   <a
-                    href={`${backendUrl}/uploads/${rec.fileId}`}
+                    href={`/uploads/${rec.fileId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-brand underline"

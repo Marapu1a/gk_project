@@ -42,7 +42,7 @@ export function SupervisionReviewForm() {
         userId,
         type: 'SUPERVISION',
         message: `Часы супервизии отклонены (${userEmail}) — причина: ${reason}`,
-        link: '/my/supervision',
+        link: '/history',
       });
       toast.success(`Часы супервизии для ${userEmail} отклонены`);
     } catch (err: any) {
