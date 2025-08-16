@@ -5,25 +5,21 @@ import { getModerators } from '@/features/notifications/api/moderators';
 import { postNotification } from '@/features/notifications/api/notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, XCircle } from 'lucide-react';
-
-const statusLabels: Record<'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED', string> = {
-  NOT_SUBMITTED: 'не отправлена',
-  PENDING: 'на проверке',
-  APPROVED: 'подтверждена',
-  REJECTED: 'отклонена',
-};
+import { examStatusLabels } from '@/utils/labels';
 
 export function QualificationStatusBlock({
   activeGroupName,
 }: {
   activeGroupName: string | undefined;
 }) {
+  const isSupervisor = activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
+
   const {
-    mode,
+    // mode — больше не показываем
     targetGroup,
     isEligible,
     ceuReady,
-    supervisionReady,
+    supervisionReady, // для супервизоров это логика менторства (меняем только подпись)
     documentsReady,
     loading,
     reasons,
@@ -40,7 +36,7 @@ export function QualificationStatusBlock({
         className="rounded-2xl border header-shadow bg-white p-6 text-sm"
         style={{ borderColor: 'var(--color-green-light)' }}
       >
-        Загрузка статуса сертификации...
+        Загрузка статуса…
       </div>
     );
   }
@@ -85,9 +81,7 @@ export function QualificationStatusBlock({
     >
       {/* Header */}
       <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
-        <h3 className="text-lg font-semibold text-blue-dark">
-          Сертификация ({mode === 'EXAM' ? 'Первичная' : 'Продление'})
-        </h3>
+        <h3 className="text-lg font-semibold text-blue-dark">Сертификация</h3>
       </div>
 
       {/* Body */}
@@ -99,22 +93,28 @@ export function QualificationStatusBlock({
         )}
 
         <ul className="space-y-1">
-          <li className="flex items-center gap-2">
-            {ceuReady ? (
-              <CheckCircle className="text-green-600" size={18} />
-            ) : (
-              <XCircle className="text-red-600" size={18} />
-            )}
-            CEU-баллы: {ceuReady ? 'достаточно' : 'недостаточно'}
-          </li>
+          {/* CEU показываем только если это НЕ супервизор */}
+          {!isSupervisor && (
+            <li className="flex items-center gap-2">
+              {ceuReady ? (
+                <CheckCircle className="text-green-600" size={18} />
+              ) : (
+                <XCircle className="text-red-600" size={18} />
+              )}
+              CEU-баллы: {ceuReady ? 'достаточно' : 'недостаточно'}
+            </li>
+          )}
+
           <li className="flex items-center gap-2">
             {supervisionReady ? (
               <CheckCircle className="text-green-600" size={18} />
             ) : (
               <XCircle className="text-red-600" size={18} />
             )}
-            Часы супервизии: {supervisionReady ? 'достаточно' : 'недостаточно'}
+            {isSupervisor ? 'Часы менторства' : 'Часы супервизии'}:{' '}
+            {supervisionReady ? 'достаточно' : 'недостаточно'}
           </li>
+
           <li className="flex items-center gap-2">
             {documentsReady ? (
               <CheckCircle className="text-green-600" size={18} />
@@ -128,9 +128,9 @@ export function QualificationStatusBlock({
         <p>
           <strong>Общий статус:</strong>{' '}
           {isEligible ? (
-            <span className="text-green-700 font-semibold">допущен к сертификации</span>
+            <span className="text-green-700 font-semibold">допуск получен</span>
           ) : (
-            <span className="text-red-700 font-semibold">не допущен</span>
+            <span className="text-red-700 font-semibold">допуска нет</span>
           )}
         </p>
 
@@ -139,9 +139,9 @@ export function QualificationStatusBlock({
             {patchStatus.isPending ? 'Отправляем…' : 'Отправить заявку на экзамен'}
           </button>
         ) : (
-          <div className="font-semibold">
+          <div className="font-semibold space-y-1">
             {app ? (
-              <div>Заявка на экзамен: {statusLabels[app.status as keyof typeof statusLabels]}.</div>
+              <div>Заявка на экзамен: {examStatusLabels[app.status] || app.status}.</div>
             ) : (
               <div>Заявка отсутствует.</div>
             )}

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { examStatusLabels, paymentStatusLabels } from '@/utils/labels';
 import { useUserGroupsByEmail } from '../hooks/useUserGroupsByEmail';
 import { useUpdateUserGroups } from '../hooks/useUpdateUserGroups';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { toast } from 'sonner';
 import { BackButton } from '@/components/BackButton';
+import { Link } from 'react-router-dom';
 
 export function GroupAssignmentForm() {
   const [email, setEmail] = useState('');
@@ -50,7 +52,7 @@ export function GroupAssignmentForm() {
 
     try {
       await mutation.mutateAsync(selectedGroupIds);
-      toast.success('Группы обновлены');
+      // Тост об успехе показывает хук
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Ошибка при сохранении');
     }
@@ -160,6 +162,42 @@ export function GroupAssignmentForm() {
                 {mutation.isPending ? 'Сохраняем…' : 'Сохранить изменения'}
               </button>
             </div>
+
+            {mutation.data?.upgraded && (
+              <div
+                className="mt-4 p-4 rounded-2xl border text-sm"
+                style={{
+                  borderColor: 'var(--color-yellow)',
+                  background: 'var(--color-yellow-soft)',
+                  color: 'var(--color-blue-dark)',
+                }}
+              >
+                <div className="space-y-1">
+                  <p>
+                    <strong>Списано CEU:</strong> {mutation.data.burned}
+                  </p>
+                  {mutation.data.examReset && (
+                    <p>
+                      <strong>Заявка на экзамен:</strong> сброшена (статус:{' '}
+                      {examStatusLabels.NOT_SUBMITTED}).
+                    </p>
+                  )}
+                  {mutation.data.examPaymentReset && (
+                    <p>
+                      <strong>Оплата экзамена:</strong> сброшена (статус:{' '}
+                      {paymentStatusLabels.UNPAID}).
+                    </p>
+                  )}
+                  <p>
+                    <strong>Далее:</strong> выдайте соответствующий сертификат —{' '}
+                    <Link to="/certificate" className="text-brand underline">
+                      перейти к выдаче
+                    </Link>
+                    .
+                  </p>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

@@ -5,7 +5,7 @@ import type { CEUReviewResponse } from '../hooks/useCeuRecordsByEmail';
 import { toast } from 'sonner';
 
 export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
-  const updateMutation = useUpdateCEUEntry();
+  const updateMutation = useUpdateCEUEntry(data.user.id, data.user.email);
   const [reasons, setReasons] = useState<Record<string, string>>({});
 
   const handleStatusChange = async (
@@ -104,7 +104,7 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
               >
                 <h3 className="text-lg font-semibold text-blue-dark">{record.eventName}</h3>
                 <p className="text-sm text-gray-500">
-                  Дата: {new Date(record.eventDate).toLocaleDateString()}
+                  Дата мероприятия: {new Date(record.eventDate).toLocaleDateString()}
                 </p>
                 <p className="text-sm">
                   <a

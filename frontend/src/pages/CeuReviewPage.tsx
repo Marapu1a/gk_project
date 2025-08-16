@@ -69,7 +69,7 @@ export default function CeuReviewPage() {
             selected={fromDate}
             onChange={(date) => setFromDate(date)}
             dateFormat="yyyy-MM-dd"
-            placeholderText="Выберите дату"
+            placeholderText="Дата мероприятия"
             className="input"
           />
         </div>
@@ -80,7 +80,7 @@ export default function CeuReviewPage() {
             selected={toDate}
             onChange={(date) => setToDate(date)}
             dateFormat="yyyy-MM-dd"
-            placeholderText="Выберите дату"
+            placeholderText="Дата мероприятия"
             className="input"
           />
         </div>

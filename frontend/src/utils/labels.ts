@@ -1,3 +1,5 @@
+// src/features/utils/labels.ts
+
 // CEU категории
 export const ceuCategoryLabels: Record<string, string> = {
   GENERAL: 'Общие',
@@ -34,6 +36,14 @@ export const paymentStatusLabels: Record<string, string> = {
   PAID: 'Оплачен',
   UNPAID: 'Не оплачен',
   PENDING: 'Ожидает подтверждения',
+};
+
+// Статусы заявок на экзамен
+export const examStatusLabels: Record<string, string> = {
+  NOT_SUBMITTED: 'Не подана',
+  PENDING: 'На рассмотрении',
+  APPROVED: 'Одобрена',
+  REJECTED: 'Отклонена',
 };
 
 // Документы (типы)

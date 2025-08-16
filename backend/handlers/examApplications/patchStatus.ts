@@ -40,9 +40,5 @@ export async function patchExamAppStatusHandler(req: FastifyRequest, reply: Fast
     select: { id: true, userId: true, status: true, createdAt: true, updatedAt: true },
   });
 
-  // уведомления при желании (не блокируем основной поток)
-  // if (next === 'PENDING' && (req.body as Body).notify !== false) notifyAdmins(...);
-  // if ((next === 'APPROVED' || next === 'REJECTED') && (req.body as Body).notify !== false) notifyUser(...);
-
   return reply.send(updated);
 }

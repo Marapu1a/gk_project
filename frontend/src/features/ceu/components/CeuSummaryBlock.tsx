@@ -1,14 +1,12 @@
 import { useCeuSummary } from '../hooks/useCeuSummary';
-import { useCeuUnconfirmed } from '../hooks/useCeuUnconfirmed';
 
 export function CeuSummaryBlock() {
   const { data: summary, isLoading: loadingSummary } = useCeuSummary();
-  const { data: unconfirmed, isLoading: loadingUnconfirmed } = useCeuUnconfirmed();
 
-  if (loadingSummary || loadingUnconfirmed) {
+  if (loadingSummary) {
     return <p className="text-sm text-blue-dark">Загрузка CEU…</p>;
   }
-  if (!summary || !unconfirmed) {
+  if (!summary) {
     return <p className="text-error">Ошибка загрузки CEU</p>;
   }
 
@@ -38,7 +36,7 @@ export function CeuSummaryBlock() {
               <th className="p-2 text-center">Требуется</th>
               <th className="p-2 text-center">Доступно</th>
               <th className="p-2 text-center">Прогресс</th>
-              <th className="p-2 text-center">На проверке</th>
+              <th className="p-2 text-center">Всего начислено</th>
             </tr>
           </thead>
           <tbody>
@@ -71,7 +69,7 @@ export function CeuSummaryBlock() {
                     </div>
                   </td>
                   <td className="p-2 text-center">
-                    {unconfirmed[cat] > 0 ? unconfirmed[cat] : '—'}
+                    {summary.total[cat] > 0 ? summary.total[cat] : '—'}
                   </td>
                 </tr>
               );

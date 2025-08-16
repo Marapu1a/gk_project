@@ -14,43 +14,40 @@ const CEU_KEYS: (keyof CEUSummary)[] = ['ethics', 'cultDiver', 'supervision', 'g
 
 export async function ceuSummaryHandler(req: FastifyRequest, reply: FastifyReply) {
   const { user } = req;
-  if (!user?.userId) {
-    return reply.code(401).send({ error: 'Не авторизован' });
-  }
+  if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.userId },
-    include: {
-      groups: {
-        include: { group: true },
-      },
-    },
+    include: { groups: { include: { group: true } } },
   });
-
-  if (!dbUser) {
-    return reply.code(404).send({ error: 'Пользователь не найден' });
-  }
+  if (!dbUser) return reply.code(404).send({ error: 'Пользователь не найден' });
 
   const groupList = dbUser.groups.map(g => g.group).sort((a, b) => b.rank - a.rank);
   const primaryGroup = groupList[0];
-
   if (!primaryGroup) {
-    return reply.send({ required: null, percent: null, usable: emptySummary() });
+    return reply.send({ required: null, percent: null, usable: emptySummary(), spent: emptySummary(), total: emptySummary() });
   }
 
-  const entries = await prisma.cEUEntry.findMany({
-    where: {
-      record: { userId: user.userId },
-      status: RecordStatus.CONFIRMED,
-    },
+  // CONFIRMED → usable
+  const confirmedEntries = await prisma.cEUEntry.findMany({
+    where: { record: { userId: user.userId }, status: RecordStatus.CONFIRMED },
   });
+  const usable = aggregateCEU(confirmedEntries);
 
-  const usable = aggregateCEU(entries);
+  // SPENT → spent
+  const spentEntries = await prisma.cEUEntry.findMany({
+    where: { record: { userId: user.userId }, status: RecordStatus.SPENT },
+  });
+  const spent = aggregateCEU(spentEntries);
+
+  // total = usable + spent
+  const total = addSums(usable, spent);
+
   const nextGroup = getNextGroupName(primaryGroup.name);
   const required = nextGroup ? requirementsByGroup[nextGroup] : null;
   const percent = required ? computePercent(usable, required) : null;
 
-  return reply.send({ required, percent, usable });
+  return reply.send({ required, percent, usable, spent, total });
 }
 
 function emptySummary(): CEUSummary {
@@ -60,22 +57,27 @@ function emptySummary(): CEUSummary {
 function aggregateCEU(entries: any[]): CEUSummary {
   const summary = emptySummary();
   for (const e of entries) {
-    switch (e.category) {
+    switch (e.category as CEUCategory) {
       case CEUCategory.ETHICS:
-        summary.ethics += e.value;
-        break;
+        summary.ethics += e.value; break;
       case CEUCategory.CULTURAL_DIVERSITY:
-        summary.cultDiver += e.value;
-        break;
+        summary.cultDiver += e.value; break;
       case CEUCategory.SUPERVISION:
-        summary.supervision += e.value;
-        break;
+        summary.supervision += e.value; break;
       case CEUCategory.GENERAL:
-        summary.general += e.value;
-        break;
+        summary.general += e.value; break;
     }
   }
   return summary;
+}
+
+function addSums(a: CEUSummary, b: CEUSummary): CEUSummary {
+  return {
+    ethics: a.ethics + b.ethics,
+    cultDiver: a.cultDiver + b.cultDiver,
+    supervision: a.supervision + b.supervision,
+    general: a.general + b.general,
+  };
 }
 
 function computePercent(usable: CEUSummary, required: CEUSummary): CEUSummary {
