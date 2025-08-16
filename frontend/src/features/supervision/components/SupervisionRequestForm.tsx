@@ -45,11 +45,13 @@ export function SupervisionRequestForm() {
     return names.includes('Супервизор') || names.includes('Опытный Супервизор');
   }, [user]);
 
+  const userEmail = user?.email ?? 'без email';
+
   useEffect(() => {
     if (user && !hasInitialized.current) {
       reset({
         supervisorEmail: '',
-        entries: [{ type: isMentor ? 'SUPERVISOR' : 'INSTRUCTOR', value: 1 }],
+        entries: [{ type: isMentor ? 'SUPERVISOR' : 'INSTRUCTOR', value: 0 }],
       });
       hasInitialized.current = true;
     }
@@ -69,7 +71,7 @@ export function SupervisionRequestForm() {
       await postNotification({
         userId: supervisor.id,
         type: 'SUPERVISION',
-        message: `Новая заявка на ${isMentor ? 'менторство' : 'супервизию'} от ${user.email}`,
+        message: `Новая заявка на ${isMentor ? 'менторство' : 'супервизию'} от ${userEmail}`,
         link: '/review/supervision',
       });
 
@@ -120,7 +122,6 @@ export function SupervisionRequestForm() {
                 <input
                   type="number"
                   step="0.1"
-                  max={200}
                   {...register(`entries.${index}.value`, { valueAsNumber: true })}
                   className="input w-24"
                 />
@@ -137,7 +138,7 @@ export function SupervisionRequestForm() {
           </div>
           <button
             type="button"
-            onClick={() => append({ type: isMentor ? 'SUPERVISOR' : 'INSTRUCTOR', value: 1 })}
+            onClick={() => append({ type: isMentor ? 'SUPERVISOR' : 'INSTRUCTOR', value: 0 })}
             disabled={isSubmitting}
             className="btn btn-brand mt-2 disabled:opacity-50"
           >

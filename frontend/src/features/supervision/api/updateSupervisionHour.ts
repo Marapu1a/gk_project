@@ -1,15 +1,32 @@
+// src/features/supervision/api/updateSupervisionHour.ts
 import { api } from '@/lib/axios';
 
-type UpdateHourStatusInput = {
+export type HourStatus = 'CONFIRMED' | 'REJECTED';
+
+export type UpdateHourStatusInput = {
   id: string;
-  status: 'CONFIRMED' | 'REJECTED';
+  status: HourStatus;
   rejectedReason?: string;
 };
 
-export async function updateSupervisionHour({ id, status, rejectedReason }: UpdateHourStatusInput) {
-  const response = await api.patch(`/supervision/${id}`, {
+export type UpdateSupervisionHourResponse = {
+  success: true;
+  updated: {
+    id: string;
+    recordId: string;
+    status: HourStatus;
+    reviewedAt: string | null;
+    rejectedReason: string | null;
+    reviewerId: string | null;
+  };
+};
+
+export async function updateSupervisionHour(
+  { id, status, rejectedReason }: UpdateHourStatusInput
+): Promise<UpdateSupervisionHourResponse> {
+  const { data } = await api.patch<UpdateSupervisionHourResponse>(`/supervision/${id}`, {
     status,
     rejectedReason,
   });
-  return response.data;
+  return data;
 }

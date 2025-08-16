@@ -111,17 +111,6 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
           </li>
         )}
 
-        {(isExperiencedSupervisor || isAdmin) && (
-          <li>
-            <Link to="/review/mentorship" className="btn btn-accent w-full">
-              <div className="flex items-center justify-center gap-2">
-                <ListChecks size={18} />
-                <span>Проверка менторства</span>
-              </div>
-            </Link>
-          </li>
-        )}
-
         {isAdmin && (
           <li>
             <Link to="/groups" className="btn btn-accent w-full">

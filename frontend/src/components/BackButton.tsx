@@ -7,7 +7,7 @@ export function BackButton() {
   return (
     <button
       onClick={() => navigate(-1)}
-      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition"
+      className="btn btn-ghost inline-flex items-center gap-2 text-sm"
     >
       ← Назад
     </button>

@@ -19,9 +19,9 @@ export async function updateCEUEntryHandler(
   const reviewerId = req.user?.userId;
   const reviewerRole = req.user?.role;
 
-  // Доступ
-  if (!reviewerId || (reviewerRole !== 'REVIEWER' && reviewerRole !== 'ADMIN')) {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
+  // ⛔ Доступ: только админ может ревьюить CEU
+  if (!reviewerId || reviewerRole !== 'ADMIN') {
+    return reply.code(403).send({ error: 'Только администратор может проверять CEU-баллы' });
   }
 
   // Валидность статуса
@@ -43,12 +43,9 @@ export async function updateCEUEntryHandler(
       reviewerId: true,
     },
   });
+  if (!entry) return reply.code(404).send({ error: 'Запись не найдена' });
 
-  if (!entry) {
-    return reply.code(404).send({ error: 'Запись не найдена' });
-  }
-
-  // Запрет редактировать свои записи
+  // Запрет админам редактировать свои же CEU
   if (entry.record.userId === reviewerId) {
     return reply.code(403).send({ error: 'Нельзя редактировать свои записи' });
   }

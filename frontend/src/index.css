@@ -84,6 +84,34 @@ body {
   cursor: not-allowed;
 }
 
+/* Кнопки — микроанимации и фокус */
+.btn {
+  transition: transform .12s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
+  will-change: transform;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(165, 203, 55, .35);
+}
+
+/* Доп. вариант: ghost */
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-blue-dark);
+  border: 1px solid var(--color-green-light);
+}
+
+.btn-ghost:hover {
+  background-color: rgba(214, 239, 139, .2);
+  border-color: var(--color-green-brand);
+}
+
+
 /* ==========================================================================
    ✏️ Инпуты и формы
    ========================================================================== */

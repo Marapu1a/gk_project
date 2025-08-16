@@ -63,8 +63,10 @@ export function CeuRequestForm() {
 
       // уведомим модераторов; частичные фейлы не валят поток
       const moderators = await getModerators();
+
+      const ceuReviewers = moderators.filter((m) => m.role === 'ADMIN');
       const results = await Promise.allSettled(
-        moderators.map((m) =>
+        ceuReviewers.map((m) =>
           postNotification({
             userId: m.id,
             type: 'CEU',

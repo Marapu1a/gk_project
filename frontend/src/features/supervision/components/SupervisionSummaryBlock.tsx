@@ -51,21 +51,25 @@ export function SupervisionSummaryBlock({ user }: Props) {
       <div className="space-y-3 text-sm">
         <h3 className="text-lg font-semibold text-blue-dark">Менторство / опыт</h3>
         <div className="rounded-xl p-3" style={{ background: 'var(--color-blue-soft)' }}>
-          <p>
-            Здесь можно показать полезную сводку для опытных супервизоров: метрики, напоминания,
-            ссылки на проверки и т.п.
-          </p>
+          <p>Здесь можно показать полезную сводку для опытных супервизоров.</p>
         </div>
       </div>
     );
   }
 
-  // === Супервизор (первогодка): считаем прогресс к требованию по mentor/supervisor ===
+  // === Супервизор: показываем суммарные "часы менторства" (instr + curator + supervisor) с целью 2000 ===
   if (isSupervisor) {
-    const req = summary.required?.supervisor ?? 0;
-    const usable = summary.usable.supervisor ?? 0;
-    const used = Math.min(usable, req || Infinity);
-    const percent = req ? (used / req) * 100 : 0;
+    const totalUsable =
+      (summary.usable.instructor ?? 0) +
+      (summary.usable.curator ?? 0) +
+      (summary.usable.supervisor ?? 0);
+
+    const pendingTotal =
+      (unconfirmed.instructor ?? 0) + (unconfirmed.curator ?? 0) + (unconfirmed.supervisor ?? 0);
+
+    const requiredTotal = 2000;
+    const usedClamped = Math.min(totalUsable, requiredTotal);
+    const percent = requiredTotal ? (usedClamped / requiredTotal) * 100 : 0;
 
     return (
       <div className="space-y-3 text-sm">
@@ -85,13 +89,13 @@ export function SupervisionSummaryBlock({ user }: Props) {
             </thead>
             <tbody>
               <tr className="border-t" style={{ borderColor: 'var(--color-green-light)' }}>
-                <td className="p-2 text-center">{req ? `${used} / ${req}` : `${usable} / —`}</td>
+                <td className="p-2 text-center">
+                  {requiredTotal ? `${usedClamped} / ${requiredTotal}` : `${totalUsable} / —`}
+                </td>
                 <td className="p-2 text-center">
                   <Bar percent={percent} />
                 </td>
-                <td className="p-2 text-center">
-                  {unconfirmed.supervisor > 0 ? unconfirmed.supervisor : '—'}
-                </td>
+                <td className="p-2 text-center">{pendingTotal > 0 ? pendingTotal : '—'}</td>
               </tr>
             </tbody>
           </table>

@@ -4,9 +4,15 @@ import { toggleUserRoleHandler } from '../handlers/admin/userRoleHandler';
 import { getUsersHandler } from '../handlers/admin/getUsersHandler';
 import { getUserFullDetailsHandler } from '../handlers/admin/getUserDetailsHandler';
 import { updateUserBasicInfoHandler } from '../handlers/admin/updateUserBasicInfo';
-import { updateSupervisionHourHandler } from '../handlers/admin/supervision/updateSupervisionHour';
 import { updatePaymentHandler } from '../handlers/admin/updatePayment';
-import { updateCeuEntryValueHandler } from '../handlers/admin/ceu/updateCeuEntryValueHandler';
+
+// CEU god-mode
+import { getUserCEUMatrixAdminHandler } from '../handlers/admin/ceu/getUserCEUMatrixAdminHandler';
+import { updateUserCEUMatrixAdminHandler } from '../handlers/admin/ceu/updateUserCEUMatrixAdminHandler';
+
+// Supervision god-mode
+import { getUserSupervisionMatrixAdminHandler } from '../handlers/admin/supervision/getUserSupervisionMatrixAdminHandler';
+import { updateUserSupervisionMatrixAdminHandler } from '../handlers/admin/supervision/updateUserSupervisionMatrixAdminHandler';
 
 import { verifyToken } from '../middlewares/verifyToken';
 
@@ -15,7 +21,15 @@ export async function usersRoutes(app: FastifyInstance) {
   app.get('/admin/users/:id/details', { preHandler: verifyToken }, getUserFullDetailsHandler);
   app.get('/admin/users', { preHandler: verifyToken }, getUsersHandler);
   app.patch('/admin/users/:id', { preHandler: verifyToken }, updateUserBasicInfoHandler);
-  app.patch('/admin/supervision-hour/:id', { preHandler: verifyToken }, updateSupervisionHourHandler);
+
+  // Supervision (admin-only)
+  app.get('/admin/supervision/:userId/matrix', { preHandler: verifyToken }, getUserSupervisionMatrixAdminHandler);
+  app.patch('/admin/supervision/:userId/matrix', { preHandler: verifyToken }, updateUserSupervisionMatrixAdminHandler);
+
+  // Payments
   app.patch('/admin/payment/:id', { preHandler: verifyToken }, updatePaymentHandler);
-  app.patch('/admin/ceu/entries/:entryId', { preHandler: verifyToken }, updateCeuEntryValueHandler);
+
+  // CEU (admin-only)
+  app.get('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, getUserCEUMatrixAdminHandler);
+  app.patch('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, updateUserCEUMatrixAdminHandler);
 }

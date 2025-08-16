@@ -1,8 +1,8 @@
 import { useParams } from 'react-router-dom';
 import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import UserBasicBlock from './UserBasicBlock';
-import CEUBlock from './CEUBlock';
-import SupervisionBlock from './SupervisionBlock';
+import AdminCEUMatrixBlock from './AdminCEUMatrixBlock';
+import UserSupervisionMatrix from './UserSupervisionMatrix';
 import PaymentsBlock from './PaymentsBlock';
 import DetailBlock from './DetailBlock';
 import ActiveCertificateBlock from './ActiveCertificateBlock';
@@ -14,6 +14,9 @@ export default function UserDetails() {
 
   if (isLoading) return <p className="text-sm text-blue-dark p-6">Загрузка…</p>;
   if (error || !data) return <p className="text-error p-6">Ошибка загрузки пользователя</p>;
+
+  const activeGroup =
+    data.groups.length > 0 ? data.groups.sort((a, b) => b.rank - a.rank)[0].name : null;
 
   return (
     <div
@@ -42,15 +45,21 @@ export default function UserDetails() {
           role={data.role}
           createdAt={data.createdAt}
           groupName={
-            data.groups.length > 0 ? data.groups.sort((a, b) => a.rank - b.rank)[0].name : null
+            data.groups.length > 0 ? data.groups.sort((a, b) => b.rank - a.rank)[0].name : null
           }
         />
 
         <ActiveCertificateBlock certificates={data.certificates || []} />
 
-        <CEUBlock ceuRecords={data.ceuRecords} userId={data.id} />
+        <AdminCEUMatrixBlock
+          userId={data.id}
+          isSupervisor={activeGroup === 'Супервизор' || activeGroup === 'Опытный Супервизор'}
+        />
 
-        <SupervisionBlock supervisionRecords={data.supervisionRecords} userId={data.id} />
+        <UserSupervisionMatrix
+          userId={data.id}
+          isSupervisor={activeGroup === 'Супервизор' || activeGroup === 'Опытный Супервизор'}
+        />
 
         <PaymentsBlock payments={data.payments} userId={data.id} />
 

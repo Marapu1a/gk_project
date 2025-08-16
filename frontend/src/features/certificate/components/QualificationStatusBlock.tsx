@@ -30,6 +30,28 @@ export function QualificationStatusBlock({
   const patchStatus = usePatchExamAppStatus();
   const queryClient = useQueryClient();
 
+  // Нормализуем причины недопуска под роль
+  const normalizedReasons =
+    (reasons as string[] | undefined)?.reduce<string[]>((acc, r) => {
+      let reason = r;
+
+      if (isSupervisor) {
+        // 1) У супервизоров CEU не считаются => отбрасываем любые CEU-причины
+        const isCeuReason =
+          /ceu/i.test(reason) ||
+          /ceu-?балл/i.test(reason) ||
+          /балл(ов)?\s*ceu/i.test(reason) ||
+          /недостаточно\s+ceu/i.test(reason);
+        if (isCeuReason) return acc;
+
+        // 2) «супервизия» → «менторство» в формулировках
+        reason = reason.replace(/супервизии/gi, 'менторства').replace(/супервизия/gi, 'менторство');
+      }
+
+      acc.push(reason);
+      return acc;
+    }, []) ?? [];
+
   if (loading || appLoading) {
     return (
       <div
@@ -152,11 +174,11 @@ export function QualificationStatusBlock({
           </div>
         )}
 
-        {!isEligible && reasons?.length > 0 && (
+        {!isEligible && normalizedReasons.length > 0 && (
           <div>
             <p className="font-semibold text-red-700">Причины недопуска:</p>
             <ul className="list-disc pl-5 text-sm">
-              {reasons.map((reason: string, idx: number) => (
+              {normalizedReasons.map((reason, idx) => (
                 <li key={idx}>{reason}</li>
               ))}
             </ul>

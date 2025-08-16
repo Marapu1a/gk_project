@@ -1,22 +1,43 @@
 // src/features/supervision/api/getSupervisionList.ts
 import { api } from '@/lib/axios';
 
-export interface SupervisionHour {
-  type: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
-  value: number;
-  status: 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'SPENT';
-}
+export type RecordStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'SPENT';
+export type PracticeLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
 
-export interface SupervisionRecord {
+export type SupervisionHourItem = {
   id: string;
-  hours: SupervisionHour[];
-}
+  type: PracticeLevel;
+  value: number;
+  status: RecordStatus;
+  reviewedAt: string | null;
+  rejectedReason: string | null;
+};
 
-export interface SupervisionListResponse {
-  records: SupervisionRecord[];
-}
+export type SupervisionRecordItem = {
+  id: string;
+  createdAt: string;
+  hours: SupervisionHourItem[];
+};
 
-export async function getSupervisionList(): Promise<SupervisionListResponse> {
-  const response = await api.get('/supervision/list');
-  return response.data;
+export type GetSupervisionListResponse = {
+  records: SupervisionRecordItem[];
+  nextCursor: string | null;
+};
+
+export type GetSupervisionListParams = {
+  status?: RecordStatus; // опционально фильтруем записи и часы внутри
+  take?: number;         // 1..100 (дефолт бэка ~20)
+  cursor?: string | null;
+};
+
+export async function getSupervisionList(
+  params: GetSupervisionListParams = {}
+): Promise<GetSupervisionListResponse> {
+  const { status, take, cursor } = params;
+
+  const { data } = await api.get<GetSupervisionListResponse>('/supervision/list', {
+    params: { status, take, cursor },
+  });
+
+  return data;
 }

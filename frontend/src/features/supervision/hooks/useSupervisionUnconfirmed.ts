@@ -12,28 +12,22 @@ export function useSupervisionUnconfirmed() {
   return useQuery({
     queryKey: ['supervision', 'unconfirmed'],
     queryFn: async () => {
-      const { records } = await getSupervisionList();
+      const { records } = await getSupervisionList({ status: 'UNCONFIRMED' });
 
-      const sum: SupervisionCategorySum = {
-        instructor: 0,
-        curator: 0,
-        supervisor: 0,
-      };
+      const sum: SupervisionCategorySum = { instructor: 0, curator: 0, supervisor: 0 };
 
       for (const record of records) {
         for (const hour of record.hours) {
-          if (hour.status === 'UNCONFIRMED') {
-            switch (hour.type) {
-              case 'INSTRUCTOR':
-                sum.instructor += hour.value;
-                break;
-              case 'CURATOR':
-                sum.curator += hour.value;
-                break;
-              case 'SUPERVISOR':
-                sum.supervisor += hour.value;
-                break;
-            }
+          switch (hour.type) {
+            case 'INSTRUCTOR':
+              sum.instructor += hour.value;
+              break;
+            case 'CURATOR':
+              sum.curator += hour.value;
+              break;
+            case 'SUPERVISOR':
+              sum.supervisor += hour.value;
+              break;
           }
         }
       }

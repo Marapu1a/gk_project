@@ -1,19 +1,31 @@
+import { useState, useMemo } from 'react';
 import { useAssignedHours } from '../hooks/useAssignedHours';
 import { useUpdateHourStatus } from '../hooks/useUpdateHourStatus';
-import { useState } from 'react';
 import { postNotification } from '@/features/notifications/api/notifications';
 import { toast } from 'sonner';
+import type { AssignedHourItem } from '../api/getAssignedHours';
 
 export function SupervisionReviewForm() {
-  const { data } = useAssignedHours();
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    status: queryStatus,
+  } = useAssignedHours({ status: 'UNCONFIRMED', take: 25 });
+
   const mutation = useUpdateHourStatus();
   const [rejectedReasonMap, setRejectedReasonMap] = useState<Record<string, string>>({});
 
-  const typeMap: Record<string, string> = {
+  const hours: AssignedHourItem[] = useMemo(
+    () => (data ? data.pages.flatMap((p) => p.hours) : []),
+    [data],
+  );
+
+  const typeMap: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
     INSTRUCTOR: 'Инструктор',
     CURATOR: 'Куратор',
-    SUPERVISOR: 'Супервизор',
-    EXPERIENCED_SUPERVISOR: 'Опытный супервизор',
+    SUPERVISOR: 'Менторство',
   };
 
   const handleConfirm = async (id: string, userId: string, userEmail: string) => {
@@ -25,98 +37,137 @@ export function SupervisionReviewForm() {
         message: `Ваши часы супервизии подтверждены (${userEmail})`,
         link: '/history',
       });
-      toast.success(`Часы супервизии для ${userEmail} подтверждены`);
+      toast.success(`Подтверждено: ${userEmail}`);
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Ошибка подтверждения');
     }
   };
 
   const handleReject = async (id: string, reason: string, userId: string, userEmail: string) => {
-    if (!reason.trim()) {
-      toast.error('Укажите причину отклонения');
-      return;
-    }
+    const trimmed = (reason ?? '').trim();
+    if (!trimmed) return toast.error('Укажите причину отклонения');
+
     try {
-      await mutation.mutateAsync({ id, status: 'REJECTED', rejectedReason: reason });
+      await mutation.mutateAsync({ id, status: 'REJECTED', rejectedReason: trimmed });
       await postNotification({
         userId,
         type: 'SUPERVISION',
-        message: `Часы супервизии отклонены (${userEmail}) — причина: ${reason}`,
+        message: `Часы супервизии отклонены (${userEmail}). Причина: ${trimmed}`,
         link: '/history',
       });
-      toast.success(`Часы супервизии для ${userEmail} отклонены`);
+      toast.success(`Отклонено: ${userEmail}`);
+      setRejectedReasonMap((m) => ({ ...m, [id]: '' }));
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Ошибка отклонения');
     }
   };
 
-  if (!data || data.length === 0) return null;
+  if (queryStatus === 'pending') {
+    return <div className="text-sm text-blue-dark">Загрузка…</div>;
+  }
+  if (!hours.length) {
+    return (
+      <div
+        className="rounded-2xl border header-shadow bg-white p-6 text-sm text-gray-600"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        Нет назначенных часов на проверку.
+      </div>
+    );
+  }
 
   return (
-    <div className="overflow-x-auto border rounded-xl shadow-sm">
-      <table className="w-full text-sm">
-        <thead className="bg-blue-soft">
-          <tr>
-            <th className="text-left p-3 border-b border-blue-dark/20">Имя</th>
-            <th className="text-left p-3 border-b border-blue-dark/20">Email</th>
-            <th className="text-center p-3 border-b border-blue-dark/20">Тип</th>
-            <th className="text-center p-3 border-b border-blue-dark/20">Часы</th>
-            <th className="text-center p-3 border-b border-blue-dark/20">Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data
-            .filter((h) => h.type === 'INSTRUCTOR' || h.type === 'CURATOR')
-            .map((hour) => (
-              <tr key={hour.id} className="hover:bg-gray-50">
-                <td className="p-3">{hour.record.user.fullName}</td>
-                <td className="p-3">{hour.record.user.email}</td>
-                <td className="p-3 text-center">{typeMap[hour.type] || hour.type}</td>
-                <td className="p-3 text-center">{hour.value}</td>
-                <td className="p-3">
-                  <div className="flex flex-col items-center gap-2">
+    <div
+      className="rounded-2xl border header-shadow bg-white overflow-hidden"
+      style={{ borderColor: 'var(--color-green-light)' }}
+    >
+      {/* Header в стиле CEU */}
+      <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
+        <h3 className="text-lg font-semibold text-blue-dark">Супервизия — заявки на проверку</h3>
+        <p className="text-sm text-gray-500">Всего: {hours.length}</p>
+      </div>
+
+      {/* Body с таблицей в том же стиле */}
+      <div className="p-6 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left" style={{ background: 'var(--color-blue-soft)' }}>
+              <th className="p-2 whitespace-nowrap">Имя</th>
+              <th className="p-2 whitespace-nowrap">Email</th>
+              <th className="p-2 text-center whitespace-nowrap">Тип</th>
+              <th className="p-2 text-center whitespace-nowrap">Часы</th>
+              <th className="p-2 text-center whitespace-nowrap">Причина</th>
+              <th className="p-2 text-center whitespace-nowrap">Действие</th>
+            </tr>
+          </thead>
+          <tbody>
+            {hours.map((hour) => (
+              <tr
+                key={hour.id}
+                className="border-t"
+                style={{ borderColor: 'var(--color-green-light)' }}
+              >
+                <td className="p-2">{hour.record.user.fullName}</td>
+                <td className="p-2">{hour.record.user.email}</td>
+                <td className="p-2 text-center">{typeMap[hour.type] ?? hour.type}</td>
+                <td className="p-2 text-center">{hour.value}</td>
+                <td className="p-2">
+                  <div className="flex justify-center">
                     <input
                       type="text"
                       placeholder="Причина отклонения"
-                      className="input w-48"
-                      value={rejectedReasonMap[hour.id] || ''}
+                      className="input w-44"
+                      value={rejectedReasonMap[hour.id] ?? ''}
                       onChange={(e) =>
                         setRejectedReasonMap((prev) => ({ ...prev, [hour.id]: e.target.value }))
                       }
+                      disabled={mutation.isPending}
                     />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() =>
-                          handleConfirm(hour.id, hour.record.user.id, hour.record.user.email)
-                        }
-                        className="btn"
-                        style={{ backgroundColor: 'var(--color-green-dark)', color: 'white' }}
-                        disabled={mutation.isPending}
-                      >
-                        Подтвердить
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleReject(
-                            hour.id,
-                            rejectedReasonMap[hour.id],
-                            hour.record.user.id,
-                            hour.record.user.email,
-                          )
-                        }
-                        className="btn"
-                        style={{ backgroundColor: '#e3342f', color: 'white' }}
-                        disabled={mutation.isPending}
-                      >
-                        Отклонить
-                      </button>
-                    </div>
+                  </div>
+                </td>
+                <td className="p-2">
+                  <div className="flex justify-center gap-2">
+                    <button
+                      onClick={() =>
+                        handleConfirm(hour.id, hour.record.user.id, hour.record.user.email)
+                      }
+                      className="btn btn-brand"
+                      disabled={mutation.isPending}
+                    >
+                      Подтвердить
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleReject(
+                          hour.id,
+                          rejectedReasonMap[hour.id],
+                          hour.record.user.id,
+                          hour.record.user.email,
+                        )
+                      }
+                      className="btn btn-danger"
+                      disabled={mutation.isPending}
+                    >
+                      Отклонить
+                    </button>
                   </div>
                 </td>
               </tr>
             ))}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
+
+      {hasNextPage && (
+        <div
+          className="p-3 border-t flex justify-center"
+          style={{ borderColor: 'var(--color-green-light)' }}
+        >
+          <button className="btn" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+            {isFetchingNextPage ? 'Загружаем…' : 'Загрузить ещё'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
