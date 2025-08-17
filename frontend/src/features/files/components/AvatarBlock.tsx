@@ -11,7 +11,7 @@ export function AvatarBlock({ userId, avatarUrl, readOnly }: Props) {
   const setAvatar = useSetAvatarUrl(userId);
 
   const handleChange = async (file: UploadedFile | null) => {
-    const url = file ? `$/uploads/${file.fileId}` : null;
+    const url = file ? `/uploads/${file.fileId}` : null;
 
     // уже такое же значение — ничего не делаем
     if (url === lastUrlRef.current) return;

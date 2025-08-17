@@ -37,9 +37,16 @@ app.register(multipart, {
     fileSize: 20 * 1024 * 1024, // 20 MB
   },
 });
+
+const STATIC_UPLOADS_ROOT =
+  process.env.UPLOAD_DIR ||
+  path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+
 app.register(fastifyStatic, {
-  root: path.resolve(__dirname, '../uploads'),
+  root: STATIC_UPLOADS_ROOT,
   prefix: '/uploads/',
+  decorateReply: false,
+  etag: true,
 });
 
 app.register(cookie);

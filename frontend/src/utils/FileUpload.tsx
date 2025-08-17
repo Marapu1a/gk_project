@@ -147,7 +147,7 @@ export function FileUpload({
   });
 
   // URL для превью изображений: сначала локальный objectURL, дальше — сервер
-  const serverUrl = file ? `$/uploads/${file.fileId}` : null;
+  const serverUrl = file ? `/uploads/${file.fileId}` : null;
   const imagePreviewSrc = previewUrl ?? serverUrl ?? '';
 
   return (
