@@ -1,10 +1,11 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
+// backend/prisma/seed.js
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Создаём группы
+  // группы
   const groups = [
     { name: 'Студент', rank: 1 },
     { name: 'Инструктор', rank: 2 },
@@ -20,21 +21,17 @@ async function main() {
       create: { name, rank },
     });
   }
+  console.log('✅ Группы созданы/обновлены.');
 
-  console.log('✅ Группы с рангами созданы или обновлены.');
-
-  // Хешируем пароль
-  const password = await bcrypt.hash('111111', 10);
-
-  // Проверим, есть ли админ
-  const existing = await prisma.user.findUnique({
-    where: { email: 'admin@admin.com' },
-  });
+  // админ
+  const email = 'admin@admin.com';
+  const existing = await prisma.user.findUnique({ where: { email } });
 
   if (!existing) {
+    const password = await bcrypt.hash('111111', 10);
     const adminUser = await prisma.user.create({
       data: {
-        email: 'admin@admin.com',
+        email,
         password,
         fullName: 'Администратор',
         role: 'ADMIN',
@@ -48,14 +45,11 @@ async function main() {
 
     if (supervisorGroup) {
       await prisma.userGroup.create({
-        data: {
-          userId: adminUser.id,
-          groupId: supervisorGroup.id,
-        },
+        data: { userId: adminUser.id, groupId: supervisorGroup.id },
       });
     }
 
-    console.log('✅ Админ admin@admin.com создан.');
+    console.log('✅ Админ создан: admin@admin.com / 111111');
   } else {
     console.log('ℹ️ Админ уже существует, пропущено.');
   }
