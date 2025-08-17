@@ -9,13 +9,8 @@ import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import { AvatarDisplay } from '@/features/files/components/AvatarDisplay';
 import { AvatarUploadModal } from '@/features/files/components/AvatarUploadModal';
+import { UserSelfProfileBlock } from '@/features/user/components/UserSelfProfileBlock';
 import { BioEditModal } from '@/features/user/components/BioEditModal';
-
-const roleLabels = {
-  STUDENT: 'Ученик',
-  REVIEWER: 'Супервизор',
-  ADMIN: 'Администратор',
-} as const;
 
 export function UserInfo() {
   const { data: user, isLoading } = useCurrentUser();
@@ -47,26 +42,21 @@ export function UserInfo() {
       {/* Body */}
       <div className="px-6 py-5 space-y-3 text-sm">
         {/* Аватар (как в реестре) */}
-        <div className="flex items-start gap-4">
-          <AvatarDisplay src={user.avatarUrl} alt={user.fullName} />
-          <button className="btn btn-accent" onClick={() => setAvatarOpen(true)}>
-            Изменить аватар
-          </button>
+
+        <div className="flex items-start">
+          <AvatarDisplay
+            src={user.avatarUrl}
+            alt={user.fullName}
+            w="w-28"
+            h="h-28"
+            editable
+            onClick={() => setAvatarOpen(true)}
+          />
         </div>
+
         {avatarOpen && <AvatarUploadModal userId={user.id} onClose={() => setAvatarOpen(false)} />}
 
-        <p>
-          <strong>Имя:</strong> {user.fullName}
-        </p>
-        <p>
-          <strong>Email:</strong> {user.email}
-        </p>
-        <p>
-          <strong>Роль:</strong> {roleLabels[user.role] || user.role}
-        </p>
-        <p>
-          <strong>Группа:</strong> {user.activeGroup?.name || '—'}
-        </p>
+        <UserSelfProfileBlock user={user} />
 
         {/* О себе */}
         {user.bio ? (
@@ -89,17 +79,15 @@ export function UserInfo() {
         )}
 
         {isAdmin ? (
-          <Button onClick={() => navigate('/admin/document-review')} className="mt-2 mr-2">
+          <Button onClick={() => navigate('/admin/document-review')} className="mr-2">
             Проверка документов
           </Button>
         ) : (
           <>
-            <Button onClick={() => navigate('/document-review')} className="mt-2 mr-2">
+            <Button onClick={() => navigate('/document-review')} className="mr-2">
               Загрузить документы на проверку
             </Button>
-            <Button onClick={() => navigate('/my-certificate')} className="mt-2">
-              Мой сертификат
-            </Button>
+            <Button onClick={() => navigate('/my-certificate')}>Мой сертификат</Button>
 
             {!payLoading && (isAdmin || registrationPaid) ? (
               <QualificationStatusBlock activeGroupName={user.activeGroup?.name} />
@@ -124,9 +112,7 @@ export function UserInfo() {
           </>
         )}
 
-        <Button onClick={logout} className="mt-4">
-          Выйти
-        </Button>
+        <Button onClick={logout}>Выйти</Button>
       </div>
     </div>
   );

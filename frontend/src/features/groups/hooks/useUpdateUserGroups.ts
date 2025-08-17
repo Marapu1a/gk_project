@@ -2,6 +2,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateUserGroups, type UpdateUserGroupsResponse } from '../api/updateUserGroups';
 import { toast } from 'sonner';
+import { examStatusLabels, paymentStatusLabels } from '@/utils/labels';
+
+const label = (map: Record<string, string>, code?: string | null) =>
+  code ? (map[code] ?? code) : '';
 
 export function useUpdateUserGroups(userId: string, isSelf = false) {
   const qc = useQueryClient();
@@ -30,9 +34,24 @@ export function useUpdateUserGroups(userId: string, isSelf = false) {
 
       if (data.upgraded) {
         toast.success(`Повышение применено. Списано CEU: ${data.burned}.`);
-        if (data.examReset) toast.info('Заявка на экзамен сброшена до NOT_SUBMITTED.');
-        if (data.examPaymentReset)
-          toast.info(`Оплата EXAM_ACCESS сброшена до UNPAID (${data.examPaymentResetCount}).`);
+
+        // читаем коды из возможных полей ответа и мапим в человекочитаемые
+        const d: any = data;
+        if (data.examReset) {
+          const code = d.examStatusAfter ?? d.examStatus ?? null;
+          const text = label(examStatusLabels, code);
+          toast.info(`Заявка на экзамен сброшена${text ? ` до ${text}` : ''}.`);
+        }
+
+        if (data.examPaymentReset) {
+          const code = d.paymentStatusAfter ?? d.paymentStatus ?? null;
+          const text = label(paymentStatusLabels, code);
+          const cnt =
+            typeof d.examPaymentResetCount === 'number'
+              ? ` (${d.examPaymentResetCount})`
+              : '';
+          toast.info(`Оплата экзамена сброшена${text ? ` до ${text}` : ''}${cnt}.`);
+        }
       } else {
         toast.success('Группы обновлены.');
       }

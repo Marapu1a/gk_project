@@ -1,17 +1,27 @@
+// src/features/groups/components/GroupAssignmentForm.tsx
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { examStatusLabels, paymentStatusLabels } from '@/utils/labels';
 import { useUserGroupsByEmail } from '../hooks/useUserGroupsByEmail';
 import { useUpdateUserGroups } from '../hooks/useUpdateUserGroups';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { toast } from 'sonner';
 import { BackButton } from '@/components/BackButton';
 import { Link } from 'react-router-dom';
+import { useUserTypeahead } from '../hooks/useUserTypeahead';
 
 export function GroupAssignmentForm() {
-  const [email, setEmail] = useState('');
+  // emailOrName: поле ввода — может быть email или ФИО
+  const [emailOrName, setEmailOrName] = useState('');
   const [submittedEmail, setSubmittedEmail] = useState('');
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [pickedEmail, setPickedEmail] = useState<string | null>(null);
+
+  const isEmail = /\S+@\S+\.\S+/.test(emailOrName.trim());
+  const { data: suggests = [], isLoading: suggLoading } = useUserTypeahead(emailOrName, {
+    minLength: 2,
+    debounceMs: 200,
+    limit: 8,
+  });
 
   const { data, isLoading, error } = useUserGroupsByEmail(submittedEmail, !!submittedEmail);
   const mutation = useUpdateUserGroups(data?.user.id ?? '');
@@ -26,9 +36,36 @@ export function GroupAssignmentForm() {
     if (data) setSelectedGroupIds(data.currentGroupIds);
   }, [data]);
 
+  // выбор подсказки
+  const pickUser = (email: string) => {
+    setPickedEmail(email);
+    setEmailOrName(email);
+    setSubmittedEmail(email);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmittedEmail(email.trim());
+    const q = emailOrName.trim();
+    if (!q) return;
+
+    if (isEmail) {
+      setPickedEmail(q);
+      setSubmittedEmail(q);
+      return;
+    }
+
+    // если не email — берём из выбранной подсказки или единственного кандидата
+    if (pickedEmail) {
+      setSubmittedEmail(pickedEmail);
+      return;
+    }
+    if (suggests.length === 1) {
+      setPickedEmail(suggests[0].email);
+      setEmailOrName(suggests[0].email);
+      setSubmittedEmail(suggests[0].email);
+      return;
+    }
+    toast.info('Выберите пользователя из списка подсказок или укажите email.');
   };
 
   const toggleGroup = (groupId: string) => {
@@ -52,7 +89,7 @@ export function GroupAssignmentForm() {
 
     try {
       await mutation.mutateAsync(selectedGroupIds);
-      // Тост об успехе показывает хук
+      // успех и статусы показываются внутри useUpdateUserGroups
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Ошибка при сохранении');
     }
@@ -70,7 +107,7 @@ export function GroupAssignmentForm() {
 
   return (
     <div
-      className="rounded-2xl border header-shadow bg-white overflow-hidden"
+      className="rounded-2xl border header-shadow bg-white"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
       <div
@@ -79,17 +116,59 @@ export function GroupAssignmentForm() {
       >
         <h2 className="text-xl font-semibold text-blue-dark">Назначение групп</h2>
 
-        <form onSubmit={handleSubmit} className="ml-auto flex gap-2 items-center">
+        {/* Поиск + подсказки */}
+        <form onSubmit={handleSubmit} className="ml-auto w-80 relative">
           <input
-            type="email"
-            placeholder="Введите email"
-            className="input w-64"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            placeholder="Email или ФИО"
+            className="input w-full"
+            value={emailOrName}
+            onChange={(e) => {
+              setEmailOrName(e.target.value);
+              setPickedEmail(null);
+            }}
           />
-          <button type="submit" className="btn btn-brand" disabled={!email.trim()}>
-            Показать
-          </button>
+
+          {/* Выпадающий список подсказок (только когда введено не email) */}
+          {!isEmail && emailOrName.trim().length >= 2 && (
+            <div
+              className="absolute top-full mt-1 w-full z-50 rounded-xl border bg-white header-shadow max-h-72 overflow-auto"
+              style={{ borderColor: 'var(--color-green-light)' }}
+            >
+              {suggLoading && <div className="px-3 py-2 text-sm text-gray-500">Поиск…</div>}
+              {!suggLoading && suggests.length === 0 && (
+                <div className="px-3 py-2 text-sm text-gray-500">Ничего не найдено</div>
+              )}
+              {suggests.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => pickUser(s.email)}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <div className="font-medium text-blue-dark truncate">{s.fullName}</div>
+                    <div className="text-xs text-gray-600 truncate">{s.email}</div>
+                  </div>
+                  {s.groupName && (
+                    <span
+                      className="shrink-0 rounded-full px-2 py-0.5 text-xs"
+                      style={{ color: 'var(--color-white)', background: 'var(--color-blue-dark)' }}
+                      title={s.groupName}
+                    >
+                      {s.groupName}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-2">
+            <button type="submit" className="btn btn-brand">
+              Показать
+            </button>
+          </div>
         </form>
       </div>
 
@@ -178,14 +257,16 @@ export function GroupAssignmentForm() {
                   </p>
                   {mutation.data.examReset && (
                     <p>
-                      <strong>Заявка на экзамен:</strong> сброшена (статус:{' '}
-                      {examStatusLabels.NOT_SUBMITTED}).
+                      <strong>Заявка на экзамен:</strong> сброшена.
                     </p>
                   )}
                   {mutation.data.examPaymentReset && (
                     <p>
-                      <strong>Оплата экзамена:</strong> сброшена (статус:{' '}
-                      {paymentStatusLabels.UNPAID}).
+                      <strong>Оплата экзамена:</strong> сброшена
+                      {typeof (mutation.data as any).examPaymentResetCount === 'number'
+                        ? ` (${(mutation.data as any).examPaymentResetCount})`
+                        : ''}
+                      .
                     </p>
                   )}
                   <p>

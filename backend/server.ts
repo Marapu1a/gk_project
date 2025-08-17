@@ -43,7 +43,7 @@ app.register(fastifyStatic, {
 });
 
 app.register(cookie);
-app.register(authRoutes);
+app.register(authRoutes, { prefix: '/auth' });
 app.register(ceuRoutes);
 app.register(supervisionRoutes);
 app.register(uploadRoutes);

@@ -18,6 +18,7 @@ export type RegistryProfile = {
   avatarUrl?: string | null;
   createdAt: string;    // ISO
   bio?: string | null;
+  groupName?: string | null;
   certificate?: RegistryCertificate | null;
 };
 

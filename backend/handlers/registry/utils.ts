@@ -1,10 +1,7 @@
 // handlers/registry/utils.ts
 import { prisma } from '../../lib/prisma';
 
-/**
- * Активный = expiresAt >= now()
- * Возвращает последний по issuedAt активный сертификат или null.
- */
+/** Активный = expiresAt >= now(). Последний по issuedAt активный сертификат или null. */
 export async function getActiveCertificate(userId: string) {
   if (!userId) return null;
   const now = new Date();
@@ -18,7 +15,7 @@ export async function getActiveCertificate(userId: string) {
       number: true,
       issuedAt: true,
       expiresAt: true,
-      file: { select: { fileId: true } }, // ← тянем правильный идентификатор файла
+      file: { select: { fileId: true } },
     },
   });
 
@@ -29,7 +26,7 @@ export async function getActiveCertificate(userId: string) {
     number: cert.number,
     issuedAt: cert.issuedAt,
     expiresAt: cert.expiresAt,
-    fileId: cert.file.fileId, // ← это то, что нужно для /uploads/:fileId
+    fileId: cert.file.fileId,
   };
 }
 
@@ -51,11 +48,7 @@ export async function getRegistryList({
     where: {
       country: country || undefined,
       city: city || undefined,
-      certificates: {
-        some: {
-          expiresAt: { gte: now },
-        },
-      },
+      certificates: { some: { expiresAt: { gte: now } } },
     },
     orderBy: { fullName: 'asc' },
     skip,
@@ -66,27 +59,32 @@ export async function getRegistryList({
       country: true,
       city: true,
       avatarUrl: true,
+      // тянем группы, чтобы вычислить активную
+      groups: { include: { group: { select: { name: true, rank: true } } } },
     },
+  });
+
+  const items = users.map(u => {
+    const top = u.groups.map(g => g.group).sort((a, b) => b.rank - a.rank)[0];
+    return {
+      id: u.id,
+      fullName: u.fullName,
+      country: u.country,
+      city: u.city,
+      avatarUrl: u.avatarUrl,
+      groupName: top?.name ?? null, // ← статус
+    };
   });
 
   const total = await prisma.user.count({
     where: {
       country: country || undefined,
       city: city || undefined,
-      certificates: {
-        some: {
-          expiresAt: { gte: now },
-        },
-      },
+      certificates: { some: { expiresAt: { gte: now } } },
     },
   });
 
-  return {
-    items: users,
-    total,
-    page,
-    limit,
-  };
+  return { items, total, page, limit };
 }
 
 export async function getRegistryProfile(userId: string) {
@@ -96,7 +94,15 @@ export async function getRegistryProfile(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      id: true, fullName: true, country: true, city: true, avatarUrl: true, createdAt: true, bio: true,
+      id: true,
+      fullName: true,
+      country: true,
+      city: true,
+      avatarUrl: true,
+      createdAt: true,
+      bio: true,
+      // активная группа
+      groups: { include: { group: { select: { name: true, rank: true } } } },
       certificates: {
         where: { expiresAt: { gte: now } },
         orderBy: { issuedAt: 'desc' },
@@ -107,7 +113,7 @@ export async function getRegistryProfile(userId: string) {
           number: true,
           issuedAt: true,
           expiresAt: true,
-          file: { select: { fileId: true } }, // ← берём UploadedFile.fileId
+          file: { select: { fileId: true } },
         },
       },
     },
@@ -115,7 +121,9 @@ export async function getRegistryProfile(userId: string) {
 
   if (!user || user.certificates.length === 0) return null;
 
+  const top = user.groups.map(g => g.group).sort((a, b) => b.rank - a.rank)[0];
   const c = user.certificates[0];
+
   return {
     id: user.id,
     fullName: user.fullName,
@@ -124,13 +132,14 @@ export async function getRegistryProfile(userId: string) {
     avatarUrl: user.avatarUrl,
     createdAt: user.createdAt,
     bio: user.bio,
+    groupName: top?.name ?? null, // ← статус
     certificate: {
       id: c.id,
       title: c.title,
       number: c.number,
       issuedAt: c.issuedAt,
       expiresAt: c.expiresAt,
-      fileId: c.file.fileId, // ← правильный id для фронта
+      fileId: c.file.fileId,
     },
   };
 }

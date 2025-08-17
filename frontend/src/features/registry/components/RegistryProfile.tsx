@@ -13,6 +13,8 @@ export function RegistryProfile({ userId }: Props) {
 
   const cert = p.certificate;
   const certUrl = cert ? `/uploads/${cert.fileId}` : '';
+  const avatarPlaceholder = '/avatar_placeholder.svg';
+
   const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('ru-RU') : '—');
 
   function since(d: string) {
@@ -40,17 +42,27 @@ export function RegistryProfile({ userId }: Props) {
     return forms[2];
   }
 
-  const avatarPlaceholder = '/avatar_placeholder.svg';
-
   return (
     <div
       className="rounded-2xl border bg-white p-6 space-y-6 header-shadow"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
-      {/* Заголовок (без аватара) */}
+      {/* Заголовок */}
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold text-blue-dark">{p.fullName}</h1>
-        <div className="text-sm text-gray-600">
+        <h1 className="text-2xl font-bold text-blue-dark break-words">{p.fullName}</h1>
+
+        {p.groupName && (
+          <div className="mt-1">
+            <span
+              className="inline-block rounded-full px-2 py-0.5 text-xs"
+              style={{ color: 'var(--color-white)', background: badgeColor(p.groupName) }}
+            >
+              {p.groupName}
+            </span>
+          </div>
+        )}
+
+        <div className="text-sm text-gray-600 mt-2">
           {[p.country, p.city].filter(Boolean).join(', ') || '—'}
         </div>
         <div className="text-xs text-gray-500">
@@ -68,7 +80,7 @@ export function RegistryProfile({ userId }: Props) {
 
       {/* Основная область: слева крупный аватар, справа сертификат */}
       <div className="grid gap-6 md:grid-cols-[minmax(220px,280px)_1fr] items-stretch">
-        {/* Левая колонка — аватар на всю высоту */}
+        {/* Левая колонка — аватар */}
         <div className="hidden md:block">
           <div className="h-full">
             <div
@@ -95,69 +107,68 @@ export function RegistryProfile({ userId }: Props) {
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-blue-dark">Сертификат</h2>
 
-            <div
-              className="rounded-2xl p-5 bg-white"
-              style={{ border: '1px solid var(--color-green-light)' }}
-            >
-              <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_360px] items-stretch">
-                {/* Информация о сертификате */}
-                <div>
-                  <dl className="text-base leading-6 space-y-4">
+            {/* Без внешней рамки: просто разделитель между инфо и превью */}
+            <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_520px] items-stretch">
+              {/* Информация о сертификате */}
+              <div>
+                <dl className="text-base leading-6 space-y-4">
+                  <div>
+                    <dt className="text-gray-500">Название</dt>
+                    <dd className="font-medium text-blue-dark break-words">{cert.title}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Номер</dt>
+                    <dd className="font-medium break-words">№ {cert.number}</dd>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <dt className="text-gray-500">Название</dt>
-                      <dd className="font-medium text-blue-dark">{cert.title}</dd>
+                      <dt className="text-gray-500">Выдан</dt>
+                      <dd className="font-medium">{fmt(cert.issuedAt)}</dd>
                     </div>
                     <div>
-                      <dt className="text-gray-500">Номер</dt>
-                      <dd className="font-medium">№ {cert.number}</dd>
+                      <dt className="text-gray-500">Действителен до</dt>
+                      <dd className="font-medium">{fmt(cert.expiresAt)}</dd>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <dt className="text-gray-500">Выдан</dt>
-                        <dd className="font-medium">{fmt(cert.issuedAt)}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-gray-500">Действителен до</dt>
-                        <dd className="font-medium">{fmt(cert.expiresAt)}</dd>
-                      </div>
-                    </div>
-                  </dl>
-                </div>
+                  </div>
+                </dl>
+              </div>
 
-                {/* Превью сертификата */}
-                <button
-                  type="button"
-                  onClick={() => setOpen(true)}
-                  className="rounded-xl p-3 bg-white hover:bg-gray-50 flex flex-col justify-between"
-                  style={{ border: '1px solid var(--color-green-light)' }}
-                  aria-label="Открыть сертификат"
-                >
-                  <div className="relative w-full flex-1 min-h-[240px] rounded-lg bg-white overflow-hidden">
+              {/* Превью сертификата — ландшафт A4, отделено линией */}
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="rounded-xl p-3 bg-white hover:bg-gray-50 flex flex-col justify-between md:pl-6"
+                style={{ borderLeft: '1px solid var(--color-green-light)' }}
+                aria-label="Открыть сертификат"
+              >
+                <div className="relative w-full flex-1 min-h-[260px] rounded-lg overflow-hidden">
+                  {/* A4 landscape: 1.414 : 1 */}
+                  <div
+                    className="w-full"
+                    style={{ aspectRatio: '1.414 / 1', position: 'relative' }}
+                  >
                     <img
                       src={certUrl}
                       alt="certificate"
                       className="absolute inset-0 w-full h-full object-contain"
                     />
                   </div>
-                  <div className="mt-3 text-xs text-blue-dark text-center">
-                    Открыть в полном размере
-                  </div>
-                </button>
-              </div>
+                </div>
+                <div className="mt-3 text-xs text-blue-dark text-center">
+                  Открыть в полном размере
+                </div>
+              </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Модалка A4 */}
+      {/* Модалка A4 (ландшафт) */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
-          <div className="relative bg-white rounded-2xl p-4 w-[min(90vw,900px)] header-shadow">
-            <div
-              className="relative mx-auto"
-              style={{ width: '794px', maxWidth: '100%', aspectRatio: '1 / 1.414' }}
-            >
+          <div className="relative bg-white rounded-2xl p-4 w-[min(95vw,1123px)] header-shadow">
+            <div className="relative mx-auto" style={{ width: '100%', aspectRatio: '1.414 / 1' }}>
               <img
                 src={certUrl}
                 alt="certificate-full"
@@ -174,4 +185,19 @@ export function RegistryProfile({ userId }: Props) {
       )}
     </div>
   );
+}
+
+function badgeColor(groupName: string) {
+  switch (groupName.toLowerCase()) {
+    case 'инструктор':
+      return '#a16207'; // янтарный
+    case 'куратор':
+      return '#6d28d9'; // фиолетовый
+    case 'супервизор':
+      return '#1f355e'; // тёмно-синий
+    case 'опытный супервизор':
+      return '#0f766e'; // тил
+    default:
+      return 'var(--color-blue-dark)';
+  }
 }
