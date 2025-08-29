@@ -7,7 +7,7 @@ export function DashboardButton() {
   return (
     <button
       onClick={() => navigate('/dashboard')}
-      className="btn btn-accent inline-flex items-center gap-2 text-sm"
+      className="btn btn-accent cursor-pointer inline-flex items-center gap-2 text-sm"
     >
       ⌂ В кабинет
     </button>

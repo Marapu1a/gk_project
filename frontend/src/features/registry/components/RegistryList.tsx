@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRegistry } from '../hooks/useRegistry';
 import { RegistryCard } from '../components/RegistryCard';
+import { Button } from '@/components/Button';
 
 type Props = { onOpenProfile?: (userId: string) => void; pageSize?: number };
 
@@ -53,12 +54,12 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
             placeholder="Напр. Москва"
           />
         </div>
-        <button type="submit" className="btn btn-accent">
+        <Button type="submit" variant="accent">
           Применить
-        </button>
-        <button type="button" onClick={onReset} className="btn">
+        </Button>
+        <Button type="button" onClick={onReset} variant="ghost">
           Сброс
-        </button>
+        </Button>
       </form>
 
       {/* Сетка */}
@@ -76,23 +77,18 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
 
       {/* Пагинация */}
       <div className="flex items-center justify-between">
-        <button
-          className="btn"
-          disabled={page <= 1}
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-        >
+        <Button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
           Назад
-        </button>
+        </Button>
         <div className="text-sm text-gray-600">
           Стр. {page} из {totalPages} • Всего: {total}
         </div>
-        <button
-          className="btn"
+        <Button
           disabled={page >= totalPages}
           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
         >
           Вперёд
-        </button>
+        </Button>
       </div>
     </div>
   );

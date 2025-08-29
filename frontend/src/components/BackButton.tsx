@@ -7,7 +7,7 @@ export function BackButton() {
   return (
     <button
       onClick={() => navigate(-1)}
-      className="btn btn-ghost inline-flex items-center gap-2 text-sm"
+      className="btn btn-ghost cursor-pointer inline-flex items-center gap-2 text-sm"
     >
       ← Назад
     </button>

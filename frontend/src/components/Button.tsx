@@ -1,4 +1,4 @@
-// src/components/ui/Button.tsx
+// src/components/Button.tsx
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -46,7 +46,7 @@ export function Button({
       disabled={isDisabled}
       aria-busy={loading || undefined}
       className={cn(
-        'btn inline-flex items-center justify-center gap-2',
+        'btn inline-flex items-center justify-center gap-2 cursor-pointer',
         variantClass[variant],
         sizeClass[size],
         fullWidth && 'w-full',

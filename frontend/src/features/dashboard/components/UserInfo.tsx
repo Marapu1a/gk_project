@@ -11,6 +11,7 @@ import { AvatarDisplay } from '@/features/files/components/AvatarDisplay';
 import { AvatarUploadModal } from '@/features/files/components/AvatarUploadModal';
 import { UserSelfProfileBlock } from '@/features/user/components/UserSelfProfileBlock';
 import { BioEditModal } from '@/features/user/components/BioEditModal';
+import { AdminDbBackupBlock } from '@/features/backup/components/AdminDbBackupBlock';
 
 export function UserInfo() {
   const { data: user, isLoading } = useCurrentUser();
@@ -79,9 +80,15 @@ export function UserInfo() {
         )}
 
         {isAdmin ? (
-          <Button onClick={() => navigate('/admin/document-review')} className="mr-2">
-            Проверка документов
-          </Button>
+          <>
+            <Button onClick={() => navigate('/admin/document-review')} className="mr-2">
+              Проверка документов
+            </Button>
+
+            {/* ⬇️ Блок создания дампа БД для админа */}
+
+            <AdminDbBackupBlock />
+          </>
         ) : (
           <>
             <Button onClick={() => navigate('/document-review')} className="mr-2">
