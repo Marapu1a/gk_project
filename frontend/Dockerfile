@@ -1,14 +1,14 @@
 # build
 FROM node:20 AS build
-WORKDIR /app/frontend
+WORKDIR /app
 
-# ставим dev-зависимости именно фронта
-COPY package.json package-lock.json ./
+# скопировать именно файлы фронта
+COPY package*.json ./frontend/
+WORKDIR /app/frontend
 RUN npm ci --include=dev
 
-# код и env (если нужен)
+# теперь копируем весь фронтовый код
 COPY . .
-# если .env лежит в ./frontend — он уже скопирован; VITE_* попадут в билд
 
 RUN npm run build
 
