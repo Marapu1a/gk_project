@@ -1,14 +1,14 @@
-# build
 FROM node:20 AS build
 WORKDIR /app
 
-# скопировать именно package.json и package-lock.json фронта
+# ставим зависимости именно фронта
 COPY package*.json ./
-RUN npm ci --include=dev
+RUN npm install --include=dev
 
-# скопировать код фронта
+# остальной код
 COPY . .
 
+# билд
 RUN npm run build
 
 # serve
