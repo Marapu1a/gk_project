@@ -2,7 +2,7 @@
 FROM node:20 AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --include=dev
 COPY . .
 ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
