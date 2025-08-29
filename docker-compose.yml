@@ -33,9 +33,9 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: ./Dockerfile
+      dockerfile: Dockerfile
     env_file:
-      - ./frontend/.env # только VITE_* переменные
+      - ./frontend/.env
     expose:
       - '80'
     depends_on:
