@@ -1,14 +1,11 @@
+# build
 FROM node:20 AS build
 WORKDIR /app
-
-# ставим зависимости именно фронта
 COPY package*.json ./
-RUN npm install --include=dev
-
-# остальной код
+RUN npm ci
 COPY . .
-
-# билд
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # serve

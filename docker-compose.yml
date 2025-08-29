@@ -1,3 +1,5 @@
+version: '3.9'
+
 services:
   db:
     image: postgres:16-alpine
@@ -24,8 +26,7 @@ services:
     volumes:
       - /srv/storage/uploads:/app/uploads
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     expose:
       - '3000'
     restart: unless-stopped
@@ -33,9 +34,8 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    env_file:
-      - ./frontend/.env
+      args:
+        - VITE_API_URL=/api
     expose:
       - '80'
     depends_on:
