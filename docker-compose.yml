@@ -34,8 +34,8 @@ services:
   frontend:
     build:
       context: ./frontend
-      args:
-        - VITE_API_URL=/api
+    env_file:
+      - ./frontend/.env
     expose:
       - '80'
     depends_on:
