@@ -25,6 +25,7 @@ services:
       UPLOAD_DIR: /app/uploads
     volumes:
       - /srv/storage/uploads:/app/uploads
+      - ./backend/data:/app/data
     depends_on:
       - db
     expose:
