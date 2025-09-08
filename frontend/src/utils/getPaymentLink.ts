@@ -4,28 +4,31 @@ type PaymentTypeExtended = PaymentItem['type'] | 'DOCUMENT_REVIEW_REPEAT';
 
 const PAYMENT_LINKS: Record<string, Partial<Record<PaymentTypeExtended, string>>> = {
   студент: {
-    REGISTRATION: 'https://reestrpap.reestrpap.ru/product/регистрация-на-сайте-и-сбор-часов-супе/',
-    DOCUMENT_REVIEW: 'https://reestrpap.reestrpap.ru/product/экспертиза-документов-соискателя-на-3/',
-    EXAM_ACCESS: 'https://reestrpap.reestrpap.ru/product/экзамен-на-уровень-инструктор-пап-ibt/',
-    FULL_PACKAGE: 'https://reestrpap.reestrpap.ru/product/стоимость-со-скидкой-10-при-единовремен/',
-    DOCUMENT_REVIEW_REPEAT: 'https://reestrpap.reestrpap.ru/product/ресертификация-уровень-инструктор-п/',
+    REGISTRATION: 'https://reestrpap.ru/product/registratsiya-na-sayte-i-sbor-chasov-superviziruemoy-praktiki-uroven-instruktor-pap-ibt',
+    DOCUMENT_REVIEW: 'https://reestrpap.ru/product/ekspertiza-dokumentov-soiskatelya-na-uroven-instruktor-pap-ibt',
+    EXAM_ACCESS: 'https://reestrpap.ru/product/ekzamen-na-uroven-instruktor-pap-ibt',
+    FULL_PACKAGE: 'https://reestrpap.ru/product/stoimost-so-skidkoy-10-pri-edinovremennoy-oplate-vseh-treh-platezhey-instruktor',
   },
   инструктор: {
-    REGISTRATION: 'https://reestrpap.reestrpap.ru/product/регистрация-на-сайте-и-сбор-часов-супе-2/',
-    DOCUMENT_REVIEW: 'https://reestrpap.reestrpap.ru/product/экспертиза-документов-соискателя-на/',
-    EXAM_ACCESS: 'https://reestrpap.reestrpap.ru/product/экзамен-на-уровень-куратор-пап/',
-    FULL_PACKAGE: 'https://reestrpap.reestrpap.ru/product/стоимость-со-скидкой-10-при-единовреме-2/',
-    DOCUMENT_REVIEW_REPEAT: 'https://reestrpap.reestrpap.ru/product/ресертификация-уровень-куратор-пап/',
+    REGISTRATION: 'https://reestrpap.ru/product/registratsiya-na-sayte-i-sbor-chasov-superviziruemoy-praktiki-uroven-kurator-pap',
+    DOCUMENT_REVIEW: 'https://reestrpap.ru/product/ekspertiza-dokumentov-soiskatelya-na-uroven-kurator-pap',
+    EXAM_ACCESS: 'https://reestrpap.ru/product/ekzamen-na-uroven-kurator-pap',
+    FULL_PACKAGE: 'https://reestrpap.ru/product/stoimost-so-skidkoy-10-pri-edinovremennoy-oplate-vseh-treh-platezhey-kurator',
   },
   куратор: {
-    REGISTRATION: 'https://reestrpap.reestrpap.ru/product/регистрация-на-сайте-и-сбор-часов-супе-3/',
-    DOCUMENT_REVIEW: 'https://reestrpap.reestrpap.ru/product/экспертиза-документов-соискателя-на-2/',
-    EXAM_ACCESS: 'https://reestrpap.reestrpap.ru/product/экзамен-на-уровень-супервизор-пап-iba/',
+    DOCUMENT_REVIEW: 'https://reestrpap.ru/product/ekspertiza-dokumentov-soiskatelya-na-uroven-supervizor-pap-iba',
+    EXAM_ACCESS: 'https://reestrpap.ru/product/ekzamen-na-uroven-supervizor-pap-iba',
+    FULL_PACKAGE: 'https://reestrpap.ru/product/stoimost-so-skidkoy-10-pri-edinovremennoy-oplate-vseh-treh-platezhey-supervizor',
   },
   // супервизор → опытный — пока без ссылок
 };
 
-export function getPaymentLink(type: PaymentItem['type'], currentGroup: string): string {
-  const group = currentGroup.trim().toLowerCase();
-  return PAYMENT_LINKS[group]?.[type] || '#';
+export function getPaymentLink(
+  type: PaymentItem['type'],
+  currentGroup?: string
+): string | null {
+  if (!currentGroup) return null;
+  const group = currentGroup.toLowerCase().trim();
+  const url = PAYMENT_LINKS[group]?.[type];
+  return (url && /^https?:\/\//.test(url)) ? url : null;
 }

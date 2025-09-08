@@ -6,7 +6,9 @@ export default function SiteHeader() {
       <div className="container-fixed mx-auto py-[9px] flex items-center justify-between">
         {/* Логотип */}
         <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="ЦС ПАП" className="h-[64px] w-[146px]" />
+          <Link to={'http://www.reestrpap.ru'}>
+            <img src="/logo.svg" alt="ЦС ПАП" className="h-[64px] w-[146px]" />
+          </Link>
         </div>
 
         {/* Навигация */}
@@ -32,10 +34,18 @@ export default function SiteHeader() {
 
         {/* Иконки */}
         <div className="flex items-center gap-4">
-          <img src="/icons/search.svg" alt="Поиск" className="h-[22px]" />
-          <img src="/icons/chat.svg" alt="Чат" className="h-[22px]" />
-          <img src="/icons/phone.svg" alt="Телефон" className="h-[22px]" />
-          <img src="/icons/user.svg" alt="Профиль" className="h-[22px]" />
+          <Link to={'https://reestrpap.ru/reestr'}>
+            <img src="/icons/search.svg" alt="Поиск" className="h-[22px]" />
+          </Link>
+          <Link to={'https://reestrpap.ru/chat'}>
+            <img src="/icons/chat.svg" alt="Чат" className="h-[22px]" />
+          </Link>
+          <Link to={'https://reestrpap.ru/chat'}>
+            <img src="/icons/phone.svg" alt="Телефон" className="h-[22px]" />
+          </Link>
+          <Link to={'/login'}>
+            <img src="/icons/user.svg" alt="Профиль" className="h-[22px]" />
+          </Link>
         </div>
       </div>
     </header>

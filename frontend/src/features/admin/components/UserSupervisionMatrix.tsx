@@ -79,7 +79,7 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
       {isSupervisor ? (
         <div className="card p-4" style={{ border: '1px solid var(--color-green-light)' }}>
           <p className="text-sm">
-            Супервизоры не редактируют инструкторские и кураторские часы. Доступно редактирование
+            Супервизоры не набирают инструкторские и кураторские часы. Доступно редактирование
             только менторских.
           </p>
         </div>

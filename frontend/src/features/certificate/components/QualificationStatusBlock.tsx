@@ -103,7 +103,9 @@ export function QualificationStatusBlock({
     >
       {/* Header */}
       <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
-        <h3 className="text-lg font-semibold text-blue-dark">Сертификация</h3>
+        <h3 className="text-lg font-semibold text-blue-dark">
+          Сертификация (первичная или продление действующего сертификата)
+        </h3>
       </div>
 
       {/* Body */}

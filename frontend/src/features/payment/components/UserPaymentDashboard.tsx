@@ -103,7 +103,7 @@ export function UserPaymentDashboard({ activeGroupName, openDefault = false }: P
                       Статус: <span className="font-medium">{STATUS_LABELS[payment.status]}</span>
                     </div>
 
-                    {link !== '#' && (
+                    {link && (
                       <a
                         href={link}
                         target="_blank"

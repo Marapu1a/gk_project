@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
@@ -70,7 +71,9 @@ export function Dashboard() {
           className="w-full max-w-3xl rounded-2xl border header-shadow bg-white p-6"
           style={{ borderColor: 'var(--color-green-light)' }}
         >
-          <p className="text-error">Не удалось загрузить данные</p>
+          <Link to={'/login'} className="text-error">
+            Не удалось загрузить данные, вы авторизованны? (кликните для авторизации)
+          </Link>
         </div>
       </div>
     );

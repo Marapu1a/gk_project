@@ -78,6 +78,8 @@ export function RegistryProfile({ userId }: Props) {
         </div>
       )}
 
+      <h2 className="text-xl font-semibold text-blue-dark">Сертификат</h2>
+
       {/* Основная область: слева крупный аватар, справа сертификат */}
       <div className="grid gap-6 md:grid-cols-[minmax(220px,280px)_1fr] items-stretch">
         {/* Левая колонка — аватар */}
@@ -105,8 +107,6 @@ export function RegistryProfile({ userId }: Props) {
         {/* Правая колонка — сертификат */}
         {cert && (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-blue-dark">Сертификат</h2>
-
             {/* Без внешней рамки: просто разделитель между инфо и превью */}
             <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_520px] items-stretch">
               {/* Информация о сертификате */}
