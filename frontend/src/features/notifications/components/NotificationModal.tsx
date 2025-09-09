@@ -63,6 +63,8 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
         return 'bg-purple-600';
       case 'MENTORSHIP':
         return 'bg-indigo-600';
+      case 'NEW_USER':
+        return 'bg-emerald-600';
       default:
         return 'bg-gray-500';
     }

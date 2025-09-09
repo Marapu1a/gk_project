@@ -15,6 +15,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
   const [email, setEmail] = useState(defaultEmail);
   const [title, setTitle] = useState('');
   const [number, setNumber] = useState('');
+  const [issuedDate, setIssuedDate] = useState(''); // yyyy-mm-dd
   const [expiresDate, setExpiresDate] = useState(''); // yyyy-mm-dd
   const [uploadedFileId, setUploadedFileId] = useState<string>('');
   const [resetKey, setResetKey] = useState(0); // чтобы сбрасывать FileUpload/превью
@@ -29,6 +30,12 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       });
     });
 
+  function toISOStartOfDay(dateStr: string) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toISOString();
+  }
+
   function toISOEndOfDay(dateStr: string) {
     if (!dateStr) return '';
     const d = new Date(dateStr + 'T23:59:59');
@@ -36,7 +43,12 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
   }
 
   const canSubmit =
-    !!email.trim() && !!title.trim() && !!number.trim() && !!expiresDate && !!uploadedFileId;
+    !!email.trim() &&
+    !!title.trim() &&
+    !!number.trim() &&
+    !!issuedDate &&
+    !!expiresDate &&
+    !!uploadedFileId;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +61,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
         email: email.trim(),
         title: title.trim(),
         number: number.trim(),
+        issuedAt: toISOStartOfDay(issuedDate),
         expiresAt: toISOEndOfDay(expiresDate),
         uploadedFileId,
       });
@@ -58,6 +71,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       // Сброс формы + скрываем превью (ремоунт FileUpload)
       setTitle('');
       setNumber('');
+      setIssuedDate('');
       setExpiresDate('');
       setUploadedFileId('');
       setResetKey((k) => k + 1);
@@ -111,6 +125,17 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
+          <label className="block text-sm font-medium text-blue-dark mb-1">Дата выдачи</label>
+          <input
+            type="date"
+            value={issuedDate}
+            onChange={(e) => setIssuedDate(e.target.value)}
+            className="input"
+            required
+          />
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-blue-dark mb-1">
             Действует до (дата)
           </label>
@@ -122,32 +147,31 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
             required
           />
         </div>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-blue-dark mb-1">Файл сертификата</label>
-          <FileUpload
-            resetKey={resetKey}
-            category="CERTIFICATE"
-            disabled={mutation.isPending}
-            onChange={async (f) => {
-              if (!f) {
-                setUploadedFileId('');
-                return;
-              }
-              try {
-                // помечаем файл как сертификат
-                await updateFile(f.id, 'CERTIFICATE');
-              } catch {
-                // не рвём поток; просто уведомим
-                toast.info('Файл загружен, но не удалось обновить метаданные.');
-              }
-              setUploadedFileId(f.id);
-            }}
-          />
-          {!uploadedFileId && (
-            <p className="text-xs text-gray-500 mt-1">Загрузите PDF/изображение сертификата.</p>
-          )}
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-blue-dark mb-1">Файл сертификата</label>
+        <FileUpload
+          resetKey={resetKey}
+          category="CERTIFICATE"
+          disabled={mutation.isPending}
+          onChange={async (f) => {
+            if (!f) {
+              setUploadedFileId('');
+              return;
+            }
+            try {
+              // помечаем файл как сертификат
+              await updateFile(f.id, 'CERTIFICATE');
+            } catch {
+              toast.info('Файл загружен, но не удалось обновить метаданные.');
+            }
+            setUploadedFileId(f.id);
+          }}
+        />
+        {!uploadedFileId && (
+          <p className="text-xs text-gray-500 mt-1">Загрузите PDF/изображение сертификата.</p>
+        )}
       </div>
 
       <div className="flex items-center gap-3">

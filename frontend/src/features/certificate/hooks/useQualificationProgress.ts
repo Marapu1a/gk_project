@@ -1,3 +1,4 @@
+// src/features/certificate/hooks/useQualificationProgress.ts
 import { useCeuSummary } from '@/features/ceu/hooks/useCeuSummary';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
 import { useGetDocReviewReq } from '@/features/documentReview/hooks/useGetDocReviewReq';
@@ -43,55 +44,66 @@ export function useQualificationProgress(
   const { data: docReview, isLoading: docLoading } = useGetDocReviewReq();
   const { data: payments, isLoading: paymentsLoading } = useUserPayments();
 
+  // 🔧 нормализуем имя группы
+  const g = (activeGroupName ?? '').toLowerCase().trim();
+
   const mode: QualificationMode =
-    activeGroupName === 'супервизор' || activeGroupName === 'опытный супервизор'
-      ? 'RENEWAL'
-      : 'EXAM';
+    g === 'супервизор' || g === 'опытный супервизор' ? 'RENEWAL' : 'EXAM';
 
   const targetGroup =
-    mode === 'EXAM' && activeGroupName
-      ? GROUP_PROGRESS_PATH[activeGroupName] ?? null
-      : null;
+    mode === 'EXAM' && g ? GROUP_PROGRESS_PATH[g] ?? null : null;
 
+  // CEU: как и было (для цели "Супервизор" требуем CEU.supervision)
   const ceuReady =
     !!ceuSummary?.percent &&
     ceuSummary.percent.ethics >= 100 &&
     ceuSummary.percent.cultDiver >= 100 &&
-    (targetGroup === 'Супервизор'
-      ? ceuSummary.percent.supervision >= 100
-      : true) &&
+    (targetGroup === 'Супервизор' ? ceuSummary.percent.supervision >= 100 : true) &&
     ceuSummary.percent.general >= 100;
 
-  const supervisionReady =
-    !!supervisionSummary?.percent &&
-    supervisionSummary.percent.instructor >= 100 &&
-    supervisionSummary.percent.curator >= 100;
+  // 🧠 Supervision: для не-супервизоров — по процентам instr+curator;
+  // для супервизоров — по сумме менторских часов (instr+curator+supervisor) >= 2000
+  let supervisionReady = false;
+  if (mode === 'EXAM') {
+    supervisionReady =
+      !!supervisionSummary?.percent &&
+      supervisionSummary.percent.instructor >= 100 &&
+      supervisionSummary.percent.curator >= 100;
+  } else {
+    const usableInstr = supervisionSummary?.usable?.instructor ?? 0;
+    const usableCur = supervisionSummary?.usable?.curator ?? 0;
+    const usableSup = supervisionSummary?.usable?.supervisor ?? 0;
+    const totalUsable = usableInstr + usableCur + usableSup;
+    const REQUIRED_TOTAL = 2000;
+    supervisionReady = totalUsable >= REQUIRED_TOTAL;
+  }
 
-  const documentPayment = payments?.find(
-    (p) => p.type === 'DOCUMENT_REVIEW'
-  );
+  // Документы + оплата проверки документов
+  const documentPayment = payments?.find((p) => p.type === 'DOCUMENT_REVIEW');
   const documentsReady =
-    docReview?.status === 'CONFIRMED' &&
-    documentPayment?.status === 'PAID';
+    docReview?.status === 'CONFIRMED' && documentPayment?.status === 'PAID';
 
-  const examPaid =
-    (payments ?? []).some(
-      (p) => p.type === 'EXAM_ACCESS' && p.status === 'PAID'
-    );
+  // Экзаменьская оплата (нужна только в EXAM)
+  const examPaid = (payments ?? []).some((p) => p.type === 'EXAM_ACCESS' && p.status === 'PAID');
 
+  // Причины выводим только в EXAM-режиме (UI уже подставляет подписи для супервизоров)
   const reasons: string[] = [];
-
   if (mode === 'EXAM') {
     if (!ceuReady) reasons.push('Недостаточно CEU-баллов');
     if (!supervisionReady) reasons.push('Недостаточно часов супервизии');
-    if (!documentsReady)
-      reasons.push('Документы не подтверждены или не оплачены');
+    if (!documentsReady) reasons.push('Документы не подтверждены или не оплачены');
   }
+
+  // ✅ Допуск
+  const isEligible =
+    mode === 'RENEWAL'
+      ? ceuReady && documentsReady // без экзамена; часы менторства отображаем, но не блокируем (при необходимости поменяем)
+      : ceuReady && supervisionReady && documentsReady;
 
   return {
     mode,
     targetGroup,
-    isEligible: mode === 'RENEWAL' || (ceuReady && supervisionReady && documentsReady),
+    isEligible,
     ceuReady,
     supervisionReady,
     documentsReady,

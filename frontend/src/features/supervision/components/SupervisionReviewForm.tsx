@@ -1,3 +1,4 @@
+// src/features/supervision/components/SupervisionReviewForm.tsx
 import { useState, useMemo } from 'react';
 import { useAssignedHours } from '../hooks/useAssignedHours';
 import { useUpdateHourStatus } from '../hooks/useUpdateHourStatus';
@@ -28,13 +29,22 @@ export function SupervisionReviewForm() {
     SUPERVISOR: 'Менторство',
   };
 
-  const handleConfirm = async (id: string, userId: string, userEmail: string) => {
+  // корректный текст для уведомлений
+  const labelFor = (t: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR') =>
+    t === 'SUPERVISOR' ? 'менторские часы' : 'часы супервизии';
+
+  const handleConfirm = async (
+    id: string,
+    type: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR',
+    userId: string,
+    userEmail: string,
+  ) => {
     try {
       await mutation.mutateAsync({ id, status: 'CONFIRMED' });
       await postNotification({
         userId,
         type: 'SUPERVISION',
-        message: `Ваши часы супервизии подтверждены (${userEmail})`,
+        message: `Ваши ${labelFor(type)} подтверждены (${userEmail})`,
         link: '/history',
       });
       toast.success(`Подтверждено: ${userEmail}`);
@@ -43,7 +53,13 @@ export function SupervisionReviewForm() {
     }
   };
 
-  const handleReject = async (id: string, reason: string, userId: string, userEmail: string) => {
+  const handleReject = async (
+    id: string,
+    type: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR',
+    reason: string,
+    userId: string,
+    userEmail: string,
+  ) => {
     const trimmed = (reason ?? '').trim();
     if (!trimmed) return toast.error('Укажите причину отклонения');
 
@@ -52,7 +68,7 @@ export function SupervisionReviewForm() {
       await postNotification({
         userId,
         type: 'SUPERVISION',
-        message: `Часы супервизии отклонены (${userEmail}). Причина: ${trimmed}`,
+        message: `Ваши ${labelFor(type)} отклонены (${userEmail}). Причина: ${trimmed}`,
         link: '/history',
       });
       toast.success(`Отклонено: ${userEmail}`);
@@ -81,13 +97,13 @@ export function SupervisionReviewForm() {
       className="rounded-2xl border header-shadow bg-white overflow-hidden"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
-      {/* Header в стиле CEU */}
+      {/* Header */}
       <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
         <h3 className="text-lg font-semibold text-blue-dark">Супервизия — заявки на проверку</h3>
         <p className="text-sm text-gray-500">Всего: {hours.length}</p>
       </div>
 
-      {/* Body с таблицей в том же стиле */}
+      {/* Body */}
       <div className="p-6 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -129,7 +145,12 @@ export function SupervisionReviewForm() {
                   <div className="flex justify-center gap-2">
                     <button
                       onClick={() =>
-                        handleConfirm(hour.id, hour.record.user.id, hour.record.user.email)
+                        handleConfirm(
+                          hour.id,
+                          hour.type,
+                          hour.record.user.id,
+                          hour.record.user.email,
+                        )
                       }
                       className="btn btn-brand"
                       disabled={mutation.isPending}
@@ -140,6 +161,7 @@ export function SupervisionReviewForm() {
                       onClick={() =>
                         handleReject(
                           hour.id,
+                          hour.type,
                           rejectedReasonMap[hour.id],
                           hour.record.user.id,
                           hour.record.user.email,

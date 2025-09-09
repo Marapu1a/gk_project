@@ -61,6 +61,7 @@ enum NotificationType {
   DOCUMENT
   EXAM
   PAYMENT
+  NEW_USER
 }
 
 model User {

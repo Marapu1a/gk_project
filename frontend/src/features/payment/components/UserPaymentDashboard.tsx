@@ -44,9 +44,14 @@ export function UserPaymentDashboard({ activeGroupName, openDefault = false }: P
 
   if (isLoading || !payments) return null;
 
-  const ordered = ORDERED_TYPES.map((t) => payments.find((p) => p.type === t)).filter(
-    Boolean,
-  ) as PaymentItem[];
+  // у супервизоров и опытных супервизоров убираем оплату экзамена
+  const isSupervisor = activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
+
+  const types = isSupervisor ? ORDERED_TYPES.filter((t) => t !== 'EXAM_ACCESS') : ORDERED_TYPES;
+
+  const ordered = types
+    .map((t) => payments.find((p) => p.type === t))
+    .filter(Boolean) as PaymentItem[];
 
   return (
     <section

@@ -19,6 +19,7 @@ export type IssueCertificatePayload = {
   email: string;
   title: string;
   number: string;
+  issuedAt: string;
   expiresAt: string;      // ISO (будущее)
   uploadedFileId: string; // UploadedFile.id
 };

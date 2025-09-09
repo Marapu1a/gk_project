@@ -2,7 +2,7 @@ import { api } from "@/lib/axios";
 
 export type Notification = {
   id: string;
-  type: 'CEU' | 'SUPERVISION' | 'MENTORSHIP' | 'DOCUMENT' | 'EXAM' | 'PAYMENT';
+  type: 'CEU' | 'SUPERVISION' | 'MENTORSHIP' | 'DOCUMENT' | 'EXAM' | 'PAYMENT' | 'NEW_USER';
   message: string;
   link: string | null;
   createdAt: string;

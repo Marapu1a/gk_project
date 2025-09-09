@@ -1,10 +1,13 @@
+// src/features/certificate/components/QualificationStatusBlock.tsx
 import { useQualificationProgress } from '@/features/certificate/hooks/useQualificationProgress';
+import { CheckCircle, XCircle } from 'lucide-react';
+
+// Экзаменная секция подключается ТОЛЬКО для не-супервизоров
 import { useMyExamApp } from '@/features/exam/hooks/useMyExamApp';
 import { usePatchExamAppStatus } from '@/features/exam/hooks/usePatchExamAppStatus';
 import { getModerators } from '@/features/notifications/api/moderators';
 import { postNotification } from '@/features/notifications/api/notifications';
 import { useQueryClient } from '@tanstack/react-query';
-import { CheckCircle, XCircle } from 'lucide-react';
 import { examStatusLabels } from '@/utils/labels';
 
 export function QualificationStatusBlock({
@@ -15,7 +18,6 @@ export function QualificationStatusBlock({
   const isSupervisor = activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
 
   const {
-    // mode — больше не показываем
     targetGroup,
     isEligible,
     ceuReady,
@@ -23,12 +25,8 @@ export function QualificationStatusBlock({
     documentsReady,
     loading,
     reasons,
-    examPaid,
+    examPaid, // используем ТОЛЬКО в экзаменной секции (не для супервизоров)
   } = useQualificationProgress(activeGroupName) as any;
-
-  const { data: app, isLoading: appLoading } = useMyExamApp();
-  const patchStatus = usePatchExamAppStatus();
-  const queryClient = useQueryClient();
 
   // Нормализуем причины недопуска под роль
   const normalizedReasons =
@@ -44,7 +42,7 @@ export function QualificationStatusBlock({
           /недостаточно\s+ceu/i.test(reason);
         if (isCeuReason) return acc;
 
-        // 2) «супервизия» → «менторство» в формулировках
+        // 2) «супервизия» → «менторство»
         reason = reason.replace(/супервизии/gi, 'менторства').replace(/супервизия/gi, 'менторство');
       }
 
@@ -52,7 +50,7 @@ export function QualificationStatusBlock({
       return acc;
     }, []) ?? [];
 
-  if (loading || appLoading) {
+  if (loading) {
     return (
       <div
         className="rounded-2xl border header-shadow bg-white p-6 text-sm"
@@ -62,39 +60,6 @@ export function QualificationStatusBlock({
       </div>
     );
   }
-
-  const canSubmit =
-    isEligible === true &&
-    examPaid === true &&
-    app?.status === 'NOT_SUBMITTED' &&
-    !patchStatus.isPending;
-
-  const onSubmit = () => {
-    if (!app?.userId) return;
-    patchStatus.mutate(
-      { userId: app.userId, status: 'PENDING' },
-      {
-        onSuccess: async () => {
-          try {
-            const moderators = await getModerators();
-            const email = app.user?.email || 'без email';
-            await Promise.all(
-              moderators.map((m) =>
-                postNotification({
-                  userId: m.id,
-                  type: 'EXAM',
-                  message: `Новая заявка на экзамен от ${email}`,
-                  link: '/exam-applications',
-                }),
-              ),
-            );
-          } finally {
-            queryClient.invalidateQueries({ queryKey: ['exam-apps'] });
-          }
-        },
-      },
-    );
-  };
 
   return (
     <div
@@ -158,23 +123,8 @@ export function QualificationStatusBlock({
           )}
         </p>
 
-        {canSubmit ? (
-          <button onClick={onSubmit} className="btn btn-brand" disabled={patchStatus.isPending}>
-            {patchStatus.isPending ? 'Отправляем…' : 'Отправить заявку на экзамен'}
-          </button>
-        ) : (
-          <div className="font-semibold space-y-1">
-            {app ? (
-              <div>Заявка на экзамен: {examStatusLabels[app.status] || app.status}.</div>
-            ) : (
-              <div>Заявка отсутствует.</div>
-            )}
-            {isEligible !== true && <div>Нет допуска — сначала выполните условия.</div>}
-            {examPaid !== true && (
-              <div>Нет оплаты экзамена — оплатите, чтобы отправить заявку.</div>
-            )}
-          </div>
-        )}
+        {/* Экзаменная часть полностью скрыта для супервизоров */}
+        {!isSupervisor && <ExamSection isEligible={!!isEligible} examPaid={!!examPaid} />}
 
         {!isEligible && normalizedReasons.length > 0 && (
           <div>
@@ -187,6 +137,66 @@ export function QualificationStatusBlock({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Рендерится ТОЛЬКО для не-супервизоров, чтобы не дёргать экзаменные хуки у супервизоров */
+function ExamSection({ isEligible, examPaid }: { isEligible: boolean; examPaid: boolean }) {
+  const { data: app, isLoading: appLoading } = useMyExamApp();
+  const patchStatus = usePatchExamAppStatus();
+  const queryClient = useQueryClient();
+
+  const canSubmit =
+    isEligible === true &&
+    examPaid === true &&
+    app?.status === 'NOT_SUBMITTED' &&
+    !patchStatus.isPending;
+
+  const onSubmit = () => {
+    if (!app?.userId) return;
+    patchStatus.mutate(
+      { userId: app.userId, status: 'PENDING' },
+      {
+        onSuccess: async () => {
+          try {
+            const moderators = await getModerators();
+            const email = app.user?.email || 'без email';
+            await Promise.all(
+              moderators.map((m) =>
+                postNotification({
+                  userId: m.id,
+                  type: 'EXAM',
+                  message: `Новая заявка на экзамен от ${email}`,
+                  link: '/exam-applications',
+                }),
+              ),
+            );
+          } finally {
+            queryClient.invalidateQueries({ queryKey: ['exam-apps'] });
+          }
+        },
+      },
+    );
+  };
+
+  if (appLoading) {
+    return <div className="text-sm">Загрузка заявки…</div>;
+  }
+
+  return canSubmit ? (
+    <button onClick={onSubmit} className="btn btn-brand" disabled={patchStatus.isPending}>
+      {patchStatus.isPending ? 'Отправляем…' : 'Отправить заявку на экзамен'}
+    </button>
+  ) : (
+    <div className="font-semibold space-y-1">
+      {app ? (
+        <div>Заявка на экзамен: {examStatusLabels[app.status] || app.status}.</div>
+      ) : (
+        <div>Заявка отсутствует.</div>
+      )}
+      {isEligible !== true && <div>Нет допуска — сначала выполните условия.</div>}
+      {examPaid !== true && <div>Нет оплаты экзамена — оплатите, чтобы отправить заявку.</div>}
     </div>
   );
 }

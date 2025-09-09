@@ -1,9 +1,10 @@
+// handlers/auth/registerHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcrypt';
 import { prisma } from '../../lib/prisma';
 import { signJwt } from '../../utils/jwt';
 import { registerSchema } from '../../schemas/auth';
-import { PaymentType, PaymentStatus } from '@prisma/client';
+import { PaymentType, PaymentStatus, NotificationType } from '@prisma/client';
 
 export async function registerHandler(req: FastifyRequest, reply: FastifyReply) {
   const parsed = registerSchema.safeParse(req.body);
@@ -33,7 +34,7 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
     },
   });
 
-  // 👇 Добавляем все типы оплаты
+  // Добавляем все типы оплаты
   await prisma.payment.createMany({
     data: [
       PaymentType.DOCUMENT_REVIEW,
@@ -61,6 +62,27 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       groupId: studentGroup.id,
     },
   });
+
+  // 🔔 Уведомляем всех админов о новой регистрации (не блокирует ответ)
+  try {
+    const admins = await prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true },
+    });
+
+    if (admins.length) {
+      await prisma.notification.createMany({
+        data: admins.map((a) => ({
+          userId: a.id,
+          type: NotificationType.NEW_USER,
+          message: `Новая регистрация: ${user.email}`,
+          link: `/admin/users/${encodeURIComponent(user.id)}`,
+        })),
+      });
+    }
+  } catch (e) {
+    req.log.error(e, 'NEW_USER notifications createMany failed');
+  }
 
   const token = signJwt({ userId: user.id, role: user.role });
 

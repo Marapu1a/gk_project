@@ -7,6 +7,7 @@ interface IssueCertificateRoute extends RouteGenericInterface {
     email: string;
     title: string;
     number: string;
+    issuedAt: string;       // ISO ← добавили
     expiresAt: string;      // ISO
     uploadedFileId: string; // UploadedFile.id
   };
@@ -29,17 +30,28 @@ export async function issueCertificateHandler(
   }
 
   // 2) Валидация входа
-  const { email, title, number, expiresAt, uploadedFileId } = req.body || {};
-  if (!email || !title || !number || !expiresAt || !uploadedFileId) {
+  const { email, title, number, issuedAt, expiresAt, uploadedFileId } = req.body || {};
+  if (!email || !title || !number || !issuedAt || !expiresAt || !uploadedFileId) {
     return reply.code(400).send({
-      error: 'email, title, number, expiresAt, uploadedFileId обязательны',
+      error: 'email, title, number, issuedAt, expiresAt, uploadedFileId обязательны',
     });
   }
 
-  const now = new Date();
+  const iss = new Date(issuedAt);
   const exp = new Date(expiresAt);
-  if (Number.isNaN(exp.getTime()) || exp <= now) {
-    return reply.code(422).send({ error: 'expiresAt должен быть будущей датой (ISO)' });
+  const now = new Date();
+
+  if (Number.isNaN(iss.getTime())) {
+    return reply.code(422).send({ error: 'issuedAt должен быть корректной ISO-датой' });
+  }
+  if (Number.isNaN(exp.getTime())) {
+    return reply.code(422).send({ error: 'expiresAt должен быть корректной ISO-датой' });
+  }
+  if (iss > now) {
+    return reply.code(422).send({ error: 'issuedAt не может быть в будущем' });
+  }
+  if (exp <= iss) {
+    return reply.code(422).send({ error: 'expiresAt должен быть позже issuedAt' });
   }
 
   const user = await prisma.user.findUnique({ where: { email } });
@@ -81,8 +93,8 @@ export async function issueCertificateHandler(
       data: {
         userId: user.id,
         groupId: activeGroup.id,
-        fileId: file.id,            // связь на UploadedFile.id
-        issuedAt: now,
+        fileId: file.id,
+        issuedAt: iss,           // ← используем руками указанную дату
         expiresAt: exp,
         isRenewal: !!prev,
         previousId: prev ? prev.id : null,
