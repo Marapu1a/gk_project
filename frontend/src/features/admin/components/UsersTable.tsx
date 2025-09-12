@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUsers } from '../hooks/useUsers';
 import { useToggleUserRole } from '../hooks/useToggleUserRole';
+import { useDeleteUser } from '@/features/user/hooks/useDeleteUser';
 import { Button } from '@/components/Button';
 import { toast } from 'sonner';
 
@@ -28,15 +29,25 @@ export function UsersTable() {
 
   // серверная пагинация
   const [page, setPage] = useState(1);
-  const perPage = 20; // можно 50, но бек всё равно ограничит до 100
+  const perPage = 20;
 
-  const { data, isLoading, error } = useUsers({ search, page, perPage: 20 });
+  const { data, isLoading, error } = useUsers({ search, page, perPage });
   const toggleRole = useToggleUserRole();
+  const deleteUser = useDeleteUser();
+
+  // локальные копии для оптимистичного удаления
+  const [localUsers, setLocalUsers] = useState<UserRow[]>([]);
+  const [localTotal, setLocalTotal] = useState(0);
+
+  useEffect(() => {
+    setLocalUsers(data?.users ?? []);
+    setLocalTotal(data?.total ?? 0);
+  }, [data]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSearch(searchInput.trim());
-    setPage(1); // сброс страницы при новом поиске
+    setPage(1);
   };
 
   const confirmToast = (message: string) =>
@@ -64,11 +75,42 @@ export function UsersTable() {
     }
   };
 
+  const onDelete = async (u: UserRow) => {
+    const ok = await confirmToast(
+      `Удалить пользователя ${u.email} безвозвратно (включая файлы и все данные)?`,
+    );
+    if (!ok) return;
+
+    // оптимистично скрываем строку сразу
+    setPendingId(u.id);
+    const prevUsers = localUsers;
+    const prevTotal = localTotal;
+    setLocalUsers((list) => list.filter((x) => x.id !== u.id));
+    setLocalTotal((t) => Math.max(0, t - 1));
+
+    try {
+      await deleteUser.mutateAsync(u.id);
+      toast.success('Пользователь удалён');
+
+      // если страница опустела и есть предыдущая — шаг назад
+      if (prevUsers.length === 1 && page > 1) {
+        setPage((p) => p - 1);
+      }
+    } catch (e: any) {
+      // откатываем оптимизм
+      setLocalUsers(prevUsers);
+      setLocalTotal(prevTotal);
+      toast.error(e?.response?.data?.error || 'Не удалось удалить пользователя');
+    } finally {
+      setPendingId(null);
+    }
+  };
+
   if (isLoading) return <p className="text-sm text-blue-dark p-4">Загрузка пользователей…</p>;
   if (error) return <p className="text-error p-4">Ошибка загрузки пользователей</p>;
 
-  const users: UserRow[] = data?.users ?? [];
-  const total = data?.total ?? 0;
+  const users: UserRow[] = localUsers;
+  const total = localTotal;
   const currentPage = data?.page ?? page;
   const currentPerPage = data?.perPage ?? perPage;
   const totalPages = Math.max(1, Math.ceil(total / currentPerPage));
@@ -123,7 +165,7 @@ export function UsersTable() {
                     <th className="p-3 text-left w-32">Роль</th>
                     <th className="p-3 text-left w-48">Группы</th>
                     <th className="p-3 text-left w-32">Создан</th>
-                    <th className="p-3 text-center w-56">Действия</th>
+                    <th className="p-3 text-center w-64">Действия</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -160,7 +202,7 @@ export function UsersTable() {
                         <td className="p-3">
                           {u.createdAt ? new Date(u.createdAt).toLocaleDateString('ru-RU') : '—'}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3">
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => onToggle(u)}
@@ -174,9 +216,19 @@ export function UsersTable() {
                                   ? 'Снять администратора'
                                   : 'Сделать админом'}
                             </button>
+
                             <Link to={`/admin/users/${u.id}`} className="btn btn-brand">
                               Детали
                             </Link>
+
+                            <button
+                              onClick={() => onDelete(u)}
+                              className="btn btn-danger"
+                              disabled={isRowPending}
+                              title="Удалить пользователя"
+                            >
+                              {isRowPending ? 'Удаляю…' : 'Удалить'}
+                            </button>
                           </div>
                         </td>
                       </tr>

@@ -6,7 +6,7 @@ import type { RegisterDto } from '../validation/registerSchema';
 import { registerUser } from '../api/register';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { isValidPhoneNumber } from 'libphonenumber-js';
+import { isValidPhoneNumber } from 'libphonenumber-js'; // ← единый валидатор с схемой
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { Button } from '@/components/Button';
@@ -29,7 +29,7 @@ export function RegisterForm() {
     },
     onError: (error: any) => {
       const message = error?.response?.data?.error || 'Ошибка регистрации';
-      form.setError('root.serverError', { message });
+
       toast.error(message);
     },
   });
@@ -108,7 +108,10 @@ export function RegisterForm() {
                 buttonClass="!border-none"
                 specialLabel=""
                 inputProps={{ name: 'tel', autoComplete: 'tel', disabled }}
-                isValid={(value: string) => isValidPhoneNumber('+' + value)}
+                // синхронизировано со схемой: добавляем + и чистим мусорные символы
+                isValid={(value: string) =>
+                  isValidPhoneNumber('+' + String(value).replace(/[^\d+]/g, ''))
+                }
               />
             )}
           />

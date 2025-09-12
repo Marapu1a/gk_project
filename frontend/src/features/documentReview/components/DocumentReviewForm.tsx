@@ -9,16 +9,13 @@ import { postNotification } from '@/features/notifications/api/notifications';
 import { MultiFileUpload, type UploadedFile } from '@/utils/MultiFileUpload';
 import { toast } from 'sonner';
 
-type Props = {
-  lastAdminComment?: string;
-};
+type Props = { lastAdminComment?: string };
 
 export function DocumentReviewForm({ lastAdminComment }: Props) {
   const [comment, setComment] = useState('');
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [resetKey, setResetKey] = useState(0);
   const createRequest = useCreateDocReviewReq();
-
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -33,7 +30,6 @@ export function DocumentReviewForm({ lastAdminComment }: Props) {
 
   const handleFilesChange = (list: UploadedFile[]) => {
     setFiles(list);
-    // любое добавление/удаление файла → обновить карточку юзера в админке
     invalidateAdminUser();
   };
 
@@ -54,28 +50,32 @@ export function DocumentReviewForm({ lastAdminComment }: Props) {
     try {
       await createRequest.mutateAsync({ fileIds, comment });
 
-      // уведомим модераторов (best-effort)
+      // notify only ADMINS (фронтовая фильтрация)
       try {
         const moderators = await getModerators();
-        await Promise.allSettled(
-          moderators.map((m) =>
-            postNotification({
-              userId: m.id,
-              type: 'DOCUMENT',
-              message: `Новая заявка на проверку документов от ${user?.email ?? 'пользователя'}`,
-              link: '/admin/document-review',
-            }),
-          ),
-        );
+        const admins = moderators
+          .filter((m: any) => String(m.role).toUpperCase() === 'ADMIN')
+          .filter((m: any, i: number, a: any[]) => a.findIndex((x) => x.id === m.id) === i) // dedupe
+          .filter((m: any) => m.id !== user?.id); // не шлём себе
+
+        if (admins.length) {
+          await Promise.allSettled(
+            admins.map((m: any) =>
+              postNotification({
+                userId: m.id,
+                type: 'DOCUMENT',
+                message: `Новая заявка на проверку документов от ${user?.email ?? 'пользователя'}`,
+                link: '/admin/document-review',
+              }),
+            ),
+          );
+        }
       } catch {
         toast.info('Заявка отправлена, но не все уведомления ушли.');
       }
 
-      // инвалидация, чтобы детальный блок в админке отразил новые файлы
       invalidateAdminUser();
-
       toast.success('Заявка отправлена');
-      // сброс
       setComment('');
       setFiles([]);
       localStorage.removeItem('files:documents');

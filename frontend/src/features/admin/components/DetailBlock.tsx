@@ -1,12 +1,17 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useDeleteFile } from '../hooks/useDeleteFile';
+import { useDeleteCertificate } from '@/features/certificate/hooks/useDeleteCertificate';
 import { toast } from 'sonner';
+import { api } from '@/lib/axios';
 
 type Item = {
-  id: string;
+  id: string; // id UploadedFile
   name: string;
   fileId?: string;
   type?: string | null; // если приходит UploadedFile.type
+  certificateId?: string; // может не приходить
   certificate?: {
+    id?: string | null;
     title?: string | null;
     number?: string | null;
     issuedAt?: string | null; // ISO
@@ -23,6 +28,11 @@ type DetailBlockProps = {
 export default function DetailBlock({ title, items, userId }: DetailBlockProps) {
   const isFilesBlock = title === 'Загруженные файлы';
   const deleteFile = useDeleteFile(userId);
+  const deleteCert = useDeleteCertificate(userId);
+
+  // локальное состояние для мгновенного обновления UI
+  const [localItems, setLocalItems] = useState<Item[]>(items);
+  useEffect(() => setLocalItems(items), [items]);
 
   const getCategory = (fileId?: string) => {
     if (!fileId) return 'MISC';
@@ -76,19 +86,63 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
 
     try {
       await deleteFile.mutateAsync(uploadedFileId);
+      // оптимистично удаляем элемент из локального списка
+      setLocalItems((prev) => prev.filter((it) => it.id !== uploadedFileId));
       toast.success('Файл удалён');
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Не удалось удалить файл');
     }
   };
 
-  const grouped: Record<string, Item[]> | null = isFilesBlock
-    ? items.reduce<Record<string, Item[]>>((acc, it) => {
-        const key = getCategory(it.fileId);
-        (acc[key] ||= []).push(it);
-        return acc;
-      }, {})
-    : null;
+  // Ленивая резолюция certId по fileId (если не пришёл)
+  async function resolveCertIdByFile(fileId?: string) {
+    if (!fileId) return null;
+    try {
+      const res = await api.get(`/admin/users/${userId}/certificates`);
+      const list = res.data as Array<{ id: string; file?: { id: string; fileId: string } | null }>;
+      const hit = list.find((c) => c.file && (c.file.fileId === fileId || c.file.id === fileId));
+      return hit?.id ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  const handleDeleteCertificate = async (it: Item) => {
+    const direct = it.certificateId || it.certificate?.id || null;
+    const certId = direct || (await resolveCertIdByFile(it.fileId));
+    if (!certId) {
+      toast.error('Не найден ID сертификата');
+      return;
+    }
+
+    const ok = await confirm('Отозвать сертификат и удалить его файл?');
+    if (!ok) return;
+
+    try {
+      await deleteCert.mutateAsync(certId);
+      // оптимистично удаляем элемент(ы), связанные с этим сертификатом
+      setLocalItems((prev) =>
+        prev.filter(
+          (x) =>
+            x.certificateId !== certId &&
+            x.certificate?.id !== certId &&
+            !(x.fileId && x.fileId === it.fileId), // если список хранит файл отдельной позицией
+        ),
+      );
+      toast.success('Сертификат удалён');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Не удалось удалить сертификат');
+    }
+  };
+
+  const grouped = useMemo(() => {
+    if (!isFilesBlock) return null;
+    return localItems.reduce<Record<string, Item[]>>((acc, it) => {
+      const key = getCategory(it.fileId);
+      (acc[key] ||= []).push(it);
+      return acc;
+    }, {});
+  }, [isFilesBlock, localItems]);
 
   const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
 
@@ -123,15 +177,26 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
         </div>
 
         {it.fileId && (
-          <a
-            href={`/uploads/${it.fileId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-accent text-xs py-1 px-2 whitespace-nowrap"
-            title="Открыть сертификат"
-          >
-            Открыть
-          </a>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={`/uploads/${it.fileId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-accent text-xs py-1 px-2 whitespace-nowrap"
+              title="Открыть сертификат"
+            >
+              Открыть
+            </a>
+            <button
+              type="button"
+              onClick={() => handleDeleteCertificate(it)}
+              className="btn btn-danger text-xs py-1 px-2 whitespace-nowrap"
+              disabled={deleteCert.isPending}
+              title="Отозвать сертификат"
+            >
+              Отозвать
+            </button>
+          </div>
         )}
       </li>
     );
@@ -144,11 +209,11 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
     >
       <h3 className="text-lg font-semibold text-blue-dark">{title}</h3>
 
-      {!items || items.length === 0 ? (
+      {!localItems || localItems.length === 0 ? (
         <p className="text-sm text-blue-dark">Нет данных</p>
       ) : !isFilesBlock ? (
         <ul className="space-y-1">
-          {items.map((item) => (
+          {localItems.map((item) => (
             <li key={item.id} className="flex justify-between items-center">
               <span className="truncate">{item.name}</span>
             </li>

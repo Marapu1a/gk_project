@@ -41,7 +41,6 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
         ? PAYMENT_STATUS.PENDING
         : PAYMENT_STATUS.UNPAID;
 
-    // подтверждение для обоих ролей — действие чувствительное
     const question = isAdmin
       ? nextStatus === 'PAID'
         ? `Подтвердить оплату для ${userEmail}?`
@@ -73,15 +72,20 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
         }
         toast.success(msg);
       } else {
-        // пользователь → уведомляем модераторов
+        // пользователь → уведомляем ТОЛЬКО админов
         const moderators = await getModerators();
+        const admins = (moderators as any[])
+          .filter((m) => String(m?.role).toUpperCase() === 'ADMIN')
+          .filter((m, i, a) => a.findIndex((x) => x?.id === m?.id) === i) // дедуп
+          .filter((m) => m?.id !== payment.userId); // себе не шлём
+
         const msg =
           nextStatus === 'PENDING'
             ? `Новая отметка об оплате от ${userEmail}`
             : `Пользователь ${userEmail} отменил отметку об оплате`;
 
         const results = await Promise.allSettled(
-          moderators.map((m) =>
+          admins.map((m) =>
             postNotification({
               userId: m.id,
               type: 'PAYMENT',
@@ -90,8 +94,9 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
             }),
           ),
         );
-        const failed = results.some((r) => r.status === 'rejected');
-        if (failed) toast.info('Статус обновлён, но часть уведомлений админам не ушла.');
+        if (results.some((r) => r.status === 'rejected')) {
+          toast.info('Статус обновлён, но часть уведомлений админам не ушла.');
+        }
         toast.success(
           nextStatus === 'PENDING' ? 'Отметка отправлена на подтверждение' : 'Отметка отменена',
         );
