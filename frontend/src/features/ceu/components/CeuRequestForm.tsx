@@ -1,3 +1,4 @@
+// src/features/ceu/components/CeuRequestForm.tsx
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,8 +10,6 @@ import { ceuRequestSchema } from '../validation/ceuRequestSchema';
 import type { CeuRequestFormData } from '../validation/ceuRequestSchema';
 import { submitCeuRequest } from '../api/submitCeuRequest';
 
-import { getModerators } from '@/features/notifications/api/moderators';
-import { postNotification } from '@/features/notifications/api/notifications';
 import { BackButton } from '@/components/BackButton';
 import { Button } from '@/components/Button';
 import { FileUpload } from '@/utils/FileUpload';
@@ -59,23 +58,7 @@ export function CeuRequestForm() {
 
   const onSubmit = handleSubmit(async (data) => {
     try {
-      const response = await submitCeuRequest(data);
-
-      // уведомим модераторов; частичные фейлы не валят поток
-      const moderators = await getModerators();
-
-      const ceuReviewers = moderators.filter((m) => m.role === 'ADMIN');
-      const results = await Promise.allSettled(
-        ceuReviewers.map((m) =>
-          postNotification({
-            userId: m.id,
-            type: 'CEU',
-            message: `Новая заявка от ${response.submittedBy} на проверку CEU-баллов`,
-            link: '/review/ceu',
-          }),
-        ),
-      );
-      const failed = results.some((r) => r.status === 'rejected');
+      await submitCeuRequest(data);
 
       // инвалидации CEU + карточка пользователя в админке
       queryClient.invalidateQueries({ queryKey: ['ceu', 'summary'] });
@@ -85,7 +68,6 @@ export function CeuRequestForm() {
       localStorage.removeItem('file:ceu');
       reset();
       toast.success('Заявка на CEU отправлена');
-      if (failed) toast.info('Заявка отправлена, но не все уведомления модераторам доставлены.');
       navigate('/dashboard');
     } catch (err: any) {
       const message = err?.response?.data?.error || 'Ошибка при отправке формы';
