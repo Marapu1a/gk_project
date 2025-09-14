@@ -47,6 +47,9 @@ export function DocumentReviewForm({ lastAdminComment }: Props) {
 
     const fileIds = files.map((f) => f.id);
 
+    const raw = await getModerators();
+    console.log('moderators payload sample:', raw?.[0] ?? raw);
+
     try {
       await createRequest.mutateAsync({ fileIds, comment });
 

@@ -10,6 +10,7 @@ export async function getModeratorsHandler(req: FastifyRequest, reply: FastifyRe
       id: true,
       fullName: true,
       email: true,
+      role: true,
     },
   });
 
