@@ -50,7 +50,8 @@ export async function getRegistryList({
       city: city || undefined,
       certificates: { some: { expiresAt: { gte: now } } },
     },
-    orderBy: { fullName: 'asc' },
+    // CHANGED: сначала новые по createdAt, потом по имени для стабильности
+    orderBy: [{ createdAt: 'desc' }, { fullName: 'asc' }],
     skip,
     take: limit,
     select: {

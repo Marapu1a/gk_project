@@ -13,6 +13,7 @@ export function RegistryProfile({ userId }: Props) {
 
   const cert = p.certificate;
   const certUrl = cert ? `/uploads/${cert.fileId}` : '';
+  const isPdf = /\.pdf($|\?)/i.test(certUrl);
   const avatarPlaceholder = '/avatar_placeholder.svg';
 
   const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('ru-RU') : '—');
@@ -80,7 +81,7 @@ export function RegistryProfile({ userId }: Props) {
 
       <h2 className="text-xl font-semibold text-blue-dark">Сертификат</h2>
 
-      {/* Основная область: слева крупный аватар, справа сертификат */}
+      {/* Основная область: слева аватар, справа сертификат */}
       <div className="grid gap-6 md:grid-cols-[minmax(220px,280px)_1fr] items-stretch">
         {/* Левая колонка — аватар */}
         <div className="hidden md:block">
@@ -107,7 +108,6 @@ export function RegistryProfile({ userId }: Props) {
         {/* Правая колонка — сертификат */}
         {cert && (
           <div className="space-y-4">
-            {/* Без внешней рамки: просто разделитель между инфо и превью */}
             <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_520px] items-stretch">
               {/* Информация о сертификате */}
               <div>
@@ -133,7 +133,7 @@ export function RegistryProfile({ userId }: Props) {
                 </dl>
               </div>
 
-              {/* Превью сертификата — ландшафт A4, отделено линией */}
+              {/* Превью сертификата — A4 без скроллов */}
               <button
                 type="button"
                 onClick={() => setOpen(true)}
@@ -142,16 +142,27 @@ export function RegistryProfile({ userId }: Props) {
                 aria-label="Открыть сертификат"
               >
                 <div className="relative w-full flex-1 min-h-[260px] rounded-lg overflow-hidden">
-                  {/* A4 landscape: 1.414 : 1 */}
                   <div
                     className="w-full"
                     style={{ aspectRatio: '1.414 / 1', position: 'relative' }}
                   >
-                    <img
-                      src={certUrl}
-                      alt="certificate"
-                      className="absolute inset-0 w-full h-full object-contain"
-                    />
+                    {isPdf ? (
+                      // Плоский превью-бокс для PDF, без встроенного вьювера и без полос
+                      <div className="absolute inset-0 grid place-items-center bg-white">
+                        <div className="text-center text-blue-dark text-sm">
+                          PDF-сертификат
+                          <br />
+                          <span className="text-gray-500">Нажмите, чтобы открыть</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <img
+                        src={certUrl}
+                        alt="certificate"
+                        className="absolute inset-0 w-full h-full object-contain"
+                        loading="lazy"
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="mt-3 text-xs text-blue-dark text-center">
@@ -169,11 +180,23 @@ export function RegistryProfile({ userId }: Props) {
           <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
           <div className="relative bg-white rounded-2xl p-4 w-[min(95vw,1123px)] header-shadow">
             <div className="relative mx-auto" style={{ width: '100%', aspectRatio: '1.414 / 1' }}>
-              <img
-                src={certUrl}
-                alt="certificate-full"
-                className="absolute inset-0 w-full h-full object-contain"
-              />
+              {isPdf ? (
+                <object
+                  data={certUrl}
+                  type="application/pdf"
+                  className="absolute inset-0 w-full h-full"
+                >
+                  <a href={certUrl} target="_blank" rel="noreferrer" className="underline">
+                    Открыть PDF в новой вкладке
+                  </a>
+                </object>
+              ) : (
+                <img
+                  src={certUrl}
+                  alt="certificate-full"
+                  className="absolute inset-0 w-full h-full object-contain"
+                />
+              )}
             </div>
             <div className="mt-4 flex justify-end">
               <button className="btn" onClick={() => setOpen(false)}>
