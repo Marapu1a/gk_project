@@ -2,30 +2,26 @@ import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
 
 interface GetUserGroupsByEmailRoute extends RouteGenericInterface {
-  Params: {
-    email: string;
-  };
+  Params: { email: string };
 }
 
 export async function getUserGroupsByEmailHandler(
   req: FastifyRequest<GetUserGroupsByEmailRoute>,
   reply: FastifyReply
 ) {
-  if (req.user.role !== 'ADMIN' && req.user.role !== 'REVIEWER') {
+  if (req.user?.role !== 'ADMIN' && req.user?.role !== 'REVIEWER') {
     return reply.code(403).send({ error: 'Недостаточно прав' });
   }
 
-  const email = decodeURIComponent(req.params.email).toLowerCase();
+  const email = decodeURIComponent(req.params.email || '').trim();
+  if (!email) return reply.code(400).send({ error: 'Email обязателен' });
 
-  const user = await prisma.user.findUnique({
-    where: { email },
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
     include: {
-      groups: {
-        include: {
-          group: true,
-        },
-      },
+      groups: { include: { group: true } },
     },
+    orderBy: [{ email: 'asc' }, { id: 'asc' }],
   });
 
   if (!user) {
