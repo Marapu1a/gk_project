@@ -10,20 +10,59 @@ const roleLabels = {
   ADMIN: 'Администратор',
 } as const;
 
+// --- helpers ---
+function toDateInput(iso: string) {
+  return iso.slice(0, 10);
+}
+
+// "Иван-иванов" -> "Иван-Иванов", учитываем дефисы и пробелы
+function titleCaseRu(s: string) {
+  return s
+    .trim()
+    .split(/\s+/)
+    .map((token) =>
+      token
+        .split('-')
+        .map((p) => (p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p))
+        .join('-'),
+    )
+    .join(' ');
+}
+
+/** Пытаемся распарсить сохранённое fullName → {last, first, middle?} */
+function splitFullName(fullName?: string) {
+  const parts = String(fullName || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+  const [lastName = '', firstName = '', ...rest] = parts;
+  const middleName = rest.length ? rest.join(' ') : '';
+  return { lastName, firstName, middleName };
+}
+
 export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
   const [edit, setEdit] = useState(false);
+
+  const initialNames = splitFullName(user.fullName);
+
   const [form, setForm] = useState({
-    fullName: user.fullName ?? '',
+    lastName: initialNames.lastName,
+    firstName: initialNames.firstName,
+    middleName: initialNames.middleName,
     phone: user.phone ?? '',
     birthDate: user.birthDate ? toDateInput(user.birthDate) : '',
     country: user.country ?? '',
     city: user.city ?? '',
   });
 
-  // если user обновился (после PATCH), синхронизируем форму
+  // синхронизируем форму при обновлении user
   useEffect(() => {
+    const names = splitFullName(user.fullName);
     setForm({
-      fullName: user.fullName ?? '',
+      lastName: names.lastName,
+      firstName: names.firstName,
+      middleName: names.middleName,
       phone: user.phone ?? '',
       birthDate: user.birthDate ? toDateInput(user.birthDate) : '',
       country: user.country ?? '',
@@ -34,8 +73,11 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
   const mutation = useUpdateMe();
 
   const onCancel = () => {
+    const names = splitFullName(user.fullName);
     setForm({
-      fullName: user.fullName ?? '',
+      lastName: names.lastName,
+      firstName: names.firstName,
+      middleName: names.middleName,
       phone: user.phone ?? '',
       birthDate: user.birthDate ? toDateInput(user.birthDate) : '',
       country: user.country ?? '',
@@ -45,9 +87,14 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
   };
 
   const onSave = async () => {
+    const ln = titleCaseRu(form.lastName);
+    const fn = titleCaseRu(form.firstName);
+    const mn = form.middleName ? titleCaseRu(form.middleName) : '';
+    const fullName = [ln, fn, mn].filter(Boolean).join(' ');
+
     try {
       await mutation.mutateAsync({
-        fullName: form.fullName || undefined,
+        fullName: fullName || undefined, // <- бэку по-прежнему отдаем fullName
         phone: form.phone.trim() || undefined,
         birthDate: form.birthDate || undefined, // 'YYYY-MM-DD'
         country: form.country.trim() || undefined,
@@ -64,12 +111,10 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
 
   return (
     <div className="bg-white  space-y-4" style={{ borderColor: 'var(--color-green-light)' }}>
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-blue-dark">Профиль</h3>
       </div>
 
-      {/* Body */}
       {!edit ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
           <Meta label="Имя" value={user.fullName || '—'} />
@@ -83,13 +128,32 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* ФИО разбито на 3 поля */}
+          <Field label="Фамилия">
+            <input
+              className="input w-full"
+              autoComplete="family-name"
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+            />
+          </Field>
           <Field label="Имя">
             <input
               className="input w-full"
-              value={form.fullName}
-              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+              autoComplete="given-name"
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
             />
           </Field>
+          <Field label="Отчество (если есть)">
+            <input
+              className="input w-full"
+              autoComplete="additional-name"
+              value={form.middleName}
+              onChange={(e) => setForm({ ...form, middleName: e.target.value })}
+            />
+          </Field>
+
           <Field label="Телефон">
             <input
               className="input w-full"
@@ -134,7 +198,6 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
         </div>
       )}
 
-      {/* Bottom-left actions */}
       <div className="pt-2 flex gap-2 justify-start">
         {!edit ? (
           <button className="btn btn-accent" onClick={() => setEdit(true)}>
@@ -171,8 +234,4 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }) {
       <div>{value}</div>
     </div>
   );
-}
-
-function toDateInput(iso: string) {
-  return iso.slice(0, 10);
 }

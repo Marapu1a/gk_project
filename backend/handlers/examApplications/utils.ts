@@ -19,24 +19,27 @@ export function assertStatusTransition(params: {
 }) {
   const { actorRole, actorUserId, targetUserId, current, next } = params;
 
-  // USER ограничения
+  // Пользователь (не админ) — только отправка/переотправка
   if (actorRole !== 'ADMIN') {
     if (actorUserId !== targetUserId) throw new Error('FORBIDDEN');
-    // юзер может только NOT_SUBMITTED -> PENDING
-    const ok = current === 'NOT_SUBMITTED' && next === 'PENDING';
-    if (!ok) throw new Error('INVALID_TRANSITION');
+
+    const allowedUser =
+      next === 'PENDING' && (current === 'NOT_SUBMITTED' || current === 'REJECTED');
+
+    if (!allowedUser) throw new Error('INVALID_TRANSITION');
     return;
   }
 
-  // ADMIN может:
-  // PENDING -> APPROVED|REJECTED
-  // REJECTED -> NOT_SUBMITTED (сброс)
-  // (админ не переводит в PENDING — это делает юзер)
-  const allowed =
+  // ADMIN:
+  // PENDING -> APPROVED | REJECTED
+  // REJECTED -> NOT_SUBMITTED (открыть путь к повторной отправке)
+  // (по желанию можешь также разрешить PENDING -> NOT_SUBMITTED)
+  const allowedAdmin =
     (current === 'PENDING' && (next === 'APPROVED' || next === 'REJECTED')) ||
     (current === 'REJECTED' && next === 'NOT_SUBMITTED');
+  // || (current === 'PENDING' && next === 'NOT_SUBMITTED'); // опционально
 
-  if (!allowed) throw new Error('INVALID_TRANSITION');
+  if (!allowedAdmin) throw new Error('INVALID_TRANSITION');
 }
 
 export async function userHasPaidExam(userId: string) {

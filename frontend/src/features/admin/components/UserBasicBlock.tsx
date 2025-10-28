@@ -1,3 +1,4 @@
+// src/features/admin/components/UserBasicBlock.tsx
 import { useState } from 'react';
 import { useUpdateUserInfo } from '@/features/admin/hooks/useUpdateUserInfo';
 import { toast } from 'sonner';
@@ -15,13 +16,50 @@ type Props = {
   groupName: string | null;
 };
 
+// ----- helpers -----
+const roleMap = { ADMIN: 'Администратор', REVIEWER: 'Проверяющий', STUDENT: 'Студент' } as const;
+
+function toDateInput(iso: string) {
+  return iso.slice(0, 10);
+}
+function dateOnlyToISO(dateOnly: string) {
+  const [y, m, d] = dateOnly.split('-').map(Number);
+  return new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1)).toISOString();
+}
+function titleCaseRu(s: string) {
+  return s
+    .trim()
+    .split(/\s+/)
+    .map((tok) =>
+      tok
+        .split('-')
+        .map((p) => (p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p))
+        .join('-'),
+    )
+    .join(' ');
+}
+function splitFullName(fullName?: string) {
+  const parts = String(fullName || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+  const [lastName = '', firstName = '', ...rest] = parts;
+  const middleName = rest.length ? rest.join(' ') : '';
+  return { lastName, firstName, middleName };
+}
+
 export default function UserBasicBlock(props: Props) {
   const { userId, fullName, email, phone, birthDate, country, city, role, createdAt, groupName } =
     props;
 
+  const names = splitFullName(fullName);
+
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({
-    fullName: fullName ?? '',
+    lastName: names.lastName,
+    firstName: names.firstName,
+    middleName: names.middleName,
     phone: phone ?? '',
     birthDate: birthDate ? toDateInput(birthDate) : '',
     country: country ?? '',
@@ -31,21 +69,12 @@ export default function UserBasicBlock(props: Props) {
 
   const mutation = useUpdateUserInfo(userId);
 
-  function toDateInput(iso: string) {
-    return iso.slice(0, 10);
-  }
-
-  function dateOnlyToISO(dateOnly: string) {
-    const [y, m, d] = dateOnly.split('-').map(Number);
-    return new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1)).toISOString();
-  }
-
-  const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
-  const roleMap = { ADMIN: 'Администратор', REVIEWER: 'Проверяющий', STUDENT: 'Студент' } as const;
-
   const onCancel = () => {
+    const n = splitFullName(fullName);
     setForm({
-      fullName: fullName ?? '',
+      lastName: n.lastName,
+      firstName: n.firstName,
+      middleName: n.middleName,
       phone: phone ?? '',
       birthDate: birthDate ? toDateInput(birthDate) : '',
       country: country ?? '',
@@ -56,11 +85,14 @@ export default function UserBasicBlock(props: Props) {
   };
 
   const onSave = async () => {
+    const ln = titleCaseRu(form.lastName);
+    const fn = titleCaseRu(form.firstName);
+    const mn = form.middleName ? titleCaseRu(form.middleName) : '';
+    const fullNameOut = [ln, fn, mn].filter(Boolean).join(' ');
     try {
       const birth = form.birthDate.trim() ? dateOnlyToISO(form.birthDate.trim()) : undefined;
-
       await mutation.mutateAsync({
-        fullName: form.fullName || undefined,
+        fullName: fullNameOut || undefined,
         phone: form.phone.trim() || undefined,
         birthDate: birth,
         country: form.country.trim() || undefined,
@@ -73,6 +105,8 @@ export default function UserBasicBlock(props: Props) {
       toast.error(e?.response?.data?.error || 'Не удалось сохранить');
     }
   };
+
+  const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
 
   return (
     <div className="space-y-2">
@@ -127,13 +161,32 @@ export default function UserBasicBlock(props: Props) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* ФИО по частям */}
+            <Field label="Фамилия">
+              <input
+                className="input w-full"
+                autoComplete="family-name"
+                value={form.lastName}
+                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              />
+            </Field>
             <Field label="Имя">
               <input
                 className="input w-full"
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                autoComplete="given-name"
+                value={form.firstName}
+                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
               />
             </Field>
+            <Field label="Отчество (если есть)">
+              <input
+                className="input w-full"
+                autoComplete="additional-name"
+                value={form.middleName}
+                onChange={(e) => setForm({ ...form, middleName: e.target.value })}
+              />
+            </Field>
+
             <Field label="Телефон">
               <input
                 className="input w-full"

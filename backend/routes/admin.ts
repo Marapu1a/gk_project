@@ -5,6 +5,7 @@ import { getUsersHandler } from '../handlers/admin/getUsersHandler';
 import { getUserFullDetailsHandler } from '../handlers/admin/getUserDetailsHandler';
 import { updateUserBasicInfoHandler } from '../handlers/admin/updateUserBasicInfo';
 import { updatePaymentHandler } from '../handlers/admin/updatePayment';
+import { getUserExportHandler } from '../handlers/admin/getUserExportHandler';
 
 // CEU god-mode
 import { getUserCEUMatrixAdminHandler } from '../handlers/admin/ceu/getUserCEUMatrixAdminHandler';
@@ -31,5 +32,6 @@ export async function usersRoutes(app: FastifyInstance) {
 
   // CEU (admin-only)
   app.get('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, getUserCEUMatrixAdminHandler);
+  app.get('/admin/users/:id/export', { preHandler: verifyToken }, getUserExportHandler);
   app.patch('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, updateUserCEUMatrixAdminHandler);
 }

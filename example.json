@@ -1,0 +1,270 @@
+{
+  "id": "cmfguecqo0008es00f8mc8vl5",
+  "email": "test@test.com",
+  "fullName": "Test Tyesov",
+  "phone": "+79646146236",
+  "birthDate": null,
+  "country": null,
+  "city": null,
+  "avatarUrl": null,
+  "isEmailConfirmed": false,
+  "role": "REVIEWER",
+  "bio": null,
+  "createdAt": "2025-09-12T12:57:42.145Z",
+  "certificates": [
+    {
+      "id": "cmfpj7n9u0013ess03lqf6j0o",
+      "number": "123123",
+      "title": "dwfwef",
+      "issuedAt": "2025-09-16T21:00:00.000Z",
+      "expiresAt": "2025-10-04T20:59:59.000Z",
+      "isRenewal": false,
+      "comment": null,
+      "createdAt": "2025-09-18T14:54:29.010Z",
+      "group": {
+        "id": "cmfasxn100003esugvz0i5ks4",
+        "name": "Супервизор",
+        "rank": 4
+      },
+      "file": {
+        "id": "cmfpj7lk70011ess0pmjedlmo",
+        "fileId": "cmfasxn3p0005esugkf71owmb/certificate/1758207266788-aceaef09ae488ea7.pdf",
+        "name": "ozonbank_document_20250913004900.pdf",
+        "mimeType": "application/pdf",
+        "type": "CERTIFICATE",
+        "comment": null,
+        "createdAt": "2025-09-18T14:54:26.791Z"
+      },
+      "previous": null,
+      "next": null,
+      "confirmedBy": {
+        "id": "cmfasxn3p0005esugkf71owmb",
+        "email": "admin@admin.com",
+        "fullName": "Администратор"
+      }
+    }
+  ],
+  "payments": [
+    {
+      "id": "cmfguecqp0009es00oa845gk5",
+      "type": "DOCUMENT_REVIEW",
+      "status": "PENDING",
+      "comment": null,
+      "createdAt": "2025-09-12T12:57:42.146Z",
+      "confirmedAt": null
+    },
+    {
+      "id": "cmfguecqq000aes003cpo0rqa",
+      "type": "EXAM_ACCESS",
+      "status": "UNPAID",
+      "comment": null,
+      "createdAt": "2025-09-12T12:57:42.146Z",
+      "confirmedAt": null
+    },
+    {
+      "id": "cmfguecqq000bes00of8l7cry",
+      "type": "REGISTRATION",
+      "status": "UNPAID",
+      "comment": null,
+      "createdAt": "2025-09-12T12:57:42.146Z",
+      "confirmedAt": null
+    },
+    {
+      "id": "cmfguecqq000ces00007wvij6",
+      "type": "FULL_PACKAGE",
+      "status": "UNPAID",
+      "comment": null,
+      "createdAt": "2025-09-12T12:57:42.146Z",
+      "confirmedAt": null
+    }
+  ],
+  "ceuRecords": [],
+  "supervisionRecords": [],
+  "uploadedFiles": [
+    {
+      "id": "cmfpj7lk70011ess0pmjedlmo",
+      "fileId": "cmfasxn3p0005esugkf71owmb/certificate/1758207266788-aceaef09ae488ea7.pdf",
+      "name": "ozonbank_document_20250913004900.pdf",
+      "mimeType": "application/pdf",
+      "type": "CERTIFICATE",
+      "comment": null,
+      "createdAt": "2025-09-18T14:54:26.791Z",
+      "requestId": null,
+      "certificate": {
+        "id": "cmfpj7n9u0013ess03lqf6j0o",
+        "title": "dwfwef",
+        "number": "123123",
+        "issuedAt": "2025-09-16T21:00:00.000Z",
+        "expiresAt": "2025-10-04T20:59:59.000Z"
+      }
+    },
+    {
+      "id": "cmfjdvjun0003es6c2oxjsvgy",
+      "fileId": "cmfguecqo0008es00f8mc8vl5/documents/1757835509559-0e366e16be1ed032.jpg",
+      "name": "ton.jpg",
+      "mimeType": "image/jpeg",
+      "type": "ADDITIONAL_EDUCATION",
+      "comment": null,
+      "createdAt": "2025-09-14T07:38:29.567Z",
+      "requestId": "cmfjdvn300005es6c505uydaw",
+      "certificate": null
+    },
+    {
+      "id": "cmfjdsfy6000fesy8cxdylaas",
+      "fileId": "cmfguecqo0008es00f8mc8vl5/documents/1757835364514-e675dfed77717225.jpg",
+      "name": "ton.jpg",
+      "mimeType": "image/jpeg",
+      "type": "HIGHER_EDUCATION",
+      "comment": null,
+      "createdAt": "2025-09-14T07:36:04.542Z",
+      "requestId": "cmfjdsnah000hesy8x56mnq82",
+      "certificate": null
+    },
+    {
+      "id": "cmfjdpba10007esy8si1lk6gv",
+      "fileId": "cmfguecqo0008es00f8mc8vl5/documents/1757835218481-91a6b8c723f4927a.jpg",
+      "name": "ton.jpg",
+      "mimeType": "image/jpeg",
+      "type": "HIGHER_EDUCATION",
+      "comment": null,
+      "createdAt": "2025-09-14T07:33:38.521Z",
+      "requestId": "cmfjdpf290009esy86137e99u",
+      "certificate": null
+    },
+    {
+      "id": "cmfjcwnwx0001esy8g5lwk8ov",
+      "fileId": "cmfguecqo0008es00f8mc8vl5/documents/1757833881842-5675182c37d4d299.pdf",
+      "name": "ozonbank_document_20250913004900.pdf",
+      "mimeType": "application/pdf",
+      "type": "OTHER",
+      "comment": null,
+      "createdAt": "2025-09-14T07:11:21.873Z",
+      "requestId": "cmfjczo6x0003esy8xj59i6d8",
+      "certificate": null
+    }
+  ],
+  "documentReviewRequests": [
+    {
+      "id": "cmfjdvn300005es6c505uydaw",
+      "status": "UNCONFIRMED",
+      "paid": false,
+      "reviewerEmail": null,
+      "submittedAt": "2025-09-14T07:38:33.756Z",
+      "reviewedAt": null,
+      "comment": "dfg",
+      "documents": [
+        {
+          "id": "cmfjdvjun0003es6c2oxjsvgy",
+          "fileId": "cmfguecqo0008es00f8mc8vl5/documents/1757835509559-0e366e16be1ed032.jpg",
+          "name": "ton.jpg",
+          "mimeType": "image/jpeg",
+          "type": "ADDITIONAL_EDUCATION",
+          "comment": null,
+          "createdAt": "2025-09-14T07:38:29.567Z"
+        }
+      ]
+    },
+    {
+      "id": "cmfjdsnah000hesy8x56mnq82",
+      "status": "REJECTED",
+      "paid": false,
+      "reviewerEmail": "admin@admin.com",
+      "submittedAt": "2025-09-14T07:36:14.057Z",
+      "reviewedAt": "2025-09-14T07:38:13.431Z",
+      "comment": "gh",
+      "documents": [
+        {
+          "id": "cmfjdsfy6000fesy8cxdylaas",
+          "fileId": "cmfguecqo0008es00f8mc8vl5/documents/1757835364514-e675dfed77717225.jpg",
+          "name": "ton.jpg",
+          "mimeType": "image/jpeg",
+          "type": "HIGHER_EDUCATION",
+          "comment": null,
+          "createdAt": "2025-09-14T07:36:04.542Z"
+        }
+      ]
+    },
+    {
+      "id": "cmfjdpf290009esy86137e99u",
+      "status": "REJECTED",
+      "paid": false,
+      "reviewerEmail": "admin@admin.com",
+      "submittedAt": "2025-09-14T07:33:43.425Z",
+      "reviewedAt": "2025-09-14T07:35:48.230Z",
+      "comment": "ыва",
+      "documents": [
+        {
+          "id": "cmfjdpba10007esy8si1lk6gv",
+          "fileId": "cmfguecqo0008es00f8mc8vl5/documents/1757835218481-91a6b8c723f4927a.jpg",
+          "name": "ton.jpg",
+          "mimeType": "image/jpeg",
+          "type": "HIGHER_EDUCATION",
+          "comment": null,
+          "createdAt": "2025-09-14T07:33:38.521Z"
+        }
+      ]
+    },
+    {
+      "id": "cmfjczo6x0003esy8xj59i6d8",
+      "status": "REJECTED",
+      "paid": false,
+      "reviewerEmail": "admin@admin.com",
+      "submittedAt": "2025-09-14T07:13:42.201Z",
+      "reviewedAt": "2025-09-14T07:35:02.151Z",
+      "comment": "выа",
+      "documents": [
+        {
+          "id": "cmfjcwnwx0001esy8g5lwk8ov",
+          "fileId": "cmfguecqo0008es00f8mc8vl5/documents/1757833881842-5675182c37d4d299.pdf",
+          "name": "ozonbank_document_20250913004900.pdf",
+          "mimeType": "application/pdf",
+          "type": "OTHER",
+          "comment": null,
+          "createdAt": "2025-09-14T07:11:21.873Z"
+        }
+      ]
+    }
+  ],
+  "examApplication": {
+    "id": "cmfp6szbk000less0uj4aqxub",
+    "status": "NOT_SUBMITTED",
+    "createdAt": "2025-09-18T09:07:09.392Z",
+    "updatedAt": "2025-09-18T09:07:09.392Z"
+  },
+  "notifications": [
+    {
+      "id": "cmfpj7n9x0015ess0up60n2aj",
+      "type": "DOCUMENT",
+      "message": "Выдан сертификат \"dwfwef\" №123123",
+      "link": "/my-certificate",
+      "createdAt": "2025-09-18T14:54:29.014Z"
+    },
+    {
+      "id": "cmfpia7lo000zess0mf2z6kon",
+      "type": "DOCUMENT",
+      "message": "Выдан сертификат \"dfgdfg\" №1111",
+      "link": "/my-certificate",
+      "createdAt": "2025-09-18T14:28:29.053Z"
+    }
+  ],
+  "groups": [
+    {
+      "id": "cmfasxmzv0000esug8twtec5l",
+      "name": "Студент",
+      "rank": 1,
+      "joinedAt": "2025-09-18T09:07:09.388Z"
+    },
+    {
+      "id": "cmfasxn100003esugvz0i5ks4",
+      "name": "Супервизор",
+      "rank": 4,
+      "joinedAt": "2025-09-18T09:07:09.388Z"
+    }
+  ],
+  "activeGroup": {
+    "id": "cmfasxn100003esugvz0i5ks4",
+    "name": "Супервизор",
+    "rank": 4,
+    "joinedAt": "2025-09-18T09:07:09.388Z"
+  }
+}

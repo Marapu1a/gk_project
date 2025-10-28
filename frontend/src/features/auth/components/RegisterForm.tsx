@@ -1,12 +1,16 @@
 // src/features/auth/components/RegisterForm.tsx
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { registerSchema } from '../validation/registerSchema';
-import type { RegisterDto } from '../validation/registerSchema';
+import {
+  registerInputSchema,
+  registerSchema,
+  type RegisterFormValues,
+  type RegisterDto,
+} from '../validation/registerSchema';
 import { registerUser } from '../api/register';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { isValidPhoneNumber } from 'libphonenumber-js'; // ← единый валидатор с схемой
+import { isValidPhoneNumber } from 'libphonenumber-js';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { Button } from '@/components/Button';
@@ -15,13 +19,14 @@ import { toast } from 'sonner';
 export function RegisterForm() {
   const navigate = useNavigate();
 
-  const form = useForm<RegisterDto>({
-    resolver: zodResolver(registerSchema),
+  // форма валидируется по input-схеме (раздельные поля имени)
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerInputSchema),
     mode: 'onSubmit',
   });
 
   const mutation = useMutation({
-    mutationFn: registerUser,
+    mutationFn: (dto: RegisterDto) => registerUser(dto),
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
       toast.success('Регистрация успешна');
@@ -29,12 +34,21 @@ export function RegisterForm() {
     },
     onError: (error: any) => {
       const message = error?.response?.data?.error || 'Ошибка регистрации';
-
       toast.error(message);
     },
   });
 
-  const onSubmit = form.handleSubmit((data) => mutation.mutate(data));
+  const onSubmit = form.handleSubmit((raw) => {
+    // превращаем input -> DTO (добавится fullName)
+    const parsed = registerSchema.safeParse(raw);
+    if (!parsed.success) {
+      const msg = parsed.error.issues?.[0]?.message ?? 'Проверьте поля формы';
+      toast.error(msg);
+      return;
+    }
+    mutation.mutate(parsed.data);
+  });
+
   const disabled = mutation.isPending;
 
   return (
@@ -42,12 +56,10 @@ export function RegisterForm() {
       className="w-full max-w-md rounded-2xl border header-shadow bg-white"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
-      {/* Header */}
       <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
         <h1 className="text-xl font-semibold text-blue-dark">Регистрация</h1>
       </div>
 
-      {/* Body */}
       <form onSubmit={onSubmit} className="px-6 py-5 space-y-4">
         {form.formState.errors.root?.serverError && (
           <div
@@ -58,6 +70,7 @@ export function RegisterForm() {
           </div>
         )}
 
+        {/* Email */}
         <div>
           <label htmlFor="email" className="block mb-1 text-sm text-blue-dark">
             Email
@@ -76,23 +89,61 @@ export function RegisterForm() {
           )}
         </div>
 
-        <div>
-          <label htmlFor="fullName" className="block mb-1 text-sm text-blue-dark">
-            ФИО
-          </label>
-          <input
-            id="fullName"
-            autoComplete="name"
-            className="input"
-            disabled={disabled}
-            aria-invalid={!!form.formState.errors.fullName}
-            {...form.register('fullName')}
-          />
-          {form.formState.errors.fullName && (
-            <p className="text-error">{form.formState.errors.fullName.message}</p>
-          )}
+        {/* ФИО по частям */}
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <label htmlFor="lastName" className="block mb-1 text-sm text-blue-dark">
+              Фамилия
+            </label>
+            <input
+              id="lastName"
+              autoComplete="family-name"
+              className="input"
+              disabled={disabled}
+              aria-invalid={!!form.formState.errors.lastName}
+              {...form.register('lastName')}
+            />
+            {form.formState.errors.lastName && (
+              <p className="text-error">{form.formState.errors.lastName.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="firstName" className="block mb-1 text-sm text-blue-dark">
+              Имя
+            </label>
+            <input
+              id="firstName"
+              autoComplete="given-name"
+              className="input"
+              disabled={disabled}
+              aria-invalid={!!form.formState.errors.firstName}
+              {...form.register('firstName')}
+            />
+            {form.formState.errors.firstName && (
+              <p className="text-error">{form.formState.errors.firstName.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="middleName" className="block mb-1 text-sm text-blue-dark">
+              Отчество <span className="text-gray-500">(если есть)</span>
+            </label>
+            <input
+              id="middleName"
+              autoComplete="additional-name"
+              className="input"
+              disabled={disabled}
+              aria-invalid={!!form.formState.errors.middleName}
+              {...form.register('middleName')}
+            />
+            {form.formState.errors.middleName && (
+              <p className="text-error">{form.formState.errors.middleName.message}</p>
+            )}
+          </div>
         </div>
 
+        {/* Телефон */}
         <div>
           <label className="block mb-1 text-sm text-blue-dark">Телефон</label>
           <Controller
@@ -108,7 +159,6 @@ export function RegisterForm() {
                 buttonClass="!border-none"
                 specialLabel=""
                 inputProps={{ name: 'tel', autoComplete: 'tel', disabled }}
-                // синхронизировано со схемой: добавляем + и чистим мусорные символы
                 isValid={(value: string) =>
                   isValidPhoneNumber('+' + String(value).replace(/[^\d+]/g, ''))
                 }
@@ -120,6 +170,7 @@ export function RegisterForm() {
           )}
         </div>
 
+        {/* Пароль */}
         <div>
           <label htmlFor="password" className="block mb-1 text-sm text-blue-dark">
             Пароль

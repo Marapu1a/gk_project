@@ -147,10 +147,12 @@ function ExamSection({ isEligible, examPaid }: { isEligible: boolean; examPaid: 
   const patchStatus = usePatchExamAppStatus();
   const queryClient = useQueryClient();
 
+  const isResubmission = app?.status === 'REJECTED';
+
   const canSubmit =
     isEligible === true &&
     examPaid === true &&
-    app?.status === 'NOT_SUBMITTED' &&
+    (app?.status === 'NOT_SUBMITTED' || isResubmission) &&
     !patchStatus.isPending;
 
   const onSubmit = () => {
@@ -162,8 +164,19 @@ function ExamSection({ isEligible, examPaid }: { isEligible: boolean; examPaid: 
           try {
             const moderators = await getModerators();
             const email = app.user?.email || 'без email';
+
+            // Только админы
+            const admins = (moderators || []).filter(
+              (u: any) => u?.role === 'ADMIN' || u?.roles?.includes?.('ADMIN'),
+            );
+
+            if (admins.length === 0) {
+              console.warn('Нет получателей-админов для уведомления EXAM');
+              return;
+            }
+
             await Promise.all(
-              moderators.map((m) =>
+              admins.map((m: any) =>
                 postNotification({
                   userId: m.id,
                   type: 'EXAM',
@@ -186,7 +199,11 @@ function ExamSection({ isEligible, examPaid }: { isEligible: boolean; examPaid: 
 
   return canSubmit ? (
     <button onClick={onSubmit} className="btn btn-brand" disabled={patchStatus.isPending}>
-      {patchStatus.isPending ? 'Отправляем…' : 'Отправить заявку на экзамен'}
+      {patchStatus.isPending
+        ? 'Отправляем…'
+        : isResubmission
+          ? 'Отправить заявку повторно'
+          : 'Отправить заявку на экзамен'}
     </button>
   ) : (
     <div className="font-semibold space-y-1">
