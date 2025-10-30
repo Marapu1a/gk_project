@@ -1,8 +1,7 @@
 // src/features/admin/components/UsersTable.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUsers } from '../hooks/useUsers';
-// import { useToggleUserRole } from '../hooks/useToggleUserRole'; // ← убрано
 import { useDeleteUser } from '@/features/user/hooks/useDeleteUser';
 import { Button } from '@/components/Button';
 import { toast } from 'sonner';
@@ -23,17 +22,32 @@ const roleMap: Record<Role, string> = {
   REVIEWER: 'Проверяющий',
 };
 
+// нормализуем под сравнение
+const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
+const tokenize = (s: string) =>
+  norm(s)
+    .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
+    .filter(Boolean);
+
 export function UsersTable() {
   const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [pendingId, setPendingId] = useState<string | null>(null); // теперь только для удаления
+  const [search, setSearch] = useState(''); // уходит на сервер (debounced)
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   // серверная пагинация
   const [page, setPage] = useState(1);
   const perPage = 20;
 
+  // дергаем сервер с дебаунсом
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPage(1);
+      setSearch(searchInput.trim());
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
   const { data, isLoading, error } = useUsers({ search, page, perPage });
-  // const toggleRole = useToggleUserRole(); // ← убрано
   const deleteUser = useDeleteUser();
 
   // локальные копии для оптимистичного удаления
@@ -45,11 +59,25 @@ export function UsersTable() {
     setLocalTotal(data?.total ?? 0);
   }, [data]);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearch(searchInput.trim());
-    setPage(1);
-  };
+  // ⚡ Мгновенный фильтр на клиенте: токены + AND
+  const clientFilteredUsers = useMemo(() => {
+    const tokens = tokenize(searchInput);
+    if (tokens.length === 0) return localUsers;
+
+    return localUsers.filter((u) => {
+      // собираем “сено” для поиска
+      const hayParts = [
+        u.fullName,
+        u.email,
+        roleMap[u.role] || u.role, // русская роль
+        u.role, // и enum на всякий
+        ...u.groups.map((g) => g.name),
+      ];
+      const hay = norm(hayParts.filter(Boolean).join(' '));
+      // каждый токен должен встретиться
+      return tokens.every((t) => hay.includes(t));
+    });
+  }, [localUsers, searchInput]);
 
   const confirmToast = (message: string) =>
     new Promise<boolean>((resolve) => {
@@ -58,8 +86,6 @@ export function UsersTable() {
         cancel: { label: 'Отмена', onClick: () => resolve(false) },
       });
     });
-
-  // КНОПКУ ПРАВ ДОСТУПА УДАЛИЛИ — переносим потом в детали юзера
 
   const onDelete = async (u: UserRow) => {
     const ok = await confirmToast(
@@ -87,11 +113,13 @@ export function UsersTable() {
     }
   };
 
-  if (isLoading) return <p className="text-sm text-blue-dark p-4">Загрузка пользователей…</p>;
+  if (isLoading && !data)
+    return <p className="text-sm text-blue-dark p-4">Загрузка пользователей…</p>;
   if (error) return <p className="text-error p-4">Ошибка загрузки пользователей</p>;
 
-  const users: UserRow[] = localUsers;
-  const total = localTotal;
+  const users: UserRow[] = clientFilteredUsers; // показываем мгновенно отфильтрованное
+  const total = localTotal; // общее с сервера (по server-side фильтру)
+  const shown = users.length; // показано на странице после клиентского фильтра
   const currentPage = data?.page ?? page;
   const currentPerPage = data?.perPage ?? perPage;
   const totalPages = Math.max(1, Math.ceil(total / currentPerPage));
@@ -106,30 +134,41 @@ export function UsersTable() {
         className="px-6 py-4 border-b flex items-center justify-between gap-3"
         style={{ borderColor: 'var(--color-green-light)' }}
       >
-        <h2 className="text-xl font-semibold text-blue-dark">Пользователи ({total})</h2>
+        <h2 className="text-xl font-semibold text-blue-dark">
+          Пользователи ({shown}/{total})
+        </h2>
 
-        <form onSubmit={handleSearchSubmit} className="flex items-end gap-2">
-          <div>
-            <label className="block mb-1 text-sm text-blue-dark">Поиск</label>
+        {/* Живой фильтр */}
+        <div className="flex items-end gap-2">
+          <div className="relative">
+            <label className="block mb-1 text-sm text-blue-dark">Фильтр</label>
             <input
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Имя или email"
-              className="input w-64"
+              placeholder="ФИО, email, группа, роль (Студент/проверяющий/админ)"
+              className="input w-80 pr-8"
             />
+            {searchInput && (
+              <button
+                type="button"
+                className="absolute right-2 bottom-2 text-blue-dark/60 hover:text-blue-dark"
+                onClick={() => setSearchInput('')}
+                title="Очистить"
+              >
+                ×
+              </button>
+            )}
           </div>
-          <button type="submit" className="btn btn-brand">
-            Поиск
-          </button>
-        </form>
+          {isLoading && <span className="text-xs text-blue-dark">обновляю…</span>}
+        </div>
       </div>
 
       {/* Body */}
       <div className="p-6">
-        {total === 0 ? (
+        {users.length === 0 ? (
           <p className="text-sm text-blue-dark">
-            Ничего не найдено{search ? ` по «${search}»` : ''}.
+            Ничего не найдено{searchInput ? ` по «${searchInput}»` : ''}.
           </p>
         ) : (
           <>
@@ -137,17 +176,15 @@ export function UsersTable() {
               className="overflow-x-auto rounded-2xl border"
               style={{ borderColor: 'var(--color-green-light)' }}
             >
-              <table className="w-full text-sm table-fixed">
+              <table className="w-full text-sm table-auto">
                 <thead>
                   <tr className="text-blue-dark" style={{ background: 'var(--color-blue-soft)' }}>
                     <th className="p-3 text-left w-12">№</th>
-                    {/* шире для ФИО */}
-                    <th className="p-3 text-left w-68">ФИО</th>
-                    <th className="p-3 text-left w-32">Email</th>
-                    <th className="p-3 text-left w-24">Роль</th>
-                    <th className="p-3 text-left w-24">Группы</th>
-                    <th className="p-3 text-left w-18">Создан</th>
-                    {/* колонка действий стала уже */}
+                    <th className="p-3 text-left w-64">ФИО</th>
+                    <th className="p-3 text-left w-56">Email</th>
+                    <th className="p-3 text-left w-32">Роль</th>
+                    <th className="p-3 text-left w-56">Группы</th>
+                    <th className="p-3 text-left w-32">Создан</th>
                     <th className="p-3 text-center w-40">Действия</th>
                   </tr>
                 </thead>
@@ -165,20 +202,8 @@ export function UsersTable() {
                       >
                         <td className="p-4 text-center">{number}</td>
 
-                        {/* ФИО в две строки: переносы + кламп */}
                         <td className="p-4">
-                          <div
-                            className="whitespace-normal break-words"
-                            style={{
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical' as any,
-                              overflow: 'hidden',
-                              lineHeight: '1.25rem', // ~20px
-                              maxHeight: '2.5rem', // 2 строки
-                            }}
-                            title={u.fullName}
-                          >
+                          <div className="whitespace-normal break-words" title={u.fullName}>
                             {u.fullName || '—'}
                           </div>
                         </td>
@@ -204,14 +229,6 @@ export function UsersTable() {
                         <td className="p-4">
                           <div
                             className="whitespace-normal break-words"
-                            style={{
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical' as any,
-                              overflow: 'hidden',
-                              lineHeight: '1.25rem',
-                              maxHeight: '2.5rem',
-                            }}
                             title={u.groups.map((g) => g.name).join(', ')}
                           >
                             {u.groups.map((g) => g.name).join(', ') || '—'}
@@ -224,7 +241,6 @@ export function UsersTable() {
 
                         <td className="p-4">
                           <div className="flex items-center justify-center gap-2">
-                            {/* Кнопку “Сделать админом” убрали */}
                             <Link to={`/admin/users/${u.id}`} className="btn btn-brand">
                               Детали
                             </Link>

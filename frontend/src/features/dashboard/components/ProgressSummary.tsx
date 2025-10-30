@@ -4,7 +4,7 @@ import { CeuSummaryBlock } from '@/features/ceu/components/CeuSummaryBlock';
 import { SupervisionSummaryBlock } from '@/features/supervision/components/SupervisionSummaryBlock';
 
 const GROUP_PROGRESS_PATH: Record<string, string | null> = {
-  студент: 'Инструктор',
+  Студент: 'Инструктор',
   инструктор: 'Куратор',
   куратор: 'Супервизор',
   супервизор: 'Опытный супервизор',

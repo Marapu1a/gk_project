@@ -5,7 +5,7 @@ import { useUpdateMe } from '@/features/user/hooks/useUpdateMe';
 import type { CurrentUser } from '@/features/auth/api/me';
 
 const roleLabels = {
-  STUDENT: 'Ученик',
+  STUDENT: 'Студент',
   REVIEWER: 'Супервизор',
   ADMIN: 'Администратор',
 } as const;

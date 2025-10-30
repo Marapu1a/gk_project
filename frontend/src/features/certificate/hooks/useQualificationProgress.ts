@@ -7,7 +7,7 @@ import type { CeuSummaryResponse } from '@/features/ceu/api/getCeuSummary';
 import type { SupervisionSummaryResponse } from '@/features/supervision/api/getSupervisionSummary';
 
 const GROUP_PROGRESS_PATH: Record<string, string | null> = {
-  студент: 'Инструктор',
+  Студент: 'Инструктор',
   инструктор: 'Куратор',
   куратор: 'Супервизор',
   супервизор: null,
