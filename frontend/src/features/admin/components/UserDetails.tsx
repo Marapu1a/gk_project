@@ -6,6 +6,7 @@ import UserSupervisionMatrix from './UserSupervisionMatrix';
 import PaymentsBlock from './PaymentsBlock';
 import DetailBlock from './DetailBlock';
 import ActiveCertificateBlock from './ActiveCertificateBlock';
+import AdminUserGroupsBlock from '@/features/groups/components/AdminUserGroupsBlock';
 import { BackButton } from '@/components/BackButton';
 
 export default function UserDetails() {
@@ -48,6 +49,8 @@ export default function UserDetails() {
             data.groups.length > 0 ? data.groups.sort((a, b) => b.rank - a.rank)[0].name : null
           }
         />
+
+        <AdminUserGroupsBlock userId={data.id} />
 
         <ActiveCertificateBlock certificates={data.certificates || []} />
 

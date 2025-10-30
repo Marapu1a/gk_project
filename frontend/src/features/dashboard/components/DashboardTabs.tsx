@@ -111,7 +111,7 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
           </li>
         )}
 
-        {isAdmin && (
+        {/* {isAdmin && (
           <li>
             <Link to="/groups" className="btn btn-accent w-full">
               <div className="flex items-center justify-center gap-2">
@@ -120,7 +120,7 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
               </div>
             </Link>
           </li>
-        )}
+        )} */}
       </ul>
     </div>
   );

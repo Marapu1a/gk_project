@@ -13,7 +13,7 @@ import SupervisionRequestPage from './pages/SupervisionRequestPage';
 import HistoryPage from './pages/HistoryPage';
 import SupervisionReviewPage from './pages/SupervisionReviewPage';
 import CeuReviewPage from './pages/CeuReviewPage';
-import GroupAssignmentPage from './pages/GroupAssignmentPage';
+// import GroupAssignmentPage from './pages/GroupAssignmentPage';
 import DocumentReviewPage from './pages/DocumentReviewPage';
 import AdminDocumentReviewListPage from './pages/AdminDocumentReviewListPage';
 import AdminDocumentReviewDetailsPage from './pages/AdminDocumentReviewDetailsPage';
@@ -42,7 +42,7 @@ const router = createBrowserRouter([
       { path: 'history', element: <HistoryPage /> },
       { path: 'review/supervision', element: <SupervisionReviewPage /> },
       { path: 'review/ceu', element: <CeuReviewPage /> },
-      { path: 'groups', element: <GroupAssignmentPage /> },
+      // { path: 'groups', element: <GroupAssignmentPage /> },
       { path: 'document-review', element: <DocumentReviewPage /> },
       { path: 'admin/document-review', element: <AdminDocumentReviewListPage /> },
       { path: 'admin/document-review/:id', element: <AdminDocumentReviewDetailsPage /> },

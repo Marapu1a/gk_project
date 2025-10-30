@@ -1,6 +1,7 @@
 // src/features/admin/components/UserBasicBlock.tsx
 import { useState } from 'react';
 import { useUpdateUserInfo } from '@/features/admin/hooks/useUpdateUserInfo';
+import { useToggleUserRole } from '@/features/admin/hooks/useToggleUserRole';
 import { toast } from 'sonner';
 
 type Props = {
@@ -54,7 +55,6 @@ export default function UserBasicBlock(props: Props) {
     props;
 
   const names = splitFullName(fullName);
-
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({
     lastName: names.lastName,
@@ -68,6 +68,21 @@ export default function UserBasicBlock(props: Props) {
   });
 
   const mutation = useUpdateUserInfo(userId);
+  const toggleRole = useToggleUserRole();
+
+  const onToggleRole = async () => {
+    const toAdmin = role !== 'ADMIN';
+    const ok = confirm(
+      toAdmin ? `Сделать ${email} администратором?` : `Снять администратора с ${email}?`,
+    );
+    if (!ok) return;
+    try {
+      await toggleRole.mutateAsync(userId);
+      toast.success(toAdmin ? 'Права администратора выданы' : 'Права администратора сняты');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Не удалось обновить роль');
+    }
+  };
 
   const onCancel = () => {
     const n = splitFullName(fullName);
@@ -116,23 +131,34 @@ export default function UserBasicBlock(props: Props) {
         className="rounded-2xl border bg-white p-4 space-y-4 header-shadow"
         style={{ borderColor: 'var(--color-green-light)' }}
       >
+        {/* Верхняя панель действий */}
         <div className="flex items-center justify-between">
-          {!edit ? (
-            <button className="btn btn-brand" onClick={() => setEdit(true)}>
-              Редактировать
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button className="btn btn-brand" onClick={onSave} disabled={mutation.isPending}>
-                Сохранить
+          <div className="flex gap-2">
+            {!edit ? (
+              <button className="btn btn-brand" onClick={() => setEdit(true)}>
+                Редактировать
               </button>
-              <button className="btn" onClick={onCancel} disabled={mutation.isPending}>
-                Отмена
-              </button>
-            </div>
-          )}
+            ) : (
+              <>
+                <button className="btn btn-brand" onClick={onSave} disabled={mutation.isPending}>
+                  Сохранить
+                </button>
+                <button className="btn" onClick={onCancel} disabled={mutation.isPending}>
+                  Отмена
+                </button>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={onToggleRole}
+            className={role === 'ADMIN' ? 'btn btn-danger' : 'btn btn-accent'}
+          >
+            {role === 'ADMIN' ? 'Снять администратора' : 'Сделать админом'}
+          </button>
         </div>
 
+        {/* Основной контент */}
         {!edit ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <Meta label="Имя" value={fullName || '—'} />
@@ -161,7 +187,6 @@ export default function UserBasicBlock(props: Props) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* ФИО по частям */}
             <Field label="Фамилия">
               <input
                 className="input w-full"

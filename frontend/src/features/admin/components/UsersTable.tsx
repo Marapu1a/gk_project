@@ -1,7 +1,8 @@
+// src/features/admin/components/UsersTable.tsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUsers } from '../hooks/useUsers';
-import { useToggleUserRole } from '../hooks/useToggleUserRole';
+// import { useToggleUserRole } from '../hooks/useToggleUserRole'; // ← убрано
 import { useDeleteUser } from '@/features/user/hooks/useDeleteUser';
 import { Button } from '@/components/Button';
 import { toast } from 'sonner';
@@ -25,14 +26,14 @@ const roleMap: Record<Role, string> = {
 export function UsersTable() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null); // теперь только для удаления
 
   // серверная пагинация
   const [page, setPage] = useState(1);
   const perPage = 20;
 
   const { data, isLoading, error } = useUsers({ search, page, perPage });
-  const toggleRole = useToggleUserRole();
+  // const toggleRole = useToggleUserRole(); // ← убрано
   const deleteUser = useDeleteUser();
 
   // локальные копии для оптимистичного удаления
@@ -58,22 +59,7 @@ export function UsersTable() {
       });
     });
 
-  const onToggle = async (u: UserRow) => {
-    const toAdmin = u.role !== 'ADMIN';
-    const ok = await confirmToast(
-      toAdmin ? `Сделать ${u.email} администратором?` : `Снять администратора с ${u.email}?`,
-    );
-    if (!ok) return;
-    try {
-      setPendingId(u.id);
-      await toggleRole.mutateAsync(u.id);
-      toast.success(toAdmin ? 'Права администратора выданы' : 'Права администратора сняты');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось обновить роль');
-    } finally {
-      setPendingId(null);
-    }
-  };
+  // КНОПКУ ПРАВ ДОСТУПА УДАЛИЛИ — переносим потом в детали юзера
 
   const onDelete = async (u: UserRow) => {
     const ok = await confirmToast(
@@ -91,13 +77,8 @@ export function UsersTable() {
     try {
       await deleteUser.mutateAsync(u.id);
       toast.success('Пользователь удалён');
-
-      // если страница опустела и есть предыдущая — шаг назад
-      if (prevUsers.length === 1 && page > 1) {
-        setPage((p) => p - 1);
-      }
+      if (prevUsers.length === 1 && page > 1) setPage((p) => p - 1);
     } catch (e: any) {
-      // откатываем оптимизм
       setLocalUsers(prevUsers);
       setLocalTotal(prevTotal);
       toast.error(e?.response?.data?.error || 'Не удалось удалить пользователя');
@@ -160,12 +141,14 @@ export function UsersTable() {
                 <thead>
                   <tr className="text-blue-dark" style={{ background: 'var(--color-blue-soft)' }}>
                     <th className="p-3 text-left w-12">№</th>
-                    <th className="p-3 text-left w-40">Имя</th>
-                    <th className="p-3 text-left w-48">Email</th>
-                    <th className="p-3 text-left w-32">Роль</th>
-                    <th className="p-3 text-left w-48">Группы</th>
-                    <th className="p-3 text-left w-32">Создан</th>
-                    <th className="p-3 text-center w-64">Действия</th>
+                    {/* шире для ФИО */}
+                    <th className="p-3 text-left w-68">ФИО</th>
+                    <th className="p-3 text-left w-32">Email</th>
+                    <th className="p-3 text-left w-24">Роль</th>
+                    <th className="p-3 text-left w-24">Группы</th>
+                    <th className="p-3 text-left w-18">Создан</th>
+                    {/* колонка действий стала уже */}
+                    <th className="p-3 text-center w-40">Действия</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -177,13 +160,34 @@ export function UsersTable() {
                     return (
                       <tr
                         key={u.id}
-                        className="border-t"
+                        className="border-t align-top"
                         style={{ borderColor: 'var(--color-green-light)' }}
                       >
-                        <td className="p-3 text-center">{number}</td>
-                        <td className="p-3 truncate">{u.fullName || '—'}</td>
-                        <td className="p-3 truncate">{u.email}</td>
-                        <td className="p-3">
+                        <td className="p-4 text-center">{number}</td>
+
+                        {/* ФИО в две строки: переносы + кламп */}
+                        <td className="p-4">
+                          <div
+                            className="whitespace-normal break-words"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical' as any,
+                              overflow: 'hidden',
+                              lineHeight: '1.25rem', // ~20px
+                              maxHeight: '2.5rem', // 2 строки
+                            }}
+                            title={u.fullName}
+                          >
+                            {u.fullName || '—'}
+                          </div>
+                        </td>
+
+                        <td className="p-4 truncate" title={u.email}>
+                          {u.email}
+                        </td>
+
+                        <td className="p-4">
                           <span
                             className="rounded-full px-2 py-0.5 text-xs"
                             style={{
@@ -196,31 +200,34 @@ export function UsersTable() {
                             {roleMap[u.role] || u.role}
                           </span>
                         </td>
-                        <td className="p-3 truncate">
-                          {u.groups.map((g) => g.name).join(', ') || '—'}
+
+                        <td className="p-4">
+                          <div
+                            className="whitespace-normal break-words"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical' as any,
+                              overflow: 'hidden',
+                              lineHeight: '1.25rem',
+                              maxHeight: '2.5rem',
+                            }}
+                            title={u.groups.map((g) => g.name).join(', ')}
+                          >
+                            {u.groups.map((g) => g.name).join(', ') || '—'}
+                          </div>
                         </td>
-                        <td className="p-3">
+
+                        <td className="p-4">
                           {u.createdAt ? new Date(u.createdAt).toLocaleDateString('ru-RU') : '—'}
                         </td>
-                        <td className="p-3">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => onToggle(u)}
-                              className="btn btn-accent"
-                              disabled={isRowPending}
-                              title={isAdmin ? 'Снять администратора' : 'Сделать админом'}
-                            >
-                              {isRowPending
-                                ? 'Сохраняю…'
-                                : isAdmin
-                                  ? 'Снять администратора'
-                                  : 'Сделать админом'}
-                            </button>
 
+                        <td className="p-4">
+                          <div className="flex items-center justify-center gap-2">
+                            {/* Кнопку “Сделать админом” убрали */}
                             <Link to={`/admin/users/${u.id}`} className="btn btn-brand">
                               Детали
                             </Link>
-
                             <button
                               onClick={() => onDelete(u)}
                               className="btn btn-danger"
@@ -249,11 +256,9 @@ export function UsersTable() {
                 >
                   Назад
                 </Button>
-
                 <span className="px-2 text-sm text-blue-dark">
                   Стр. {currentPage} из {totalPages}
                 </span>
-
                 <Button
                   variant="accent"
                   size="sm"
