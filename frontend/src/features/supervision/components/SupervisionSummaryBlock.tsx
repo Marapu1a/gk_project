@@ -1,10 +1,12 @@
+// src/features/supervision/components/SupervisionSummaryBlock.tsx
 import { useSupervisionSummary } from '../hooks/useSupervisionSummary';
 import { useSupervisionUnconfirmed } from '../hooks/useSupervisionUnconfirmed';
 
+// привели к супермножеству фактического типа
 type Props = {
   user: {
     role: 'STUDENT' | 'REVIEWER' | 'ADMIN';
-    activeGroup?: { name: string };
+    activeGroup?: { id?: string; name: string; rank?: number } | null;
   };
 };
 
@@ -57,19 +59,23 @@ export function SupervisionSummaryBlock({ user }: Props) {
     );
   }
 
-  // === Супервизор: показываем суммарные "часы менторства" (instr + curator + supervisor) с целью 2000 ===
+  // === Супервизор: суммарные менторские (practice + supervision + supervisor), цель 2000 ===
   if (isSupervisor) {
-    const totalUsable =
-      (summary.usable.instructor ?? 0) +
-      (summary.usable.curator ?? 0) +
-      (summary.usable.supervisor ?? 0);
-
-    const pendingTotal =
-      (unconfirmed.instructor ?? 0) + (unconfirmed.curator ?? 0) + (unconfirmed.supervisor ?? 0);
-
-    const requiredTotal = 2000;
-    const usedClamped = Math.min(totalUsable, requiredTotal);
-    const percent = requiredTotal ? (usedClamped / requiredTotal) * 100 : 0;
+    // если бэк прислал mentor — используем его, иначе считаем как раньше
+    const mentor = summary.mentor ?? {
+      total:
+        (summary.usable.practice ?? 0) +
+        (summary.usable.supervision ?? 0) +
+        (summary.usable.supervisor ?? 0),
+      required: 2000,
+      percent: 0,
+      pending:
+        (unconfirmed.practice ?? 0) +
+        (unconfirmed.supervision ?? 0) +
+        (unconfirmed.supervisor ?? 0),
+    };
+    const usedClamped = Math.min(mentor.total, mentor.required);
+    const percent = mentor.required ? (usedClamped / mentor.required) * 100 : 0;
 
     return (
       <div className="space-y-3 text-sm">
@@ -90,12 +96,12 @@ export function SupervisionSummaryBlock({ user }: Props) {
             <tbody>
               <tr className="border-t" style={{ borderColor: 'var(--color-green-light)' }}>
                 <td className="p-2 text-center">
-                  {requiredTotal ? `${usedClamped} / ${requiredTotal}` : `${totalUsable} / —`}
+                  {mentor.required ? `${usedClamped} / ${mentor.required}` : `${mentor.total} / —`}
                 </td>
                 <td className="p-2 text-center">
                   <Bar percent={percent} />
                 </td>
-                <td className="p-2 text-center">{pendingTotal > 0 ? pendingTotal : '—'}</td>
+                <td className="p-2 text-center">{mentor.pending > 0 ? mentor.pending : '—'}</td>
               </tr>
             </tbody>
           </table>
@@ -104,11 +110,11 @@ export function SupervisionSummaryBlock({ user }: Props) {
     );
   }
 
-  // === Все остальные: Инструктор / Куратор ===
-  const categories = ['instructor', 'curator'] as const;
+  // === Все остальные: Практика / Супервизия ===
+  const categories = ['practice', 'supervision'] as const;
   const categoryLabels: Record<(typeof categories)[number], string> = {
-    instructor: 'Инструктор',
-    curator: 'Куратор',
+    practice: 'Практика',
+    supervision: 'Супервизия',
   };
 
   return (
@@ -134,6 +140,9 @@ export function SupervisionSummaryBlock({ user }: Props) {
               const usable = summary.usable[cat] ?? 0;
               const used = Math.min(usable, req || Infinity);
               const percent = req ? (used / req) * 100 : 0;
+              const pending = (summary.pending?.[cat] ?? 0) || 0; // если есть с бэка; иначе fallback ниже
+
+              const pendingFallback = pending || (unconfirmed[cat] ?? 0); // старый способ (из отдельного запроса)
 
               return (
                 <tr
@@ -146,9 +155,7 @@ export function SupervisionSummaryBlock({ user }: Props) {
                   <td className="p-2 text-center">
                     <Bar percent={percent} />
                   </td>
-                  <td className="p-2 text-center">
-                    {unconfirmed[cat] > 0 ? unconfirmed[cat] : '—'}
-                  </td>
+                  <td className="p-2 text-center">{pendingFallback > 0 ? pendingFallback : '—'}</td>
                 </tr>
               );
             })}

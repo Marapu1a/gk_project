@@ -9,6 +9,14 @@ interface UpdateSupervisionHourRoute extends RouteGenericInterface {
   };
 }
 
+/**
+ * Ревью часов супервизии/практики:
+ * - Доступ: назначенный ревьюер или админ.
+ * - Разрешённые статусы: CONFIRMED | REJECTED.
+ * - Для REJECTED обязательна причина (trim() != '').
+ * - Финализированные записи можно править только админом (canOverride).
+ * - Тип часа (PRACTICE/SUPERVISION/SUPERVISOR) здесь не меняем.
+ */
 export async function updateSupervisionHourHandler(
   req: FastifyRequest<UpdateSupervisionHourRoute>,
   reply: FastifyReply
@@ -16,19 +24,22 @@ export async function updateSupervisionHourHandler(
   const actorId = req.user?.userId;
   const actorRole = req.user?.role;
   const { id } = req.params;
-  const { status, rejectedReason } = req.body;
+  const desiredStatus = req.body?.status;
+  const rejectedReasonRaw = req.body?.rejectedReason ?? '';
 
   if (!actorId) return reply.code(401).send({ error: 'Не авторизован' });
   if (actorRole !== 'REVIEWER' && actorRole !== 'ADMIN') {
     return reply.code(403).send({ error: 'Недостаточно прав' });
   }
-  if (status !== 'CONFIRMED' && status !== 'REJECTED') {
+  if (desiredStatus !== 'CONFIRMED' && desiredStatus !== 'REJECTED') {
     return reply.code(400).send({ error: 'Недопустимый статус' });
   }
-  if (status === 'REJECTED' && !rejectedReason?.trim()) {
+  const rejectedReason = rejectedReasonRaw.trim();
+  if (desiredStatus === 'REJECTED' && !rejectedReason) {
     return reply.code(400).send({ error: 'Причина отклонения обязательна' });
   }
 
+  // Берём минимум полей. Тип часа не нужен для смены статуса.
   const existing = await prisma.supervisionHour.findUnique({
     where: { id },
     select: {
@@ -46,9 +57,14 @@ export async function updateSupervisionHourHandler(
     return reply.code(403).send({ error: 'Доступ запрещён' });
   }
 
-  // Финализированные записи правим только админом (или запрещаем вовсе)
+  // Ничего не меняем — короткий ответ (экономим запись в БД)
+  if (existing.status === desiredStatus) {
+    return reply.send({ success: true, updated: { id, status: existing.status } });
+  }
+
+  // Финализированные записи правим только админом
   const isFinal = existing.status === 'CONFIRMED' || existing.status === 'REJECTED';
-  const canOverride = isAdmin; // ← если нужно запретить всем, поменяй на false
+  const canOverride = isAdmin; // если надо запретить всем — поставь false
   if (isFinal && !canOverride) {
     return reply.code(400).send({ error: 'Статус уже установлен и не может быть изменён' });
   }
@@ -56,10 +72,11 @@ export async function updateSupervisionHourHandler(
   const updated = await prisma.supervisionHour.update({
     where: { id },
     data: {
-      status,
+      status: desiredStatus,
       reviewedAt: new Date(),
-      rejectedReason: status === 'REJECTED' ? rejectedReason!.trim() : null,
-      reviewerId: existing.reviewerId ?? actorId, // подстраховка
+      rejectedReason: desiredStatus === 'REJECTED' ? rejectedReason : null,
+      // подстраховка: если по каким-то причинам reviewerId ещё пустой — фиксируем его
+      reviewerId: existing.reviewerId ?? actorId,
     },
   });
 

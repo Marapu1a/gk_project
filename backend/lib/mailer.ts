@@ -22,10 +22,6 @@ export async function sendEmail({
   html: string;
 }) {
   try {
-    console.log('📤 Отправка письма началась');
-    console.log('🧾 Тема:', subject);
-    console.log('📨 Получатель:', to);
-
     await transporter.sendMail({
       from: {
         name: 'ЦС ПАП',
@@ -35,8 +31,6 @@ export async function sendEmail({
       subject,
       html,
     });
-
-    console.log('✅ Письмо отправлено успешно');
   } catch (error) {
     console.error('❌ [EMAIL ERROR]:', error instanceof Error ? error.message : error);
     console.error('❌ [EMAIL FULL]:', error);

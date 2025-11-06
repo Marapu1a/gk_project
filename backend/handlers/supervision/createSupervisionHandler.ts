@@ -37,34 +37,41 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   const isReviewerExperienced = reviewerGroups.includes('Опытный Супервизор');
   const isReviewerSupervisor = reviewerGroups.includes('Супервизор') || isReviewerExperienced;
 
-  // Автор-супервизор может отправлять только опытному супервизору
   if (isAuthorSupervisor && !isReviewerExperienced) {
     return reply.code(400).send({
       error: 'Супервизоры могут отправлять часы только опытным супервизорам',
     });
   }
-  // Автор-несупервизор — только супервизору/опытному
   if (!isAuthorSupervisor && !isReviewerSupervisor) {
     return reply.code(400).send({
       error: 'Проверяющий должен быть супервизором или выше',
     });
   }
 
-  // Базовая валидация записей
   if (!entries?.length || entries.some((e) => !(e.value > 0))) {
     return reply.code(400).send({ error: 'Пустые или некорректные часы' });
   }
 
-  // Нормализация типов:
-  // - если автор супервизор/опытный → ВСЕ записи принудительно SUPERVISOR (менторские часы)
-  // - если автор не супервизор → SUPERVISOR запрещён
+  // Нормализация типов под новую модель:
+  // - не-супервизор: INSTRUCTOR→PRACTICE, CURATOR→SUPERVISION, SUPERVISOR запрещён
+  // - супервизор: всё превращаем в SUPERVISOR (менторство)
   const normalized = entries.map(({ type, value }) => {
     if (isAuthorSupervisor) {
       return { type: PracticeLevel.SUPERVISOR, value };
     }
+
     if (type === PracticeLevel.SUPERVISOR) {
       throw new Error('FORBIDDEN_SUPERVISOR_HOURS');
     }
+
+    if (type === PracticeLevel.INSTRUCTOR) {
+      return { type: PracticeLevel.PRACTICE, value };
+    }
+    if (type === PracticeLevel.CURATOR) {
+      return { type: PracticeLevel.SUPERVISION, value };
+    }
+
+    // если уже пришли новые значения PRACTICE / SUPERVISION — пропускаем как есть
     return { type, value };
   });
 
@@ -89,7 +96,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   } catch (e: any) {
     if (e?.message === 'FORBIDDEN_SUPERVISOR_HOURS') {
       return reply.code(400).send({
-        error: 'Часы SUPERVISOR доступны только для авторов с уровнем Супервизор/Опытный супервизор',
+        error: 'Часы SUPERVISOR доступны только авторам уровня Супервизор/Опытный супервизор',
       });
     }
     throw e;

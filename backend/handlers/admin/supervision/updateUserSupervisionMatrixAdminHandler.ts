@@ -6,20 +6,32 @@ import {
 } from '../../../utils/labels';
 import { prisma } from '../../../lib/prisma';
 import { z } from 'zod';
+import { PracticeLevel, RecordStatus } from '@prisma/client';
 
-type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+// Принимаем legacy-уровни, но внутри работаем только с новыми.
+type IncomingLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | 'PRACTICE' | 'SUPERVISION';
+type NormalizedLevel = 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR';
 type Status = 'CONFIRMED' | 'UNCONFIRMED';
 
 interface Route extends RouteGenericInterface {
   Params: { userId: string };
-  Body: { level: Level; status: Status; value: number };
+  Body: { level: IncomingLevel; status: Status; value: number };
 }
 
 const bodySchema = z.object({
-  level: z.enum(['INSTRUCTOR', 'CURATOR', 'SUPERVISOR']),
+  level: z.enum(['INSTRUCTOR', 'CURATOR', 'SUPERVISOR', 'PRACTICE', 'SUPERVISION']),
   status: z.enum(['CONFIRMED', 'UNCONFIRMED']),
   value: z.number().min(0),
 });
+
+// Приводим старые INSTRUCTOR/CURATOR к новой схеме PRACTICE/SUPERVISION
+function normalizeLevel(lvl: IncomingLevel): NormalizedLevel {
+  if (lvl === 'INSTRUCTOR') return 'PRACTICE';
+  if (lvl === 'CURATOR') return 'SUPERVISION';
+  if (lvl === 'PRACTICE' || lvl === 'SUPERVISION' || lvl === 'SUPERVISOR') return lvl;
+  // на всякий случай, но сюда не дойдём из-за zod
+  return 'PRACTICE';
+}
 
 export async function updateUserSupervisionMatrixAdminHandler(
   req: FastifyRequest<Route>,
@@ -35,48 +47,54 @@ export async function updateUserSupervisionMatrixAdminHandler(
   }
 
   const { userId } = req.params;
-  const { level, status, value } = parsed.data;
+  const incoming = parsed.data;
+  const level = normalizeLevel(incoming.level);
+  const status = incoming.status as RecordStatus; // 'CONFIRMED' | 'UNCONFIRMED'
+  const value = incoming.value;
 
-  // --- определяем активную группу пользователя (макс rank)
+  // --- активная группа пользователя (максимальный rank)
   const userWithGroups = await prisma.user.findUnique({
     where: { id: userId },
     include: { groups: { include: { group: true } } },
   });
   if (!userWithGroups) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  const topGroup = userWithGroups.groups
-    .map(g => g.group)
-    .sort((a, b) => b.rank - a.rank)[0];
-
+  const topGroup = userWithGroups.groups.map(g => g.group).sort((a, b) => b.rank - a.rank)[0];
   const isSupervisorUser =
     topGroup?.name === 'Супервизор' || topGroup?.name === 'Опытный Супервизор';
 
-  // --- правила редактирования
+  // --- правила редактирования:
+  // до супервизора не даём править менторские,
+  // у супервизоров не редактируем PRACTICE/SUPERVISION агрегатами.
   if (!isSupervisorUser && level === 'SUPERVISOR') {
     return reply.code(403).send({ error: 'Менторские часы недоступны до уровня Супервизор' });
   }
-  if (isSupervisorUser && (level === 'INSTRUCTOR' || level === 'CURATOR')) {
-    return reply.code(403).send({ error: 'Инструкторские и кураторские часы у супервизоров не редактируются' });
+  if (isSupervisorUser && (level === 'PRACTICE' || level === 'SUPERVISION')) {
+    return reply.code(403).send({ error: 'Часы практики/супервизии у супервизоров не редактируются агрегатами' });
   }
 
-  // текущая сумма в ячейке
+  // --- текущая сумма в ячейке
   const grouped = await prisma.supervisionHour.groupBy({
     by: ['type', 'status'],
-    where: { record: { userId }, type: level, status },
+    where: {
+      record: { userId },
+      type: level as PracticeLevel,
+      status, // только CONFIRMED/UNCONFIRMED
+    },
     _sum: { value: true },
   });
-  const current = grouped[0]?._sum.value ?? 0;
+  const current = (grouped[0]?._sum?.value ?? 0) as number;
 
   if (current === value) {
     return reply.send({ ok: true, unchanged: true, current });
   }
 
-  // очистка старых часов этой ячейки
+  // --- очистка старых часов в этой ячейке
   await prisma.supervisionHour.deleteMany({
-    where: { record: { userId }, type: level, status },
+    where: { record: { userId }, type: level as PracticeLevel, status },
   });
 
-  // создать агрегат при value > 0
+  // --- создаём агрегат единственной записью при value > 0
   if (value > 0) {
     let record = await prisma.supervisionRecord.findFirst({
       where: { userId },
@@ -85,21 +103,20 @@ export async function updateUserSupervisionMatrixAdminHandler(
     if (!record) record = await prisma.supervisionRecord.create({ data: { userId } });
 
     const isConfirmed = status === 'CONFIRMED';
-    const isUnconfirmed = status === 'UNCONFIRMED';
 
     await prisma.supervisionHour.create({
       data: {
         recordId: record.id,
-        type: level,
+        type: level as PracticeLevel,
         value,
         status,
-        reviewerId: req.user.userId,                  // кто тронул — тот и назначен
-        reviewedAt: isConfirmed ? new Date() : null,  // дату ставим только при CONFIRMED
+        reviewerId: req.user.userId,                 // кто изменил — тот и назначен
+        reviewedAt: isConfirmed ? new Date() : null, // дату ставим только при CONFIRMED
         rejectedReason: null,
       },
     });
 
-    // уведомление пользователю
+    // уведомляем пользователя
     await prisma.notification.create({
       data: {
         userId,
@@ -108,7 +125,6 @@ export async function updateUserSupervisionMatrixAdminHandler(
         link: '/history',
       },
     });
-
   }
 
   return reply.send({ ok: true, level, status, newValue: value });

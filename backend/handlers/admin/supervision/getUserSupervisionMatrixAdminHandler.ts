@@ -1,15 +1,30 @@
 // src/handlers/admin/supervision/getUserSupervisionMatrixAdminHandler.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../../lib/prisma';
+import { RecordStatus } from '@prisma/client';
 
-type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
-type Status = 'CONFIRMED' | 'UNCONFIRMED';
+/**
+ * Категории выводим в новой модели:
+ * PRACTICE (ранее INSTRUCTOR)
+ * SUPERVISION (ранее CURATOR)
+ * SUPERVISOR (менторские)
+ */
+type Level = 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR';
 
-const LEVELS: readonly Level[] = ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'] as const;
-const STATUSES: readonly Status[] = ['CONFIRMED', 'UNCONFIRMED'] as const;
+const LEVELS: readonly Level[] = ['PRACTICE', 'SUPERVISION', 'SUPERVISOR'] as const;
+// НЕ readonly-тип, иначе Prisma ругается на where.status.in
+const STATUSES: RecordStatus[] = ['CONFIRMED', 'UNCONFIRMED'];
 
 interface Route extends RouteGenericInterface {
   Params: { userId: string };
+}
+
+// Приводим старые значения к новой схеме
+function normalizeLevel(type: string): Level | null {
+  if (type === 'INSTRUCTOR') return 'PRACTICE';
+  if (type === 'CURATOR') return 'SUPERVISION';
+  if (type === 'SUPERVISOR' || type === 'PRACTICE' || type === 'SUPERVISION') return type as Level;
+  return null;
 }
 
 export async function getUserSupervisionMatrixAdminHandler(
@@ -33,23 +48,25 @@ export async function getUserSupervisionMatrixAdminHandler(
     by: ['type', 'status'],
     where: {
       record: { userId },
-      status: { in: ['CONFIRMED', 'UNCONFIRMED'] },
+      status: { in: STATUSES }, // << ожидает RecordStatus[]
     },
     _sum: { value: true },
   });
 
-  // matrix[level][status]
-  const matrix: Record<Level, Record<Status, number>> = LEVELS.reduce((acc, lvl) => {
-    acc[lvl] = { CONFIRMED: 0, UNCONFIRMED: 0 };
+  // matrix[level][status] = сумма часов
+  const matrix: Record<Level, Record<RecordStatus, number>> = LEVELS.reduce((acc, lvl) => {
+    acc[lvl] = { CONFIRMED: 0, UNCONFIRMED: 0 } as Record<RecordStatus, number>;
     return acc;
-  }, {} as Record<Level, Record<Status, number>>);
+  }, {} as Record<Level, Record<RecordStatus, number>>);
 
   for (const g of grouped) {
-    const lvl = g.type as Level;
-    const st = g.status as Status;
-    if (LEVELS.includes(lvl) && STATUSES.includes(st)) {
-      matrix[lvl][st] = (g._sum.value ?? 0) as number;
-    }
+    const lvl = normalizeLevel(g.type);
+    const st = g.status as RecordStatus;
+    if (!lvl || (st !== 'CONFIRMED' && st !== 'UNCONFIRMED')) continue;
+
+    // _sum может быть undefined, value может быть null — страхуемся
+    const sum = (g._sum?.value ?? 0) as number;
+    matrix[lvl][st] = sum;
   }
 
   return reply.send({ user, matrix });

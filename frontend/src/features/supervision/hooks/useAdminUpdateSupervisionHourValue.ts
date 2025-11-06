@@ -6,14 +6,14 @@ export function useAdminUpdateSupervisionHourValue(userId?: string) {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, value }: { id: string; value: number }) =>
+    mutationFn: async ({ id, value }: { id: string; value: number }) =>
       adminUpdateSupervisionHourValue(id, value),
-    onSuccess: () => {
+    onSuccess: async () => {
       if (userId) {
-        qc.invalidateQueries({ queryKey: ['admin', 'user', userId] });
-        qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+        await qc.invalidateQueries({ queryKey: ['admin', 'user', userId] });
+        await qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
       }
-      qc.invalidateQueries({ queryKey: ['supervision', 'summary'] });
+      await qc.invalidateQueries({ queryKey: ['supervision', 'summary'] });
     },
   });
 }

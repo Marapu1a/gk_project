@@ -32,6 +32,8 @@ enum PracticeLevel {
   INSTRUCTOR
   CURATOR
   SUPERVISOR
+  PRACTICE
+  SUPERVISION
 }
 
 enum PaymentType {

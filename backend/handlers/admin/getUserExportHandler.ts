@@ -1,6 +1,13 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 
+// Старые значения приводим к новой терминологии экспорта
+function normalizeLevel(type: string): string {
+  if (type === 'INSTRUCTOR') return 'PRACTICE';
+  if (type === 'CURATOR') return 'SUPERVISION';
+  return type; // SUPERVISOR / PRACTICE / SUPERVISION — без изменений
+}
+
 export async function getUserExportHandler(req: FastifyRequest, reply: FastifyReply) {
   const { id } = req.params as { id: string };
 
@@ -97,7 +104,7 @@ export async function getUserExportHandler(req: FastifyRequest, reply: FastifyRe
             orderBy: { id: 'asc' },
             select: {
               id: true,
-              type: true,
+              type: true,      // нормализуем ниже
               value: true,
               status: true,
               reviewedAt: true,
@@ -150,7 +157,7 @@ export async function getUserExportHandler(req: FastifyRequest, reply: FastifyRe
 
   if (!user) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  // вытащим список групп и активную по максимальному rank
+  // группы и активная по максимальному rank
   const groupList = user.groups.map(g => ({
     id: g.group.id,
     name: g.group.name,
@@ -161,6 +168,12 @@ export async function getUserExportHandler(req: FastifyRequest, reply: FastifyRe
     ? groupList.reduce((a, b) => (a.rank >= b.rank ? a : b))
     : null;
 
-  const { groups, ...rest } = user;
-  return reply.send({ ...rest, groups: groupList, activeGroup });
+  // нормализуем типы часов в выгрузке
+  const supervisionRecords = user.supervisionRecords.map(r => ({
+    ...r,
+    hours: r.hours.map(h => ({ ...h, type: normalizeLevel(h.type) })),
+  }));
+
+  const { groups, supervisionRecords: _old, ...rest } = user;
+  return reply.send({ ...rest, groups: groupList, activeGroup, supervisionRecords });
 }

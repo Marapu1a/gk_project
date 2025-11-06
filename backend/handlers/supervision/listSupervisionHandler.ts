@@ -3,11 +3,19 @@ import { prisma } from '../../lib/prisma';
 import { RecordStatus } from '@prisma/client';
 
 type Query = {
-  userId?: string;                      // чьи записи смотреть (только ADMIN/REVIEWER)
-  status?: RecordStatus;               // UNCONFIRMED | CONFIRMED | REJECTED | SPENT (обычно без SPENT)
-  take?: string;                       // кол-во записей (строкой из query)
-  cursor?: string;                     // id записи для пагинации
+  userId?: string;        // чьи записи смотреть (только ADMIN/REVIEWER)
+  status?: RecordStatus;  // UNCONFIRMED | CONFIRMED | REJECTED | SPENT
+  take?: string;          // кол-во записей
+  cursor?: string;        // id записи для пагинации
 };
+
+// Локальная нормализация типов для совместимости UI:
+// INSTRUCTOR → PRACTICE, CURATOR → SUPERVISION, остальное как есть.
+function normalizeLevel(type: string): string {
+  if (type === 'INSTRUCTOR') return 'PRACTICE';
+  if (type === 'CURATOR') return 'SUPERVISION';
+  return type;
+}
 
 export async function listSupervisionHandler(req: FastifyRequest, reply: FastifyReply) {
   const actorId = req.user?.userId;
@@ -16,28 +24,26 @@ export async function listSupervisionHandler(req: FastifyRequest, reply: Fastify
 
   const { userId: qUserId, status, take = '20', cursor } = req.query as Query;
 
-  // Кого смотрим
+  // Кого смотрим: ADMIN/REVIEWER могут указать чужого, иначе только свои
   const targetUserId =
     (actorRole === 'ADMIN' || actorRole === 'REVIEWER') && qUserId ? qUserId : actorId;
 
   // Валидации
-  const limit = Math.max(1, Math.min(100, Number.isFinite(+take) ? +take : 20));
   if (status && !['UNCONFIRMED', 'CONFIRMED', 'REJECTED', 'SPENT'].includes(status)) {
     return reply.code(400).send({ error: 'Недопустимый статус' });
   }
+  const limit = Math.max(1, Math.min(100, Number.isFinite(+take) ? +take : 20));
 
   // Фильтр по статусу влияет и на hours внутри include
   const recordWhere: any = { userId: targetUserId };
-  if (status) {
-    recordWhere.hours = { some: { status } };
-  }
+  if (status) recordWhere.hours = { some: { status } };
 
-  const records = await prisma.supervisionRecord.findMany({
+  const recordsRaw = await prisma.supervisionRecord.findMany({
     where: recordWhere,
     include: {
       hours: {
         ...(status ? { where: { status } } : {}),
-        orderBy: { reviewedAt: 'desc' },
+        orderBy: [{ reviewedAt: 'desc' }, { id: 'desc' }], // стабильность сортировки
       },
     },
     take: limit,
@@ -45,10 +51,16 @@ export async function listSupervisionHandler(req: FastifyRequest, reply: Fastify
     orderBy: { createdAt: 'desc' },
   });
 
-  const nextCursor = records.length === limit ? records[records.length - 1].id : null;
+  // Нормализуем типы часов в ответе, БД не трогаем
+  const records = recordsRaw.map((r) => ({
+    ...r,
+    hours: r.hours.map((h) => ({
+      ...h,
+      type: normalizeLevel(h.type),
+    })),
+  }));
 
-  return reply.send({
-    records,
-    nextCursor,
-  });
+  const nextCursor = recordsRaw.length === limit ? recordsRaw[recordsRaw.length - 1].id : null;
+
+  return reply.send({ records, nextCursor });
 }

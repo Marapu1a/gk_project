@@ -3,18 +3,18 @@ import { z } from 'zod';
 
 export const supervisionRequestSchema = z.object({
   supervisorEmail: z.string().email({ message: 'Неверный формат email' }),
-
-  entries: z
-    .array(
-      z.object({
-        type: z.enum(['INSTRUCTOR', 'CURATOR', 'SUPERVISOR']),
-        value: z
-          .number({ invalid_type_error: 'Введите число' })
-          .positive({ message: 'Должно быть положительное число' })
-          .max(200, { message: 'Слишком много часов' }),
-      })
-    )
-    .min(1, { message: 'Нужно добавить хотя бы одну запись' }),
+  entries: z.array(
+    z.object({
+      // позволяем и SUPERVISOR — UI решает, кому его показывать
+      type: z.enum(['PRACTICE', 'SUPERVISION', 'SUPERVISOR'], {
+        errorMap: () => ({ message: 'Некорректный тип часов' }),
+      }),
+      value: z
+        .number({ invalid_type_error: 'Введите число' })
+        .positive({ message: 'Должно быть положительное число' })
+        .max(200, { message: 'Слишком много часов' }),
+    })
+  ).min(1, { message: 'Нужно добавить хотя бы одну запись' }),
 });
 
 export type SupervisionRequestFormData = z.infer<typeof supervisionRequestSchema>;

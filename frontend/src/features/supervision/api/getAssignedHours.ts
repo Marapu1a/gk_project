@@ -2,7 +2,14 @@
 import { api } from '@/lib/axios';
 
 export type RecordStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'SPENT';
-export type PracticeLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+
+// Расширенный тип: новые + legacy
+export type PracticeLevel =
+  | 'PRACTICE'
+  | 'SUPERVISION'
+  | 'SUPERVISOR'
+  | 'INSTRUCTOR'
+  | 'CURATOR';
 
 export type AssignedHourItem = {
   id: string;
@@ -28,10 +35,17 @@ export type GetAssignedHoursResponse = {
 };
 
 export type GetAssignedHoursParams = {
-  status?: RecordStatus; // по умолчанию UNCONFIRMED
-  take?: number;         // 1..100, по умолчанию 25
+  status?: RecordStatus;
+  take?: number;
   cursor?: string | null;
 };
+
+// нормализатор
+function normalizeType(t: PracticeLevel): PracticeLevel {
+  if (t === 'INSTRUCTOR') return 'PRACTICE';
+  if (t === 'CURATOR') return 'SUPERVISION';
+  return t;
+}
 
 export async function getAssignedHours(
   params: GetAssignedHoursParams = {}
@@ -42,5 +56,8 @@ export async function getAssignedHours(
     params: { status, take, cursor },
   });
 
-  return data;
+  // нормализуем типы сразу
+  const hours = data.hours.map((h) => ({ ...h, type: normalizeType(h.type) }));
+
+  return { ...data, hours };
 }

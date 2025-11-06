@@ -2,6 +2,13 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 
+// Локальная нормализация: старые значения → новые логические категории
+function normalizeLevel(type: string): string {
+  if (type === 'INSTRUCTOR') return 'PRACTICE';
+  if (type === 'CURATOR') return 'SUPERVISION';
+  return type; // SUPERVISOR, PRACTICE, SUPERVISION — без изменений
+}
+
 export async function getUserFullDetailsHandler(req: FastifyRequest, reply: FastifyReply) {
   const { id } = req.params as { id: string };
   if (req.user.role !== 'ADMIN') {
@@ -23,13 +30,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
       role: true,
       createdAt: true,
 
-      groups: {
-        select: {
-          group: {
-            select: { id: true, name: true, rank: true }
-          }
-        }
-      },
+      groups: { select: { group: { select: { id: true, name: true, rank: true } } } },
 
       certificates: {
         select: {
@@ -40,16 +41,10 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
           expiresAt: true,
           isRenewal: true,
           comment: true,
-          file: {
-            select: { fileId: true, name: true }
-          },
-          group: {
-            select: { id: true, name: true }
-          },
-          confirmedBy: {
-            select: { email: true, fullName: true }
-          }
-        }
+          file: { select: { fileId: true, name: true } },
+          group: { select: { id: true, name: true } },
+          confirmedBy: { select: { email: true, fullName: true } },
+        },
       },
 
       payments: {
@@ -59,8 +54,8 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
           status: true,
           comment: true,
           createdAt: true,
-          confirmedAt: true
-        }
+          confirmedAt: true,
+        },
       },
 
       ceuRecords: {
@@ -77,12 +72,10 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
               status: true,
               reviewedAt: true,
               rejectedReason: true,
-              reviewer: {
-                select: { email: true, fullName: true }
-              }
-            }
-          }
-        }
+              reviewer: { select: { email: true, fullName: true } },
+            },
+          },
+        },
       },
 
       supervisionRecords: {
@@ -98,12 +91,12 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
               status: true,
               reviewedAt: true,
               rejectedReason: true,
-              reviewer: {
-                select: { email: true, fullName: true }
-              }
-            }
-          }
-        }
+              reviewer: { select: { email: true, fullName: true } },
+            },
+            orderBy: [{ reviewedAt: 'desc' }, { id: 'desc' }], // стабильнее в UI
+          },
+        },
+        orderBy: { createdAt: 'desc' },
       },
 
       uploadedFiles: {
@@ -116,12 +109,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
           comment: true,
           createdAt: true,
           certificate: {
-            select: {
-              title: true,
-              number: true,
-              issuedAt: true,
-              expiresAt: true,
-            },
+            select: { title: true, number: true, issuedAt: true, expiresAt: true },
           },
         },
       },
@@ -135,20 +123,20 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
           submittedAt: true,
           reviewedAt: true,
           comment: true,
-          documents: {
-            select: {
-              fileId: true,
-              name: true
-            }
-          }
-        }
-      }
-    }
+          documents: { select: { fileId: true, name: true } },
+        },
+      },
+    },
   });
 
   if (!user) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  const groups = user.groups.map(g => g.group);
+  // Преобразуем группы и нормализуем типы часов в supervisionRecords
+  const groups = user.groups.map((g) => g.group);
+  const supervisionRecords = user.supervisionRecords.map((r) => ({
+    ...r,
+    hours: r.hours.map((h) => ({ ...h, type: normalizeLevel(h.type) })),
+  }));
 
-  return reply.send({ ...user, groups });
+  return reply.send({ ...user, groups, supervisionRecords });
 }

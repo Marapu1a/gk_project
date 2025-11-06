@@ -9,6 +9,14 @@ type Query = {
   cursor?: string;       // пагинация по hour.id
 };
 
+// Локальная нормализация для обратной совместимости UI:
+// - старые значения INSTRUCTOR/CURATOR отображаем как PRACTICE/SUPERVISION
+function normalizeLevel(type: string): string {
+  if (type === 'INSTRUCTOR') return 'PRACTICE';
+  if (type === 'CURATOR') return 'SUPERVISION';
+  return type; // SUPERVISOR / PRACTICE / SUPERVISION / прочие неизменны
+}
+
 export async function getAssignedHoursHandler(req: FastifyRequest, reply: FastifyReply) {
   const reviewerId = req.user?.userId;
   const role = req.user?.role;
@@ -25,16 +33,17 @@ export async function getAssignedHoursHandler(req: FastifyRequest, reply: Fastif
 
   const limit = Math.max(1, Math.min(100, Number.isFinite(+take) ? +take : 25));
 
+  // Новые — по дате заявки, ревью — по дате ревью
   const orderBy =
     status === 'UNCONFIRMED'
       ? { record: { createdAt: 'desc' as const } }
       : { reviewedAt: 'desc' as const };
 
-  const hours = await prisma.supervisionHour.findMany({
+  const hoursRaw = await prisma.supervisionHour.findMany({
     where: { reviewerId, status },
     select: {
       id: true,
-      type: true,
+      type: true, // сохраняем как есть из БД, ниже нормализуем для ответа
       value: true,
       status: true,
       reviewedAt: true,
@@ -52,7 +61,13 @@ export async function getAssignedHoursHandler(req: FastifyRequest, reply: Fastif
     orderBy,
   });
 
-  const nextCursor = hours.length === limit ? hours[hours.length - 1].id : null;
+  // Преобразуем тип для рендера UI, не меняя схему ответа
+  const hours = hoursRaw.map((h) => ({
+    ...h,
+    type: normalizeLevel(h.type),
+  }));
+
+  const nextCursor = hoursRaw.length === limit ? hoursRaw[hoursRaw.length - 1].id : null;
 
   return reply.send({ hours, nextCursor });
 }

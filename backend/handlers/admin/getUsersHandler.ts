@@ -20,19 +20,18 @@ function tokenize(q: string) {
     .toLowerCase()
     .normalize('NFKC')
     .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean);
 }
 
 // маппинг “человеческих” ролей -> enum
 function detectRole(tok: string): 'ADMIN' | 'REVIEWER' | 'STUDENT' | null {
   const t = tok.toLowerCase();
-  // админ
-  if (/^(ад|адм|админ|админист|admin|adm)/.test(t)) return 'ADMIN';
-  // проверяющий / ревьюер — важное: ^пров
-  if (/^(пров|провер|проверяющ|рев|ревью|review|reviewer)/.test(t)) return 'REVIEWER';
-  // Студент
-  if (/^(соис|Студент)/.test(t)) return 'STUDENT';
+  if (/^(ад|адм|админ|админист|admin|adm)$/.test(t)) return 'ADMIN';
+  // проверяющий / ревьюер
+  if (/^(пров|провер|проверяющ|рев|ревью|review|reviewer)$/.test(t)) return 'REVIEWER';
+  // студент/соискатель
+  if (/^(соис|соиск|студ|студент)$/.test(t)) return 'STUDENT';
   return null;
 }
 
@@ -73,7 +72,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
         { email: { contains: tok, mode: 'insensitive' } },
         { groups: { some: { group: { name: { contains: tok, mode: 'insensitive' } } } } },
       ];
-      if (r) OR.push({ role: r }); // ← вот это и ловит “Студент/проверяющий”
+      if (r) OR.push({ role: r }); // ловим “студент/проверяющий/админ” из текста
       AND.push({ OR });
     }
 
@@ -102,13 +101,13 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
     total,
     page: pageNum,
     perPage: take,
-    users: users.map(u => ({
+    users: users.map((u) => ({
       id: u.id,
       email: u.email,
       fullName: u.fullName,
       role: u.role,
       createdAt: u.createdAt,
-      groups: u.groups.map(g => g.group),
+      groups: u.groups.map((g) => g.group),
     })),
   });
 }

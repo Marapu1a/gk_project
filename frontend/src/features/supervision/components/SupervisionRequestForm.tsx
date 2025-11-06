@@ -50,12 +50,12 @@ export function SupervisionRequestForm() {
 
   const userEmail = user?.email ?? 'без email';
 
-  // первичная инициализация
+  // первичная инициализация (новые типы: PRACTICE/SUPERVISION/SUPERVISOR)
   useEffect(() => {
     if (user && !hasInitialized.current) {
       reset({
         supervisorEmail: '',
-        entries: [{ type: isMentor ? 'SUPERVISOR' : 'INSTRUCTOR', value: 1 }],
+        entries: [{ type: isMentor ? 'SUPERVISOR' : 'PRACTICE', value: 1 }],
       });
       hasInitialized.current = true;
     }
@@ -123,7 +123,7 @@ export function SupervisionRequestForm() {
 
         <div>
           <label className="block font-medium mb-2">
-            {isMentor ? 'Часы менторства' : 'Часы супервизии'}
+            {isMentor ? 'Часы менторства' : 'Часы (практика/супервизия)'}
           </label>
           <div className="space-y-2">
             {fields.map((field, index) => (
@@ -134,11 +134,11 @@ export function SupervisionRequestForm() {
                 ) : (
                   <select
                     {...register(`entries.${index}.type`)}
-                    className="input w-40"
+                    className="input w-44"
                     aria-invalid={!!errors.entries?.[index]?.type || undefined}
                   >
-                    <option value="INSTRUCTOR">Инструктор</option>
-                    <option value="CURATOR">Куратор</option>
+                    <option value="PRACTICE">Практика</option>
+                    <option value="SUPERVISION">Супервизия</option>
                   </select>
                 )}
 
@@ -149,7 +149,7 @@ export function SupervisionRequestForm() {
                     min={0.1}
                     max={200} // синхронно с zod .max(200)
                     {...register(`entries.${index}.value`, { valueAsNumber: true })}
-                    className="input w-28"
+                    className="input w-32"
                     aria-invalid={!!errors.entries?.[index]?.value || undefined}
                   />
                   {errors.entries?.[index]?.value && (
@@ -173,7 +173,7 @@ export function SupervisionRequestForm() {
 
           <button
             type="button"
-            onClick={() => append({ type: isMentor ? 'SUPERVISOR' : 'INSTRUCTOR', value: 1 })}
+            onClick={() => append({ type: isMentor ? 'SUPERVISOR' : 'PRACTICE', value: 1 })}
             disabled={isSubmitting}
             className="btn btn-brand mt-2 disabled:opacity-50"
           >

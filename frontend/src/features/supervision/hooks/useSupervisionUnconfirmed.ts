@@ -2,10 +2,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { getSupervisionList } from '../api/getSupervisionList';
 
+// новые ключи
 export interface SupervisionCategorySum {
-  instructor: number;
-  curator: number;
+  practice: number;
+  supervision: number;
   supervisor: number;
+}
+
+function normalizeType(t: string): 'practice' | 'supervision' | 'supervisor' | null {
+  if (t === 'INSTRUCTOR' || t === 'PRACTICE') return 'practice';
+  if (t === 'CURATOR' || t === 'SUPERVISION') return 'supervision';
+  if (t === 'SUPERVISOR') return 'supervisor';
+  return null;
 }
 
 export function useSupervisionUnconfirmed() {
@@ -14,21 +22,13 @@ export function useSupervisionUnconfirmed() {
     queryFn: async () => {
       const { records } = await getSupervisionList({ status: 'UNCONFIRMED' });
 
-      const sum: SupervisionCategorySum = { instructor: 0, curator: 0, supervisor: 0 };
+      const sum: SupervisionCategorySum = { practice: 0, supervision: 0, supervisor: 0 };
 
       for (const record of records) {
         for (const hour of record.hours) {
-          switch (hour.type) {
-            case 'INSTRUCTOR':
-              sum.instructor += hour.value;
-              break;
-            case 'CURATOR':
-              sum.curator += hour.value;
-              break;
-            case 'SUPERVISOR':
-              sum.supervisor += hour.value;
-              break;
-          }
+          const norm = normalizeType(hour.type);
+          if (!norm) continue;
+          sum[norm] += hour.value;
         }
       }
 

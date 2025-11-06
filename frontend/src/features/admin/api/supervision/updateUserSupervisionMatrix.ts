@@ -3,8 +3,8 @@ import { api } from '@/lib/axios';
 import type { SupervisionLevel, SupervisionStatus } from './getUserSupervisionMatrix';
 
 export type UpdateUserSupervisionMatrixBody = {
-  level: SupervisionLevel;
-  status: SupervisionStatus;
+  level: SupervisionLevel; // PRACTICE | SUPERVISION | SUPERVISOR
+  status: SupervisionStatus; // CONFIRMED | UNCONFIRMED
   value: number;
 };
 
@@ -19,8 +19,11 @@ export type UpdateUserSupervisionMatrixResponse = {
 
 export async function updateUserSupervisionMatrix(
   userId: string,
-  data: UpdateUserSupervisionMatrixBody
+  body: UpdateUserSupervisionMatrixBody
 ): Promise<UpdateUserSupervisionMatrixResponse> {
-  const res = await api.patch(`/admin/supervision/${userId}/matrix`, data);
-  return res.data;
+  const { data } = await api.patch<UpdateUserSupervisionMatrixResponse>(
+    `/admin/supervision/${userId}/matrix`,
+    body
+  );
+  return data;
 }

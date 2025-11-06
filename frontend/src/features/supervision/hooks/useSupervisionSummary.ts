@@ -6,6 +6,7 @@ export function useSupervisionSummary() {
   return useQuery<SupervisionSummaryResponse>({
     queryKey: ['supervision', 'summary'],
     queryFn: getSupervisionSummary,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 минут
+    gcTime: 10 * 60 * 1000,   // держим в кеше дольше
   });
 }

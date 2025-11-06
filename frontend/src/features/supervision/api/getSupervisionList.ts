@@ -2,7 +2,14 @@
 import { api } from '@/lib/axios';
 
 export type RecordStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'SPENT';
-export type PracticeLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+
+// новые + legacy
+export type PracticeLevel =
+  | 'PRACTICE'
+  | 'SUPERVISION'
+  | 'SUPERVISOR'
+  | 'INSTRUCTOR'
+  | 'CURATOR';
 
 export type SupervisionHourItem = {
   id: string;
@@ -25,19 +32,31 @@ export type GetSupervisionListResponse = {
 };
 
 export type GetSupervisionListParams = {
-  status?: RecordStatus; // опционально фильтруем записи и часы внутри
-  take?: number;         // 1..100 (дефолт бэка ~20)
+  status?: RecordStatus;
+  take?: number;
   cursor?: string | null;
 };
+
+// нормализация типов (INSTRUCTOR→PRACTICE, CURATOR→SUPERVISION)
+function normalizeType(t: PracticeLevel): PracticeLevel {
+  if (t === 'INSTRUCTOR') return 'PRACTICE';
+  if (t === 'CURATOR') return 'SUPERVISION';
+  return t;
+}
 
 export async function getSupervisionList(
   params: GetSupervisionListParams = {}
 ): Promise<GetSupervisionListResponse> {
   const { status, take, cursor } = params;
-
   const { data } = await api.get<GetSupervisionListResponse>('/supervision/list', {
     params: { status, take, cursor },
   });
 
-  return data;
+  return {
+    ...data,
+    records: data.records.map((r) => ({
+      ...r,
+      hours: r.hours.map((h) => ({ ...h, type: normalizeType(h.type) })),
+    })),
+  };
 }

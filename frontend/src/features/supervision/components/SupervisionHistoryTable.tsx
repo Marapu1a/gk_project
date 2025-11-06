@@ -3,11 +3,13 @@ import { useSupervisionHistory } from '../hooks/useSupervisionHistory';
 import type { SupervisionHistoryItem } from '../api/getSupervisionHistory';
 import { recordStatusLabels } from '@/utils/labels';
 
-const typeMap: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
-  INSTRUCTOR: 'Инструктор',
-  CURATOR: 'Куратор',
-  SUPERVISOR: 'Менторство',
-};
+// Поддерживаем новые и legacy типы
+function typeLabel(t: string): string {
+  if (t === 'PRACTICE' || t === 'INSTRUCTOR') return 'Практика';
+  if (t === 'SUPERVISION' || t === 'CURATOR') return 'Супервизия';
+  if (t === 'SUPERVISOR') return 'Менторство';
+  return t;
+}
 
 export function SupervisionHistoryTable() {
   const {
@@ -43,7 +45,6 @@ export function SupervisionHistoryTable() {
       className="rounded-2xl border header-shadow bg-white overflow-hidden"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
-      {/* Header */}
       <div
         className="px-6 py-4 border-b flex items-center justify-between"
         style={{ borderColor: 'var(--color-green-light)' }}
@@ -51,7 +52,6 @@ export function SupervisionHistoryTable() {
         <h2 className="text-xl font-semibold text-blue-dark">История супервизии</h2>
       </div>
 
-      {/* Body */}
       <div className="p-6 overflow-x-auto">
         {items.length === 0 ? (
           <p className="text-sm text-gray-600">Пока пусто.</p>
@@ -77,7 +77,7 @@ export function SupervisionHistoryTable() {
                   <td className="p-2 text-center">
                     {format(new Date(hour.createdAt), 'dd.MM.yyyy')}
                   </td>
-                  <td className="p-2 text-center">{typeMap[hour.type] ?? hour.type}</td>
+                  <td className="p-2 text-center">{typeLabel(hour.type)}</td>
                   <td className="p-2 text-center">{hour.value}</td>
                   <td className="p-2 text-center">
                     <span

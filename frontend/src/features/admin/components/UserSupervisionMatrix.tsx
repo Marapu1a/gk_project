@@ -13,8 +13,8 @@ type Props = {
 };
 
 const LEVEL_LABELS: Record<SupervisionLevel, string> = {
-  INSTRUCTOR: 'Инструктор',
-  CURATOR: 'Куратор',
+  PRACTICE: 'Практика',
+  SUPERVISION: 'Супервизия',
   SUPERVISOR: 'Менторские',
 };
 
@@ -37,7 +37,7 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
   if (error || !data) return <p className="text-error">Ошибка загрузки часов</p>;
 
   const startEdit = (level: SupervisionLevel, status: SupervisionStatus, current: number) => {
-    if (isBlocked(level)) return; // если для этого уровня запрещено
+    if (isBlocked(level)) return;
     setEditing({ level, status });
     setValue(String(current));
   };
@@ -63,12 +63,14 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
     }
   };
 
-  // главная логика блокировок
+  // блокировки редактирования под новую модель
   const isBlocked = (level: SupervisionLevel) => {
     if (isSupervisor) {
-      return level === 'INSTRUCTOR' || level === 'CURATOR'; // супервизору запрещены
+      // супервизору недоступно редактировать PRACTICE/SUPERVISION
+      return level === 'PRACTICE' || level === 'SUPERVISION';
     } else {
-      return level === 'SUPERVISOR'; // обычному запрещены менторские
+      // обычному недоступно редактировать менторские
+      return level === 'SUPERVISOR';
     }
   };
 
@@ -79,15 +81,15 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
       {isSupervisor ? (
         <div className="card p-4" style={{ border: '1px solid var(--color-green-light)' }}>
           <p className="text-sm">
-            Супервизоры не набирают инструкторские и кураторские часы. Доступно редактирование
-            только менторских.
+            Супервизоры не набирают часы «Практика» и «Супервизия». Доступно редактирование только
+            менторских часов.
           </p>
         </div>
       ) : (
         <div className="card p-4" style={{ border: '1px solid var(--color-green-light)' }}>
           <p className="text-sm">
-            Менторские часы доступны только супервизорам. Здесь можно редактировать только
-            инструкторские и кураторские.
+            Менторские часы доступны только супервизорам. Здесь можно редактировать «Практика» и
+            «Супервизия».
           </p>
         </div>
       )}

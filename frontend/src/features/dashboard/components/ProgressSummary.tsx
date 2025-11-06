@@ -3,8 +3,9 @@ import { fetchCurrentUser } from '@/features/auth/api/me';
 import { CeuSummaryBlock } from '@/features/ceu/components/CeuSummaryBlock';
 import { SupervisionSummaryBlock } from '@/features/supervision/components/SupervisionSummaryBlock';
 
+// ключи — строго в нижнем регистре
 const GROUP_PROGRESS_PATH: Record<string, string | null> = {
-  Студент: 'Инструктор',
+  студент: 'Инструктор',
   инструктор: 'Куратор',
   куратор: 'Супервизор',
   супервизор: 'Опытный супервизор',
@@ -18,11 +19,13 @@ export function ProgressSummary() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const activeGroup = user?.activeGroup?.name?.toLowerCase();
-  const target = activeGroup ? GROUP_PROGRESS_PATH[activeGroup] : null;
+  const activeGroupName = user?.activeGroup?.name ?? null;
+  const activeGroupLc = activeGroupName?.toLowerCase() ?? null;
 
-  const isSupervisor = activeGroup === 'супервизор';
-  const isSeniorSupervisor = activeGroup === 'опытный супервизор';
+  const target = activeGroupLc ? GROUP_PROGRESS_PATH[activeGroupLc] : null;
+
+  const isSupervisor = activeGroupLc === 'супервизор';
+  const isSeniorSupervisor = activeGroupLc === 'опытный супервизор';
   const isAboveCeu = isSupervisor || isSeniorSupervisor;
 
   return (
@@ -37,10 +40,10 @@ export function ProgressSummary() {
 
       {/* Body */}
       <div className="px-6 py-5 space-y-4 text-sm">
-        {user?.activeGroup?.name && (
+        {activeGroupName && (
           <div className="rounded-xl p-3" style={{ background: 'var(--color-blue-soft)' }}>
             <p>
-              Текущий уровень: <strong>{user.activeGroup.name}</strong>
+              Текущий уровень: <strong>{activeGroupName}</strong>
             </p>
           </div>
         )}
@@ -65,7 +68,7 @@ export function ProgressSummary() {
         )}
 
         {!isAboveCeu && <CeuSummaryBlock />}
-        <SupervisionSummaryBlock user={user} />
+        {user && <SupervisionSummaryBlock user={user} />}
       </div>
     </div>
   );
