@@ -1,4 +1,3 @@
-// src/features/auth/api/me.ts
 import { api } from '@/lib/axios';
 
 export type CurrentUser = {
@@ -12,6 +11,7 @@ export type CurrentUser = {
   city: string | null;
   avatarUrl: string | null;
   bio: string | null;
+  targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null; // добавили поле
   groups: { id: string; name: string }[];
   activeGroup: { id: string; name: string; rank: number } | null;
 };

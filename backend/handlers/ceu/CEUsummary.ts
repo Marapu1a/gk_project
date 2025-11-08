@@ -1,4 +1,3 @@
-// handlers/ceuSummary/summary.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { RecordStatus, CEUCategory } from '@prisma/client';
@@ -12,39 +11,72 @@ type CEUSummary = {
 
 const CEU_KEYS: (keyof CEUSummary)[] = ['ethics', 'cultDiver', 'supervision', 'general'];
 
-export async function ceuSummaryHandler(req: FastifyRequest, reply: FastifyReply) {
+const RU_BY_LEVEL: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
+  INSTRUCTOR: 'Инструктор',
+  CURATOR: 'Куратор',
+  SUPERVISOR: 'Супервизор',
+};
+
+type Query = { level?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' };
+
+export async function ceuSummaryHandler(
+  req: FastifyRequest<{ Querystring: Query }>,
+  reply: FastifyReply
+) {
   const { user } = req;
   if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.userId },
-    include: { groups: { include: { group: true } } },
+    select: {
+      id: true,
+      targetLevel: true, // <-- важно
+      groups: {
+        select: {
+          group: {
+            select: { id: true, name: true, rank: true },
+          },
+        },
+      },
+    },
   });
   if (!dbUser) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  const groupList = dbUser.groups.map(g => g.group).sort((a, b) => b.rank - a.rank);
+  const groupList = dbUser.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank);
   const primaryGroup = groupList[0];
-  if (!primaryGroup) {
-    return reply.send({ required: null, percent: null, usable: emptySummary(), spent: emptySummary(), total: emptySummary() });
-  }
 
-  // CONFIRMED → usable
-  const confirmedEntries = await prisma.cEUEntry.findMany({
-    where: { record: { userId: user.userId }, status: RecordStatus.CONFIRMED },
-  });
+  const [confirmedEntries, spentEntries] = await Promise.all([
+    prisma.cEUEntry.findMany({
+      where: { record: { userId: user.userId }, status: RecordStatus.CONFIRMED },
+    }),
+    prisma.cEUEntry.findMany({
+      where: { record: { userId: user.userId }, status: RecordStatus.SPENT },
+    }),
+  ]);
+
   const usable = aggregateCEU(confirmedEntries);
-
-  // SPENT → spent
-  const spentEntries = await prisma.cEUEntry.findMany({
-    where: { record: { userId: user.userId }, status: RecordStatus.SPENT },
-  });
   const spent = aggregateCEU(spentEntries);
-
-  // total = usable + spent
   const total = addSums(usable, spent);
 
-  const nextGroup = getNextGroupName(primaryGroup.name);
-  const required = nextGroup ? requirementsByGroup[nextGroup] : null;
+  if (!primaryGroup) {
+    return reply.send({
+      required: null,
+      percent: null,
+      usable,
+      spent,
+      total,
+    });
+  }
+
+  const explicitLevel = req.query?.level;
+  const targetFromUser = dbUser.targetLevel ?? undefined;
+
+  const targetGroupName =
+    (explicitLevel && RU_BY_LEVEL[explicitLevel]) ||
+    (targetFromUser && RU_BY_LEVEL[targetFromUser]) ||
+    getNextGroupName(primaryGroup.name);
+
+  const required = targetGroupName ? requirementsByGroup[targetGroupName] ?? null : null;
   const percent = required ? computePercent(usable, required) : null;
 
   return reply.send({ required, percent, usable, spent, total });
@@ -59,13 +91,17 @@ function aggregateCEU(entries: any[]): CEUSummary {
   for (const e of entries) {
     switch (e.category as CEUCategory) {
       case CEUCategory.ETHICS:
-        summary.ethics += e.value; break;
+        summary.ethics += e.value;
+        break;
       case CEUCategory.CULTURAL_DIVERSITY:
-        summary.cultDiver += e.value; break;
+        summary.cultDiver += e.value;
+        break;
       case CEUCategory.SUPERVISION:
-        summary.supervision += e.value; break;
+        summary.supervision += e.value;
+        break;
       case CEUCategory.GENERAL:
-        summary.general += e.value; break;
+        summary.general += e.value;
+        break;
     }
   }
   return summary;
@@ -83,9 +119,7 @@ function addSums(a: CEUSummary, b: CEUSummary): CEUSummary {
 function computePercent(usable: CEUSummary, required: CEUSummary): CEUSummary {
   const percent: CEUSummary = emptySummary();
   for (const key of CEU_KEYS) {
-    percent[key] = required[key] > 0
-      ? Math.round((usable[key] / required[key]) * 100)
-      : 0;
+    percent[key] = required[key] > 0 ? Math.round((usable[key] / required[key]) * 100) : 0;
   }
   return percent;
 }
@@ -97,8 +131,8 @@ function getNextGroupName(current: string): string | null {
 }
 
 const requirementsByGroup: Record<string, CEUSummary> = {
-  'Инструктор': { ethics: 1, cultDiver: 1, supervision: 0, general: 2 },
-  'Куратор': { ethics: 2, cultDiver: 2, supervision: 0, general: 4 },
-  'Супервизор': { ethics: 2, cultDiver: 2, supervision: 2, general: 6 },
+  Инструктор: { ethics: 1, cultDiver: 1, supervision: 0, general: 2 },
+  Куратор: { ethics: 2, cultDiver: 2, supervision: 0, general: 4 },
+  Супервизор: { ethics: 2, cultDiver: 2, supervision: 2, general: 6 },
   'Опытный Супервизор': { ethics: 0, cultDiver: 0, supervision: 0, general: 0 },
 };

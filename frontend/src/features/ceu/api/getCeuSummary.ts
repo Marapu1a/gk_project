@@ -1,6 +1,8 @@
 // src/features/ceu/api/getCeuSummary.ts
 import { api } from '@/lib/axios';
 
+export type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+
 export interface CeuCategorySum {
   ethics: number;
   cultDiver: number;
@@ -16,7 +18,8 @@ export interface CeuSummaryResponse {
   total: CeuCategorySum;  // usable + spent
 }
 
-export async function getCeuSummary(): Promise<CeuSummaryResponse> {
-  const response = await api.get('/ceu/summary');
-  return response.data;
+export async function getCeuSummary(level?: Level | null): Promise<CeuSummaryResponse> {
+  const params = level ? { level } : undefined;
+  const { data } = await api.get('/ceu/summary', { params });
+  return data;
 }

@@ -20,6 +20,7 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
       city: true,
       avatarUrl: true,
       bio: true,
+      targetLevel: true,
       groups: {
         include: {
           group: { select: { id: true, name: true, rank: true } },
@@ -51,6 +52,7 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     city: dbUser.city,
     avatarUrl: dbUser.avatarUrl,
     bio: dbUser.bio,
+    targetLevel: dbUser.targetLevel, // 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null
     groups: groupList.map(({ id, name }) => ({ id, name })),
     activeGroup,
   });

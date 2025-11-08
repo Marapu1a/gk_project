@@ -15,17 +15,37 @@ type SupervisionSummary = {
 
 const SUMMARY_KEYS: (keyof SupervisionSummary)[] = ['practice', 'supervision', 'supervisor'];
 
-export async function supervisionSummaryHandler(req: FastifyRequest, reply: FastifyReply) {
+// enum-уровень цели -> русское имя группы, чьи требования показывать
+const RU_BY_LEVEL: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
+  INSTRUCTOR: 'Инструктор',
+  CURATOR: 'Куратор',
+  SUPERVISOR: 'Супервизор',
+};
+
+type Query = { level?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' };
+
+export async function supervisionSummaryHandler(
+  req: FastifyRequest<{ Querystring: Query }>,
+  reply: FastifyReply
+) {
   const { user } = req;
   if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.userId },
-    include: { groups: { include: { group: true } } },
+    select: {
+      id: true,
+      targetLevel: true, // <-- важно
+      groups: {
+        select: {
+          group: { select: { id: true, name: true, rank: true } },
+        },
+      },
+    },
   });
   if (!dbUser) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  const groupList = dbUser.groups.map(g => g.group).sort((a, b) => b.rank - a.rank);
+  const groupList = dbUser.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank);
   const primaryGroup = groupList[0];
 
   if (!primaryGroup) {
@@ -38,34 +58,46 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     });
   }
 
-  // Берём все подтверждённые часы
-  const confirmed = await prisma.supervisionHour.findMany({
-    where: { record: { userId: user.userId }, status: RecordStatus.CONFIRMED },
-    select: { type: true, value: true },
-  });
-  const usable = aggregate(confirmed);
+  // Берём подтверждённые и "на проверке" параллельно
+  const [confirmed, unconfirmed] = await Promise.all([
+    prisma.supervisionHour.findMany({
+      where: { record: { userId: user.userId }, status: RecordStatus.CONFIRMED },
+      select: { type: true, value: true },
+    }),
+    prisma.supervisionHour.findMany({
+      where: { record: { userId: user.userId }, status: RecordStatus.UNCONFIRMED },
+      select: { type: true, value: true },
+    }),
+  ]);
 
-  // И все "на проверке"
-  const unconfirmed = await prisma.supervisionHour.findMany({
-    where: { record: { userId: user.userId }, status: RecordStatus.UNCONFIRMED },
-    select: { type: true, value: true },
-  });
+  const usable = aggregate(confirmed);
   const pending = aggregate(unconfirmed);
 
-  const nextGroup = getNextGroupName(primaryGroup.name);
-  const required = nextGroup ? supervisionRequirementsByGroup[nextGroup] : null;
+  // Определяем группу, по которой показывать требования:
+  // приоритет: ?level -> user.targetLevel -> лесенка (nextGroup от активной)
+  const explicitLevel = req.query?.level;
+  const targetFromUser = dbUser.targetLevel ?? undefined;
+
+  const targetGroupName =
+    (explicitLevel && RU_BY_LEVEL[explicitLevel]) ||
+    (targetFromUser && RU_BY_LEVEL[targetFromUser]) ||
+    getNextGroupName(primaryGroup.name);
+
+  const required: SupervisionRequirement | null = targetGroupName
+    ? supervisionRequirementsByGroup[targetGroupName] ?? null
+    : null;
+
   const percent = required ? computePercent(usable, required) : null;
 
-  const isSupervisor =
-    primaryGroup.name === 'Супервизор' || primaryGroup.name === 'Опытный Супервизор';
-
+  // Менторская шкала только для реально "Супервизор/Опытный супервизор" (цель не влияет)
+  const isSupervisor = primaryGroup.name === 'Супервизор' || primaryGroup.name === 'Опытный Супервизор';
   const mentor = isSupervisor
     ? (() => {
       const total = usable.practice + usable.supervision + usable.supervisor;
       const pendingSum = pending.practice + pending.supervision + pending.supervisor;
       const requiredTotal = 2000; // общая цель для супервизоров
-      const percent = clampPct(Math.round((total / requiredTotal) * 100));
-      return { total, required: requiredTotal, percent, pending: pendingSum };
+      const pct = clampPct(Math.round((total / requiredTotal) * 100));
+      return { total, required: requiredTotal, percent: pct, pending: pendingSum };
     })()
     : null;
 
@@ -78,7 +110,6 @@ function empty(): SupervisionSummary {
   return { practice: 0, supervision: 0, supervisor: 0 };
 }
 
-// агрегирует значения по типу
 function aggregate(entries: Array<{ type: PracticeLevel; value: number }>): SupervisionSummary {
   const s = empty();
   for (const h of entries) {

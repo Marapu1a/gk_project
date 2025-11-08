@@ -1,4 +1,3 @@
-// src/features/user/components/UserInfo.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLogout } from '../hooks/useLogout';
@@ -12,23 +11,37 @@ import { AvatarUploadModal } from '@/features/files/components/AvatarUploadModal
 import { UserSelfProfileBlock } from '@/features/user/components/UserSelfProfileBlock';
 import { BioEditModal } from '@/features/user/components/BioEditModal';
 import { AdminDbBackupBlock } from '@/features/backup/components/AdminDbBackupBlock';
+import { useSetTargetLevel } from '@/features/user/hooks/useSetTargetLevel';
+import type { TargetLevel } from '@/features/user/api/setTargetLevel';
+
+const RU_BY_LEVEL: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
+  INSTRUCTOR: 'Инструктор',
+  CURATOR: 'Куратор',
+  SUPERVISOR: 'Супервизор',
+};
 
 export function UserInfo() {
   const { data: user, isLoading } = useCurrentUser();
   const logout = useLogout();
   const navigate = useNavigate();
+  const { data: payments = [], isLoading: payLoading } = useUserPayments();
 
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [bioOpen, setBioOpen] = useState(false);
 
-  const { data: payments = [], isLoading: payLoading } = useUserPayments();
-
+  const setTarget = useSetTargetLevel(user?.id || '');
   if (isLoading || !user) return null;
+
+  // локальный контрол
+  const [selected, setSelected] = useState<TargetLevel | ''>(user.targetLevel ?? '');
 
   const isAdmin = user.role === 'ADMIN';
   const registrationPaid =
     payments.some((p) => p.type === 'REGISTRATION' && p.status === 'PAID') ||
     payments.some((p) => p.type === 'FULL_PACKAGE' && p.status === 'PAID');
+
+  const targetLevelName = user.targetLevel ? RU_BY_LEVEL[user.targetLevel] : undefined;
+  const targetNameForBadge = targetLevelName ?? 'не выбрана (лесенка)';
 
   return (
     <div
@@ -42,8 +55,7 @@ export function UserInfo() {
 
       {/* Body */}
       <div className="px-6 py-5 space-y-3 text-sm">
-        {/* Аватар (как в реестре) */}
-
+        {/* Аватар */}
         <div className="flex items-start">
           <AvatarDisplay
             src={user.avatarUrl}
@@ -54,12 +66,44 @@ export function UserInfo() {
             onClick={() => setAvatarOpen(true)}
           />
         </div>
-
         {avatarOpen && <AvatarUploadModal userId={user.id} onClose={() => setAvatarOpen(false)} />}
 
         <UserSelfProfileBlock user={user} />
 
-        {/* О себе */}
+        {/* === Выбор цели === */}
+        <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--color-blue-soft)' }}>
+          <div>
+            <strong>Текущая цель:</strong> {targetNameForBadge}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              className="border rounded-md px-2 py-1"
+              value={selected ?? ''}
+              onChange={(e) => {
+                const v = e.target.value as '' | 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+                setSelected(v === '' ? '' : v);
+              }}
+            >
+              <option value="">— Лесенка —</option>
+              <option value="INSTRUCTOR">Инструктор</option>
+              <option value="CURATOR">Куратор</option>
+              <option value="SUPERVISOR">Супервизор</option>
+            </select>
+
+            <Button
+              onClick={() => setTarget.mutate(selected === '' ? null : selected)}
+              disabled={setTarget.isPending}
+            >
+              Сохранить
+            </Button>
+
+            {setTarget.isError && <span className="text-red-600">Ошибка сохранения</span>}
+            {setTarget.isSuccess && <span className="text-green-600">Цель обновлена</span>}
+          </div>
+        </div>
+
+        {/* === О себе === */}
         {user.bio ? (
           <div className="rounded-2xl p-4" style={{ background: 'var(--color-blue-soft)' }}>
             <div className="text-sm text-blue-dark whitespace-pre-wrap">{user.bio}</div>
@@ -84,9 +128,6 @@ export function UserInfo() {
             <Button onClick={() => navigate('/admin/document-review')} className="mr-2">
               Проверка документов
             </Button>
-
-            {/* ⬇️ Блок создания дампа БД для админа */}
-
             <AdminDbBackupBlock />
           </>
         ) : (
@@ -115,7 +156,11 @@ export function UserInfo() {
               )
             )}
 
-            <UserPaymentDashboard activeGroupName={user.activeGroup?.name || ''} />
+            {/* ⬇️ передаём цель, чтобы заголовок и ссылки пересчитались сразу */}
+            <UserPaymentDashboard
+              activeGroupName={user.activeGroup?.name || ''}
+              targetLevelName={targetLevelName}
+            />
           </>
         )}
 

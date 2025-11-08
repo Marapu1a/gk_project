@@ -1,7 +1,13 @@
 import { useCeuSummary } from '../hooks/useCeuSummary';
 
-export function CeuSummaryBlock() {
-  const { data: summary, isLoading: loadingSummary } = useCeuSummary();
+type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+
+type Props = {
+  level?: Level | null; // если нет — бэк/хук работает по умолчанию (лесенка/активная группа)
+};
+
+export function CeuSummaryBlock({ level }: Props) {
+  const { data: summary, isLoading: loadingSummary } = useCeuSummary(level || undefined);
 
   if (loadingSummary) {
     return <p className="text-sm text-blue-dark">Загрузка CEU…</p>;

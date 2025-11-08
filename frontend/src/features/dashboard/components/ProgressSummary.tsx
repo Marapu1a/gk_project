@@ -1,3 +1,4 @@
+// src/features/progress/components/ProgressSummary.tsx
 import { useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { CeuSummaryBlock } from '@/features/ceu/components/CeuSummaryBlock';
@@ -8,8 +9,14 @@ const GROUP_PROGRESS_PATH: Record<string, string | null> = {
   студент: 'Инструктор',
   инструктор: 'Куратор',
   куратор: 'Супервизор',
-  супервизор: 'Опытный супервизор',
+  супервизор: 'Опытный Супервизор',
   'опытный супервизор': null,
+};
+
+const RU_BY_LEVEL: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
+  INSTRUCTOR: 'Инструктор',
+  CURATOR: 'Куратор',
+  SUPERVISOR: 'Супервизор',
 };
 
 export function ProgressSummary() {
@@ -22,7 +29,13 @@ export function ProgressSummary() {
   const activeGroupName = user?.activeGroup?.name ?? null;
   const activeGroupLc = activeGroupName?.toLowerCase() ?? null;
 
-  const target = activeGroupLc ? GROUP_PROGRESS_PATH[activeGroupLc] : null;
+  // если есть выбранная цель — показываем её; иначе — «лесенка»
+  const explicitTargetRu = user?.targetLevel ? RU_BY_LEVEL[user.targetLevel] : null;
+  const ladderTarget = activeGroupLc ? GROUP_PROGRESS_PATH[activeGroupLc] : null;
+  const targetToShow = explicitTargetRu ?? ladderTarget;
+
+  // enum-уровень для расчётов CEU/часов
+  const levelForRequirements = user?.targetLevel ?? undefined;
 
   const isSupervisor = activeGroupLc === 'супервизор';
   const isSeniorSupervisor = activeGroupLc === 'опытный супервизор';
@@ -59,16 +72,20 @@ export function ProgressSummary() {
           </div>
         )}
 
-        {target && !isAboveCeu && (
+        {targetToShow && !isAboveCeu && (
           <div className="rounded-xl p-3" style={{ background: 'var(--color-blue-soft)' }}>
             <p>
-              Цель перехода: <strong>{target}</strong>
+              Цель: <strong>{targetToShow}</strong>
+              {explicitTargetRu ? ' (выбрана пользователем)' : ' (по лесенке)'}
             </p>
           </div>
         )}
 
-        {!isAboveCeu && <CeuSummaryBlock />}
-        {user && <SupervisionSummaryBlock user={user} />}
+        {/* CEU пересчитывается по целевому уровню */}
+        {!isAboveCeu && <CeuSummaryBlock level={levelForRequirements} />}
+
+        {/* Часы тоже пересчитываются по целевому уровню */}
+        {user && <SupervisionSummaryBlock user={user} level={levelForRequirements} />}
       </div>
     </div>
   );

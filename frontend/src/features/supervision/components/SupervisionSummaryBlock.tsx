@@ -2,16 +2,19 @@
 import { useSupervisionSummary } from '../hooks/useSupervisionSummary';
 import { useSupervisionUnconfirmed } from '../hooks/useSupervisionUnconfirmed';
 
+type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+
 // привели к супермножеству фактического типа
 type Props = {
   user: {
     role: 'STUDENT' | 'REVIEWER' | 'ADMIN';
     activeGroup?: { id?: string; name: string; rank?: number } | null;
   };
+  level?: Level | null; // ⬅️ целевой уровень (если есть)
 };
 
-export function SupervisionSummaryBlock({ user }: Props) {
-  const { data: summary, isLoading: loadingSummary } = useSupervisionSummary();
+export function SupervisionSummaryBlock({ user, level }: Props) {
+  const { data: summary, isLoading: loadingSummary } = useSupervisionSummary(level ?? undefined);
   const { data: unconfirmed, isLoading: loadingUnconfirmed } = useSupervisionUnconfirmed();
 
   const activeGroup = user.activeGroup?.name;
@@ -140,9 +143,9 @@ export function SupervisionSummaryBlock({ user }: Props) {
               const usable = summary.usable[cat] ?? 0;
               const used = Math.min(usable, req || Infinity);
               const percent = req ? (used / req) * 100 : 0;
-              const pending = (summary.pending?.[cat] ?? 0) || 0; // если есть с бэка; иначе fallback ниже
+              const pending = (summary.pending?.[cat] ?? 0) || 0;
 
-              const pendingFallback = pending || (unconfirmed[cat] ?? 0); // старый способ (из отдельного запроса)
+              const pendingFallback = pending || (unconfirmed[cat] ?? 0);
 
               return (
                 <tr

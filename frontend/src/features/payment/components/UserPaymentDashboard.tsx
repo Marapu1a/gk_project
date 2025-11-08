@@ -1,4 +1,3 @@
-// src/features/payment/components/UserPaymentDashboard.tsx
 import { useEffect, useState } from 'react';
 import { useUserPayments } from '../hooks/useUserPayments';
 import { PaymentStatusToggle } from '../components/PaymentStatusToggle';
@@ -27,15 +26,27 @@ const ORDERED_TYPES: PaymentItem['type'][] = [
 
 type Props = {
   activeGroupName: string;
-  openDefault?: boolean; // можно открыть по умолчанию
+  targetLevelName?: string; // Русское имя цели: Инструктор | Куратор | Супервизор
+  openDefault?: boolean;
 };
 
-export function UserPaymentDashboard({ activeGroupName, openDefault = false }: Props) {
+// маппим цель -> "исходная" группа, по которой формируются ссылки на оплату
+// (ключи специально в нижнем регистре, чтобы пройти нормализацию внутри getPaymentLink)
+const BILLING_GROUP_BY_TARGET: Record<'Инструктор' | 'Куратор' | 'Супервизор', string> = {
+  Инструктор: 'студент',
+  Куратор: 'инструктор',
+  Супервизор: 'куратор',
+};
+
+export function UserPaymentDashboard({
+  activeGroupName,
+  targetLevelName,
+  openDefault = false,
+}: Props) {
   const { data: payments, isLoading } = useUserPayments();
   const [open, setOpen] = useState(openDefault);
   const [highlight, setHighlight] = useState(false);
 
-  // ловим внешнее событие для подсветки заголовка
   useEffect(() => {
     const onHighlight = () => setHighlight(true);
     window.addEventListener('highlight-payments', onHighlight);
@@ -44,14 +55,21 @@ export function UserPaymentDashboard({ activeGroupName, openDefault = false }: P
 
   if (isLoading || !payments) return null;
 
-  // у супервизоров и опытных супервизоров убираем оплату экзамена
+  // Исключаем оплату экзамена только по достигнутой группе
   const isSupervisor = activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
-
   const types = isSupervisor ? ORDERED_TYPES.filter((t) => t !== 'EXAM_ACCESS') : ORDERED_TYPES;
 
   const ordered = types
     .map((t) => payments.find((p) => p.type === t))
     .filter(Boolean) as PaymentItem[];
+
+  // === КЛЮЧЕВОЕ: определяем "группу для оплаты"
+  // если выбрана цель — берём предыдущую ступень по цели (см. карту выше),
+  // иначе — текущую группу (в нижнем регистре, чтобы совпасть с PAYMENT_LINKS)
+  const billingGroup =
+    (targetLevelName &&
+      BILLING_GROUP_BY_TARGET[targetLevelName as keyof typeof BILLING_GROUP_BY_TARGET]) ||
+    (activeGroupName ? activeGroupName.toLowerCase().trim() : '');
 
   return (
     <section
@@ -64,21 +82,31 @@ export function UserPaymentDashboard({ activeGroupName, openDefault = false }: P
         type="button"
         onClick={() => {
           setOpen((v) => !v);
-          setHighlight(false); // клик по заголовку гасит мигание
+          setHighlight(false);
         }}
         aria-expanded={open}
         aria-controls="payments-body"
-        className={`w-full flex items-center justify-between px-6 py-4 border-b text-left
-          ${highlight ? 'animate-pulse ring-2 ring-offset-2 ring-lime-400' : ''}`}
+        className={`w-full flex items-center justify-between px-6 py-4 border-b text-left ${
+          highlight ? 'animate-pulse ring-2 ring-offset-2 ring-lime-400' : ''
+        }`}
         style={{ borderColor: 'var(--color-green-light)' }}
       >
         <h2 className="text-xl font-bold text-blue-dark">
-          Мои оплаты {activeGroupName ? `(Текущий уровень: ${activeGroupName})` : ''}
+          Мои оплаты{' '}
+          {targetLevelName ? (
+            <span className="text-sm text-gray-600">
+              (оплата за уровень: <strong>{targetLevelName}</strong>)
+            </span>
+          ) : activeGroupName ? (
+            <span className="text-sm text-gray-600">
+              (по текущему уровню: <strong>{activeGroupName}</strong>)
+            </span>
+          ) : null}
         </h2>
         <span className="text-sm">{open ? '▲' : '▼'}</span>
       </button>
 
-      {/* Плавное раскрытие: 0fr → 1fr */}
+      {/* Плавное раскрытие */}
       <div
         id="payments-body"
         aria-hidden={!open}
@@ -91,7 +119,7 @@ export function UserPaymentDashboard({ activeGroupName, openDefault = false }: P
         <div style={{ overflow: 'hidden' }}>
           <div className="px-6 py-5 space-y-4">
             {ordered.map((payment, idx) => {
-              const link = getPaymentLink(payment.type, activeGroupName);
+              const link = getPaymentLink(payment.type, billingGroup); // ← сюда подаём нормализованную "группу для оплаты"
 
               return (
                 <div

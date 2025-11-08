@@ -36,6 +36,12 @@ enum PracticeLevel {
   SUPERVISION
 }
 
+enum TargetLevel {
+  INSTRUCTOR
+  CURATOR
+  SUPERVISOR
+}
+
 enum PaymentType {
   DOCUMENT_REVIEW
   EXAM_ACCESS
@@ -97,6 +103,9 @@ model User {
   notifications            Notification[]
 
   createdAt                DateTime @default(now())
+
+  // Целевой уровень специализации (лесенка, если NULL)
+  targetLevel              TargetLevel?
 }
 
 model Payment {

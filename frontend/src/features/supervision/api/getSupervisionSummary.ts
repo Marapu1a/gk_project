@@ -1,6 +1,9 @@
 // src/features/supervision/api/getSupervisionSummary.ts
 import { api } from '@/lib/axios';
 
+// enum цели
+export type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+
 // обновляем структуру под новые названия категорий
 export type SupervisionSummary = {
   practice: number;     // было instructor
@@ -12,7 +15,7 @@ export interface SupervisionSummaryResponse {
   required: SupervisionSummary | null;
   percent: SupervisionSummary | null;
   usable: SupervisionSummary;
-  pending?: SupervisionSummary; // бэкенд теперь возвращает
+  pending?: SupervisionSummary;
   mentor?: {
     total: number;
     required: number;
@@ -21,7 +24,8 @@ export interface SupervisionSummaryResponse {
   } | null;
 }
 
-export async function getSupervisionSummary(): Promise<SupervisionSummaryResponse> {
-  const { data } = await api.get<SupervisionSummaryResponse>('/supervision/summary');
+export async function getSupervisionSummary(level?: Level | null): Promise<SupervisionSummaryResponse> {
+  const params = level ? { level } : undefined;
+  const { data } = await api.get<SupervisionSummaryResponse>('/supervision/summary', { params });
   return data;
 }
