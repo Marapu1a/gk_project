@@ -1,3 +1,4 @@
+// src/handlers/auth/me.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 
@@ -20,9 +21,10 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
       city: true,
       avatarUrl: true,
       bio: true,
-      targetLevel: true,
+      targetLevel: true,      // 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null
+      targetLockRank: true,   // ⬅️ добавили
       groups: {
-        include: {
+        select: {
           group: { select: { id: true, name: true, rank: true } },
         },
       },
@@ -52,7 +54,8 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     city: dbUser.city,
     avatarUrl: dbUser.avatarUrl,
     bio: dbUser.bio,
-    targetLevel: dbUser.targetLevel, // 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null
+    targetLevel: dbUser.targetLevel,
+    targetLockRank: dbUser.targetLockRank, // ⬅️ вернули в ответ
     groups: groupList.map(({ id, name }) => ({ id, name })),
     activeGroup,
   });

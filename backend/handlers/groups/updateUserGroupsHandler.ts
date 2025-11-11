@@ -2,6 +2,7 @@
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { updateUserGroupsSchema } from '../../schemas/updateUserGroups';
+import { unlockTargetIfRankChanged } from '../../utils/unlockTargetIfRankChanged';
 
 interface UpdateUserGroupsRoute extends RouteGenericInterface {
   Params: { id: string };
@@ -13,7 +14,6 @@ export async function updateUserGroupsHandler(
 ) {
   const userId = req.params.id;
 
-  // Группы меняют только админы
   if (req.user.role !== 'ADMIN') {
     return reply.code(403).send({ error: 'Доступ только для администратора' });
   }
@@ -26,7 +26,6 @@ export async function updateUserGroupsHandler(
   }
   const { groupIds } = parsed.data;
 
-  // Текущие группы/ранг ДО
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { groups: { include: { group: true } } },
@@ -37,7 +36,7 @@ export async function updateUserGroupsHandler(
     user.groups.length ? Math.max(...user.groups.map((g) => g.group.rank)) : -Infinity;
 
   const result = await prisma.$transaction(async (tx) => {
-    // Перепривязка групп
+    // 1) Перепривязка групп
     await tx.userGroup.deleteMany({ where: { userId } });
     if (groupIds.length) {
       await tx.userGroup.createMany({
@@ -45,7 +44,7 @@ export async function updateUserGroupsHandler(
       });
     }
 
-    // Новый ранг ПОСЛЕ
+    // 2) Новый ранг после изменения групп
     const newGroups = await tx.userGroup.findMany({
       where: { userId },
       include: { group: true },
@@ -53,7 +52,10 @@ export async function updateUserGroupsHandler(
     const newMaxRank =
       newGroups.length ? Math.max(...newGroups.map((g) => g.group.rank)) : -Infinity;
 
-    // Если повышен активный класс (ранг вырос) — действия пакетом
+    // 3) Разлок цели, если активный ранг изменился
+    await unlockTargetIfRankChanged(userId, tx);
+
+    // 4) Побочные эффекты при повышении
     let burned = 0;
     let examReset = false;
     let examPaymentReset = false;
@@ -62,14 +64,12 @@ export async function updateUserGroupsHandler(
     const upgraded = newMaxRank > oldMaxRank;
 
     if (upgraded) {
-      // 1) CONFIRMED → SPENT
       const burnRes = await tx.cEUEntry.updateMany({
         where: { record: { userId }, status: 'CONFIRMED' },
-        data: { status: 'SPENT', reviewedAt: new Date() }, // при желании добавь spentAt
+        data: { status: 'SPENT', reviewedAt: new Date() },
       });
       burned = burnRes.count;
 
-      // 2) Сброс заявки на экзамен
       await tx.examApplication.upsert({
         where: { userId },
         update: { status: 'NOT_SUBMITTED' },
@@ -77,7 +77,6 @@ export async function updateUserGroupsHandler(
       });
       examReset = true;
 
-      // 3) Сброс оплаты только EXAM_ACCESS → UNPAID
       const payRes = await tx.payment.updateMany({
         where: { userId, type: 'EXAM_ACCESS', status: { not: 'UNPAID' } },
         data: { status: 'UNPAID', confirmedAt: null, comment: 'Сброшено из-за повышения группы' },
@@ -86,7 +85,7 @@ export async function updateUserGroupsHandler(
       examPaymentReset = payRes.count > 0;
     }
 
-    // Обновление роли: если есть "Супервизор" — REVIEWER; иначе STUDENT (админа не трогаем)
+    // 5) Роль: REVIEWER при наличии группы "Супервизор" (админа не трогаем)
     const supervisorGroup = await tx.group.findFirst({ where: { name: 'Супервизор' } });
     if (user.role !== 'ADMIN' && supervisorGroup) {
       const isReviewerNow = newGroups.some((g) => g.groupId === supervisorGroup.id);

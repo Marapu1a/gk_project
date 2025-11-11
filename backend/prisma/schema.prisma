@@ -104,8 +104,8 @@ model User {
 
   createdAt                DateTime @default(now())
 
-  // Целевой уровень специализации (лесенка, если NULL)
-  targetLevel              TargetLevel?
+  targetLevel              TargetLevel? // Целевой уровень специализации (лесенка, если NULL)
+  targetLockRank           Int?     // ранг, при котором цель была выбрана
 }
 
 model Payment {
