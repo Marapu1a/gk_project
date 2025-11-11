@@ -60,6 +60,9 @@ export function UserInfo() {
   }, [user.targetLevel]);
 
   const isAdmin = user.role === 'ADMIN';
+  const isSupervisorLike = ['Супервизор', 'Опытный Супервизор'].includes(
+    user.activeGroup?.name ?? '',
+  );
   const locked = isTargetLocked(user) && !isAdmin;
 
   const activeIdx = user.activeGroup
@@ -128,61 +131,6 @@ export function UserInfo() {
 
         <UserSelfProfileBlock user={user} />
 
-        {/* === Выбор цели === */}
-        <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--color-blue-soft)' }}>
-          <div>
-            <strong>Текущая цель:</strong> {targetNameForBadge}
-            {locked && (
-              <span className="ml-2 inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
-                выбор заблокирован до повышения уровня
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <select
-              className="border rounded-md px-2 py-1"
-              value={selected}
-              onChange={(e) => {
-                const v = e.target.value as '' | Level;
-                setSelected(v === '' ? '' : (v as Level));
-              }}
-              disabled={selectDisabled}
-              title={
-                locked
-                  ? 'Сменить можно после повышения уровня (или через администратора)'
-                  : undefined
-              }
-            >
-              <option value="">— Лесенка —</option>
-              {availableLevels.map((lvl) => (
-                <option key={lvl} value={lvl}>
-                  {RU_BY_LEVEL[lvl]}
-                </option>
-              ))}
-            </select>
-
-            <Button
-              onClick={() =>
-                setTarget.mutate(selected === '' ? null : (selected as ApiTargetLevel))
-              }
-              disabled={saveDisabled}
-              title={
-                locked
-                  ? 'Сменить можно после повышения уровня (или через администратора)'
-                  : undefined
-              }
-            >
-              Сохранить
-            </Button>
-
-            {setTarget.isError && (
-              <span className="text-red-600">{lockedMsg ?? 'Ошибка сохранения'}</span>
-            )}
-            {setTarget.isSuccess && <span className="text-green-600">Цель обновлена</span>}
-          </div>
-        </div>
-
         {/* === О себе === */}
         {user.bio ? (
           <div className="rounded-2xl p-4" style={{ background: 'var(--color-blue-soft)' }}>
@@ -216,6 +164,66 @@ export function UserInfo() {
               Загрузить документы на проверку
             </Button>
             <Button onClick={() => navigate('/my-certificate')}>Мой сертификат</Button>
+
+            {/* === Выбор цели === */}
+            {!isAdmin && !isSupervisorLike && (
+              <div
+                className="rounded-xl p-3 space-y-2"
+                style={{ background: 'var(--color-blue-soft)' }}
+              >
+                <div>
+                  <strong>Текущая цель:</strong> {targetNameForBadge}
+                  {locked && (
+                    <span className="ml-2 inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
+                      выбор заблокирован до повышения уровня
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    className="border rounded-md px-2 py-1"
+                    value={selected}
+                    onChange={(e) => {
+                      const v = e.target.value as '' | Level;
+                      setSelected(v === '' ? '' : (v as Level));
+                    }}
+                    disabled={selectDisabled}
+                    title={
+                      locked
+                        ? 'Сменить можно после повышения уровня (или через администратора)'
+                        : undefined
+                    }
+                  >
+                    <option value="">— Лесенка —</option>
+                    {availableLevels.map((lvl) => (
+                      <option key={lvl} value={lvl}>
+                        {RU_BY_LEVEL[lvl]}
+                      </option>
+                    ))}
+                  </select>
+
+                  <Button
+                    onClick={() =>
+                      setTarget.mutate(selected === '' ? null : (selected as ApiTargetLevel))
+                    }
+                    disabled={saveDisabled}
+                    title={
+                      locked
+                        ? 'Сменить можно после повышения уровня (или через администратора)'
+                        : undefined
+                    }
+                  >
+                    Сохранить
+                  </Button>
+
+                  {setTarget.isError && (
+                    <span className="text-red-600">{lockedMsg ?? 'Ошибка сохранения'}</span>
+                  )}
+                  {setTarget.isSuccess && <span className="text-green-600">Цель обновлена</span>}
+                </div>
+              </div>
+            )}
 
             {!payLoading && (isAdmin || registrationPaid) ? (
               <QualificationStatusBlock activeGroupName={user.activeGroup?.name} />
