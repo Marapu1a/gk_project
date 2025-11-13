@@ -1,6 +1,7 @@
+// src/features/dashboard/components/Dashboard.tsx
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { UserInfo } from './UserInfo';
@@ -10,6 +11,9 @@ import { NotificationBell } from '@/features/notifications/components/Notificati
 import { NotificationModal } from '@/features/notifications/components/NotificationModal';
 
 export function Dashboard() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+
   const {
     data: user,
     isLoading,
@@ -20,12 +24,17 @@ export function Dashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const handleReauth = () => {
+    localStorage.removeItem('token');
+    qc.removeQueries(); // достаточно снести кэш запросов
+    navigate('/login?to=/dashboard', { replace: true });
+  };
+
   function scrollToBottomAndHighlight() {
     const root = document.scrollingElement as HTMLElement | null;
     const bottom = document.getElementById('page-bottom');
     if (!root || !bottom) return;
 
-    // когда докрутили до низа — шлём событие
     const io = new IntersectionObserver(
       (entries, o) => {
         if (entries.some((e) => e.isIntersecting)) {
@@ -71,9 +80,9 @@ export function Dashboard() {
           className="w-full max-w-3xl rounded-2xl border header-shadow bg-white p-6"
           style={{ borderColor: 'var(--color-green-light)' }}
         >
-          <Link to={'/login'} className="text-error">
-            Не удалось загрузить данные, вы авторизованны? (кликните для авторизации)
-          </Link>
+          <button onClick={handleReauth} className="text-error">
+            Не удалось загрузить данные, вы авторизованы? (кликните для авторизации)
+          </button>
         </div>
       </div>
     );

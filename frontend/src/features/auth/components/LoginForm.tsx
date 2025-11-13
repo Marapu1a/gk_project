@@ -1,25 +1,44 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation } from '@tanstack/react-query';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
+
+import { Button } from '@/components/Button';
 import { loginSchema } from '../validation/loginSchema';
 import type { LoginDto } from '../validation/loginSchema';
 import { loginUser } from '../api/login';
-import { useMutation } from '@tanstack/react-query';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Button } from '@/components/Button';
-import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { fetchCurrentUser } from '@/features/auth/api/me';
 
 export function LoginForm() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  // Если уже залогинен — сразу в кабинет
+  // Если уже залогинен — проверяем токен сервером
   useEffect(() => {
+    const force = params.get('force');
+    if (force) return;
+
     const token = localStorage.getItem('token');
-    if (token) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [navigate]);
+    if (!token) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        // Просто вызов без аргументов
+        await fetchCurrentUser();
+        if (!cancelled) navigate('/dashboard', { replace: true });
+      } catch {
+        // Токен битый — чистим
+        localStorage.removeItem('token');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, params]);
 
   const form = useForm<LoginDto>({
     resolver: zodResolver(loginSchema),
@@ -32,7 +51,7 @@ export function LoginForm() {
       localStorage.setItem('token', data.token);
       toast.success('Вход выполнен');
       const to = params.get('to') || '/dashboard';
-      navigate(to, { replace: true }); // чтобы "Назад" не вел на /login
+      navigate(to, { replace: true });
     },
     onError: (error: any) => {
       const message = error?.response?.data?.error || 'Ошибка входа';
