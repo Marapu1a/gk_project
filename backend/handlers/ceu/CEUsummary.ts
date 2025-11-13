@@ -1,13 +1,13 @@
+// src/handlers/ceu/ceuSummaryHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { RecordStatus, CEUCategory } from '@prisma/client';
-
-type CEUSummary = {
-  ethics: number;
-  cultDiver: number;
-  supervision: number;
-  general: number;
-};
+import {
+  ceuRequirementsByGroup as requirementsByGroup,
+  getNextGroupName,
+  type CEUSummary,
+  type GroupName,
+} from '../../utils/ceuRequirements';
 
 const CEU_KEYS: (keyof CEUSummary)[] = ['ethics', 'cultDiver', 'supervision', 'general'];
 
@@ -76,7 +76,11 @@ export async function ceuSummaryHandler(
     (targetFromUser && RU_BY_LEVEL[targetFromUser]) ||
     getNextGroupName(primaryGroup.name);
 
-  const required = targetGroupName ? requirementsByGroup[targetGroupName] ?? null : null;
+  const required =
+    (targetGroupName &&
+      (requirementsByGroup[targetGroupName as GroupName] ?? null)) ||
+    null;
+
   const percent = required ? computePercent(usable, required) : null;
 
   return reply.send({ required, percent, usable, spent, total });
@@ -123,16 +127,3 @@ function computePercent(usable: CEUSummary, required: CEUSummary): CEUSummary {
   }
   return percent;
 }
-
-function getNextGroupName(current: string): string | null {
-  const order = ['Студент', 'Инструктор', 'Куратор', 'Супервизор', 'Опытный Супервизор'];
-  const index = order.indexOf(current);
-  return index >= 0 && index + 1 < order.length ? order[index + 1] : null;
-}
-
-const requirementsByGroup: Record<string, CEUSummary> = {
-  Инструктор: { ethics: 1, cultDiver: 1, supervision: 0, general: 2 },
-  Куратор: { ethics: 2, cultDiver: 2, supervision: 0, general: 4 },
-  Супервизор: { ethics: 2, cultDiver: 2, supervision: 2, general: 6 },
-  'Опытный Супервизор': { ethics: 0, cultDiver: 0, supervision: 0, general: 0 },
-};

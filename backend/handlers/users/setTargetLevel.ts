@@ -31,6 +31,8 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     where: { id },
     select: {
       id: true,
+      email: true,            // NEW: для текста уведомления (не обязательно, но полезно)
+      fullName: true,         // NEW
       targetLevel: true,
       targetLockRank: true,
       groups: { select: { group: { select: { name: true, rank: true } } } },
@@ -77,6 +79,12 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     });
   }
 
+  const adminList = await prisma.user.findMany({
+    where: { role: 'ADMIN' },
+    select: { id: true },
+  });
+  const adminIds = adminList.map(a => a.id);
+
   // --- Ветвление по целям ---
 
   // 1) Сброс на "Лесенку": разрешаем, если НЕ locked или админ
@@ -104,6 +112,21 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
           comment: 'Сброшено: возврат на «лесенку»',
         },
       });
+
+      // NEW: notify admins
+      if (adminIds.length) {
+        const message =
+          `Пользователь ${dbUser.fullName ?? dbUser.email ?? dbUser.id} ` +
+          `сбросил цель на «Лесенку». Сброшено платежей: ${reset.count}.`;
+        await tx.notification.createMany({
+          data: adminIds.map((adminId) => ({
+            userId: adminId,
+            type: 'PAYMENT' as any,
+            message,
+            link: `/admin/users/${id}`,
+          })),
+        });
+      }
 
       return { updated, resetCount: reset.count };
     });
@@ -135,6 +158,22 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
         comment: `Сброшено из-за смены цели на ${targetLevel}`,
       },
     });
+
+    // NEW: notify admins
+    if (adminIds.length) {
+      const targetName = TARGET_NAME_BY_LEVEL[targetLevel!];
+      const message =
+        `Пользователь ${dbUser.fullName ?? dbUser.email ?? dbUser.id} ` +
+        `изменил цель на «${targetName}». Сброшено платежей: ${reset.count}.`;
+      await tx.notification.createMany({
+        data: adminIds.map((adminId) => ({
+          userId: adminId,
+          type: 'PAYMENT' as any,
+          message,
+          link: `/admin/users/${id}`,
+        })),
+      });
+    }
 
     return { updated, resetCount: reset.count };
   });

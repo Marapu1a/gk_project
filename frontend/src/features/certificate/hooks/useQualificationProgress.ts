@@ -7,10 +7,11 @@ import type { CeuSummaryResponse } from '@/features/ceu/api/getCeuSummary';
 import type { SupervisionSummaryResponse } from '@/features/supervision/api/getSupervisionSummary';
 
 const GROUP_PROGRESS_PATH: Record<string, string | null> = {
-  Студент: 'Инструктор',
-  инструктор: 'Куратор',
-  куратор: 'Супервизор',
-  супервизор: null,
+  // ключи — строго в нижнем регистре, т.к. ниже мы делаем toLowerCase()
+  'студент': 'Инструктор',
+  'инструктор': 'Куратор',
+  'куратор': 'Супервизор',
+  'супервизор': null,
   'опытный супервизор': null,
 };
 
@@ -61,19 +62,20 @@ export function useQualificationProgress(
     (targetGroup === 'Супервизор' ? ceuSummary.percent.supervision >= 100 : true) &&
     ceuSummary.percent.general >= 100;
 
-  // 🧠 Supervision: для не-супервизоров — по процентам instr+curator;
-  // для супервизоров — по сумме менторских часов (instr+curator+supervisor) >= 2000
+  // 🧠 Supervision:
+  // EXAM — требуем 100% по PRACTICE и 100% по SUPERVISION.
+  // RENEWAL — суммарные (PRACTICE + SUPERVISION + SUPERVISOR) >= 2000.
   let supervisionReady = false;
   if (mode === 'EXAM') {
     supervisionReady =
       !!supervisionSummary?.percent &&
-      supervisionSummary.percent.instructor >= 100 &&
-      supervisionSummary.percent.curator >= 100;
+      (supervisionSummary.percent as any).practice >= 100 &&
+      (supervisionSummary.percent as any).supervision >= 100;
   } else {
-    const usableInstr = supervisionSummary?.usable?.instructor ?? 0;
-    const usableCur = supervisionSummary?.usable?.curator ?? 0;
-    const usableSup = supervisionSummary?.usable?.supervisor ?? 0;
-    const totalUsable = usableInstr + usableCur + usableSup;
+    const usablePractice = (supervisionSummary?.usable as any)?.practice ?? 0;
+    const usableSupervision = (supervisionSummary?.usable as any)?.supervision ?? 0;
+    const usableSupervisor = (supervisionSummary?.usable as any)?.supervisor ?? 0;
+    const totalUsable = usablePractice + usableSupervision + usableSupervisor;
     const REQUIRED_TOTAL = 2000;
     supervisionReady = totalUsable >= REQUIRED_TOTAL;
   }
@@ -86,7 +88,7 @@ export function useQualificationProgress(
   // Экзаменьская оплата (нужна только в EXAM)
   const examPaid = (payments ?? []).some((p) => p.type === 'EXAM_ACCESS' && p.status === 'PAID');
 
-  // Причины выводим только в EXAM-режиме (UI уже подставляет подписи для супервизоров)
+  // Причины выводим только в EXAM-режиме
   const reasons: string[] = [];
   if (mode === 'EXAM') {
     if (!ceuReady) reasons.push('Недостаточно CEU-баллов');
@@ -97,7 +99,7 @@ export function useQualificationProgress(
   // ✅ Допуск
   const isEligible =
     mode === 'RENEWAL'
-      ? ceuReady && documentsReady // без экзамена; часы менторства отображаем, но не блокируем (при необходимости поменяем)
+      ? ceuReady && documentsReady
       : ceuReady && supervisionReady && documentsReady;
 
   return {

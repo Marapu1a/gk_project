@@ -4,12 +4,22 @@ import { loginSchema } from '../validation/loginSchema';
 import type { LoginDto } from '../validation/loginSchema';
 import { loginUser } from '../api/login';
 import { useMutation } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/Button';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+
+  // Если уже залогинен — сразу в кабинет
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [navigate]);
 
   const form = useForm<LoginDto>({
     resolver: zodResolver(loginSchema),
@@ -21,7 +31,8 @@ export function LoginForm() {
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
       toast.success('Вход выполнен');
-      navigate('/dashboard');
+      const to = params.get('to') || '/dashboard';
+      navigate(to, { replace: true }); // чтобы "Назад" не вел на /login
     },
     onError: (error: any) => {
       const message = error?.response?.data?.error || 'Ошибка входа';
