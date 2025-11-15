@@ -50,7 +50,7 @@ export function RegistryProfile({ userId }: Props) {
     >
       {/* Заголовок */}
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold text-blue-dark break-words">{p.fullName}</h1>
+        <h1 className="text-2xl font-bold text-blue-dark wrap-break-word">{p.fullName}</h1>
 
         {p.groupName && (
           <div className="mt-1">
@@ -114,11 +114,11 @@ export function RegistryProfile({ userId }: Props) {
                 <dl className="text-base leading-6 space-y-4">
                   <div>
                     <dt className="text-gray-500">Название</dt>
-                    <dd className="font-medium text-blue-dark break-words">{cert.title}</dd>
+                    <dd className="font-medium text-blue-dark wrap-break-word">{cert.title}</dd>
                   </div>
                   <div>
                     <dt className="text-gray-500">Номер</dt>
-                    <dd className="font-medium break-words">№ {cert.number}</dd>
+                    <dd className="font-medium wrap-break-word">№ {cert.number}</dd>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>

@@ -65,7 +65,7 @@ export function RegistryCard({
         {/* Правая колонка: ~2/3 */}
         <div className="col-span-2 p-4 min-w-0">
           {/* Имя — переносим, не обрезаем */}
-          <div className="font-semibold leading-tight break-words">{fullName}</div>
+          <div className="font-semibold leading-tight wrap-break-word">{fullName}</div>
 
           {/* Статус под именем */}
           {groupName && (
@@ -80,7 +80,7 @@ export function RegistryCard({
           )}
 
           {/* Локация */}
-          <div className="text-sm text-gray-600 mt-2 break-words">{location || '—'}</div>
+          <div className="text-sm text-gray-600 mt-2 wrap-break-word">{location || '—'}</div>
         </div>
       </div>
     </div>

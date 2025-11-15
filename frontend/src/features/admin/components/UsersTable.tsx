@@ -203,7 +203,7 @@ export function UsersTable() {
                         <td className="p-4 text-center">{number}</td>
 
                         <td className="p-4">
-                          <div className="whitespace-normal break-words" title={u.fullName}>
+                          <div className="whitespace-normal wrap-break-word" title={u.fullName}>
                             {u.fullName || '—'}
                           </div>
                         </td>
@@ -228,7 +228,7 @@ export function UsersTable() {
 
                         <td className="p-4">
                           <div
-                            className="whitespace-normal break-words"
+                            className="whitespace-normal wrap-break-word"
                             title={u.groups.map((g) => g.name).join(', ')}
                           >
                             {u.groups.map((g) => g.name).join(', ') || '—'}
