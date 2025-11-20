@@ -52,27 +52,21 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     return reply.code(400).send({ error: 'Пустые или некорректные часы' });
   }
 
-  // Нормализация типов под новую модель:
-  // - не-супервизор: INSTRUCTOR→PRACTICE, CURATOR→SUPERVISION, SUPERVISOR запрещён
-  // - супервизор: всё превращаем в SUPERVISOR (менторство)
+  // Новая логика:
+  // - НЕ супервизор: может отправлять ТОЛЬКО часы практики (PRACTICE).
+  // - Супервизор / опытный супервизор: любые введённые часы считаем менторскими (SUPERVISOR).
   const normalized = entries.map(({ type, value }) => {
     if (isAuthorSupervisor) {
+      // автор — супервизор, он фиксирует менторские часы
       return { type: PracticeLevel.SUPERVISOR, value };
     }
 
-    if (type === PracticeLevel.SUPERVISOR) {
-      throw new Error('FORBIDDEN_SUPERVISOR_HOURS');
+    // обычный пользователь — только практика
+    if (type !== PracticeLevel.PRACTICE) {
+      throw new Error('ONLY_PRACTICE_ALLOWED');
     }
 
-    if (type === PracticeLevel.INSTRUCTOR) {
-      return { type: PracticeLevel.PRACTICE, value };
-    }
-    if (type === PracticeLevel.CURATOR) {
-      return { type: PracticeLevel.SUPERVISION, value };
-    }
-
-    // если уже пришли новые значения PRACTICE / SUPERVISION — пропускаем как есть
-    return { type, value };
+    return { type: PracticeLevel.PRACTICE, value };
   });
 
   try {
@@ -94,9 +88,9 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
 
     return reply.code(201).send({ success: true, record });
   } catch (e: any) {
-    if (e?.message === 'FORBIDDEN_SUPERVISOR_HOURS') {
+    if (e?.message === 'ONLY_PRACTICE_ALLOWED') {
       return reply.code(400).send({
-        error: 'Часы SUPERVISOR доступны только авторам уровня Супервизор/Опытный супервизор',
+        error: 'Можно отправлять только часы практики. Часы супервизии теперь считаются автоматически.',
       });
     }
     throw e;

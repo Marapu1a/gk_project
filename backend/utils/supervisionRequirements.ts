@@ -30,3 +30,37 @@ export function getNextGroupName(current: string): string | null {
   const i = order.indexOf(current);
   return i >= 0 && i + 1 < order.length ? order[i + 1] : null;
 }
+
+/**
+ * Коэффициент пересчёта практики в супервизию для группы.
+ * Сколько часов ПРАКТИКИ нужно на 1 час СУПЕРВИЗИИ.
+ *
+ * Пример: 300 practice / 10 supervision = 30.
+ */
+export function getPracticeToSupervisionRatio(groupName: string): number | null {
+  const req = supervisionRequirementsByGroup[groupName];
+  if (!req) return null;
+  if (req.practice <= 0 || req.supervision <= 0) return null;
+
+  return req.practice / req.supervision;
+}
+
+/**
+ * Авторасчёт часов супервизии по подтверждённым часам практики.
+ * Используем целые часы: каждое полное "ratio" практики даёт 1 час супервизии.
+ *
+ * Пример: practiceHours = 270, ratio = 30 → 9 часов супервизии.
+ */
+export function calcAutoSupervisionHours(params: {
+  groupName: string;
+  practiceHours: number;
+}): number {
+  const { groupName, practiceHours } = params;
+
+  if (practiceHours <= 0) return 0;
+
+  const ratio = getPracticeToSupervisionRatio(groupName);
+  if (!ratio) return 0;
+
+  return Math.floor(practiceHours / ratio);
+}

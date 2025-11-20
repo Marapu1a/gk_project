@@ -67,7 +67,7 @@ export function RegistryCard({
           {/* Имя — переносим, не обрезаем */}
           <div className="font-semibold leading-tight wrap-break-word">{fullName}</div>
 
-          {/* Статус под именем */}
+          {/* Статус под именем — только группа */}
           {groupName && (
             <div className="mt-1">
               <span

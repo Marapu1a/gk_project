@@ -1,4 +1,3 @@
-// handlers/registry/utils.ts
 import { prisma } from '../../lib/prisma';
 
 /** Активный = expiresAt >= now(). Последний по issuedAt активный сертификат или null. */
@@ -41,16 +40,15 @@ export async function getRegistryList({
   page?: number;
   limit?: number;
 }) {
-  const now = new Date();
   const skip = (page - 1) * limit;
 
+  const where: any = {};
+  if (country) where.country = country;
+  if (city) where.city = city;
+
   const users = await prisma.user.findMany({
-    where: {
-      country: country || undefined,
-      city: city || undefined,
-      certificates: { some: { expiresAt: { gte: now } } },
-    },
-    // CHANGED: сначала новые по createdAt, потом по имени для стабильности
+    where,
+    // сначала новые по createdAt, потом по имени для стабильности
     orderBy: [{ createdAt: 'desc' }, { fullName: 'asc' }],
     skip,
     take: limit,
@@ -65,8 +63,8 @@ export async function getRegistryList({
     },
   });
 
-  const items = users.map(u => {
-    const top = u.groups.map(g => g.group).sort((a, b) => b.rank - a.rank)[0];
+  const items = users.map((u) => {
+    const top = u.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank)[0];
     return {
       id: u.id,
       fullName: u.fullName,
@@ -77,13 +75,7 @@ export async function getRegistryList({
     };
   });
 
-  const total = await prisma.user.count({
-    where: {
-      country: country || undefined,
-      city: city || undefined,
-      certificates: { some: { expiresAt: { gte: now } } },
-    },
-  });
+  const total = await prisma.user.count({ where });
 
   return { items, total, page, limit };
 }
@@ -120,10 +112,10 @@ export async function getRegistryProfile(userId: string) {
     },
   });
 
-  if (!user || user.certificates.length === 0) return null;
+  if (!user) return null;
 
-  const top = user.groups.map(g => g.group).sort((a, b) => b.rank - a.rank)[0];
-  const c = user.certificates[0];
+  const top = user.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank)[0];
+  const c = user.certificates[0] || null;
 
   return {
     id: user.id,
@@ -134,13 +126,15 @@ export async function getRegistryProfile(userId: string) {
     createdAt: user.createdAt,
     bio: user.bio,
     groupName: top?.name ?? null, // ← статус
-    certificate: {
-      id: c.id,
-      title: c.title,
-      number: c.number,
-      issuedAt: c.issuedAt,
-      expiresAt: c.expiresAt,
-      fileId: c.file.fileId,
-    },
+    certificate: c
+      ? {
+        id: c.id,
+        title: c.title,
+        number: c.number,
+        issuedAt: c.issuedAt,
+        expiresAt: c.expiresAt,
+        fileId: c.file.fileId,
+      }
+      : null, // ← нет сертификата → фронт показывает заглушку “кандидат”
   };
 }

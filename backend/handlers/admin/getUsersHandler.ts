@@ -37,9 +37,10 @@ function detectRole(tok: string): 'ADMIN' | 'REVIEWER' | 'STUDENT' | null {
 
 export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) {
   const { role, group, search, page, perPage } = req.query as Q;
+  const actorRole = req.user?.role;
 
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
+  if (!actorRole) {
+    return reply.code(401).send({ error: 'Не авторизован' });
   }
 
   const take = Math.min(toInt(perPage, 50), 100);
@@ -48,9 +49,15 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
 
   let where: any = {};
 
-  // 1) явный фильтр по роли (?role=STUDENT|REVIEWER|ADMIN)
-  if (role && ['ADMIN', 'REVIEWER', 'STUDENT'].includes(role)) {
-    where.role = role;
+  // 1) фильтр по роли
+  if (actorRole === 'ADMIN') {
+    // админ может явно фильтровать по любой роли
+    if (role && ['ADMIN', 'REVIEWER', 'STUDENT'].includes(role)) {
+      where.role = role;
+    }
+  } else {
+    // не-админы всегда видят только админов (для подсказок и служебных форм)
+    where.role = 'ADMIN';
   }
 
   // 2) фильтр по группе (?group=Супервизор) — подстрочный, регистронезависимый
@@ -72,7 +79,8 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
         { email: { contains: tok, mode: 'insensitive' } },
         { groups: { some: { group: { name: { contains: tok, mode: 'insensitive' } } } } },
       ];
-      if (r) OR.push({ role: r }); // ловим “студент/проверяющий/админ” из текста
+      // распознавание роли из текста имеет смысл только для админа (он видит все роли)
+      if (actorRole === 'ADMIN' && r) OR.push({ role: r });
       AND.push({ OR });
     }
 
