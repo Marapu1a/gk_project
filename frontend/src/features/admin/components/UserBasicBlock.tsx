@@ -1,11 +1,9 @@
 // src/features/admin/components/UserBasicBlock.tsx
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useUpdateUserInfo } from '@/features/admin/hooks/useUpdateUserInfo';
 import { useToggleUserRole } from '@/features/admin/hooks/useToggleUserRole';
-import Select from 'react-select';
-import AsyncSelect from 'react-select/async';
-import { Country, City } from 'country-state-city';
+import { UserLocationFields } from '@/features/user/components/UserLocationFields';
 import PhoneInput from 'react-phone-input-2';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 
@@ -83,8 +81,6 @@ const normalizePhone = (raw: string) => {
   return digits ? (digits.startsWith('+') ? digits : `+${digits}`) : '';
 };
 
-type Option = { value: string; label: string; meta?: any };
-
 export default function UserBasicBlock(props: Props) {
   const {
     userId,
@@ -111,43 +107,7 @@ export default function UserBasicBlock(props: Props) {
     fullNameLatin ?? null,
   );
 
-  // синхронизация, если сверху приехали новые данные
-  useEffect(() => {
-    setDisplayFullName(fullName);
-  }, [fullName]);
-
-  useEffect(() => {
-    setDisplayFullNameLatin(fullNameLatin ?? null);
-  }, [fullNameLatin]);
-
-  // ===== страны (латиницей)
-  const allCountries: Option[] = useMemo(
-    () =>
-      Country.getAllCountries()
-        .map((c) => ({ value: c.isoCode, label: c.name, meta: c }))
-        .sort((a, b) => a.label.localeCompare(b.label)),
-    [],
-  );
-  const countryByName = useMemo(
-    () => new Map(allCountries.map((o) => [o.label.toLowerCase(), o])),
-    [allCountries],
-  );
-  const countryByIso = useMemo(
-    () => new Map(allCountries.map((o) => [o.value.toUpperCase(), o])),
-    [allCountries],
-  );
-  const initialCountries = useMemo(() => {
-    const names = strToArr(country);
-    return names
-      .map((n) => countryByName.get(n.toLowerCase()) || countryByIso.get(n.toUpperCase()))
-      .filter(Boolean) as Option[];
-  }, [country, countryByName, countryByIso]);
-
-  // кэши городов
-  const cityCacheRef = useRef<Map<string, Option[]>>(new Map()); // по ISO2
-  const mergedCacheRef = useRef<Map<string, Option[]>>(new Map()); // по множеству стран
-
-  // ===== форма
+  // форма
   const [form, setForm] = useState({
     // русское ФИО
     lastName: namesRu.lastName,
@@ -159,18 +119,19 @@ export default function UserBasicBlock(props: Props) {
     // остальное
     phone: phone ?? '',
     birthDate: birthDate ? toDateInput(birthDate) : '',
-    countries: initialCountries as Option[],
-    cities: strToArr(city), // string[] (latin)
+    countries: strToArr(country), // string[]
+    cities: strToArr(city), // string[]
     avatarUrl: '',
   });
 
-  // sync при приходе новых пропсов (переключение юзера без размонтирования)
+  const mutation = useUpdateUserInfo(userId);
+  const toggleRole = useToggleUserRole();
+
+  // синхронизация, если сверху приехали новые данные (переключение юзера без размонтирования)
   useEffect(() => {
     const nRu = splitFullName(fullName);
     const nLat = splitFullName(fullNameLatin);
-    const cntrs = strToArr(country)
-      .map((x) => countryByName.get(x.toLowerCase()) || countryByIso.get(x.toUpperCase()))
-      .filter(Boolean) as Option[];
+
     setForm({
       lastName: nRu.lastName,
       firstName: nRu.firstName,
@@ -179,32 +140,14 @@ export default function UserBasicBlock(props: Props) {
       firstNameLatin: nLat.firstName,
       phone: phone ?? '',
       birthDate: birthDate ? toDateInput(birthDate) : '',
-      countries: cntrs,
+      countries: strToArr(country),
       cities: strToArr(city),
       avatarUrl: '',
     });
-  }, [fullName, fullNameLatin, phone, birthDate, country, city, countryByName, countryByIso]);
 
-  // подчистка городов при смене стран (если кэш уже есть)
-  useEffect(() => {
-    const cache = cityCacheRef.current;
-    const isos = form.countries.map((c) => c.value);
-    const allowed = new Set<string>();
-    for (const iso of isos) {
-      const list = cache.get(iso);
-      if (list) for (const o of list) allowed.add(o.label.toLowerCase());
-    }
-    if (!isos.length) {
-      setForm((f) => ({ ...f, cities: [] }));
-      return;
-    }
-    if (allowed.size > 0) {
-      setForm((f) => ({ ...f, cities: f.cities.filter((x) => allowed.has(x.toLowerCase())) }));
-    }
-  }, [form.countries]);
-
-  const mutation = useUpdateUserInfo(userId);
-  const toggleRole = useToggleUserRole();
+    setDisplayFullName(fullName);
+    setDisplayFullNameLatin(fullNameLatin ?? null);
+  }, [fullName, fullNameLatin, phone, birthDate, country, city]);
 
   const onToggleRole = async () => {
     const toAdmin = role !== 'ADMIN';
@@ -223,9 +166,7 @@ export default function UserBasicBlock(props: Props) {
   const onCancel = () => {
     const nRu = splitFullName(fullName);
     const nLat = splitFullName(fullNameLatin);
-    const cntrs = strToArr(country)
-      .map((x) => countryByName.get(x.toLowerCase()) || countryByIso.get(x.toUpperCase()))
-      .filter(Boolean) as Option[];
+
     setForm({
       lastName: nRu.lastName,
       firstName: nRu.firstName,
@@ -234,7 +175,7 @@ export default function UserBasicBlock(props: Props) {
       firstNameLatin: nLat.firstName,
       phone: phone ?? '',
       birthDate: birthDate ? toDateInput(birthDate) : '',
-      countries: cntrs,
+      countries: strToArr(country),
       cities: strToArr(city),
       avatarUrl: '',
     });
@@ -248,13 +189,13 @@ export default function UserBasicBlock(props: Props) {
     const mn = form.middleName ? titleCaseRu(form.middleName) : '';
     const fullNameOut = [ln, fn, mn].filter(Boolean).join(' ');
 
-    // латиница: только фамилия + имя (как в registerSchema)
+    // латиница: только фамилия + имя
     const lnLat = titleCaseEn(form.lastNameLatin);
     const fnLat = titleCaseEn(form.firstNameLatin);
     const fullNameLatinOut = [lnLat, fnLat].filter(Boolean).join(' ');
 
     const birth = form.birthDate.trim() ? dateOnlyToISO(form.birthDate.trim()) : undefined;
-    const countriesStr = arrToStr(form.countries.map((o) => o.label));
+    const countriesStr = arrToStr(form.countries);
     const citiesStr = arrToStr(form.cities);
 
     const phoneIntl = normalizePhone(form.phone);
@@ -269,12 +210,11 @@ export default function UserBasicBlock(props: Props) {
         fullNameLatin: fullNameLatinOut || undefined,
         phone: phoneIntl || undefined,
         birthDate: birth,
-        country: countriesStr || undefined, // CSV, латиница
-        city: citiesStr || undefined, // CSV, латиница
+        country: countriesStr || undefined,
+        city: citiesStr || undefined,
         avatarUrl: form.avatarUrl.trim() || undefined,
       });
 
-      // локально сразу обновляем отображение, не ждём refetch сверху
       setDisplayFullName(fullNameOut || '');
       setDisplayFullNameLatin(fullNameLatinOut || null);
 
@@ -284,73 +224,6 @@ export default function UserBasicBlock(props: Props) {
       toast.error(e?.response?.data?.error || 'Не удалось сохранить');
     }
   };
-
-  // debounce для callback-API
-  function debounceCb<F extends (...a: any[]) => void>(fn: F, ms = 200) {
-    let t: any;
-    return (...args: Parameters<F>) => {
-      clearTimeout(t);
-      t = setTimeout(() => fn(...args), ms);
-    };
-  }
-
-  const buildPoolForCountries = (isos: string[]): Option[] => {
-    const cityCache = cityCacheRef.current;
-    const key = isos.slice().sort().join(',');
-    const mergedCache = mergedCacheRef.current;
-
-    if (mergedCache.has(key)) return mergedCache.get(key)!;
-
-    let pool: Option[] = [];
-    for (const iso of isos) {
-      if (!cityCache.has(iso)) {
-        const raw = City.getCitiesOfCountry(iso) || [];
-        cityCache.set(
-          iso,
-          raw.map((ct) => ({ value: `${ct.name}|||${iso}`, label: ct.name, meta: ct })),
-        );
-      }
-      pool = pool.concat(cityCache.get(iso)!);
-    }
-    mergedCache.set(key, pool);
-    return pool;
-  };
-
-  // loadOptions для AsyncSelect (callback форма, с дебаунсом)
-  const loadCityOptions = useMemo(() => {
-    return debounceCb((inputValue: string, callback: (opts: Option[]) => void) => {
-      const q = (inputValue || '').trim().toLowerCase();
-      const isos = form.countries.map((c) => c.value);
-
-      if (q.length < 2 || isos.length === 0) {
-        callback([]);
-        return;
-      }
-
-      const pool = buildPoolForCountries(isos);
-      const res = pool.filter((o) => o.label.toLowerCase().includes(q)).slice(0, 50);
-      callback(res);
-    }, 200);
-  }, [form.countries]);
-
-  const currentCityOptions: Option[] = useMemo(() => {
-    const cache = cityCacheRef.current;
-    const isos = form.countries.map((c) => c.value);
-    const res: Option[] = [];
-    for (const name of form.cities) {
-      let found: Option | null = null;
-      for (const iso of isos) {
-        const list = cache.get(iso) || [];
-        const hit = list.find((o) => o.label.toLowerCase() === name.toLowerCase());
-        if (hit) {
-          found = hit;
-          break;
-        }
-      }
-      res.push(found ?? { value: name, label: name });
-    }
-    return res;
-  }, [form.cities, form.countries]);
 
   const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
 
@@ -476,7 +349,10 @@ export default function UserBasicBlock(props: Props) {
                 specialLabel=""
                 value={form.phone}
                 onChange={(value) => setForm({ ...form, phone: value })}
-                isValid={(value: string) => isValidPhoneNumber(normalizePhone(value))}
+                isValid={(value: string) => {
+                  const n = normalizePhone(value);
+                  return !n || isValidPhoneNumber(n);
+                }}
                 inputProps={{ name: 'tel', autoComplete: 'tel' }}
               />
             </Field>
@@ -490,40 +366,14 @@ export default function UserBasicBlock(props: Props) {
               />
             </Field>
 
-            {/* Страны (латиницей) */}
-            <Field label="Страны (ввод латиницей)">
-              <Select
-                isMulti
-                options={allCountries}
-                value={form.countries}
-                onChange={(opts) => setForm({ ...form, countries: (opts as Option[]) ?? [] })}
-                classNamePrefix="select"
-                placeholder="Начните вводить страну…"
-                isClearable
-              />
-            </Field>
-
-            {/* Города (латиницей, по выбранным странам) */}
-            <Field label="Города (ввод латиницей)">
-              <AsyncSelect
-                isMulti
-                cacheOptions
-                defaultOptions={[]}
-                loadOptions={loadCityOptions}
-                value={currentCityOptions}
-                onChange={(opts) => {
-                  const names = ((opts as Option[]) ?? []).map((o) => o.label);
-                  setForm({ ...form, cities: names });
-                }}
-                classNamePrefix="select"
-                placeholder={
-                  form.countries.length ? 'Начните вводить город…' : 'Сначала выберите страну'
-                }
-                isDisabled={!form.countries.length}
-                isClearable
-                noOptionsMessage={() => 'Ничего не найдено'}
-              />
-            </Field>
+            {/* Страны + города (общий компонент) */}
+            <UserLocationFields
+              countries={form.countries}
+              cities={form.cities}
+              onChange={({ countries, cities }) =>
+                setForm((prev) => ({ ...prev, countries, cities }))
+              }
+            />
 
             <div className="col-span-full grid grid-cols-1 md:grid-cols-3 gap-4">
               <Field label="Email">

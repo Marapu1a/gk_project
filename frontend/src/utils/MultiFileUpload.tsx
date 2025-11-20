@@ -160,7 +160,7 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
               PDF
             </div>
           ) : (
-            <div className="text-sm truncate max-w-[160px]">{file.name}</div>
+            <div className="text-sm truncate max-w-40">{file.name}</div>
           )}
 
           <div className="flex-1 space-y-1 min-w-0">

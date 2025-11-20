@@ -110,6 +110,16 @@ model User {
   targetLockRank           Int?        // ранг, при котором цель была выбрана
 }
 
+model CustomCity {
+  id                       String   @id @default(cuid())
+  countryCode              String
+  name                     String                    // нормализованное имя города по-русски
+  createdAt                DateTime @default(now())
+  createdById              String?                    // опционально: кто добавил
+
+  @@unique([countryCode, name])
+}
+
 model Payment {
   id          String        @id @default(cuid())
   userId      String
