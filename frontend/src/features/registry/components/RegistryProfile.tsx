@@ -52,8 +52,12 @@ export function RegistryProfile({ userId }: Props) {
       <div className="min-w-0">
         <h1 className="text-2xl font-bold text-blue-dark wrap-break-word">{p.fullName}</h1>
 
+        {p.fullNameLatin && (
+          <div className="text-sm text-gray-500 mt-1 wrap-break-word">{p.fullNameLatin}</div>
+        )}
+
         {p.groupName && (
-          <div className="mt-1">
+          <div className="mt-2">
             <span
               className="inline-block rounded-full px-2 py-0.5 text-xs"
               style={{ color: 'var(--color-white)', background: badgeColor(p.groupName) }}

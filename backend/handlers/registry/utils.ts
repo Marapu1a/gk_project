@@ -55,6 +55,7 @@ export async function getRegistryList({
     select: {
       id: true,
       fullName: true,
+      fullNameLatin: true,
       country: true,
       city: true,
       avatarUrl: true,
@@ -68,6 +69,7 @@ export async function getRegistryList({
     return {
       id: u.id,
       fullName: u.fullName,
+      fullNameLatin: u.fullNameLatin,
       country: u.country,
       city: u.city,
       avatarUrl: u.avatarUrl,
@@ -89,6 +91,7 @@ export async function getRegistryProfile(userId: string) {
     select: {
       id: true,
       fullName: true,
+      fullNameLatin: true,
       country: true,
       city: true,
       avatarUrl: true,
@@ -120,6 +123,7 @@ export async function getRegistryProfile(userId: string) {
   return {
     id: user.id,
     fullName: user.fullName,
+    fullNameLatin: user.fullNameLatin,
     country: user.country,
     city: user.city,
     avatarUrl: user.avatarUrl,

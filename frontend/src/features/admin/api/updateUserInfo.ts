@@ -4,6 +4,7 @@ import { api } from "@/lib/axios";
 
 export type UpdateUserInfoPayload = {
   fullName?: string;
+  fullNameLatin?: string;
   phone?: string;
   birthDate?: string;
   country?: string;

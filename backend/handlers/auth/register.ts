@@ -38,26 +38,31 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       .send({ error: 'Некорректные данные', details: parsed.error.flatten() });
   }
 
-  const { email, fullName, phone, password } = parsed.data;
+  // ⬇️ добавили fullNameLatin
+  const { email, fullName, fullNameLatin, phone, password } = parsed.data;
 
-  // Жёсткая проверка дублей по канону (регистр игнорируем, точки в local-part игнорируем)
   if (await emailExistsByCanonSimple(email)) {
     return reply.code(409).send({ error: 'Email уже используется' });
+  }
+
+  // 💀 жёстко валидируем: если поле пришло — не пустое
+  if (typeof fullNameLatin === 'string' && !fullNameLatin.trim()) {
+    return reply.code(400).send({ error: 'ФИО латиницей не может быть пустым' });
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await prisma.user.create({
     data: {
-      email, // сохраняем как ввёл пользователь
+      email,
       password: hashedPassword,
       fullName,
+      fullNameLatin: fullNameLatin?.trim() || null, // ← сохраняем
       phone,
       role: 'STUDENT',
     },
   });
 
-  // Добавляем все типы оплаты
   await prisma.payment.createMany({
     data: [
       PaymentType.DOCUMENT_REVIEW,
@@ -86,7 +91,6 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
     },
   });
 
-  // 🔔 Уведомляем всех админов о новой регистрации (best-effort)
   try {
     const admins = await prisma.user.findMany({
       where: { role: 'ADMIN' },
@@ -116,6 +120,7 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       email: user.email,
       role: user.role,
       fullName: user.fullName,
+      fullNameLatin: user.fullNameLatin, // ⬅️ отдаем
     },
   });
 }

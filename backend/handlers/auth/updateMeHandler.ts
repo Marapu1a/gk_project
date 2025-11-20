@@ -26,6 +26,7 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
 
   const data: Record<string, any> = {};
   if (body.fullName !== undefined) data.fullName = body.fullName.trim();
+  if (body.fullNameLatin !== undefined) data.fullNameLatin = body.fullNameLatin.trim(); // ← добавили
   if (body.phone !== undefined) data.phone = body.phone.trim();
   if (birthDateISO !== undefined) data.birthDate = birthDateISO;
   if (body.country !== undefined) data.country = body.country.trim();
@@ -39,7 +40,6 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
 
   await prisma.user.update({ where: { id: userId }, data });
 
-  // Возвращаем свежие данные в том же формате, что GET /me
   const updated = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -47,6 +47,7 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
       email: true,
       role: true,
       fullName: true,
+      fullNameLatin: true, // ← добавили
       phone: true,
       birthDate: true,
       country: true,
@@ -71,6 +72,7 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
     email: updated.email,
     role: updated.role,
     fullName: updated.fullName,
+    fullNameLatin: updated.fullNameLatin, // ← добавили
     phone: updated.phone,
     birthDate: updated.birthDate,
     country: updated.country,

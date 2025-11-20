@@ -77,6 +77,8 @@ model User {
   email                    String   @unique
   password                 String
   fullName                 String
+  fullNameLatin            String?     // ФИО на латинице для международных реестров/сертификатов
+
   phone                    String?
   birthDate                DateTime?
   country                  String?
@@ -92,9 +94,9 @@ model User {
   groups                   UserGroup[]
   uploadedFiles            UploadedFile[]
 
-  reviewedCEUEntries       CEUEntry[]          @relation("ReviewedCEUEntry")
-  reviewedSupervisionHours SupervisionHour[]   @relation("ReviewedSupervisionHour")
-  confirmedCertificates    Certificate[]       @relation("CertificateConfirmedBy")
+  reviewedCEUEntries       CEUEntry[]        @relation("ReviewedCEUEntry")
+  reviewedSupervisionHours SupervisionHour[] @relation("ReviewedSupervisionHour")
+  confirmedCertificates    Certificate[]     @relation("CertificateConfirmedBy")
 
   documentReviewRequests   DocumentReviewRequest[]
 
@@ -105,7 +107,7 @@ model User {
   createdAt                DateTime @default(now())
 
   targetLevel              TargetLevel? // Целевой уровень специализации (лесенка, если NULL)
-  targetLockRank           Int?     // ранг, при котором цель была выбрана
+  targetLockRank           Int?        // ранг, при котором цель была выбрана
 }
 
 model Payment {

@@ -2,6 +2,7 @@
 type Props = {
   id: string;
   fullName: string;
+  fullNameLatin?: string | null;
   country?: string | null;
   city?: string | null;
   avatarUrl?: string | null;
@@ -12,6 +13,7 @@ type Props = {
 export function RegistryCard({
   id,
   fullName,
+  fullNameLatin,
   country,
   city,
   avatarUrl,
@@ -64,8 +66,11 @@ export function RegistryCard({
 
         {/* Правая колонка: ~2/3 */}
         <div className="col-span-2 p-4 min-w-0">
-          {/* Имя — переносим, не обрезаем */}
-          <div className="font-semibold leading-tight wrap-break-word">{fullName}</div>
+          {/* Имя — русское + при наличии латиница второй строкой */}
+          <div className="font-semibold leading-tight wrap-break-word">
+            <div>{fullName}</div>
+            {fullNameLatin && <div className="text-xs text-gray-500 mt-0.5">{fullNameLatin}</div>}
+          </div>
 
           {/* Статус под именем — только группа */}
           {groupName && (

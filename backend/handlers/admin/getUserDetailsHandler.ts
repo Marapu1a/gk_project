@@ -21,6 +21,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
       id: true,
       email: true,
       fullName: true,
+      fullNameLatin: true,
       phone: true,
       birthDate: true,
       country: true,

@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const updateMeSchema = z
   .object({
     fullName: z.string().trim().min(1).max(100).optional(),
+    fullNameLatin: z.string().trim().min(1).max(100).optional(),
     phone: z.string().trim().max(30).optional(),
     birthDate: z
       .union([

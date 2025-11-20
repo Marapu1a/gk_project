@@ -18,7 +18,7 @@ const roleLabels = {
 function toDateInput(iso: string) {
   return iso.slice(0, 10);
 }
-function titleCaseRu(s: string) {
+function titleCaseAny(s: string) {
   return s
     .trim()
     .split(/\s+/)
@@ -30,7 +30,7 @@ function titleCaseRu(s: string) {
     )
     .join(' ');
 }
-function splitFullName(fullName?: string) {
+function splitFullName(fullName?: string | null) {
   const parts = String(fullName || '')
     .replace(/\s+/g, ' ')
     .trim()
@@ -61,7 +61,8 @@ type Option = { value: string; label: string; meta?: any };
 export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
   const [edit, setEdit] = useState(false);
 
-  const initialNames = splitFullName(user.fullName);
+  const initialNamesRu = splitFullName(user.fullName);
+  const initialNamesLat = splitFullName((user as any).fullNameLatin); // поле есть в API
 
   // Countries (латиницей, из country-state-city)
   const allCountries: Option[] = useMemo(
@@ -84,7 +85,6 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
     [allCountries],
   );
 
-  // предзаполнение стран (старые RU-имена не матчатся — ок)
   const initialCountries = useMemo(() => {
     const names = strToArr(user.country);
     return names
@@ -92,29 +92,38 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
       .filter(Boolean) as Option[];
   }, [user.country, countryByName, countryByIso]);
 
-  // кэш городов по ISO страны
   const cityCacheRef = useRef<Map<string, Option[]>>(new Map());
 
   const [form, setForm] = useState({
-    lastName: initialNames.lastName,
-    firstName: initialNames.firstName,
-    middleName: initialNames.middleName,
+    // русское ФИО
+    lastName: initialNamesRu.lastName,
+    firstName: initialNamesRu.firstName,
+    middleName: initialNamesRu.middleName,
+    // латиница
+    lastNameLatin: initialNamesLat.lastName,
+    firstNameLatin: initialNamesLat.firstName,
+    middleNameLatin: initialNamesLat.middleName,
+    // остальное
     phone: user.phone ?? '',
     birthDate: user.birthDate ? toDateInput(user.birthDate) : '',
-    countries: initialCountries, // Option[]
-    cities: strToArr(user.city), // string[] (latin names)
+    countries: initialCountries,
+    cities: strToArr(user.city),
   });
 
   // sync при обновлении user
   useEffect(() => {
-    const names = splitFullName(user.fullName);
+    const namesRu = splitFullName(user.fullName);
+    const namesLat = splitFullName((user as any).fullNameLatin);
     const newCountries = strToArr(user.country)
       .map((n) => countryByName.get(n.toLowerCase()) || countryByIso.get(n.toUpperCase()))
       .filter(Boolean) as Option[];
     setForm({
-      lastName: names.lastName,
-      firstName: names.firstName,
-      middleName: names.middleName,
+      lastName: namesRu.lastName,
+      firstName: namesRu.firstName,
+      middleName: namesRu.middleName,
+      lastNameLatin: namesLat.lastName,
+      firstNameLatin: namesLat.firstName,
+      middleNameLatin: namesLat.middleName,
       phone: user.phone ?? '',
       birthDate: user.birthDate ? toDateInput(user.birthDate) : '',
       countries: newCountries,
@@ -122,6 +131,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
     });
   }, [
     user.fullName,
+    (user as any).fullNameLatin,
     user.phone,
     user.birthDate,
     user.country,
@@ -154,14 +164,18 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
   const mutation = useUpdateMe();
 
   const onCancel = () => {
-    const names = splitFullName(user.fullName);
+    const namesRu = splitFullName(user.fullName);
+    const namesLat = splitFullName((user as any).fullNameLatin);
     const newCountries = strToArr(user.country)
       .map((n) => countryByName.get(n.toLowerCase()) || countryByIso.get(n.toUpperCase()))
       .filter(Boolean) as Option[];
     setForm({
-      lastName: names.lastName,
-      firstName: names.firstName,
-      middleName: names.middleName,
+      lastName: namesRu.lastName,
+      firstName: namesRu.firstName,
+      middleName: namesRu.middleName,
+      lastNameLatin: namesLat.lastName,
+      firstNameLatin: namesLat.firstName,
+      middleNameLatin: namesLat.middleName,
       phone: user.phone ?? '',
       birthDate: user.birthDate ? toDateInput(user.birthDate) : '',
       countries: newCountries,
@@ -170,7 +184,6 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
     setEdit(false);
   };
 
-  // debounce для callback-API
   function debounceCb<F extends (...a: any[]) => void>(fn: F, ms = 200) {
     let t: any;
     return (...args: Parameters<F>) => {
@@ -179,7 +192,6 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
     };
   }
 
-  // кэш объединённых пулов по набору стран
   const mergedCacheRef = useRef<Map<string, Option[]>>(new Map());
   const buildPoolForCountries = (isos: string[]): Option[] => {
     const cityCache = cityCacheRef.current;
@@ -202,7 +214,6 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
     return pool;
   };
 
-  // loadOptions для AsyncSelect (callback-форма, с дебаунсом)
   const loadCityOptions = useMemo(() => {
     return debounceCb((inputValue: string, callback: (opts: Option[]) => void) => {
       const q = (inputValue || '').trim().toLowerCase();
@@ -220,10 +231,16 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
   }, [form.countries]);
 
   const onSave = async () => {
-    const ln = titleCaseRu(form.lastName);
-    const fn = titleCaseRu(form.firstName);
-    const mn = form.middleName ? titleCaseRu(form.middleName) : '';
+    // русское ФИО
+    const ln = titleCaseAny(form.lastName);
+    const fn = titleCaseAny(form.firstName);
+    const mn = form.middleName ? titleCaseAny(form.middleName) : '';
     const fullName = [ln, fn, mn].filter(Boolean).join(' ');
+
+    // латиница (как в загранпаспорте: фамилия + имя)
+    const lnLat = titleCaseAny(form.lastNameLatin);
+    const fnLat = titleCaseAny(form.firstNameLatin);
+    const fullNameLatin = [lnLat, fnLat].filter(Boolean).join(' ');
 
     const phoneIntl = normalizePhone(form.phone);
     if (phoneIntl && !isValidPhoneNumber(phoneIntl)) {
@@ -238,10 +255,11 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
     try {
       await mutation.mutateAsync({
         fullName: fullName || undefined,
+        fullNameLatin: fullNameLatin || undefined,
         phone: phoneIntl || undefined,
         birthDate: form.birthDate || undefined,
-        country: countriesStr || undefined, // англ. названия
-        city: citiesStr || undefined, // англ. названия
+        country: countriesStr || undefined,
+        city: citiesStr || undefined,
       });
       toast.success('Профиль обновлён');
       setEdit(false);
@@ -252,7 +270,6 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
 
   const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
 
-  // value для AsyncSelect, чтобы «пилюли» городов отрисовывались корректно
   const currentCityOptions: Option[] = useMemo(() => {
     const cache = cityCacheRef.current;
     const isos = form.countries.map((c) => c.value);
@@ -281,6 +298,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
       {!edit ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
           <Meta label="Имя" value={user.fullName || '—'} />
+          <Meta label="Имя (латиницей)" value={(user as any).fullNameLatin || '—'} />
           <Meta label="Email" value={user.email} />
           <Meta label="Телефон" value={user.phone || '—'} />
           <Meta label="Дата рождения" value={fmt(user.birthDate)} />
@@ -291,8 +309,8 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* ФИО */}
-          <Field label="Фамилия">
+          {/* ФИО (рус.) */}
+          <Field label="Фамилия (рус.)">
             <input
               className="input w-full"
               autoComplete="family-name"
@@ -300,7 +318,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
             />
           </Field>
-          <Field label="Имя">
+          <Field label="Имя (рус.)">
             <input
               className="input w-full"
               autoComplete="given-name"
@@ -308,7 +326,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
             />
           </Field>
-          <Field label="Отчество (если есть)">
+          <Field label="Отчество (рус., если есть)">
             <input
               className="input w-full"
               autoComplete="additional-name"
@@ -317,12 +335,33 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             />
           </Field>
 
+          {/* Разделитель */}
+          <div className="col-span-full text-xs text-gray-500 text-center mt-2">
+            ФИО латиницей — как в загранпаспорте
+          </div>
+
+          <Field label="Фамилия (лат.)">
+            <input
+              className="input w-full"
+              value={form.lastNameLatin}
+              onChange={(e) => setForm({ ...form, lastNameLatin: e.target.value })}
+            />
+          </Field>
+
+          <Field label="Имя (лат.)">
+            <input
+              className="input w-full"
+              value={form.firstNameLatin}
+              onChange={(e) => setForm({ ...form, firstNameLatin: e.target.value })}
+            />
+          </Field>
+
           <Field label="Телефон">
             <PhoneInput
               country="ru"
               enableSearch
-              containerClass="!w-full"
-              inputClass="input !pl-12"
+              containerClass="w-full"
+              inputClass="input"
               buttonClass="!border-none"
               specialLabel=""
               value={form.phone}
@@ -342,7 +381,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
           </Field>
 
           {/* Страны (латиницей) */}
-          <Field label="Страны (ввод латиницей)">
+          <Field label="Страны (латиницей)">
             <Select
               isMulti
               options={allCountries}
@@ -354,8 +393,8 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             />
           </Field>
 
-          {/* Города (латиницей, по выбранным странам) */}
-          <Field label="Города (ввод латиницей)">
+          {/* Города */}
+          <Field label="Города (латиницей)">
             <AsyncSelect
               isMulti
               cacheOptions

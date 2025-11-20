@@ -4,6 +4,7 @@ import type { CurrentUser } from '../../auth/api/me';
 
 export type UpdateMePayload = Partial<{
   fullName: string;
+  fullNameLatin: string;
   phone: string;
   birthDate: string; // 'YYYY-MM-DD' или ISO
   country: string;

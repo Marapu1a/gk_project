@@ -22,6 +22,7 @@ export async function getUserExportHandler(req: FastifyRequest, reply: FastifyRe
       id: true,
       email: true,
       fullName: true,
+      fullNameLatin: true,
       phone: true,
       birthDate: true,
       country: true,

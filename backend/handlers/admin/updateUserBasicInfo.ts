@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 const updateUserSchema = z.object({
   fullName: z.string().min(1).max(100).optional(),
+  fullNameLatin: z.string().min(1).max(100).optional(), // ← добавили
   phone: z.string().max(30).nullable().optional(),
   birthDate: z.string().datetime().nullable().optional(),
   country: z.string().max(100).nullable().optional(),
@@ -29,6 +30,7 @@ export async function updateUserBasicInfoHandler(req: FastifyRequest, reply: Fas
     select: {
       id: true,
       fullName: true,
+      fullNameLatin: true, // ← возвращаем
       phone: true,
       birthDate: true,
       country: true,

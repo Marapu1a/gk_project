@@ -12,6 +12,7 @@ import { isValidPhoneNumber } from 'libphonenumber-js';
 type Props = {
   userId: string;
   fullName: string;
+  fullNameLatin: string | null;
   email: string;
   phone: string | null;
   birthDate: string | null;
@@ -43,7 +44,19 @@ function titleCaseRu(s: string) {
     )
     .join(' ');
 }
-function splitFullName(fullName?: string) {
+function titleCaseEn(s: string) {
+  return s
+    .trim()
+    .split(/\s+/)
+    .map((tok) =>
+      tok
+        .split('-')
+        .map((p) => (p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p))
+        .join('-'),
+    )
+    .join(' ');
+}
+function splitFullName(fullName?: string | null) {
   const parts = String(fullName || '')
     .replace(/\s+/g, ' ')
     .trim()
@@ -73,11 +86,39 @@ const normalizePhone = (raw: string) => {
 type Option = { value: string; label: string; meta?: any };
 
 export default function UserBasicBlock(props: Props) {
-  const { userId, fullName, email, phone, birthDate, country, city, role, createdAt, groupName } =
-    props;
+  const {
+    userId,
+    fullName,
+    fullNameLatin,
+    email,
+    phone,
+    birthDate,
+    country,
+    city,
+    role,
+    createdAt,
+    groupName,
+  } = props;
 
-  const names = splitFullName(fullName);
+  const namesRu = splitFullName(fullName);
+  const namesLat = splitFullName(fullNameLatin);
+
   const [edit, setEdit] = useState(false);
+
+  // локальное отображаемое ФИО (чтобы сразу видеть результат после сохранения)
+  const [displayFullName, setDisplayFullName] = useState<string>(fullName);
+  const [displayFullNameLatin, setDisplayFullNameLatin] = useState<string | null>(
+    fullNameLatin ?? null,
+  );
+
+  // синхронизация, если сверху приехали новые данные
+  useEffect(() => {
+    setDisplayFullName(fullName);
+  }, [fullName]);
+
+  useEffect(() => {
+    setDisplayFullNameLatin(fullNameLatin ?? null);
+  }, [fullNameLatin]);
 
   // ===== страны (латиницей)
   const allCountries: Option[] = useMemo(
@@ -108,9 +149,14 @@ export default function UserBasicBlock(props: Props) {
 
   // ===== форма
   const [form, setForm] = useState({
-    lastName: names.lastName,
-    firstName: names.firstName,
-    middleName: names.middleName,
+    // русское ФИО
+    lastName: namesRu.lastName,
+    firstName: namesRu.firstName,
+    middleName: namesRu.middleName,
+    // латиница (как в загранпаспорте: фамилия + имя)
+    lastNameLatin: namesLat.lastName,
+    firstNameLatin: namesLat.firstName,
+    // остальное
     phone: phone ?? '',
     birthDate: birthDate ? toDateInput(birthDate) : '',
     countries: initialCountries as Option[],
@@ -120,21 +166,24 @@ export default function UserBasicBlock(props: Props) {
 
   // sync при приходе новых пропсов (переключение юзера без размонтирования)
   useEffect(() => {
-    const n = splitFullName(fullName);
+    const nRu = splitFullName(fullName);
+    const nLat = splitFullName(fullNameLatin);
     const cntrs = strToArr(country)
       .map((x) => countryByName.get(x.toLowerCase()) || countryByIso.get(x.toUpperCase()))
       .filter(Boolean) as Option[];
     setForm({
-      lastName: n.lastName,
-      firstName: n.firstName,
-      middleName: n.middleName,
+      lastName: nRu.lastName,
+      firstName: nRu.firstName,
+      middleName: nRu.middleName,
+      lastNameLatin: nLat.lastName,
+      firstNameLatin: nLat.firstName,
       phone: phone ?? '',
       birthDate: birthDate ? toDateInput(birthDate) : '',
       countries: cntrs,
       cities: strToArr(city),
       avatarUrl: '',
     });
-  }, [fullName, phone, birthDate, country, city, countryByName, countryByIso]);
+  }, [fullName, fullNameLatin, phone, birthDate, country, city, countryByName, countryByIso]);
 
   // подчистка городов при смене стран (если кэш уже есть)
   useEffect(() => {
@@ -172,14 +221,17 @@ export default function UserBasicBlock(props: Props) {
   };
 
   const onCancel = () => {
-    const n = splitFullName(fullName);
+    const nRu = splitFullName(fullName);
+    const nLat = splitFullName(fullNameLatin);
     const cntrs = strToArr(country)
       .map((x) => countryByName.get(x.toLowerCase()) || countryByIso.get(x.toUpperCase()))
       .filter(Boolean) as Option[];
     setForm({
-      lastName: n.lastName,
-      firstName: n.firstName,
-      middleName: n.middleName,
+      lastName: nRu.lastName,
+      firstName: nRu.firstName,
+      middleName: nRu.middleName,
+      lastNameLatin: nLat.lastName,
+      firstNameLatin: nLat.firstName,
       phone: phone ?? '',
       birthDate: birthDate ? toDateInput(birthDate) : '',
       countries: cntrs,
@@ -190,10 +242,16 @@ export default function UserBasicBlock(props: Props) {
   };
 
   const onSave = async () => {
+    // русское ФИО
     const ln = titleCaseRu(form.lastName);
     const fn = titleCaseRu(form.firstName);
     const mn = form.middleName ? titleCaseRu(form.middleName) : '';
     const fullNameOut = [ln, fn, mn].filter(Boolean).join(' ');
+
+    // латиница: только фамилия + имя (как в registerSchema)
+    const lnLat = titleCaseEn(form.lastNameLatin);
+    const fnLat = titleCaseEn(form.firstNameLatin);
+    const fullNameLatinOut = [lnLat, fnLat].filter(Boolean).join(' ');
 
     const birth = form.birthDate.trim() ? dateOnlyToISO(form.birthDate.trim()) : undefined;
     const countriesStr = arrToStr(form.countries.map((o) => o.label));
@@ -208,12 +266,18 @@ export default function UserBasicBlock(props: Props) {
     try {
       await mutation.mutateAsync({
         fullName: fullNameOut || undefined,
+        fullNameLatin: fullNameLatinOut || undefined,
         phone: phoneIntl || undefined,
         birthDate: birth,
         country: countriesStr || undefined, // CSV, латиница
         city: citiesStr || undefined, // CSV, латиница
         avatarUrl: form.avatarUrl.trim() || undefined,
       });
+
+      // локально сразу обновляем отображение, не ждём refetch сверху
+      setDisplayFullName(fullNameOut || '');
+      setDisplayFullNameLatin(fullNameLatinOut || null);
+
       toast.success('Обновлено');
       setEdit(false);
     } catch (e: any) {
@@ -328,7 +392,8 @@ export default function UserBasicBlock(props: Props) {
         {/* Основной контент */}
         {!edit ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-            <Meta label="Имя" value={fullName || '—'} />
+            <Meta label="Имя" value={displayFullName || '—'} />
+            <Meta label="Имя (латиницей)" value={displayFullNameLatin || '—'} />
             <Meta label="Email" value={email} />
             <Meta label="Телефон" value={phone || '—'} />
             <Meta label="Дата рождения" value={fmt(birthDate)} />
@@ -354,7 +419,8 @@ export default function UserBasicBlock(props: Props) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Фамилия">
+            {/* ФИО (рус.) */}
+            <Field label="Фамилия (рус.)">
               <input
                 className="input w-full"
                 autoComplete="family-name"
@@ -362,7 +428,7 @@ export default function UserBasicBlock(props: Props) {
                 onChange={(e) => setForm({ ...form, lastName: e.target.value })}
               />
             </Field>
-            <Field label="Имя">
+            <Field label="Имя (рус.)">
               <input
                 className="input w-full"
                 autoComplete="given-name"
@@ -370,7 +436,7 @@ export default function UserBasicBlock(props: Props) {
                 onChange={(e) => setForm({ ...form, firstName: e.target.value })}
               />
             </Field>
-            <Field label="Отчество (если есть)">
+            <Field label="Отчество (рус., если есть)">
               <input
                 className="input w-full"
                 autoComplete="additional-name"
@@ -379,12 +445,33 @@ export default function UserBasicBlock(props: Props) {
               />
             </Field>
 
+            {/* разделитель */}
+            <div className="col-span-full text-xs text-gray-500 text-center mt-2">
+              ФИО латиницей — как в загранпаспорте
+            </div>
+
+            {/* ФИО (лат.) */}
+            <Field label="Фамилия (лат.)">
+              <input
+                className="input w-full"
+                value={form.lastNameLatin}
+                onChange={(e) => setForm({ ...form, lastNameLatin: e.target.value })}
+              />
+            </Field>
+            <Field label="Имя (лат.)">
+              <input
+                className="input w-full"
+                value={form.firstNameLatin}
+                onChange={(e) => setForm({ ...form, firstNameLatin: e.target.value })}
+              />
+            </Field>
+
             <Field label="Телефон">
               <PhoneInput
                 country="ru"
                 enableSearch
-                containerClass="!w-full"
-                inputClass="input !pl-12"
+                containerClass="w-full"
+                inputClass="input"
                 buttonClass="!border-none"
                 specialLabel=""
                 value={form.phone}

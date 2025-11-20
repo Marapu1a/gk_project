@@ -38,7 +38,14 @@ function RegistryTableView({
         <tbody>
           {items.map((u) => (
             <tr key={u.id} className="border-t" style={{ borderColor: 'var(--color-green-light)' }}>
-              <td className="p-3">{u.fullName}</td>
+              <td className="p-3 align-top">
+                <div className="flex flex-col">
+                  <span>{u.fullName}</span>
+                  {u.fullNameLatin && (
+                    <span className="text-xs text-gray-500">{u.fullNameLatin}</span>
+                  )}
+                </div>
+              </td>
 
               <td className="p-3">{[u.country, u.city].filter(Boolean).join(', ') || '—'}</td>
 
@@ -72,13 +79,13 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const items = data?.items ?? [];
 
-  // Фильтр: ФИО / страна / город / квалификация (groupName)
+  // Фильтр: ФИО / ФИО лат. / страна / город / квалификация (groupName)
   const filtered = useMemo(() => {
     const tokens = tokenize(searchInput);
     if (tokens.length === 0) return items;
 
     return items.filter((u: any) => {
-      const hayParts = [u.fullName, u.country, u.city, u.groupName];
+      const hayParts = [u.fullName, u.fullNameLatin, u.country, u.city, u.groupName];
       const hay = norm(hayParts.filter(Boolean).join(' '));
       return tokens.every((t) => hay.includes(t));
     });
@@ -96,7 +103,7 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
               className="input pr-8"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="ФИО, страна, город, квалификация…"
+              placeholder="ФИО (рус./лат.), страна, город, квалификация…"
             />
             {searchInput && (
               <button

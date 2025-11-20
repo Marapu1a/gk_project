@@ -15,14 +15,15 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
       email: true,
       role: true,
       fullName: true,
+      fullNameLatin: true,
       phone: true,
       birthDate: true,
       country: true,
       city: true,
       avatarUrl: true,
       bio: true,
-      targetLevel: true,      // 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null
-      targetLockRank: true,   // ⬅️ добавили
+      targetLevel: true,
+      targetLockRank: true,
       groups: {
         select: {
           group: { select: { id: true, name: true, rank: true } },
@@ -48,6 +49,7 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     email: dbUser.email,
     role: dbUser.role,
     fullName: dbUser.fullName,
+    fullNameLatin: dbUser.fullNameLatin, // ← отдали в ответ
     phone: dbUser.phone,
     birthDate: dbUser.birthDate,
     country: dbUser.country,
@@ -55,7 +57,7 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     avatarUrl: dbUser.avatarUrl,
     bio: dbUser.bio,
     targetLevel: dbUser.targetLevel,
-    targetLockRank: dbUser.targetLockRank, // ⬅️ вернули в ответ
+    targetLockRank: dbUser.targetLockRank,
     groups: groupList.map(({ id, name }) => ({ id, name })),
     activeGroup,
   });

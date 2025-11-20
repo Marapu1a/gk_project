@@ -4,6 +4,7 @@ import { api } from '@/lib/axios';
 export type RegistryCard = {
   id: string;
   fullName: string;
+  fullNameLatin: string;
   country?: string | null;
   city?: string | null;
   avatarUrl?: string | null;

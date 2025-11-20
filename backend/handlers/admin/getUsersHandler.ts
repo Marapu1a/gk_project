@@ -28,9 +28,7 @@ function tokenize(q: string) {
 function detectRole(tok: string): 'ADMIN' | 'REVIEWER' | 'STUDENT' | null {
   const t = tok.toLowerCase();
   if (/^(ад|адм|админ|админист|admin|adm)$/.test(t)) return 'ADMIN';
-  // проверяющий / ревьюер
   if (/^(пров|провер|проверяющ|рев|ревью|review|reviewer)$/.test(t)) return 'REVIEWER';
-  // студент/соискатель
   if (/^(соис|соиск|студ|студент)$/.test(t)) return 'STUDENT';
   return null;
 }
@@ -51,23 +49,21 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
 
   // 1) фильтр по роли
   if (actorRole === 'ADMIN') {
-    // админ может явно фильтровать по любой роли
     if (role && ['ADMIN', 'REVIEWER', 'STUDENT'].includes(role)) {
       where.role = role;
     }
   } else {
-    // не-админы всегда видят только админов (для подсказок и служебных форм)
     where.role = 'ADMIN';
   }
 
-  // 2) фильтр по группе (?group=Супервизор) — подстрочный, регистронезависимый
+  // 2) фильтр по группе
   if (group && group.trim()) {
     where.groups = {
       some: { group: { name: { contains: group.trim(), mode: 'insensitive' } } },
     };
   }
 
-  // 3) живой поиск: ФИО, email, названия групп + распознавание роли из текста
+  // 3) поиск (БЕЗ fullNameLatin — как просил)
   if (search && search.trim()) {
     const tokens = tokenize(search);
     const AND: any[] = [];
@@ -79,7 +75,6 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
         { email: { contains: tok, mode: 'insensitive' } },
         { groups: { some: { group: { name: { contains: tok, mode: 'insensitive' } } } } },
       ];
-      // распознавание роли из текста имеет смысл только для админа (он видит все роли)
       if (actorRole === 'ADMIN' && r) OR.push({ role: r });
       AND.push({ OR });
     }
@@ -98,6 +93,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
         id: true,
         email: true,
         fullName: true,
+        fullNameLatin: true,
         role: true,
         createdAt: true,
         groups: { select: { group: { select: { id: true, name: true } } } },
@@ -113,6 +109,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
       id: u.id,
       email: u.email,
       fullName: u.fullName,
+      fullNameLatin: u.fullNameLatin,
       role: u.role,
       createdAt: u.createdAt,
       groups: u.groups.map((g) => g.group),

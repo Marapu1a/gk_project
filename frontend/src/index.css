@@ -141,6 +141,45 @@ body {
   color: var(--color-blue-dark);
 }
 
+/* === Телефонный инпут (react-phone-input-2) === */
+.react-tel-input {
+  width: 100%;
+}
+
+.react-tel-input .form-control.input {
+  width: 100% !important;
+  box-sizing: border-box;
+  font-size: 0.875rem;
+  font-family: var(--font-sans);
+  border-radius: 0 0.375rem 0.375rem 0;
+  border: 1px solid var(--color-green-light);
+  border-left: none;
+}
+
+/* флаг-селектор слева, в едином стиле с input */
+.react-tel-input .flag-dropdown {
+  border: 1px solid var(--color-green-light);
+  border-right: none;
+  border-radius: 0.375rem 0 0 0.375rem;
+  background-color: var(--color-white);
+}
+
+.react-tel-input .selected-flag {
+  padding-left: 0.6rem;
+}
+
+/* фокус такой же, как у обычного .input */
+.react-tel-input .form-control.input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-green-brand);
+}
+
+/* чтобы выпадающий список стран не ломал общий вид */
+.react-tel-input .country-list {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+}
+
 /* ==========================================================================
    🎨 Цветовые классы
    ========================================================================== */
