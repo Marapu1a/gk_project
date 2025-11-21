@@ -8,6 +8,7 @@ export type RegistryCard = {
   country?: string | null;
   city?: string | null;
   avatarUrl?: string | null;
+  bio?: string | null;
 };
 
 export type RegistryListResponse = {

@@ -22,7 +22,7 @@ type Props = {
   groupName: string | null;
 };
 
-const roleMap = { ADMIN: 'Администратор', REVIEWER: 'Проверяющий', STUDENT: 'Студент' } as const;
+const roleMap = { ADMIN: 'Администратор', REVIEWER: 'Проверяющий', STUDENT: 'Соискатель' } as const;
 
 function toDateInput(iso: string) {
   return iso.slice(0, 10);

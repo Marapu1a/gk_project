@@ -59,6 +59,7 @@ export async function getRegistryList({
       country: true,
       city: true,
       avatarUrl: true,
+      bio: true, // ← ДОБАВИЛИ
       // тянем группы, чтобы вычислить активную
       groups: { include: { group: { select: { name: true, rank: true } } } },
     },
@@ -73,6 +74,7 @@ export async function getRegistryList({
       country: u.country,
       city: u.city,
       avatarUrl: u.avatarUrl,
+      bio: u.bio,            // ← И В ОТВЕТ
       groupName: top?.name ?? null, // ← статус
     };
   });

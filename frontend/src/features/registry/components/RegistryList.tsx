@@ -12,6 +12,18 @@ const tokenize = (s: string) =>
     .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
     .filter(Boolean);
 
+// базовая проверка полноты профиля для попадания в реестр
+const isProfileComplete = (u: any) => {
+  const hasFullName = typeof u.fullName === 'string' && u.fullName.trim().length > 0;
+  const hasFullNameLatin = typeof u.fullNameLatin === 'string' && u.fullNameLatin.trim().length > 0;
+  const hasCountry = typeof u.country === 'string' && u.country.trim().length > 0;
+  const hasCity = typeof u.city === 'string' && u.city.trim().length > 0;
+  const hasAvatar = typeof u.avatarUrl === 'string' && u.avatarUrl.trim().length > 0;
+  const hasBio = typeof u.bio === 'string' && u.bio.trim().length > 0;
+
+  return hasFullName && hasFullNameLatin && hasCountry && hasCity && hasAvatar && hasBio;
+};
+
 // Табличный режим
 function RegistryTableView({
   items,
@@ -79,17 +91,20 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const items = data?.items ?? [];
 
+  // сначала выкидываем неполные профили
+  const eligibleItems = useMemo(() => items.filter((u: any) => isProfileComplete(u)), [items]);
+
   // Фильтр: ФИО / ФИО лат. / страна / город / квалификация (groupName)
   const filtered = useMemo(() => {
     const tokens = tokenize(searchInput);
-    if (tokens.length === 0) return items;
+    if (tokens.length === 0) return eligibleItems;
 
-    return items.filter((u: any) => {
+    return eligibleItems.filter((u: any) => {
       const hayParts = [u.fullName, u.fullNameLatin, u.country, u.city, u.groupName];
       const hay = norm(hayParts.filter(Boolean).join(' '));
       return tokens.every((t) => hay.includes(t));
     });
-  }, [items, searchInput]);
+  }, [eligibleItems, searchInput]);
 
   return (
     <div className="space-y-4">

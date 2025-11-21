@@ -1,5 +1,5 @@
 // src/features/user/components/UserInfo.tsx
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLogout } from '../hooks/useLogout';
 import { Button } from '@/components/Button';
@@ -12,11 +12,9 @@ import { AvatarUploadModal } from '@/features/files/components/AvatarUploadModal
 import { UserSelfProfileBlock } from '@/features/user/components/UserSelfProfileBlock';
 import { BioEditModal } from '@/features/user/components/BioEditModal';
 import { AdminDbBackupBlock } from '@/features/backup/components/AdminDbBackupBlock';
-import { useSetTargetLevel } from '@/features/user/hooks/useSetTargetLevel';
-import type { TargetLevel as ApiTargetLevel } from '@/features/user/api/setTargetLevel';
-import { isTargetLocked } from '@/features/auth/api/me';
+import { TargetLevelSelector } from './TargetLevelSelector';
 
-// 🔒 Локально фиксируем чистый тип без null
+// фиксируем тип уровня
 const LEVELS = ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'] as const;
 type Level = (typeof LEVELS)[number];
 
@@ -25,19 +23,6 @@ const RU_BY_LEVEL: Record<Level, string> = {
   CURATOR: 'Куратор',
   SUPERVISOR: 'Супервизор',
 };
-
-// без «Студент» цели нет, но он может быть активным
-const FULL_ORDER = [
-  'Студент',
-  'Инструктор',
-  'Куратор',
-  'Супервизор',
-  'Опытный Супервизор',
-] as const;
-
-function levelIndex(lvl: Level) {
-  return FULL_ORDER.indexOf(RU_BY_LEVEL[lvl] as (typeof FULL_ORDER)[number]);
-}
 
 export function UserInfo() {
   const { data: user, isLoading } = useCurrentUser();
@@ -48,61 +33,18 @@ export function UserInfo() {
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [bioOpen, setBioOpen] = useState(false);
 
-  const setTarget = useSetTargetLevel(user?.id || '');
   if (isLoading || !user) return null;
-
-  // локальное состояние: либо Level, либо пустая строка для «лесенки»
-  const [selected, setSelected] = useState<Level | ''>(user.targetLevel ?? '');
-
-  // синхронимся когда пришёл me
-  useEffect(() => {
-    setSelected((user.targetLevel ?? '') as Level | '');
-  }, [user.targetLevel]);
 
   const isAdmin = user.role === 'ADMIN';
   const isSupervisorLike = ['Супервизор', 'Опытный Супервизор'].includes(
     user.activeGroup?.name ?? '',
   );
-  const locked = isTargetLocked(user) && !isAdmin;
-
-  const activeIdx = user.activeGroup
-    ? FULL_ORDER.indexOf(user.activeGroup.name as (typeof FULL_ORDER)[number])
-    : -1;
-
-  // доступны только уровни строго выше активной группы
-  const availableLevels: Level[] = LEVELS.filter((lvl) => levelIndex(lvl) > activeIdx);
-
-  // если выбранный уровень стал недоступен (повышение) — сброс на «лесенку»
-  useEffect(() => {
-    if (selected && !availableLevels.includes(selected)) {
-      setSelected('');
-    }
-  }, [selected, availableLevels]);
 
   const registrationPaid =
     payments.some((p) => p.type === 'REGISTRATION' && p.status === 'PAID') ||
     payments.some((p) => p.type === 'FULL_PACKAGE' && p.status === 'PAID');
 
   const targetLevelName = user.targetLevel ? RU_BY_LEVEL[user.targetLevel as Level] : undefined;
-  const targetNameForBadge = targetLevelName ?? 'не выбрана (лесенка)';
-
-  const noChange =
-    (selected === '' && user.targetLevel === null) ||
-    (selected !== '' && (user.targetLevel as ApiTargetLevel | null) === selected);
-
-  const saveDisabled =
-    setTarget.isPending ||
-    locked ||
-    noChange ||
-    (selected !== '' && !availableLevels.includes(selected));
-
-  const serverErr = (setTarget.error as any)?.response?.data?.error as string | undefined;
-  const lockedMsg =
-    serverErr === 'TARGET_LOCKED'
-      ? 'Цель уже выбрана. Сменить можно после повышения уровня или через администратора.'
-      : null;
-
-  const selectDisabled = locked;
 
   return (
     <div
@@ -166,64 +108,7 @@ export function UserInfo() {
             <Button onClick={() => navigate('/my-certificate')}>Мой сертификат</Button>
 
             {/* === Выбор цели === */}
-            {!isAdmin && !isSupervisorLike && (
-              <div
-                className="rounded-xl p-3 space-y-2"
-                style={{ background: 'var(--color-blue-soft)' }}
-              >
-                <div>
-                  <strong>Текущая цель:</strong> {targetNameForBadge}
-                  {locked && (
-                    <span className="ml-2 inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
-                      выбор заблокирован до повышения уровня
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <select
-                    className="border rounded-md px-2 py-1"
-                    value={selected}
-                    onChange={(e) => {
-                      const v = e.target.value as '' | Level;
-                      setSelected(v === '' ? '' : (v as Level));
-                    }}
-                    disabled={selectDisabled}
-                    title={
-                      locked
-                        ? 'Сменить можно после повышения уровня (или через администратора)'
-                        : undefined
-                    }
-                  >
-                    <option value="">— Лесенка —</option>
-                    {availableLevels.map((lvl) => (
-                      <option key={lvl} value={lvl}>
-                        {RU_BY_LEVEL[lvl]}
-                      </option>
-                    ))}
-                  </select>
-
-                  <Button
-                    onClick={() =>
-                      setTarget.mutate(selected === '' ? null : (selected as ApiTargetLevel))
-                    }
-                    disabled={saveDisabled}
-                    title={
-                      locked
-                        ? 'Сменить можно после повышения уровня (или через администратора)'
-                        : undefined
-                    }
-                  >
-                    Сохранить
-                  </Button>
-
-                  {setTarget.isError && (
-                    <span className="text-red-600">{lockedMsg ?? 'Ошибка сохранения'}</span>
-                  )}
-                  {setTarget.isSuccess && <span className="text-green-600">Цель обновлена</span>}
-                </div>
-              </div>
-            )}
+            {!isSupervisorLike && <TargetLevelSelector user={user} isAdmin={isAdmin} />}
 
             {!payLoading && (isAdmin || registrationPaid) ? (
               <QualificationStatusBlock activeGroupName={user.activeGroup?.name} />

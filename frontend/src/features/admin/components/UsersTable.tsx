@@ -18,7 +18,7 @@ type UserRow = {
 
 const roleMap: Record<Role, string> = {
   ADMIN: 'Администратор',
-  STUDENT: 'Студент',
+  STUDENT: 'Соискатель',
   REVIEWER: 'Проверяющий',
 };
 
@@ -146,7 +146,7 @@ export function UsersTable() {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="ФИО, email, группа, роль (Студент/проверяющий/админ)"
+              placeholder="ФИО, email, группа, роль (Соискатель/проверяющий/админ)"
               className="input w-80 pr-8"
             />
             {searchInput && (

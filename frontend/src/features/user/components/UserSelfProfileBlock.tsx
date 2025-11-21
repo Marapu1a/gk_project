@@ -7,7 +7,7 @@ import { isValidPhoneNumber } from 'libphonenumber-js';
 import { UserLocationFields } from './UserLocationFields';
 
 const roleLabels = {
-  STUDENT: 'Студент',
+  STUDENT: 'Соискатель',
   REVIEWER: 'Супервизор',
   ADMIN: 'Администратор',
 } as const;

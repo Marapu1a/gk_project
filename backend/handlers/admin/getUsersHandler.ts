@@ -29,7 +29,7 @@ function detectRole(tok: string): 'ADMIN' | 'REVIEWER' | 'STUDENT' | null {
   const t = tok.toLowerCase();
   if (/^(ад|адм|админ|админист|admin|adm)$/.test(t)) return 'ADMIN';
   if (/^(пров|провер|проверяющ|рев|ревью|review|reviewer)$/.test(t)) return 'REVIEWER';
-  if (/^(соис|соиск|студ|студент)$/.test(t)) return 'STUDENT';
+  if (/^(соис|соиск|соиска|соискате)$/.test(t)) return 'STUDENT';
   return null;
 }
 
