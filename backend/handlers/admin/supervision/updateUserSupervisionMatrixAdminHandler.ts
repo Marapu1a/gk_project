@@ -35,7 +35,7 @@ function normalizeLevel(lvl: IncomingLevel): NormalizedLevel {
 
 export async function updateUserSupervisionMatrixAdminHandler(
   req: FastifyRequest<Route>,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) {
   if (req.user.role !== 'ADMIN') {
     return reply.code(403).send({ error: 'Только администратор' });
@@ -52,6 +52,13 @@ export async function updateUserSupervisionMatrixAdminHandler(
   const status = incoming.status as RecordStatus; // 'CONFIRMED' | 'UNCONFIRMED'
   const value = incoming.value;
 
+  // ❌ Супервизию руками больше не трогаем: она считается авто из практики
+  if (level === 'SUPERVISION') {
+    return reply.code(403).send({
+      error: 'Часы супервизии считаются автоматически и не редактируются вручную',
+    });
+  }
+
   // --- активная группа пользователя (максимальный rank)
   const userWithGroups = await prisma.user.findUnique({
     where: { id: userId },
@@ -59,18 +66,20 @@ export async function updateUserSupervisionMatrixAdminHandler(
   });
   if (!userWithGroups) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  const topGroup = userWithGroups.groups.map(g => g.group).sort((a, b) => b.rank - a.rank)[0];
+  const topGroup = userWithGroups.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank)[0];
   const isSupervisorUser =
     topGroup?.name === 'Супервизор' || topGroup?.name === 'Опытный Супервизор';
 
   // --- правила редактирования:
   // до супервизора не даём править менторские,
-  // у супервизоров не редактируем PRACTICE/SUPERVISION агрегатами.
+  // у супервизоров не редактируем PRACTICE агрегатами.
   if (!isSupervisorUser && level === 'SUPERVISOR') {
     return reply.code(403).send({ error: 'Менторские часы недоступны до уровня Супервизор' });
   }
-  if (isSupervisorUser && (level === 'PRACTICE' || level === 'SUPERVISION')) {
-    return reply.code(403).send({ error: 'Часы практики/супервизии у супервизоров не редактируются агрегатами' });
+  if (isSupervisorUser && level === 'PRACTICE') {
+    return reply
+      .code(403)
+      .send({ error: 'Часы практики у супервизоров не редактируются агрегатами' });
   }
 
   // --- текущая сумма в ячейке
@@ -110,19 +119,9 @@ export async function updateUserSupervisionMatrixAdminHandler(
         type: level as PracticeLevel,
         value,
         status,
-        reviewerId: req.user.userId,                 // кто изменил — тот и назначен
+        reviewerId: req.user.userId, // кто изменил — тот и назначен
         reviewedAt: isConfirmed ? new Date() : null, // дату ставим только при CONFIRMED
         rejectedReason: null,
-      },
-    });
-
-    // уведомляем пользователя
-    await prisma.notification.create({
-      data: {
-        userId,
-        type: 'SUPERVISION',
-        message: `Ваши часы (${labelSupervisionLevel(level)}, ${labelSupervisionStatus(status)}) были изменены администратором.`,
-        link: '/history',
       },
     });
   }

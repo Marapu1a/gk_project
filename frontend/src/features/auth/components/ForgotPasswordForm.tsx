@@ -68,6 +68,17 @@ export function ForgotPasswordForm() {
           </div>
         )}
 
+        {/* Инфо-плашка */}
+        <div
+          className="text-sm rounded-xl px-3 py-2 border text-blue-dark"
+          style={{
+            background: 'var(--color-blue-soft)',
+            borderColor: 'var(--color-green-light)',
+          }}
+        >
+          Введите email, который использовали при регистрации. Ошибка в адресе = письмо не дойдёт.
+        </div>
+
         <div>
           <label htmlFor="email" className="block mb-1 text-sm text-blue-dark">
             Email

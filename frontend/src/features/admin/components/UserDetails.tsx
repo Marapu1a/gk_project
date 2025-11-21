@@ -38,6 +38,7 @@ export default function UserDetails() {
         <UserBasicBlock
           userId={data.id}
           fullName={data.fullName}
+          fullNameLatin={data.fullNameLatin}
           email={data.email}
           phone={data.phone}
           birthDate={data.birthDate}
@@ -52,7 +53,7 @@ export default function UserDetails() {
 
         <AdminUserGroupsBlock userId={data.id} />
 
-        <ActiveCertificateBlock certificates={data.certificates || []} />
+        <ActiveCertificateBlock userId={data.id} certificates={data.certificates} />
 
         <AdminCEUMatrixBlock
           userId={data.id}

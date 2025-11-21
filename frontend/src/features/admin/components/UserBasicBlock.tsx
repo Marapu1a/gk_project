@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useUpdateUserInfo } from '@/features/admin/hooks/useUpdateUserInfo';
 import { useToggleUserRole } from '@/features/admin/hooks/useToggleUserRole';
 import { UserLocationFields } from '@/features/user/components/UserLocationFields';
+import { UpdateUserPasswordModal } from './UpdateUserPasswordModal';
 import PhoneInput from 'react-phone-input-2';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 
@@ -98,6 +99,8 @@ export default function UserBasicBlock(props: Props) {
 
   const namesRu = splitFullName(fullName);
   const namesLat = splitFullName(fullNameLatin);
+
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
 
   const [edit, setEdit] = useState(false);
 
@@ -239,9 +242,20 @@ export default function UserBasicBlock(props: Props) {
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
             {!edit ? (
-              <button className="btn btn-brand" onClick={() => setEdit(true)}>
-                Редактировать
-              </button>
+              <>
+                <button className="btn btn-brand" onClick={() => setEdit(true)}>
+                  Редактировать
+                </button>
+                <button className="btn btn-ghost" onClick={() => setIsPasswordOpen(true)}>
+                  Сменить пароль
+                </button>
+                {isPasswordOpen && (
+                  <UpdateUserPasswordModal
+                    userId={userId}
+                    onClose={() => setIsPasswordOpen(false)}
+                  />
+                )}
+              </>
             ) : (
               <>
                 <button className="btn btn-brand" onClick={onSave} disabled={mutation.isPending}>

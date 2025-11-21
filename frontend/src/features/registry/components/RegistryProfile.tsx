@@ -14,6 +14,10 @@ export function RegistryProfile({ userId }: Props) {
   const cert = p.certificate;
   const certUrl = cert ? `/uploads/${cert.fileId}` : '';
   const isPdf = /\.pdf($|\?)/i.test(certUrl);
+  const certPreviewUrl = isPdf
+    ? `${certUrl}#page=1&view=FitH&toolbar=0&navpanes=0&scrollbar=0`
+    : certUrl;
+
   const avatarPlaceholder = '/avatar_placeholder.svg';
 
   const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('ru-RU') : '—');
@@ -137,7 +141,7 @@ export function RegistryProfile({ userId }: Props) {
                 </dl>
               </div>
 
-              {/* Превью сертификата — A4 без скроллов */}
+              {/* Превью сертификата — A4, выглядит как картинка */}
               <button
                 type="button"
                 onClick={() => setOpen(true)}
@@ -151,14 +155,19 @@ export function RegistryProfile({ userId }: Props) {
                     style={{ aspectRatio: '1.414 / 1', position: 'relative' }}
                   >
                     {isPdf ? (
-                      // Плоский превью-бокс для PDF, без встроенного вьювера и без полос
-                      <div className="absolute inset-0 grid place-items-center bg-white">
-                        <div className="text-center text-blue-dark text-sm">
-                          PDF-сертификат
-                          <br />
-                          <span className="text-gray-500">Нажмите, чтобы открыть</span>
+                      <object
+                        data={certPreviewUrl}
+                        type="application/pdf"
+                        className="absolute left-0 right-0 -top-12 h-[calc(100%+48px)] w-full pointer-events-none"
+                      >
+                        <div className="w-full h-full grid place-items-center bg-white">
+                          <div className="text-center text-blue-dark text-sm">
+                            PDF-сертификат
+                            <br />
+                            <span className="text-gray-500">Нажмите, чтобы открыть</span>
+                          </div>
                         </div>
-                      </div>
+                      </object>
                     ) : (
                       <img
                         src={certUrl}

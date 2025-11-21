@@ -1,9 +1,10 @@
+// src/features/ceu/components/CeuSummaryBlock.tsx
 import { useCeuSummary } from '../hooks/useCeuSummary';
 
 type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
 
 type Props = {
-  level?: Level | null; // если нет — бэк/хук работает по умолчанию (лесенка/активная группа)
+  level?: Level | null;
 };
 
 export function CeuSummaryBlock({ level }: Props) {
@@ -45,9 +46,18 @@ export function CeuSummaryBlock({ level }: Props) {
               <th className="p-2 text-center">Всего начислено</th>
             </tr>
           </thead>
+
           <tbody>
             {categories.map((cat) => {
+              const requiredVal = summary.required?.[cat];
+
+              // 🔥 главное изменение — режем ненужную "Супервизию"
+              if (cat === 'supervision' && (!requiredVal || requiredVal === 0)) {
+                return null;
+              }
+
               const percentValue = fmtPercent(summary.percent?.[cat]);
+
               return (
                 <tr
                   key={cat}
@@ -55,7 +65,7 @@ export function CeuSummaryBlock({ level }: Props) {
                   style={{ borderColor: 'var(--color-green-light)' }}
                 >
                   <td className="p-2">{categoryLabels[cat]}</td>
-                  <td className="p-2 text-center">{summary.required?.[cat] ?? '—'}</td>
+                  <td className="p-2 text-center">{requiredVal ?? '—'}</td>
                   <td className="p-2 text-center">{summary.usable[cat]}</td>
                   <td className="p-2 text-center">
                     <div className="w-full max-w-[100px] mx-auto">

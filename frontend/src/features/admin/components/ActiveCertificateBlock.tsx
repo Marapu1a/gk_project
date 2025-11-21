@@ -1,4 +1,6 @@
 // src/features/admin/components/ActiveCertificateBlock.tsx
+import { useEffect, useMemo, useState } from 'react';
+import { EditCertificateModal } from './EditCertificateModal';
 
 export type Cert = {
   id: string;
@@ -20,13 +22,30 @@ function isActive(cert: Cert) {
 
 const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
 
-export default function ActiveCertificateBlock({ certificates = [] }: { certificates?: Cert[] }) {
-  const active =
-    [...(certificates || [])]
-      .filter(isActive)
-      .sort(
-        (a, b) => new Date(b.issuedAt || 0).getTime() - new Date(a.issuedAt || 0).getTime(),
-      )[0] || null;
+type Props = {
+  userId: string;
+  certificates?: Cert[];
+};
+
+export default function ActiveCertificateBlock({ certificates = [], userId }: Props) {
+  const computedActive = useMemo(() => {
+    return (
+      [...(certificates || [])]
+        .filter(isActive)
+        .sort(
+          (a, b) => new Date(b.issuedAt || 0).getTime() - new Date(a.issuedAt || 0).getTime(),
+        )[0] || null
+    );
+  }, [certificates]);
+
+  // ✅ локальное состояние для мгновенного UI-апдейта
+  const [active, setActive] = useState<Cert | null>(computedActive);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  // если снаружи пришли новые сертификаты – синхронизируем
+  useEffect(() => {
+    setActive(computedActive);
+  }, [computedActive]);
 
   return (
     <div className="space-y-2">
@@ -77,8 +96,8 @@ export default function ActiveCertificateBlock({ certificates = [] }: { certific
           </div>
 
           {/* Действия */}
-          {active.file && (
-            <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-2">
+            {active.file && (
               <a
                 href={`/uploads/${active.file.fileId}`}
                 target="_blank"
@@ -87,7 +106,41 @@ export default function ActiveCertificateBlock({ certificates = [] }: { certific
               >
                 Открыть файл
               </a>
-            </div>
+            )}
+
+            <button type="button" className="btn btn-ghost" onClick={() => setIsEditOpen(true)}>
+              Редактировать
+            </button>
+          </div>
+
+          {isEditOpen && (
+            <EditCertificateModal
+              userId={userId}
+              certificate={{
+                id: active.id,
+                title: active.title,
+                number: active.number,
+                issuedAt: active.issuedAt,
+                expiresAt: active.expiresAt,
+                file: active.file,
+              }}
+              onClose={() => setIsEditOpen(false)}
+              onUpdated={(updated) => {
+                // ✅ моментально применяем изменения в UI
+                setActive((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        title: updated.title,
+                        number: updated.number,
+                        issuedAt: updated.issuedAt,
+                        expiresAt: updated.expiresAt,
+                        file: updated.file ?? prev.file,
+                      }
+                    : prev,
+                );
+              }}
+            />
           )}
         </div>
       )}

@@ -4,6 +4,7 @@ import { PracticeLevel, RecordStatus } from '@prisma/client';
 import {
   supervisionRequirementsByGroup,
   getNextGroupName,
+  getPrevGroupName,
   type SupervisionRequirement,
   calcAutoSupervisionHours,
 } from '../../utils/supervisionRequirements';
@@ -27,7 +28,7 @@ type Query = { level?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' };
 
 export async function supervisionSummaryHandler(
   req: FastifyRequest<{ Querystring: Query }>,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) {
   const { user } = req;
   if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
@@ -36,7 +37,7 @@ export async function supervisionSummaryHandler(
     where: { id: user.userId },
     select: {
       id: true,
-      targetLevel: true, // <-- важно
+      targetLevel: true,
       groups: {
         select: {
           group: { select: { id: true, name: true, rank: true } },
@@ -44,6 +45,7 @@ export async function supervisionSummaryHandler(
       },
     },
   });
+
   if (!dbUser) return reply.code(404).send({ error: 'Пользователь не найден' });
 
   const groupList = dbUser.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank);
@@ -59,8 +61,6 @@ export async function supervisionSummaryHandler(
     });
   }
 
-  // Определяем группу, по которой показывать требования:
-  // приоритет: ?level -> user.targetLevel -> лесенка (nextGroup от активной)
   const explicitLevel = req.query?.level;
   const targetFromUser = dbUser.targetLevel ?? undefined;
 
@@ -72,6 +72,13 @@ export async function supervisionSummaryHandler(
   const required: SupervisionRequirement | null = targetGroupName
     ? supervisionRequirementsByGroup[targetGroupName] ?? null
     : null;
+
+  const prevGroupName = targetGroupName ? getPrevGroupName(targetGroupName) : null;
+  const prevReq = prevGroupName
+    ? supervisionRequirementsByGroup[prevGroupName]
+    : null;
+
+  const prevPracticeFloor = prevReq?.practice ?? 0;
 
   // Берём подтверждённые и "на проверке" параллельно
   const [confirmed, unconfirmed] = await Promise.all([
@@ -88,21 +95,22 @@ export async function supervisionSummaryHandler(
   const usableRaw = aggregate(confirmed);
   const pendingRaw = aggregate(unconfirmed);
 
-  // ---- новая логика: супервизия считается из практики по коэффициенту ----
   let usable: SupervisionSummary = usableRaw;
   let pending: SupervisionSummary = pendingRaw;
 
   if (targetGroupName) {
-    const practiceConfirmed = usableRaw.practice;
-    const practicePending = pendingRaw.practice;
+    const practiceConfirmedRaw = usableRaw.practice;
+    const practicePendingRaw = pendingRaw.practice;
 
-    // Сколько супервизии уже есть из подтверждённой практики
+    // ✅ ключевая правка: считаем только дельту относительно предыдущего уровня
+    const practiceConfirmed = Math.max(0, practiceConfirmedRaw - prevPracticeFloor);
+    const practicePending = practicePendingRaw;
+
     const autoConfirmed = calcAutoSupervisionHours({
       groupName: targetGroupName,
       practiceHours: practiceConfirmed,
     });
 
-    // Сколько будет всего, если подтвердят и ожидающую практику
     const autoTotalIfAllConfirmed = calcAutoSupervisionHours({
       groupName: targetGroupName,
       practiceHours: practiceConfirmed + practicePending,
@@ -111,14 +119,13 @@ export async function supervisionSummaryHandler(
     const autoPending = Math.max(0, autoTotalIfAllConfirmed - autoConfirmed);
 
     usable = {
-      practice: practiceConfirmed,
+      practice: practiceConfirmedRaw, // показываем пользователю все накопленные часы
       supervision: autoConfirmed,
-      // менторские часы живут своей жизнью
       supervisor: usableRaw.supervisor,
     };
 
     pending = {
-      practice: practicePending,
+      practice: practicePendingRaw,
       supervision: autoPending,
       supervisor: pendingRaw.supervisor,
     };
@@ -126,14 +133,15 @@ export async function supervisionSummaryHandler(
 
   const percent = required ? computePercent(usable, required) : null;
 
-  // Менторская шкала только для реально "Супервизор/Опытный супервизор" (цель не влияет)
+  // Менторская шкала только для реальных супервизоров
   const isSupervisor =
     primaryGroup.name === 'Супервизор' || primaryGroup.name === 'Опытный Супервизор';
+
   const mentor = isSupervisor
     ? (() => {
       const total = usable.practice + usable.supervision + usable.supervisor;
       const pendingSum = pending.practice + pending.supervision + pending.supervisor;
-      const requiredTotal = 2000; // общая цель для супервизоров
+      const requiredTotal = 2000;
       const pct = clampPct(Math.round((total / requiredTotal) * 100));
       return { total, required: requiredTotal, percent: pct, pending: pendingSum };
     })()
@@ -170,7 +178,7 @@ function aggregate(entries: Array<{ type: PracticeLevel; value: number }>): Supe
 
 function computePercent(
   usable: SupervisionSummary,
-  required: SupervisionRequirement
+  required: SupervisionRequirement,
 ): SupervisionSummary {
   const p = empty();
   for (const k of SUMMARY_KEYS) {

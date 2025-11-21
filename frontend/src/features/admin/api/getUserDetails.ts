@@ -6,6 +6,7 @@ export async function getUserDetails(id: string) {
     id: string;
     email: string;
     fullName: string;
+    fullNameLatin: string | null;
     phone: string | null;
     birthDate: string | null;
     country: string | null;

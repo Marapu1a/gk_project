@@ -1,3 +1,5 @@
+// ..src/utils/FileUpload.tsx
+
 import { useState, useEffect, useRef } from 'react';
 import { useDropzone, type Accept } from 'react-dropzone';
 import { uploadFile } from '@/features/files/api/uploadFile';

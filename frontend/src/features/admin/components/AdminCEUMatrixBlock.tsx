@@ -20,7 +20,6 @@ const statusLabels: Record<CEUStatus, string> = {
 
 type Props = {
   userId: string;
-  /** true, если пользователь Супервизор или Опытный Супервизор */
   isSupervisor: boolean;
 };
 
@@ -35,7 +34,7 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
   if (error || !data) return <p className="text-error">Ошибка загрузки CEU-баллов</p>;
 
   const startEdit = (category: CEUCategory, status: CEUStatus, current: number) => {
-    if (isSupervisor) return; // защита от клика
+    if (isSupervisor) return;
     setEditing({ category, status });
     setValue(String(current));
   };
@@ -47,11 +46,13 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
 
   const saveEdit = async () => {
     if (!editing) return;
+
     const next = parseFloat(value.replace(',', '.'));
     if (Number.isNaN(next) || next < 0) {
       toast.error('Введите корректное число');
       return;
     }
+
     try {
       await mutation.mutateAsync({
         category: editing.category,
@@ -65,6 +66,14 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
     }
   };
 
+  // 🔥 ключевая правка — скрываем SUPERVISION если её не должно быть
+  const shouldHideSupervisionRow = () => {
+    const row = data.matrix.SUPERVISION;
+    return row.CONFIRMED === 0 && row.SPENT === 0 && row.REJECTED === 0;
+  };
+
+  const hideSupervision = shouldHideSupervisionRow();
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold text-blue-dark">
@@ -72,7 +81,7 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
       </h2>
 
       {isSupervisor && (
-        <div className="card p-4 " style={{ border: '1px solid var(--color-green-light)' }}>
+        <div className="card p-4" style={{ border: '1px solid var(--color-green-light)' }}>
           <p className="text-sm">
             Супервизоры баллы не набирают. Ниже показаны ранее набранные баллы — редактирование
             отключено.
@@ -95,60 +104,69 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
               ))}
             </tr>
           </thead>
-          <tbody>
-            {Object.entries(categoryLabels).map(([cat, catLabel]) => (
-              <tr
-                key={cat}
-                className="border-t"
-                style={{ borderColor: 'var(--color-green-light)' }}
-              >
-                <td className="py-2 px-3 font-medium">{catLabel}</td>
-                {Object.keys(statusLabels).map((st) => {
-                  const isEditing = editing?.category === cat && editing?.status === st;
-                  const current = data.matrix[cat as CEUCategory][st as CEUStatus];
 
-                  return (
-                    <td key={st} className="py-2 px-3">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            className="input w-24"
-                            value={value}
-                            onChange={(e) => setValue(e.target.value)}
-                            disabled={mutation.isPending}
-                          />
+          <tbody>
+            {Object.entries(categoryLabels).map(([cat, catLabel]) => {
+              // 🔥 режем SUPERVISION, если не нужна
+              if (cat === 'SUPERVISION' && hideSupervision) {
+                return null;
+              }
+
+              return (
+                <tr
+                  key={cat}
+                  className="border-t"
+                  style={{ borderColor: 'var(--color-green-light)' }}
+                >
+                  <td className="py-2 px-3 font-medium">{catLabel}</td>
+
+                  {Object.keys(statusLabels).map((st) => {
+                    const isEditing = editing?.category === cat && editing?.status === st;
+                    const current = data.matrix[cat as CEUCategory][st as CEUStatus];
+
+                    return (
+                      <td key={st} className="py-2 px-3">
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              className="input w-24"
+                              value={value}
+                              onChange={(e) => setValue(e.target.value)}
+                              disabled={mutation.isPending}
+                            />
+                            <button
+                              className="btn btn-brand"
+                              onClick={saveEdit}
+                              disabled={mutation.isPending}
+                            >
+                              Сохранить
+                            </button>
+                            <button
+                              className="btn"
+                              onClick={cancelEdit}
+                              disabled={mutation.isPending}
+                            >
+                              Отмена
+                            </button>
+                          </div>
+                        ) : isSupervisor ? (
+                          <span>{current}</span>
+                        ) : (
                           <button
-                            className="btn btn-brand"
-                            onClick={saveEdit}
+                            className="btn btn-ghost"
+                            onClick={() => startEdit(cat as CEUCategory, st as CEUStatus, current)}
                             disabled={mutation.isPending}
                           >
-                            Сохранить
+                            {current}
                           </button>
-                          <button
-                            className="btn"
-                            onClick={cancelEdit}
-                            disabled={mutation.isPending}
-                          >
-                            Отмена
-                          </button>
-                        </div>
-                      ) : isSupervisor ? (
-                        <span>{current}</span>
-                      ) : (
-                        <button
-                          className="btn btn-ghost"
-                          onClick={() => startEdit(cat as CEUCategory, st as CEUStatus, current)}
-                          disabled={mutation.isPending}
-                        >
-                          {current}
-                        </button>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

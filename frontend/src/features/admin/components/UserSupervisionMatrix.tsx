@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 
 type Props = {
   userId: string;
-  isSupervisor: boolean; // true → это супервизор (или опытный)
+  isSupervisor: boolean;
 };
 
 const LEVEL_LABELS: Record<SupervisionLevel, string> = {
@@ -36,8 +36,15 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
   if (isLoading) return <p className="text-blue-dark">Загрузка часов…</p>;
   if (error || !data) return <p className="text-error">Ошибка загрузки часов</p>;
 
+  const isReadonlyLevel = (level: SupervisionLevel) => {
+    if (level === 'SUPERVISION') return true;
+    if (level === 'PRACTICE' && isSupervisor) return true;
+    if (level === 'SUPERVISOR' && !isSupervisor) return true;
+    return false;
+  };
+
   const startEdit = (level: SupervisionLevel, status: SupervisionStatus, current: number) => {
-    if (isBlocked(level)) return;
+    if (isReadonlyLevel(level)) return;
     setEditing({ level, status });
     setValue(String(current));
   };
@@ -55,7 +62,11 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
       return;
     }
     try {
-      await mutation.mutateAsync({ level: editing.level, status: editing.status, value: next });
+      await mutation.mutateAsync({
+        level: editing.level,
+        status: editing.status,
+        value: next,
+      });
       toast.success('Часы обновлены');
       cancelEdit();
     } catch (e: any) {
@@ -63,36 +74,9 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
     }
   };
 
-  // блокировки редактирования под новую модель
-  const isBlocked = (level: SupervisionLevel) => {
-    if (isSupervisor) {
-      // супервизору недоступно редактировать PRACTICE/SUPERVISION
-      return level === 'PRACTICE' || level === 'SUPERVISION';
-    } else {
-      // обычному недоступно редактировать менторские
-      return level === 'SUPERVISOR';
-    }
-  };
-
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-blue-dark">Часы супервизии</h2>
-
-      {isSupervisor ? (
-        <div className="card p-4" style={{ border: '1px solid var(--color-green-light)' }}>
-          <p className="text-sm">
-            Супервизоры не набирают часы «Практика» и «Супервизия». Доступно редактирование только
-            менторских часов.
-          </p>
-        </div>
-      ) : (
-        <div className="card p-4" style={{ border: '1px solid var(--color-green-light)' }}>
-          <p className="text-sm">
-            Менторские часы доступны только супервизорам. Здесь можно редактировать «Практика» и
-            «Супервизия».
-          </p>
-        </div>
-      )}
+      <h2 className="text-xl font-semibold text-blue-dark">Часы</h2>
 
       <div
         className="overflow-x-auto rounded-2xl border header-shadow"
@@ -117,10 +101,11 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
                 style={{ borderColor: 'var(--color-green-light)' }}
               >
                 <td className="py-2 px-3 font-medium">{LEVEL_LABELS[lvl]}</td>
+
                 {(Object.keys(STATUS_LABELS) as SupervisionStatus[]).map((st) => {
                   const current = data.matrix[lvl][st];
                   const isEditing = editing?.level === lvl && editing?.status === st;
-                  const blocked = isBlocked(lvl);
+                  const readonly = isReadonlyLevel(lvl);
 
                   return (
                     <td key={st} className="py-2 px-3">
@@ -140,15 +125,11 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
                           >
                             Сохранить
                           </button>
-                          <button
-                            className="btn"
-                            onClick={cancelEdit}
-                            disabled={mutation.isPending}
-                          >
+                          <button className="btn" onClick={cancelEdit}>
                             Отмена
                           </button>
                         </div>
-                      ) : blocked ? (
+                      ) : readonly ? (
                         <span>{current}</span>
                       ) : (
                         <button

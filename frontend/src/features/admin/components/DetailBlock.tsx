@@ -1,22 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDeleteFile } from '../hooks/useDeleteFile';
-import { useDeleteCertificate } from '@/features/certificate/hooks/useDeleteCertificate';
 import { toast } from 'sonner';
-import { api } from '@/lib/axios';
 
 type Item = {
   id: string; // id UploadedFile
   name: string;
   fileId?: string;
   type?: string | null; // если приходит UploadedFile.type
-  certificateId?: string; // может не приходить
-  certificate?: {
-    id?: string | null;
-    title?: string | null;
-    number?: string | null;
-    issuedAt?: string | null; // ISO
-    expiresAt?: string | null; // ISO
-  };
 };
 
 type DetailBlockProps = {
@@ -28,7 +18,6 @@ type DetailBlockProps = {
 export default function DetailBlock({ title, items, userId }: DetailBlockProps) {
   const isFilesBlock = title === 'Загруженные файлы';
   const deleteFile = useDeleteFile(userId);
-  const deleteCert = useDeleteCertificate(userId);
 
   // локальное состояние для мгновенного обновления UI
   const [localItems, setLocalItems] = useState<Item[]>(items);
@@ -40,27 +29,6 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
     const raw = parts.length >= 2 ? parts[1] : 'misc';
     return (raw || 'misc').toUpperCase();
   };
-
-  const isCertificateItem = (category: string, it: Item) =>
-    category === 'CERTIFICATE' ||
-    String(it.type || '').toUpperCase() === 'CERTIFICATE' ||
-    !!it.certificate;
-
-  function splitByIssuedAt(certs: Item[]) {
-    let activeIndex = -1;
-    let best = -Infinity;
-    certs.forEach((it, i) => {
-      const t = it.certificate?.issuedAt ? Date.parse(it.certificate.issuedAt) : NaN;
-      if (Number.isFinite(t) && t > best) {
-        best = t;
-        activeIndex = i;
-      }
-    });
-    if (activeIndex === -1) return { active: null as Item | null, inactive: certs };
-    const active = certs[activeIndex];
-    const inactive = certs.filter((_, i) => i !== activeIndex);
-    return { active, inactive };
-  }
 
   async function confirm(message: string) {
     return await new Promise<boolean>((resolve) => {
@@ -76,6 +44,7 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
       String(category || '').toUpperCase() === 'CERTIFICATE' ||
       String(type || '').toUpperCase() === 'CERTIFICATE';
 
+    // файлы сертификатов трогаем только через спец-экран сертификатов
     if (isCert) {
       toast.error('Нельзя удалять файлы сертификатов. Замените/отзовите сертификат.');
       return;
@@ -86,52 +55,10 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
 
     try {
       await deleteFile.mutateAsync(uploadedFileId);
-      // оптимистично удаляем элемент из локального списка
       setLocalItems((prev) => prev.filter((it) => it.id !== uploadedFileId));
       toast.success('Файл удалён');
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Не удалось удалить файл');
-    }
-  };
-
-  // Ленивая резолюция certId по fileId (если не пришёл)
-  async function resolveCertIdByFile(fileId?: string) {
-    if (!fileId) return null;
-    try {
-      const res = await api.get(`/admin/users/${userId}/certificates`);
-      const list = res.data as Array<{ id: string; file?: { id: string; fileId: string } | null }>;
-      const hit = list.find((c) => c.file && (c.file.fileId === fileId || c.file.id === fileId));
-      return hit?.id ?? null;
-    } catch {
-      return null;
-    }
-  }
-
-  const handleDeleteCertificate = async (it: Item) => {
-    const direct = it.certificateId || it.certificate?.id || null;
-    const certId = direct || (await resolveCertIdByFile(it.fileId));
-    if (!certId) {
-      toast.error('Не найден ID сертификата');
-      return;
-    }
-
-    const ok = await confirm('Отозвать сертификат и удалить его файл?');
-    if (!ok) return;
-
-    try {
-      await deleteCert.mutateAsync(certId);
-      // оптимистично удаляем элемент(ы), связанные с этим сертификатом
-      setLocalItems((prev) =>
-        prev.filter(
-          (x) =>
-            x.certificateId !== certId &&
-            x.certificate?.id !== certId &&
-            !(x.fileId && x.fileId === it.fileId), // если список хранит файл отдельной позицией
-        ),
-      );
-      toast.success('Сертификат удалён');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось удалить сертификат');
     }
   };
 
@@ -143,64 +70,6 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
       return acc;
     }, {});
   }, [isFilesBlock, localItems]);
-
-  const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
-
-  const renderCertItem = (it: Item) => {
-    const meta = it.certificate;
-    const title = meta?.title || it.name || 'Сертификат';
-    const number = meta?.number || '';
-    const issued = fmt(meta?.issuedAt);
-    const expires = fmt(meta?.expiresAt);
-
-    return (
-      <li
-        key={it.id}
-        className="flex items-start justify-between gap-3 border rounded-xl px-3 py-2"
-        style={{ borderColor: 'var(--color-green-light)' }}
-      >
-        <div className="min-w-0 flex-1">
-          <div className="font-medium text-blue-dark truncate">{title}</div>
-          <div className="text-sm text-gray-700">
-            {number ? (
-              <div>
-                <span className="text-gray-500">Номер:</span> № {number}
-              </div>
-            ) : null}
-            <div>
-              <span className="text-gray-500">Выдан:</span> {issued}
-            </div>
-            <div>
-              <span className="text-gray-500">Действителен до:</span> {expires}
-            </div>
-          </div>
-        </div>
-
-        {it.fileId && (
-          <div className="flex items-center gap-2 shrink-0">
-            <a
-              href={`/uploads/${it.fileId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-accent text-xs py-1 px-2 whitespace-nowrap"
-              title="Открыть сертификат"
-            >
-              Открыть
-            </a>
-            <button
-              type="button"
-              onClick={() => handleDeleteCertificate(it)}
-              className="btn btn-danger text-xs py-1 px-2 whitespace-nowrap"
-              disabled={deleteCert.isPending}
-              title="Отозвать сертификат"
-            >
-              Отозвать
-            </button>
-          </div>
-        )}
-      </li>
-    );
-  };
 
   return (
     <div
@@ -221,85 +90,50 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
         </ul>
       ) : (
         <div className="space-y-4">
-          {Object.entries(grouped!).map(([category, list]) => {
-            if (category === 'CERTIFICATE' || list.some((it) => isCertificateItem(category, it))) {
-              const certs = list.filter((it) => isCertificateItem(category, it));
-              const { active, inactive } = splitByIssuedAt(certs);
-
-              return (
-                <div key={category} className="space-y-2">
-                  <div
-                    className="text-sm font-medium rounded-xl px-3 py-1 inline-block text-blue-dark"
-                    style={{ background: 'var(--color-blue-soft)' }}
-                  >
-                    CERTIFICATE
-                  </div>
-
-                  {active && (
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-blue-dark">Активный сертификат</div>
-                      <ul className="space-y-2">{[active].map(renderCertItem)}</ul>
-                    </div>
-                  )}
-
-                  {inactive.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-blue-dark">
-                        Неактивные сертификаты
-                      </div>
-                      <ul className="space-y-2">{inactive.map(renderCertItem)}</ul>
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            // Прочие категории
-            return (
-              <div key={category} className="space-y-2">
-                <div
-                  className="text-sm font-medium rounded-xl px-3 py-1 inline-block text-blue-dark"
-                  style={{ background: 'var(--color-blue-soft)' }}
-                >
-                  {category}
-                </div>
-
-                <ul className="space-y-2">
-                  {list.map((item) => (
-                    <li
-                      key={item.id}
-                      className="flex items-center justify-between gap-3 border rounded-xl px-3 py-2"
-                      style={{ borderColor: 'var(--color-green-light)' }}
-                    >
-                      {item.fileId ? (
-                        <>
-                          <a
-                            href={`/uploads/${item.fileId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-brand underline truncate"
-                            title={item.name}
-                          >
-                            {item.name}
-                          </a>
-                          <button
-                            onClick={() => handleDelete(item.id, category, item.type)}
-                            className="btn btn-danger text-xs py-1 px-2"
-                            disabled={deleteFile.isPending}
-                            aria-label="Удалить файл"
-                          >
-                            Удалить
-                          </button>
-                        </>
-                      ) : (
-                        <span className="truncate">{item.name}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+          {Object.entries(grouped!).map(([category, list]) => (
+            <div key={category} className="space-y-2">
+              <div
+                className="text-sm font-medium rounded-xl px-3 py-1 inline-block text-blue-dark"
+                style={{ background: 'var(--color-blue-soft)' }}
+              >
+                {category}
               </div>
-            );
-          })}
+
+              <ul className="space-y-2">
+                {list.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 border rounded-xl px-3 py-2"
+                    style={{ borderColor: 'var(--color-green-light)' }}
+                  >
+                    {item.fileId ? (
+                      <>
+                        <a
+                          href={`/uploads/${item.fileId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-brand underline truncate"
+                          title={item.name}
+                        >
+                          {item.name}
+                        </a>
+                        <button
+                          onClick={() => handleDelete(item.id, category, item.type)}
+                          className="btn btn-danger text-xs py-1 px-2"
+                          disabled={deleteFile.isPending}
+                          aria-label="Удалить файл"
+                        >
+                          Удалить
+                        </button>
+                      </>
+                    ) : (
+                      <span className="truncate">{item.name}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       )}
     </div>
