@@ -63,7 +63,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
 
   const targetLevel = user.targetLevel as ApiTargetLevel | null;
   const targetLevelName = targetLevel ? RU_BY_LEVEL[targetLevel as Level] : undefined;
-  const targetNameForBadge = targetLevelName ?? 'не выбрана (лесенка)';
+  const targetNameForBadge = targetLevelName ?? 'не выбрана (по умолчанию)';
 
   const noChange =
     (selected === '' && targetLevel === null) || (selected !== '' && targetLevel === selected);

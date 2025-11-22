@@ -17,9 +17,12 @@ const tokenize = (s: string) =>
     .filter(Boolean);
 
 // базовая проверка полноты профиля для попадания в реестр
+// ВРЕМЕННО ОТКЛЮЧЕНО — показываем всех
+/*
 const isProfileComplete = (u: RegistryCardType) => {
   const hasFullName = typeof u.fullName === 'string' && u.fullName.trim().length > 0;
-  const hasFullNameLatin = typeof u.fullNameLatin === 'string' && u.fullNameLatin.trim().length > 0;
+  const hasFullNameLatin =
+    typeof u.fullNameLatin === 'string' && u.fullNameLatin.trim().length > 0;
   const hasCountry = typeof u.country === 'string' && u.country.trim().length > 0;
   const hasCity = typeof u.city === 'string' && u.city.trim().length > 0;
   const hasAvatar = typeof u.avatarUrl === 'string' && u.avatarUrl.trim().length > 0;
@@ -27,6 +30,7 @@ const isProfileComplete = (u: RegistryCardType) => {
 
   return hasFullName && hasFullNameLatin && hasCountry && hasCity && hasAvatar && hasBio;
 };
+*/
 
 const isCertified = (u: RegistryCardType) => Boolean(u.isCertified);
 
@@ -180,8 +184,8 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     }
   };
 
-  // сначала выкидываем неполные профили
-  const eligibleItems = useMemo(() => items.filter((u) => isProfileComplete(u)), [items]);
+  // раньше выкидывали неполные профили
+  // const eligibleItems = useMemo(() => items.filter((u) => isProfileComplete(u)), [items]);
 
   // фильтрация по полям
   const filtered = useMemo(() => {
@@ -190,7 +194,7 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     const cityTokens = tokenize(cityFilter);
     const groupTokens = tokenize(groupFilter);
 
-    return eligibleItems.filter((u) => {
+    return items.filter((u) => {
       if (statusFilter === 'certified' && !isCertified(u)) return false;
 
       if (nameTokens.length > 0) {
@@ -215,7 +219,7 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
 
       return true;
     });
-  }, [eligibleItems, nameFilter, countryFilter, cityFilter, groupFilter, statusFilter]);
+  }, [items, nameFilter, countryFilter, cityFilter, groupFilter, statusFilter]);
 
   // сортировка
   const sorted = useMemo(() => {
