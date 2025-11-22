@@ -145,7 +145,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
             locked ? 'Сменить можно после повышения уровня (или через администратора)' : undefined
           }
         >
-          <option value="">— Лесенка —</option>
+          <option value="">— Уровень сертификации —</option>
           {availableLevels.map((lvl) => (
             <option key={lvl} value={lvl}>
               {RU_BY_LEVEL[lvl]}

@@ -3,12 +3,16 @@ import { api } from '@/lib/axios';
 
 export type RegistryCard = {
   id: string;
+  createdAt: string;            // ISO
   fullName: string;
   fullNameLatin: string;
   country?: string | null;
   city?: string | null;
   avatarUrl?: string | null;
   bio?: string | null;
+  groupName?: string | null;
+  groupRank?: number | null;
+  isCertified: boolean;
 };
 
 export type RegistryListResponse = {

@@ -1,3 +1,4 @@
+// src/.../getRegistry.ts (или где у тебя эта утилка)
 import { prisma } from '../../lib/prisma';
 
 /** Активный = expiresAt >= now(). Последний по issuedAt активный сертификат или null. */
@@ -46,6 +47,8 @@ export async function getRegistryList({
   if (country) where.country = country;
   if (city) where.city = city;
 
+  const now = new Date();
+
   const users = await prisma.user.findMany({
     where,
     // сначала новые по createdAt, потом по имени для стабильности
@@ -54,28 +57,41 @@ export async function getRegistryList({
     take: limit,
     select: {
       id: true,
+      createdAt: true,
       fullName: true,
       fullNameLatin: true,
       country: true,
       city: true,
       avatarUrl: true,
-      bio: true, // ← ДОБАВИЛИ
+      bio: true,
       // тянем группы, чтобы вычислить активную
       groups: { include: { group: { select: { name: true, rank: true } } } },
+      // тянем только активный сертификат (если есть), чтобы посчитать isCertified
+      certificates: {
+        where: { expiresAt: { gte: now } },
+        orderBy: { issuedAt: 'desc' },
+        take: 1,
+        select: { id: true },
+      },
     },
   });
 
   const items = users.map((u) => {
     const top = u.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank)[0];
+    const activeCert = u.certificates[0] || null;
+
     return {
       id: u.id,
+      createdAt: u.createdAt,
       fullName: u.fullName,
       fullNameLatin: u.fullNameLatin,
       country: u.country,
       city: u.city,
       avatarUrl: u.avatarUrl,
-      bio: u.bio,            // ← И В ОТВЕТ
-      groupName: top?.name ?? null, // ← статус
+      bio: u.bio,
+      groupName: top?.name ?? null,
+      groupRank: top?.rank ?? null,
+      isCertified: !!activeCert,
     };
   });
 
@@ -131,7 +147,7 @@ export async function getRegistryProfile(userId: string) {
     avatarUrl: user.avatarUrl,
     createdAt: user.createdAt,
     bio: user.bio,
-    groupName: top?.name ?? null, // ← статус
+    groupName: top?.name ?? null,
     certificate: c
       ? {
         id: c.id,
@@ -141,6 +157,6 @@ export async function getRegistryProfile(userId: string) {
         expiresAt: c.expiresAt,
         fileId: c.file.fileId,
       }
-      : null, // ← нет сертификата → фронт показывает заглушку “кандидат”
+      : null,
   };
 }
