@@ -8,7 +8,7 @@ import type { SupervisionSummaryResponse } from '@/features/supervision/api/getS
 
 const GROUP_PROGRESS_PATH: Record<string, string | null> = {
   // ключи — строго в нижнем регистре, т.к. ниже мы делаем toLowerCase()
-  'студент': 'Инструктор',
+  'соискатель': 'Инструктор',
   'инструктор': 'Куратор',
   'куратор': 'Супервизор',
   'супервизор': null,

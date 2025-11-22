@@ -26,9 +26,15 @@ async function getGroupOrThrow(name) {
 }
 
 async function seedGroupsAndAdmin() {
-  // группы
+  // 🔁 ОДНОРАЗОВАЯ миграция: если есть старая группа "Студент" — переименуем в "Соискатель"
+  await prisma.group.updateMany({
+    where: { name: 'Студент' },
+    data: { name: 'Соискатель' },
+  });
+
+  // группы уже с новым названием
   const groups = [
-    { name: 'Студент', rank: 1 },
+    { name: 'Соискатель', rank: 1 },
     { name: 'Инструктор', rank: 2 },
     { name: 'Куратор', rank: 3 },
     { name: 'Супервизор', rank: 4 },
@@ -138,12 +144,12 @@ async function processSupervisors(rows, groups) {
       }
     }
 
-    // линк к "Студент"
+    // линк к "Соискатель"
     const studentLink = await prisma.userGroup.findFirst({
-      where: { userId: user.id, groupId: groups.student.id },
+      where: { userId: user.id, groupId: groups.applicant.id },
     });
     if (!studentLink) {
-      await prisma.userGroup.create({ data: { userId: user.id, groupId: groups.student.id } });
+      await prisma.userGroup.create({ data: { userId: user.id, groupId: groups.applicant.id } });
       linkedStudent++;
     }
 
@@ -181,21 +187,21 @@ async function seedSupervisors() {
   const file = './data/пользователи цс пап-подготовленный файл.xlsx';
   const wb = xlsx.readFile(file);
 
-  const studentGroup = await getGroupOrThrow('Студент');
+  const applicantGroup = await getGroupOrThrow('Соискатель'); // 👈 было 'Студент'
   const supervisorGroup = await getGroupOrThrow('Супервизор');
 
   const supSheetName =
     wb.SheetNames.find((n) => norm(n).toLowerCase() === 'супервизоры') || wb.SheetNames[0];
   const supRows = xlsx.utils.sheet_to_json(wb.Sheets[supSheetName], { defval: '' });
   const stats = await processSupervisors(supRows, {
-    student: studentGroup,
+    applicant: applicantGroup, // 👈 новое имя ключа
     supervisor: supervisorGroup,
   });
 
   console.log(`✅ Импорт супервизоров (${path.basename(file)})`);
   console.log(`Лист "${supSheetName}":
   users: created=${stats.created}, existed=${stats.existed}, skipped=${stats.skipped}
-  group "Студент": linked=${stats.linkedStudent}
+  group "Соискатель": linked=${stats.linkedStudent}
   group "Супервизор": linked=${stats.linkedSupervisor}
   payments REGISTRATION: set to PAID=${stats.regPaid}`);
 }

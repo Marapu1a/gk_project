@@ -21,7 +21,7 @@ export const supervisionRequirementsByGroup: Record<string, SupervisionRequireme
   'Опытный Супервизор': { practice: 0, supervision: 0, supervisor: 0 }, // верхняя ступень
 };
 
-const groupOrder = ['Студент', 'Инструктор', 'Куратор', 'Супервизор', 'Опытный Супервизор'] as const;
+const groupOrder = ['Соискатель', 'Инструктор', 'Куратор', 'Супервизор', 'Опытный Супервизор'] as const;
 
 /**
  * Возвращает требования для следующей квалификационной группы.
@@ -45,7 +45,7 @@ export function getPrevGroupName(current: string): string | null {
  *
  * Считаем по дельте между уровнями, а не по абсолютным значениям:
  *
- * Студент → Инструктор:
+ * Соискатель → Инструктор:
  *   300 practice / 10 supervision = 30
  *
  * Инструктор → Куратор:
@@ -64,7 +64,7 @@ export function getPracticeToSupervisionRatio(groupName: string): number | null 
   const prevName = getPrevGroupName(groupName);
   const prevReq = prevName ? supervisionRequirementsByGroup[prevName] : undefined;
 
-  // если предыдущего уровня нет (Студент → Инструктор) — считаем от нуля
+  // если предыдущего уровня нет (Соискатель → Инструктор) — считаем от нуля
   const prevPractice = prevReq?.practice ?? 0;
   const prevSupervision = prevReq?.supervision ?? 0;
 

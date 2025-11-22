@@ -17,7 +17,7 @@ export type CEUSummary = {
 
 /** Фиксированный порядок квалификационных групп */
 export const GROUP_ORDER = [
-  'Студент',
+  'Соискатель',
   'Инструктор',
   'Куратор',
   'Супервизор',
@@ -30,7 +30,7 @@ export type GroupName = (typeof GROUP_ORDER)[number];
  * Ключ — русское имя группы.
  */
 export const ceuRequirementsByGroup: Record<GroupName, CEUSummary> = {
-  'Студент': { ethics: 0, cultDiver: 0, supervision: 0, general: 0 }, // базовый уровень
+  'Соискатель': { ethics: 0, cultDiver: 0, supervision: 0, general: 0 }, // базовый уровень
   'Инструктор': { ethics: 1, cultDiver: 1, supervision: 0, general: 2 },
   'Куратор': { ethics: 2, cultDiver: 2, supervision: 0, general: 4 },
   'Супервизор': { ethics: 2, cultDiver: 2, supervision: 2, general: 6 },

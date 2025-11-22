@@ -36,7 +36,7 @@ createdAt: DateTime @default(now())
 
 **Связи:**
 
-- supervisionRequests — заявки на супервизию как Студент
+- supervisionRequests — заявки на супервизию как Соискатель
 - supervisedRequests — заявки как супервизор
 - mentorshipRequestsSent / mentorshipRequestsReceived — заявки на менторство
 - ceuRecords — CEU-файлы пользователя
@@ -58,7 +58,7 @@ createdAt: DateTime @default(now())
 
 **Связи:**
 
-- student: User (Студент, кто подал заявку)
+- student: User (Соискатель, кто подал заявку)
 - supervisor: User (супервизор, кто её одобряет)
 
 ---

@@ -30,7 +30,7 @@ async function processSupervisors(rows, groups) {
 
   let created = 0,
     existed = 0,
-    linkedStudent = 0,
+    linkedApplicant = 0,
     linkedSupervisor = 0,
     regPaid = 0,
     skipped = 0;
@@ -80,13 +80,13 @@ async function processSupervisors(rows, groups) {
       existed++;
     }
 
-    // линк к "Студент"
-    const studentLink = await prisma.userGroup.findFirst({
-      where: { userId: user.id, groupId: groups.student.id },
+    // линк к "Соискатель"
+    const applicantLink = await prisma.userGroup.findFirst({
+      where: { userId: user.id, groupId: groups.applicant.id },
     });
-    if (!studentLink) {
-      await prisma.userGroup.create({ data: { userId: user.id, groupId: groups.student.id } });
-      linkedStudent++;
+    if (!applicantLink) {
+      await prisma.userGroup.create({ data: { userId: user.id, groupId: groups.applicant.id } });
+      linkedApplicant++;
     }
 
     // линк к "Супервизор"
@@ -116,28 +116,35 @@ async function processSupervisors(rows, groups) {
     }
   }
 
-  return { created, existed, linkedStudent, linkedSupervisor, regPaid, skipped };
+  return {
+    created,
+    existed,
+    linkedApplicant,
+    linkedSupervisor,
+    regPaid,
+    skipped,
+  };
 }
 
 async function main() {
   const file = process.argv[2] || './data/пользователи цс пап-подготовленный файл.xlsx';
   const wb = xlsx.readFile(file);
 
-  const studentGroup = await getGroupOrThrow('Студент');
+  const applicantGroup = await getGroupOrThrow('Соискатель'); // ⬅ было "Студент"
   const supervisorGroup = await getGroupOrThrow('Супервизор');
 
   const supSheetName =
     wb.SheetNames.find((n) => norm(n).toLowerCase() === 'супервизоры') || wb.SheetNames[0];
   const supRows = xlsx.utils.sheet_to_json(wb.Sheets[supSheetName], { defval: '' });
   const stats = await processSupervisors(supRows, {
-    student: studentGroup,
+    applicant: applicantGroup,
     supervisor: supervisorGroup,
   });
 
   console.log(`✅ Готово (${path.basename(file)})`);
   console.log(`Лист "${supSheetName}" (супервизоры):
   users: created=${stats.created}, existed=${stats.existed}, skipped=${stats.skipped}
-  group "Студент": linked=${stats.linkedStudent}
+  group "Соискатель": linked=${stats.linkedApplicant}
   group "Супервизор": linked=${stats.linkedSupervisor}
   payments REGISTRATION: set to PAID=${stats.regPaid}`);
 }

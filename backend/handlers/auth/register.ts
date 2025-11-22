@@ -77,11 +77,11 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
   });
 
   const studentGroup = await prisma.group.findFirst({
-    where: { name: 'Студент' },
+    where: { name: 'Соискатель' },
   });
 
   if (!studentGroup) {
-    return reply.code(500).send({ error: 'Группа "Студент" не найдена' });
+    return reply.code(500).send({ error: 'Группа "Соискатель" не найдена' });
   }
 
   await prisma.userGroup.create({

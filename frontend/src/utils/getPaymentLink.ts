@@ -5,7 +5,7 @@ type PaymentTypeExtended = PaymentItem['type'] | 'DOCUMENT_REVIEW_REPEAT';
 
 // ВСЕ ключи — в нижнем регистре
 const PAYMENT_LINKS: Record<string, Partial<Record<PaymentTypeExtended, string>>> = {
-  'студент': {
+  'соискатель': {
     REGISTRATION: 'https://reestrpap.ru/product/registratsiya-na-sayte-i-sbor-chasov-superviziruemoy-praktiki-uroven-instruktor-pap-ibt',
     DOCUMENT_REVIEW: 'https://reestrpap.ru/product/ekspertiza-dokumentov-soiskatelya-na-uroven-instruktor-pap-ibt',
     EXAM_ACCESS: 'https://reestrpap.ru/product/ekzamen-na-uroven-instruktor-pap-ibt',

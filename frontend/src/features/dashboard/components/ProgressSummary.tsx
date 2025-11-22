@@ -6,7 +6,7 @@ import { SupervisionSummaryBlock } from '@/features/supervision/components/Super
 
 // ключи — строго в нижнем регистре
 const GROUP_PROGRESS_PATH: Record<string, string | null> = {
-  студент: 'Инструктор',
+  соискатель: 'Инструктор',
   инструктор: 'Куратор',
   куратор: 'Супервизор',
   супервизор: 'Опытный Супервизор',
