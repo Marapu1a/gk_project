@@ -1,6 +1,7 @@
 // src/pages/UsersPage.tsx
 import { UsersTable } from '@/features/admin/components/UsersTable';
 import { BackButton } from '@/components/BackButton';
+import { DashboardButton } from '@/components/DashboardButton';
 
 export default function UsersPage() {
   return (
@@ -10,9 +11,19 @@ export default function UsersPage() {
         Здесь вы можете просматривать всех пользователей, изменять их роли и смотреть детали.
       </p>
 
+      {/* Верхняя панель кнопок */}
+      <div className="flex gap-3">
+        <BackButton />
+        <DashboardButton />
+      </div>
+
       <UsersTable />
 
-      <BackButton />
+      {/* Нижняя панель кнопок */}
+      <div className="flex gap-3 pt-4 border-t border-gray-200">
+        <BackButton />
+        <DashboardButton />
+      </div>
     </div>
   );
 }

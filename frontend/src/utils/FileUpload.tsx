@@ -117,7 +117,7 @@ export function FileUpload({
       // откатываем превью при реальном фейле
       makeObjectPreview(null);
       setFile(null);
-      setError('Ошибка загрузки файла');
+      setError('Ошибка загрузки файла, не тот формат или ещё какая беда, попробуйте снова.');
       onError?.(err);
       console.error('Ошибка загрузки файла:', err);
     } finally {

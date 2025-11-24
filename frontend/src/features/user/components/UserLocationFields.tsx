@@ -181,6 +181,7 @@ export function UserLocationFields({ countries, cities, onChange }: Props) {
           isDisabled={!selectedCountryOptions.length}
           isClearable
           noOptionsMessage={() => 'Ничего не найдено'}
+          formatCreateLabel={(inputValue) => `Добавить город «${inputValue}»`}
         />
       </div>
     </>

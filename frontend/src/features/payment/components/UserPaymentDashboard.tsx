@@ -18,9 +18,9 @@ const STATUS_LABELS: Record<PaymentItem['status'], string> = {
 };
 
 const ORDERED_TYPES: PaymentItem['type'][] = [
+  'REGISTRATION',
   'DOCUMENT_REVIEW',
   'EXAM_ACCESS',
-  'REGISTRATION',
   'FULL_PACKAGE',
 ];
 

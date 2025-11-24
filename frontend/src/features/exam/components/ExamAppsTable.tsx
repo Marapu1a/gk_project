@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useExamApps } from '../hooks/useExamApps';
 import ExamAppModal from './ExamAppModal';
-import { DashboardButton } from '@/components/DashboardButton';
 import { StatusPill } from '@/components/StatusPill';
 
 type ExamStatus = 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -106,8 +105,6 @@ export default function ExamAppsTable() {
 
         {selected && <ExamAppModal app={selected} onClose={() => setSelected(null)} />}
       </div>
-
-      <DashboardButton />
     </>
   );
 }

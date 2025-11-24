@@ -76,7 +76,7 @@ export function ProgressSummary() {
           <div className="rounded-xl p-3" style={{ background: 'var(--color-blue-soft)' }}>
             <p>
               Цель: <strong>{targetToShow}</strong>
-              {explicitTargetRu ? ' (выбрана пользователем)' : ' (по лесенке)'}
+              {explicitTargetRu ? ' (выбрана пользователем)' : ' (выбрана пользователем)'}
             </p>
           </div>
         )}
