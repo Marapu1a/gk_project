@@ -64,7 +64,7 @@ export function SupervisionSummaryBlock({ user, level }: Props) {
 
   // === Супервизор: суммарные менторские (practice + supervision + supervisor), цель 2000 ===
   if (isSupervisor) {
-    // если бэк прислал mentor — используем его, иначе считаем как раньше
+    // если бэк прислал mentor — используем его, иначе считаем fallback
     const mentor = summary.mentor ?? {
       total:
         (summary.usable.practice ?? 0) +
@@ -77,8 +77,9 @@ export function SupervisionSummaryBlock({ user, level }: Props) {
         (unconfirmed.supervision ?? 0) +
         (unconfirmed.supervisor ?? 0),
     };
-    const usedClamped = Math.min(mentor.total, mentor.required);
-    const percent = mentor.required ? (usedClamped / mentor.required) * 100 : 0;
+
+    const usedClamped = mentor.required ? Math.min(mentor.total, mentor.required) : mentor.total;
+    const percent = mentor.percent ?? (mentor.required ? (usedClamped / mentor.required) * 100 : 0);
 
     return (
       <div className="space-y-3 text-sm">
@@ -141,10 +142,18 @@ export function SupervisionSummaryBlock({ user, level }: Props) {
             {categories.map((cat) => {
               const req = summary.required?.[cat] ?? 0;
               const usable = summary.usable[cat] ?? 0;
-              const used = Math.min(usable, req || Infinity);
-              const percent = req ? (used / req) * 100 : 0;
-              const pending = (summary.pending?.[cat] ?? 0) || 0;
+              const used = req ? Math.min(usable, req) : usable;
 
+              // процент пытаемся взять с бэка, если он есть
+              const percentFromBackend = summary.percent?.[cat];
+              const percent =
+                typeof percentFromBackend === 'number'
+                  ? percentFromBackend
+                  : req
+                    ? (used / req) * 100
+                    : 0;
+
+              const pending = summary.pending?.[cat] ?? 0;
               const pendingFallback = pending || (unconfirmed[cat] ?? 0);
 
               return (

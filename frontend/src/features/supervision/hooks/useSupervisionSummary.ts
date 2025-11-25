@@ -7,17 +7,23 @@ import {
 } from '../api/getSupervisionSummary';
 
 /**
- * Хук SupervisionSummary.
- * Если передан level — требования считаются по выбранной цели.
- * Если нет — используется активная группа (лесенка).
+ * Хук получения summary по супервизии.
+ *
+ * level:
+ * - если передан → бэк считает прогресс для конкретного трека (INSTRUCTOR / CURATOR / SUPERVISOR)
+ * - если не передан → бэк сам выберет активную цель (targetLevel или next group)
  */
 export function useSupervisionSummary(level?: Level | null) {
   const lvl = level ?? undefined;
 
   return useQuery<SupervisionSummaryResponse>({
-    queryKey: ['supervision', 'summary', lvl ?? 'default'],
+    queryKey: ['supervisionSummary', { level: lvl ?? 'auto' }],
     queryFn: () => getSupervisionSummary(lvl),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+
+    // кэш разумный, но не вечный – чтобы прогресс не "залипал"
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+
+    refetchOnWindowFocus: false,
   });
 }

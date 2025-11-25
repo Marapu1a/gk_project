@@ -1,11 +1,15 @@
 // src/utils/supervisionRequirements.ts
+
 /**
- * Требования по часам практики и супервизии для перехода между уровнями.
- * PRACTICE = часы практики (ранее INSTRUCTOR)
- * SUPERVISION = часы супервизии (ранее CURATOR)
- * SUPERVISOR = менторские часы (только для супервизоров)
+ * Требования по часам практики и супервизии для ПОЛУЧЕНИЯ КОНКРЕТНОЙ ГРУППЫ.
  *
- * Значения — накопительные (total), как в таблице.
+ * PRACTICE = часы практики
+ * SUPERVISION = часы супервизии
+ * SUPERVISOR = менторские часы (только для супервизоров, пока 0)
+ *
+ * Значения — НЕ накопительные между ступенями, а цель для экзамена на эту группу.
+ * То, как именно учитываются часы при переходе (сгорают/переносятся), решается
+ * уже в бизнес-логике с учётом выбранного трека (INSTRUCTOR | CURATOR | SUPERVISOR).
  */
 
 export type SupervisionRequirement = {
@@ -15,17 +19,25 @@ export type SupervisionRequirement = {
 };
 
 export const supervisionRequirementsByGroup: Record<string, SupervisionRequirement> = {
+  // Соискатель → Инструктор: 300 практики, 10 супервизии, коэффициент 30
   'Инструктор': { practice: 300, supervision: 10, supervisor: 0 },
-  'Куратор': { practice: 800, supervision: 35, supervisor: 0 },
-  'Супервизор': { practice: 1300, supervision: 60, supervisor: 0 },
-  'Опытный Супервизор': { practice: 0, supervision: 0, supervisor: 0 }, // верхняя ступень
+
+  // Соискатель → Куратор (или после сброса часов инструкторских): 500 / 25, коэффициент 20
+  'Куратор': { practice: 500, supervision: 25, supervisor: 0 },
+
+  // Супервизор: 1500 / 75, коэффициент 20
+  // При пути через куратора часть этих часов даётся "бонусом" — это уже решается бизнес-логикой.
+  'Супервизор': { practice: 1500, supervision: 75, supervisor: 0 },
+
+  // Верхняя ступень, здесь количественных требований нет (решается отдельными правилами)
+  'Опытный Супервизор': { practice: 0, supervision: 0, supervisor: 0 },
 };
 
 const groupOrder = ['Соискатель', 'Инструктор', 'Куратор', 'Супервизор', 'Опытный Супервизор'] as const;
 
 /**
- * Возвращает требования для следующей квалификационной группы.
- * Если текущая последняя — null.
+ * Возвращает имя следующей группы в "лестнице" рангов.
+ * Это абстрактный порядок (Соискатель → Инструктор → …), он не учитывает выбор трека.
  */
 export function getNextGroupName(current: string): string | null {
   const i = groupOrder.indexOf(current as any);
@@ -33,7 +45,8 @@ export function getNextGroupName(current: string): string | null {
 }
 
 /**
- * Имя предыдущей группы (для дельт).
+ * Имя предыдущей группы в общем порядке рангов.
+ * Может использоваться там, где нужна логика "относительно текущей группы".
  */
 export function getPrevGroupName(current: string): string | null {
   const i = groupOrder.indexOf(current as any);
@@ -41,47 +54,34 @@ export function getPrevGroupName(current: string): string | null {
 }
 
 /**
- * Коэффициент пересчёта практики в супервизию ДЛЯ КОНКРЕТНОГО ШАГА.
+ * Коэффициент пересчёта практики в супервизию ДЛЯ ПОЛУЧЕНИЯ УКАЗАННОЙ ГРУППЫ.
  *
- * Считаем по дельте между уровнями, а не по абсолютным значениям:
+ * Пример:
+ *   Инструктор: 300 practice / 10 supervision = 30
+ *   Куратор:   500 practice / 25 supervision = 20
+ *   Супервизор:1500 practice / 75 supervision = 20
  *
- * Соискатель → Инструктор:
- *   300 practice / 10 supervision = 30
- *
- * Инструктор → Куратор:
- *   (800 - 300) practice / (35 - 10) supervision = 500 / 25 = 20
- *
- * Куратор → Супервизор:
- *   (1300 - 800) practice / (60 - 35) supervision = 500 / 25 = 20
- *
- * Возвращает: сколько часов ПРАКТИКИ нужно на 1 час СУПЕРВИЗИИ для ПЕРЕХОДА
- * в указанную группу.
+ * Возвращает: сколько часов ПРАКТИКИ нужно на 1 час СУПЕРВИЗИИ,
+ * если мы целимся в указанную группу.
+ * Конкретный "шаг" (с нуля, после сброса, с учётом бонуса от куратора и т.п.)
+ * определяется бизнес-логикой с учётом трека пользователя.
  */
 export function getPracticeToSupervisionRatio(groupName: string): number | null {
   const targetReq = supervisionRequirementsByGroup[groupName];
   if (!targetReq) return null;
 
-  const prevName = getPrevGroupName(groupName);
-  const prevReq = prevName ? supervisionRequirementsByGroup[prevName] : undefined;
+  const { practice, supervision } = targetReq;
+  if (practice <= 0 || supervision <= 0) return null;
 
-  // если предыдущего уровня нет (Соискатель → Инструктор) — считаем от нуля
-  const prevPractice = prevReq?.practice ?? 0;
-  const prevSupervision = prevReq?.supervision ?? 0;
-
-  const practiceDelta = targetReq.practice - prevPractice;
-  const supervisionDelta = targetReq.supervision - prevSupervision;
-
-  if (practiceDelta <= 0 || supervisionDelta <= 0) return null;
-
-  return practiceDelta / supervisionDelta;
+  return practice / supervision;
 }
 
 /**
  * Авторасчёт часов супервизии по подтверждённым часам практики
- * ДЛЯ ТЕКУЩЕГО ШАГА (между предыдущей группой и groupName).
+ * ДЛЯ КОНКРЕТНОЙ ЦЕЛЕВОЙ ГРУППЫ.
  *
- * Ожидается, что practiceHours — это часы практики,
- * которые учитываются на ЭТОМ шаге (дельта), а не весь накопленный объём.
+ * Ожидается, что practiceHours — это те часы практики,
+ * которые мы считаем для ЭТОГО шага (с учётом трека и базовой точки).
  *
  * Каждое полное "ratio" практики даёт 1 час супервизии.
  */

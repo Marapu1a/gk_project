@@ -1,22 +1,33 @@
 // src/features/supervision/api/getSupervisionSummary.ts
 import { api } from '@/lib/axios';
 
-// enum цели
+// enum цели (трека)
 export type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
 
-// обновляем структуру под новые названия категорий
+// Структура совпадает по форме и с "требованиями", и с фактическими часами.
+// Семантика разная, но по типам нам этого достаточно.
 export type SupervisionSummary = {
-  practice: number;     // было instructor
-  supervision: number;  // было curator
-  supervisor: number;   // менторские
+  practice: number;     // часы практики
+  supervision: number;  // часы супервизии
+  supervisor: number;   // менторские часы
 };
 
 export interface SupervisionSummaryResponse {
+  // Требования к целевой группе (или null, если цели нет — верхняя ступень и т.п.)
   required: SupervisionSummary | null;
+
+  // Проценты выполнения по practice/supervision/supervisor относительно required
+  // (null, если required = null)
   percent: SupervisionSummary | null;
+
+  // Фактически засчитанные часы по текущему треку (с учётом "сгорания" инструктора)
   usable: SupervisionSummary;
-  pending?: SupervisionSummary;
-  mentor?: {
+
+  // Потенциальные часы, которые добавятся, если все pending-записи подтвердят
+  pending: SupervisionSummary;
+
+  // Отдельная шкала для менторства (только если юзер уже супервизор/опытный супервизор)
+  mentor: {
     total: number;
     required: number;
     percent: number;
@@ -24,8 +35,12 @@ export interface SupervisionSummaryResponse {
   } | null;
 }
 
-export async function getSupervisionSummary(level?: Level | null): Promise<SupervisionSummaryResponse> {
+export async function getSupervisionSummary(
+  level?: Level | null,
+): Promise<SupervisionSummaryResponse> {
   const params = level ? { level } : undefined;
-  const { data } = await api.get<SupervisionSummaryResponse>('/supervision/summary', { params });
+  const { data } = await api.get<SupervisionSummaryResponse>('/supervision/summary', {
+    params,
+  });
   return data;
 }
