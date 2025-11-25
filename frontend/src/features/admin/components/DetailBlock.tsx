@@ -100,23 +100,43 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
               </div>
 
               <ul className="space-y-2">
-                {list.map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-center justify-between gap-3 border rounded-xl px-3 py-2"
-                    style={{ borderColor: 'var(--color-green-light)' }}
-                  >
-                    {item.fileId ? (
-                      <>
-                        <a
-                          href={`/uploads/${item.fileId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-brand underline truncate"
-                          title={item.name}
-                        >
-                          {item.name}
-                        </a>
+                {list.map((item) => {
+                  const isImage = /\.(jpe?g|png|webp|gif)$/i.test(item.fileId || '');
+                  const fileUrl = item.fileId ? `/uploads/${item.fileId}` : null;
+
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 border rounded-xl px-3 py-2"
+                      style={{ borderColor: 'var(--color-green-light)' }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* 👇 превью аватарки / картинки */}
+                        {isImage && fileUrl && (
+                          <div
+                            className="w-10 h-10 rounded-full overflow-hidden shrink-0 border bg-white"
+                            style={{ borderColor: 'var(--color-green-light)' }}
+                          >
+                            <img src={fileUrl} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+
+                        {item.fileId ? (
+                          <a
+                            href={fileUrl!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-brand underline truncate"
+                            title={item.name}
+                          >
+                            {item.name}
+                          </a>
+                        ) : (
+                          <span className="truncate">{item.name}</span>
+                        )}
+                      </div>
+
+                      {item.fileId && (
                         <button
                           onClick={() => handleDelete(item.id, category, item.type)}
                           className="btn btn-danger text-xs py-1 px-2"
@@ -125,12 +145,10 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
                         >
                           Удалить
                         </button>
-                      </>
-                    ) : (
-                      <span className="truncate">{item.name}</span>
-                    )}
-                  </li>
-                ))}
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}

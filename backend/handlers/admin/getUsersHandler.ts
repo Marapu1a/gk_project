@@ -35,7 +35,7 @@ function detectRole(tok: string): 'ADMIN' | 'REVIEWER' | 'STUDENT' | null {
 
 export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) {
   const { role, group, search, page, perPage } = req.query as Q;
-  const actorRole = req.user?.role;
+  const actorRole = (req as any).user?.role ?? (req as any).user?.role; // на всякий, если типы кривые
 
   if (!actorRole) {
     return reply.code(401).send({ error: 'Не авторизован' });
@@ -96,6 +96,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
         fullNameLatin: true,
         role: true,
         createdAt: true,
+        avatarUrl: true, // 👈 добавили аватар
         groups: { select: { group: { select: { id: true, name: true } } } },
       },
     }),
@@ -112,6 +113,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
       fullNameLatin: u.fullNameLatin,
       role: u.role,
       createdAt: u.createdAt,
+      avatarUrl: u.avatarUrl ?? null, // 👈 протащили в DTO
       groups: u.groups.map((g) => g.group),
     })),
   });

@@ -14,6 +14,7 @@ type UserRow = {
   role: Role;
   createdAt: string;
   groups: { id: string; name: string }[];
+  avatarUrl?: string | null; // 👈 аватар
 };
 
 const roleMap: Record<Role, string> = {
@@ -55,7 +56,7 @@ export function UsersTable() {
   const [localTotal, setLocalTotal] = useState(0);
 
   useEffect(() => {
-    setLocalUsers(data?.users ?? []);
+    setLocalUsers((data?.users as UserRow[]) ?? []);
     setLocalTotal(data?.total ?? 0);
   }, [data]);
 
@@ -193,6 +194,7 @@ export function UsersTable() {
                     const isAdmin = u.role === 'ADMIN';
                     const isRowPending = pendingId === u.id;
                     const number = (currentPage - 1) * currentPerPage + idx + 1;
+                    const avatarSrc = u.avatarUrl || '/avatar_placeholder.svg';
 
                     return (
                       <tr
@@ -203,8 +205,23 @@ export function UsersTable() {
                         <td className="p-4 text-center">{number}</td>
 
                         <td className="p-4">
-                          <div className="whitespace-normal wrap-break-word" title={u.fullName}>
-                            {u.fullName || '—'}
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-10 h-10 rounded-full overflow-hidden shrink-0 border"
+                              style={{
+                                borderColor: 'var(--color-green-light)',
+                                background: 'var(--color-blue-soft)',
+                              }}
+                            >
+                              <img
+                                src={avatarSrc}
+                                alt={u.fullName || 'Аватар'}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="whitespace-normal wrap-break-word" title={u.fullName}>
+                              {u.fullName || '—'}
+                            </div>
                           </div>
                         </td>
 

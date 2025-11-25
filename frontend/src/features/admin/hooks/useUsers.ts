@@ -3,6 +3,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { api } from '@/lib/axios';
 
 type Role = 'ADMIN' | 'STUDENT' | 'REVIEWER';
+
 type UserRow = {
   id: string;
   fullName: string;
@@ -10,6 +11,8 @@ type UserRow = {
   role: Role;
   createdAt: string;
   groups: { id: string; name: string }[];
+  avatarUrl?: string | null;      // 👈 аватар
+  fullNameLatin?: string | null;  // 👈 если вдруг пригодится где-то ещё
 };
 
 type UsersResponse = {
