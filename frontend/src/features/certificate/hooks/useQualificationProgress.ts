@@ -6,16 +6,17 @@ import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import type { CeuSummaryResponse } from '@/features/ceu/api/getCeuSummary';
 import type { SupervisionSummaryResponse } from '@/features/supervision/api/getSupervisionSummary';
 
-const GROUP_PROGRESS_PATH: Record<string, string | null> = {
-  // ключи — строго в нижнем регистре, т.к. ниже мы делаем toLowerCase()
-  'соискатель': 'Инструктор',
-  'инструктор': 'Куратор',
-  'куратор': 'Супервизор',
-  'супервизор': null,
-  'опытный супервизор': null,
-};
-
+// режим сертификации
 type QualificationMode = 'EXAM' | 'RENEWAL';
+
+// enum цели (как в targetLevel / backend)
+type TargetLevelEnum = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+
+const RU_BY_LEVEL: Record<TargetLevelEnum, string> = {
+  INSTRUCTOR: 'Инструктор',
+  CURATOR: 'Куратор',
+  SUPERVISOR: 'Супервизор',
+};
 
 type QualificationProgress = {
   mode: QualificationMode;
@@ -29,7 +30,8 @@ type QualificationProgress = {
 };
 
 export function useQualificationProgress(
-  activeGroupName: string | undefined
+  activeGroupName: string | undefined,
+  targetLevel?: TargetLevelEnum | null,
 ): QualificationProgress & { examPaid: boolean } {
   const { data: ceuSummary, isLoading: ceuLoading } = useCeuSummary() as {
     data: CeuSummaryResponse;
@@ -51,10 +53,11 @@ export function useQualificationProgress(
   const mode: QualificationMode =
     g === 'супервизор' || g === 'опытный супервизор' ? 'RENEWAL' : 'EXAM';
 
+  // 👇 ключевая правка: целевая группа только из targetLevel
   const targetGroup =
-    mode === 'EXAM' && g ? GROUP_PROGRESS_PATH[g] ?? null : null;
+    mode === 'EXAM' && targetLevel ? RU_BY_LEVEL[targetLevel] : null;
 
-  // CEU: как и было (для цели "Супервизор" требуем CEU.supervision)
+  // === CEU ===
   const ceuReady =
     !!ceuSummary?.percent &&
     ceuSummary.percent.ethics >= 100 &&
@@ -62,9 +65,7 @@ export function useQualificationProgress(
     (targetGroup === 'Супервизор' ? ceuSummary.percent.supervision >= 100 : true) &&
     ceuSummary.percent.general >= 100;
 
-  // 🧠 Supervision:
-  // EXAM — требуем 100% по PRACTICE и 100% по SUPERVISION.
-  // RENEWAL — суммарные (PRACTICE + SUPERVISION + SUPERVISOR) >= 2000.
+  // === Supervision / менторство ===
   let supervisionReady = false;
   if (mode === 'EXAM') {
     supervisionReady =
@@ -85,22 +86,27 @@ export function useQualificationProgress(
   const documentsReady =
     docReview?.status === 'CONFIRMED' && documentPayment?.status === 'PAID';
 
-  // Экзаменьская оплата (нужна только в EXAM)
-  const examPaid = (payments ?? []).some((p) => p.type === 'EXAM_ACCESS' && p.status === 'PAID');
+  // Экзаменная оплата (нужна только в EXAM)
+  const examPaid = (payments ?? []).some(
+    (p) => p.type === 'EXAM_ACCESS' && p.status === 'PAID',
+  );
 
-  // Причины выводим только в EXAM-режиме
+  // Причины (только EXAM)
   const reasons: string[] = [];
   if (mode === 'EXAM') {
+    if (!targetGroup) reasons.push('Цель сертификации не выбрана');
     if (!ceuReady) reasons.push('Недостаточно CEU-баллов');
     if (!supervisionReady) reasons.push('Недостаточно часов супервизии');
     if (!documentsReady) reasons.push('Документы не подтверждены или не оплачены');
   }
 
   // ✅ Допуск
+  const hasTarget = !!targetGroup;
+
   const isEligible =
     mode === 'RENEWAL'
       ? ceuReady && documentsReady
-      : ceuReady && supervisionReady && documentsReady;
+      : hasTarget && ceuReady && supervisionReady && documentsReady;
 
   return {
     mode,

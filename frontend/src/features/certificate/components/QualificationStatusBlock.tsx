@@ -2,18 +2,20 @@
 import { useQualificationProgress } from '@/features/certificate/hooks/useQualificationProgress';
 import { CheckCircle, XCircle } from 'lucide-react';
 
-// Экзаменная секция подключается ТОЛЬКО для не-супервизоров
 import { useMyExamApp } from '@/features/exam/hooks/useMyExamApp';
 import { usePatchExamAppStatus } from '@/features/exam/hooks/usePatchExamAppStatus';
 import { getModerators } from '@/features/notifications/api/moderators';
 import { postNotification } from '@/features/notifications/api/notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import { examStatusLabels } from '@/utils/labels';
+import type { TargetLevel } from '@/features/user/api/setTargetLevel';
 
 export function QualificationStatusBlock({
   activeGroupName,
+  targetLevel,
 }: {
   activeGroupName: string | undefined;
+  targetLevel: TargetLevel;
 }) {
   const isSupervisor = activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
 
@@ -21,12 +23,12 @@ export function QualificationStatusBlock({
     targetGroup,
     isEligible,
     ceuReady,
-    supervisionReady, // для супервизоров это логика менторства (меняем только подпись)
+    supervisionReady,
     documentsReady,
     loading,
     reasons,
-    examPaid, // используем ТОЛЬКО в экзаменной секции (не для супервизоров)
-  } = useQualificationProgress(activeGroupName) as any;
+    examPaid,
+  } = useQualificationProgress(activeGroupName, targetLevel ?? null) as any;
 
   // Нормализуем причины недопуска под роль
   const normalizedReasons =
@@ -61,6 +63,8 @@ export function QualificationStatusBlock({
     );
   }
 
+  const hasTargetGroup = Boolean(targetGroup);
+
   return (
     <div
       className="rounded-2xl border header-shadow bg-white"
@@ -75,9 +79,14 @@ export function QualificationStatusBlock({
 
       {/* Body */}
       <div className="px-6 py-5 space-y-4 text-sm">
-        {targetGroup && (
+        {hasTargetGroup ? (
           <p>
             <strong>Целевая группа:</strong> {targetGroup}
+          </p>
+        ) : (
+          <p className="text-xs text-red-700">
+            <strong>Цель сертификации не выбрана.</strong> Выберите путь (Инструктор / Куратор /
+            Супервизор), чтобы система могла считать ваш прогресс.
           </p>
         )}
 

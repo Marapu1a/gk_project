@@ -11,6 +11,14 @@ const TARGET_NAME_BY_LEVEL: Record<TargetLevel, string> = {
   SUPERVISOR: 'Супервизор',
 };
 
+// Какие цели можно выбирать с конкретной активной группы
+const ALLOWED_TARGETS_BY_GROUP: Record<string, TargetLevel[]> = {
+  'Соискатель': ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'],
+  'Инструктор': ['CURATOR', 'SUPERVISOR'],
+  'Куратор': ['SUPERVISOR'],
+  // 'Супервизор' и 'Опытный Супервизор' — новых целей нет (кроме админских правок)
+};
+
 export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyReply) {
   const { user } = req as any;
   const { id } = req.params as { id: string };
@@ -31,8 +39,8 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     where: { id },
     select: {
       id: true,
-      email: true,            // NEW: для текста уведомления (не обязательно, но полезно)
-      fullName: true,         // NEW
+      email: true,
+      fullName: true,
       targetLevel: true,
       targetLockRank: true,
       groups: { select: { group: { select: { name: true, rank: true } } } },
@@ -40,7 +48,19 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
   });
   if (!dbUser) return reply.code(404).send({ error: 'USER_NOT_FOUND' });
 
-  const activeRank = dbUser.groups.map((g) => g.group.rank).sort((a, b) => b - a)[0] ?? 0;
+  const groupsSorted = dbUser.groups
+    .map((g) => g.group)
+    .sort((a, b) => b.rank - a.rank);
+
+  const activeRank = groupsSorted[0]?.rank ?? 0;
+  const activeGroupName = groupsSorted[0]?.name ?? null;
+
+  // if user is already at top (Супервизор / Опытный), нормальные цели ему не положены
+  if (!isAdmin && (activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор')) {
+    if (targetLevel !== null) {
+      return reply.code(400).send({ error: 'NO_TARGET_FOR_SUPERVISOR' });
+    }
+  }
 
   // запрет опускать цель ниже достигнутого уровня
   if (targetLevel) {
@@ -51,11 +71,26 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     const rankByName = new Map(targetGroups.map((g) => [g.name, g.rank]));
     const targetName = TARGET_NAME_BY_LEVEL[targetLevel];
     const targetRank = rankByName.get(targetName);
+
     if (typeof targetRank !== 'number') {
       return reply.code(500).send({ error: 'TARGET_GROUP_NOT_CONFIGURED' });
     }
+
+    // цель не может быть ниже текущего ранга
     if (targetRank < activeRank) {
       return reply.code(400).send({ error: 'TARGET_BELOW_ACTIVE' });
+    }
+
+    // и не может быть "нелегальной" для текущей группы (кроме админов)
+    if (!isAdmin) {
+      const allowed =
+        (activeGroupName && ALLOWED_TARGETS_BY_GROUP[activeGroupName]) ??
+        // если групп ещё нет, считаем как "Соискатель"
+        ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'];
+
+      if (!allowed.includes(targetLevel)) {
+        return reply.code(400).send({ error: 'TARGET_NOT_ALLOWED_FOR_ACTIVE_GROUP' });
+      }
     }
   }
 
@@ -67,9 +102,9 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
 
   // Если ничего не меняется — короткий выход
   if (
-    (dbUser.targetLevel === targetLevel &&
-      ((targetLevel === null && dbUser.targetLockRank === null) ||
-        (targetLevel !== null && dbUser.targetLockRank === activeRank)))
+    dbUser.targetLevel === targetLevel &&
+    ((targetLevel === null && dbUser.targetLockRank === null) ||
+      (targetLevel !== null && dbUser.targetLockRank === activeRank))
   ) {
     return reply.send({
       id: dbUser.id,
@@ -83,11 +118,12 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     where: { role: 'ADMIN' },
     select: { id: true },
   });
-  const adminIds = adminList.map(a => a.id);
+  const adminIds = adminList.map((a) => a.id);
 
   // --- Ветвление по целям ---
 
-  // 1) Сброс на "Лесенку": разрешаем, если НЕ locked или админ
+  // 1) Сброс на "нет цели" (возврат к обязательному выбору пути).
+  // Разрешаем, если НЕ locked или админ.
   if (targetLevel === null) {
     if (lockedNow && !isAdmin) {
       return reply.code(403).send({ error: 'TARGET_LOCKED' });
@@ -109,15 +145,15 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
         data: {
           status: 'UNPAID',
           confirmedAt: null,
-          comment: 'Сброшено: возврат на «лесенку»',
+          comment: 'Сброшено: возврат к выбору цели',
         },
       });
 
-      // NEW: notify admins
+      // уведомляем админов
       if (adminIds.length) {
         const message =
           `Пользователь ${dbUser.fullName ?? dbUser.email ?? dbUser.id} ` +
-          `сбросил цель на «Лесенку». Сброшено платежей: ${reset.count}.`;
+          `сбросил цель. Сброшено платежей: ${reset.count}.`;
         await tx.notification.createMany({
           data: adminIds.map((adminId) => ({
             userId: adminId,
@@ -159,7 +195,7 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
       },
     });
 
-    // NEW: notify admins
+    // уведомляем админов
     if (adminIds.length) {
       const targetName = TARGET_NAME_BY_LEVEL[targetLevel!];
       const message =

@@ -13,6 +13,7 @@ import { UserSelfProfileBlock } from '@/features/user/components/UserSelfProfile
 import { BioEditModal } from '@/features/user/components/BioEditModal';
 import { AdminDbBackupBlock } from '@/features/backup/components/AdminDbBackupBlock';
 import { TargetLevelSelector } from './TargetLevelSelector';
+import type { TargetLevel } from '@/features/user/api/setTargetLevel';
 
 // фиксируем тип уровня
 const LEVELS = ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'] as const;
@@ -45,6 +46,8 @@ export function UserInfo() {
     payments.some((p) => p.type === 'FULL_PACKAGE' && p.status === 'PAID');
 
   const targetLevelName = user.targetLevel ? RU_BY_LEVEL[user.targetLevel as Level] : undefined;
+
+  const hasTargetLevel = !!user.targetLevel;
 
   return (
     <div
@@ -81,7 +84,10 @@ export function UserInfo() {
         ) : (
           <div
             className="rounded-xl p-3 text-sm"
-            style={{ background: 'var(--color-blue-soft)', border: '1px solid rgba(31,48,94,0.2)' }}
+            style={{
+              background: 'var(--color-blue-soft)',
+              border: '1px solid rgba(31,48,94,0.2)',
+            }}
           >
             <p>Вы можете добавить краткое описание «О себе» (до 500 символов).</p>
           </div>
@@ -110,8 +116,12 @@ export function UserInfo() {
             {/* === Выбор цели === */}
             {!isSupervisorLike && <TargetLevelSelector user={user} isAdmin={isAdmin} />}
 
+            {/* Статус допуска — только после оплаты (как и было) */}
             {!payLoading && (isAdmin || registrationPaid) ? (
-              <QualificationStatusBlock activeGroupName={user.activeGroup?.name} />
+              <QualificationStatusBlock
+                activeGroupName={user.activeGroup?.name}
+                targetLevel={user.targetLevel as TargetLevel}
+              />
             ) : (
               !payLoading && (
                 <div
@@ -129,10 +139,29 @@ export function UserInfo() {
               )
             )}
 
-            <UserPaymentDashboard
-              activeGroupName={user.activeGroup?.name || ''}
-              targetLevelName={targetLevelName}
-            />
+            {/* === Оплата: недоступна, пока цель не выбрана === */}
+            {hasTargetLevel ? (
+              <UserPaymentDashboard
+                activeGroupName={user.activeGroup?.name || ''}
+                targetLevelName={targetLevelName}
+              />
+            ) : (
+              <div
+                className="mt-3 rounded-xl p-3 text-sm"
+                style={{
+                  background: 'var(--color-blue-soft)',
+                  border: '1px solid rgba(31,48,94,0.2)',
+                }}
+              >
+                <p>
+                  Чтобы перейти к оплате, сначала выберите{' '}
+                  <strong>цель сертификации (Инструктор / Куратор / Супервизор)</strong> выше.
+                </p>
+                <p className="mt-1">
+                  Оплата невозможна, пока не понятно, за какой путь вы платите.
+                </p>
+              </div>
+            )}
           </>
         )}
 

@@ -16,7 +16,7 @@ const RU_BY_LEVEL: Record<Level, string> = {
   SUPERVISOR: 'Супервизор',
 };
 
-// без «Соискатель» цели нет, но он может быть активным
+// порядок рангов (от Соискателя до вершины)
 const FULL_ORDER = [
   'Соискатель',
   'Инструктор',
@@ -37,7 +37,7 @@ type Props = {
 export function TargetLevelSelector({ user, isAdmin }: Props) {
   const setTarget = useSetTargetLevel(user.id);
 
-  // локальное состояние: либо Level, либо пустая строка для «лесенки»
+  // локальное состояние: либо Level, либо пустая строка для "цель не выбрана"
   const [selected, setSelected] = useState<Level | ''>((user.targetLevel ?? '') as Level | '');
 
   // синхронимся, когда обновляется user.targetLevel
@@ -49,10 +49,14 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
     ? FULL_ORDER.indexOf(user.activeGroup.name as (typeof FULL_ORDER)[number])
     : -1;
 
+  const activeGroupName = user.activeGroup?.name;
+  const isSupervisor = activeGroupName === 'Супервизор';
+  const isSeniorSupervisor = activeGroupName === 'Опытный Супервизор';
+
   // доступны только уровни строго выше активной группы
   const availableLevels: Level[] = LEVELS.filter((lvl) => levelIndex(lvl) > activeIdx);
 
-  // если выбранный уровень стал недоступен (повышение) — сброс на «лесенку»
+  // если выбранный уровень стал недоступен (повышение) — сброс на "нет цели"
   useEffect(() => {
     if (selected && !availableLevels.includes(selected)) {
       setSelected('');
@@ -63,24 +67,34 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
 
   const targetLevel = user.targetLevel as ApiTargetLevel | null;
   const targetLevelName = targetLevel ? RU_BY_LEVEL[targetLevel as Level] : undefined;
-  const targetNameForBadge = targetLevelName ?? 'не выбрана (по умолчанию)';
+  const targetNameForBadge = targetLevelName ?? 'не выбрана (нужно выбрать путь)';
 
   const noChange =
     (selected === '' && targetLevel === null) || (selected !== '' && targetLevel === selected);
+
+  const noTargetsForRole = !isAdmin && (isSupervisor || isSeniorSupervisor);
 
   const saveDisabled =
     setTarget.isPending ||
     locked ||
     noChange ||
+    noTargetsForRole ||
     (selected !== '' && !availableLevels.includes(selected));
 
   const serverErr = (setTarget.error as any)?.response?.data?.error as string | undefined;
+
   const lockedMsg =
     serverErr === 'TARGET_LOCKED'
       ? 'Цель уже выбрана. Сменить можно после повышения уровня или через администратора.'
-      : null;
+      : serverErr === 'TARGET_NOT_ALLOWED_FOR_ACTIVE_GROUP'
+        ? 'Эта цель недоступна для вашего текущего уровня.'
+        : serverErr === 'TARGET_BELOW_ACTIVE'
+          ? 'Нельзя выбрать цель ниже уже достигнутого уровня.'
+          : serverErr === 'NO_TARGET_FOR_SUPERVISOR'
+            ? 'Для супервизоров и опытных супервизоров цель больше не требуется.'
+            : null;
 
-  const selectDisabled = locked;
+  const selectDisabled = locked || noTargetsForRole;
 
   const doMutate = (nextTarget: ApiTargetLevel | null) => {
     setTarget.mutate(nextTarget);
@@ -91,12 +105,12 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
 
     const nextTarget = selected === '' ? null : (selected as ApiTargetLevel);
 
-    // если цель реально выбирается (не лесенка) — спрашиваем подтверждение через toast
+    // выбор конкретной цели — с подтверждением
     if (nextTarget) {
       const label = RU_BY_LEVEL[nextTarget as Level];
 
       toast(
-        `Вы собираетесь выбрать цель: «${label}». После выбора изменить её нельзя, пока вы не сдадите квалификационный экзамен.`,
+        `Вы собираетесь выбрать путь: «${label}». После выбора изменить его нельзя, пока вы не получите соответствующую квалификацию.`,
         {
           action: {
             label: 'Подтвердить',
@@ -111,7 +125,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
         },
       );
     } else {
-      // переключение обратно на «лесенку» — без подтверждения
+      // сброс цели на "нет пути" — тоже важное действие, но без модалки оставим (решать тебе)
       doMutate(null);
     }
   };
@@ -125,11 +139,17 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
             выбор заблокирован до повышения уровня
           </span>
         )}
+        {noTargetsForRole && !locked && (
+          <span className="ml-2 inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+            на вашем уровне дальнейшие цели не требуются
+          </span>
+        )}
       </div>
 
       <p className="text-xs text-gray-600">
-        После выбора цели изменить её нельзя, пока вы не сдадите квалификационный экзамен. Если
-        допустили ошибку, обратитесь к администратору.
+        Цель определяет ваш путь: Инструктор, Куратор или Супервизор. После выбора изменить путь
+        нельзя, пока вы не подтвердите квалификацию. Если допустили ошибку, обратитесь к
+        администратору.
       </p>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -142,10 +162,16 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
           }}
           disabled={selectDisabled}
           title={
-            locked ? 'Сменить можно после повышения уровня (или через администратора)' : undefined
+            locked
+              ? 'Сменить можно после повышения уровня (или через администратора)'
+              : noTargetsForRole
+                ? 'Для супервизоров и опытных супервизоров цель больше не требуется'
+                : undefined
           }
         >
-          <option value="">— Уровень сертификации —</option>
+          <option value="">
+            — Выберите путь сертификации (Инструктор / Куратор / Супервизор) —
+          </option>
           {availableLevels.map((lvl) => (
             <option key={lvl} value={lvl}>
               {RU_BY_LEVEL[lvl]}
@@ -157,14 +183,18 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
           onClick={handleSave}
           disabled={saveDisabled}
           title={
-            locked ? 'Сменить можно после повышения уровня (или через администратора)' : undefined
+            locked
+              ? 'Сменить можно после повышения уровня (или через администратора)'
+              : noTargetsForRole
+                ? 'Для супервизоров и опытных супервизоров цель больше не требуется'
+                : undefined
           }
         >
           Сохранить
         </Button>
 
         {setTarget.isError && (
-          <span className="text-red-600">{lockedMsg ?? 'Ошибка сохранения'}</span>
+          <span className="text-red-600">{lockedMsg ?? 'Ошибка сохранения цели'}</span>
         )}
         {setTarget.isSuccess && <span className="text-green-600">Цель обновлена</span>}
       </div>
