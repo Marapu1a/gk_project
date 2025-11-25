@@ -110,7 +110,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
       const label = RU_BY_LEVEL[nextTarget as Level];
 
       toast(
-        `Вы собираетесь уровень: «${label}». После выбора изменить его нельзя, пока вы не получите соответствующую квалификацию.`,
+        `Вы собираетесь выбрать уровень: «${label}». После выбора изменить его нельзя, пока вы не получите соответствующую квалификацию.`,
         {
           action: {
             label: 'Подтвердить',
@@ -169,9 +169,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
                 : undefined
           }
         >
-          <option value="">
-            — Выберите путь сертификации (Инструктор / Куратор / Супервизор) —
-          </option>
+          <option value="">— Выберите уровень сертификации —</option>
           {availableLevels.map((lvl) => (
             <option key={lvl} value={lvl}>
               {RU_BY_LEVEL[lvl]}

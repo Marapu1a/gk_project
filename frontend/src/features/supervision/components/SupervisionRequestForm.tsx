@@ -22,7 +22,8 @@ const tokenize = (s: string) =>
     .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
     .filter(Boolean);
 
-const MAX_HOURS_PER_REQUEST = 240;
+// максимум в ОДНОЙ заявке для менторских часов
+const MAX_MENTOR_HOURS_PER_REQUEST = 24;
 
 export function SupervisionRequestForm() {
   const navigate = useNavigate();
@@ -64,7 +65,7 @@ export function SupervisionRequestForm() {
 
   const userEmail = user?.email ?? 'без email';
 
-  // === остаток менторских часов (для супервизоров) ===
+  // === информация по менторству из summary (для супервизоров) ===
   const mentorInfo = (supervisionSummary as any)?.mentor;
   const mentorLimit: number | null =
     isMentor && mentorInfo && typeof mentorInfo.required === 'number' ? mentorInfo.required : null;
@@ -74,6 +75,31 @@ export function SupervisionRequestForm() {
 
   const mentorRemaining: number | null =
     isMentor && mentorLimit !== null ? Math.max(0, mentorLimit - mentorAlready) : null;
+
+  // === остаток практики до цели (для не-супервизоров) ===
+  const practiceRemaining: number | null = useMemo(() => {
+    if (!supervisionSummary || isMentor) return null;
+
+    const requiredPractice = supervisionSummary.required?.practice ?? 0;
+    if (requiredPractice <= 0) return null;
+
+    const usablePractice = supervisionSummary.usable?.practice ?? 0;
+    const pendingPractice = supervisionSummary.pending?.practice ?? 0;
+
+    const remaining = requiredPractice - (usablePractice + pendingPractice);
+    return Math.max(0, remaining);
+  }, [supervisionSummary, isMentor]);
+
+  // === итоговый лимит для ЭТОЙ заявки ===
+  const requestLimit: number | null = useMemo(() => {
+    if (isMentor) {
+      // для менторства: не больше 24 за заявку и не больше остатка до 2000
+      if (mentorRemaining === null) return MAX_MENTOR_HOURS_PER_REQUEST;
+      return Math.max(0, Math.min(MAX_MENTOR_HOURS_PER_REQUEST, mentorRemaining));
+    }
+    // для практики: сколько осталось до цели
+    return practiceRemaining;
+  }, [isMentor, mentorRemaining, practiceRemaining]);
 
   // состояние для поля "Email супервизора" с подсказками
   const [supervisorEmailInput, setSupervisorEmailInput] = useState('');
@@ -139,24 +165,22 @@ export function SupervisionRequestForm() {
       return sum + val;
     }, 0);
 
-    // базовый лимит на заявку
-    if (totalHours > MAX_HOURS_PER_REQUEST) {
-      toast.error(`В одной заявке можно указать не более ${MAX_HOURS_PER_REQUEST} часов`);
+    // если лимит известен — не даём перелить шкалу
+    if (requestLimit !== null && totalHours > requestLimit) {
+      if (isMentor) {
+        toast.error(
+          `В одной заявке можно указать не более ${requestLimit} часов менторства для текущего лимита.`,
+        );
+      } else {
+        toast.error(`В этой заявке можно указать не более ${requestLimit} часов практики до цели.`);
+      }
       return;
     }
 
-    // доп. ограничение для супервизоров: не перепрыгнуть общий лимит менторства
-    if (isMentor && mentorRemaining !== null) {
-      if (mentorRemaining <= 0) {
-        toast.error('Вы уже набрали максимально допустимое количество часов менторства.');
-        return;
-      }
-      if (totalHours > mentorRemaining) {
-        toast.error(
-          `Вы можете добавить не более ${mentorRemaining} часов менторства (лимит ${mentorLimit} часов).`,
-        );
-        return;
-      }
+    // доп. проверка для супервизоров: глобальный остаток
+    if (isMentor && mentorRemaining !== null && mentorRemaining <= 0) {
+      toast.error('Вы уже набрали максимально допустимое количество часов менторства.');
+      return;
     }
 
     try {
@@ -291,7 +315,7 @@ export function SupervisionRequestForm() {
                     type="number"
                     step={1}
                     min={1}
-                    max={MAX_HOURS_PER_REQUEST}
+                    max={requestLimit ?? undefined}
                     {...register(`entries.${index}.value`, { valueAsNumber: true })}
                     className="input w-32"
                     aria-invalid={!!errors.entries?.[index]?.value || undefined}
@@ -322,6 +346,13 @@ export function SupervisionRequestForm() {
             </p>
           )}
 
+          {!isMentor && practiceRemaining !== null && (
+            <p className="mt-1 text-xs text-gray-600">
+              До цели по практике осталось <strong>{practiceRemaining}</strong> часов. Больше в
+              одной заявке указать нельзя.
+            </p>
+          )}
+
           <button
             type="button"
             onClick={() => {
@@ -332,24 +363,22 @@ export function SupervisionRequestForm() {
                 return sum + val;
               }, 0);
 
-              // базовый лимит на заявку
-              if (currentTotal >= MAX_HOURS_PER_REQUEST) {
-                toast.error(`В одной заявке можно указать не более ${MAX_HOURS_PER_REQUEST} часов`);
+              if (requestLimit !== null && currentTotal >= requestLimit) {
+                if (isMentor) {
+                  toast.error(
+                    `В одной заявке можно указать не более ${requestLimit} часов менторства для текущего лимита.`,
+                  );
+                } else {
+                  toast.error(
+                    `В этой заявке можно указать не более ${requestLimit} часов практики до цели.`,
+                  );
+                }
                 return;
               }
 
-              // доп. ограничение по остатку менторских часов
-              if (isMentor && mentorRemaining !== null) {
-                if (mentorRemaining <= 0) {
-                  toast.error('Вы уже набрали максимально допустимое количество часов менторства.');
-                  return;
-                }
-                if (currentTotal >= mentorRemaining) {
-                  toast.error(
-                    `Вы можете добавить в этой заявке не более ${mentorRemaining} часов менторства.`,
-                  );
-                  return;
-                }
+              if (isMentor && mentorRemaining !== null && mentorRemaining <= 0) {
+                toast.error('Вы уже набрали максимально допустимое количество часов менторства.');
+                return;
               }
 
               append({ type: isMentor ? 'SUPERVISOR' : 'PRACTICE', value: 1 });
