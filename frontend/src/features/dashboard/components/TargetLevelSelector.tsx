@@ -67,7 +67,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
 
   const targetLevel = user.targetLevel as ApiTargetLevel | null;
   const targetLevelName = targetLevel ? RU_BY_LEVEL[targetLevel as Level] : undefined;
-  const targetNameForBadge = targetLevelName ?? 'не выбрана (нужно выбрать путь)';
+  const targetNameForBadge = targetLevelName ?? 'не выбран';
 
   const noChange =
     (selected === '' && targetLevel === null) || (selected !== '' && targetLevel === selected);
@@ -110,7 +110,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
       const label = RU_BY_LEVEL[nextTarget as Level];
 
       toast(
-        `Вы собираетесь выбрать путь: «${label}». После выбора изменить его нельзя, пока вы не получите соответствующую квалификацию.`,
+        `Вы собираетесь уровень: «${label}». После выбора изменить его нельзя, пока вы не получите соответствующую квалификацию.`,
         {
           action: {
             label: 'Подтвердить',
@@ -133,7 +133,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
   return (
     <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--color-blue-soft)' }}>
       <div>
-        <strong>Текущая цель:</strong> {targetNameForBadge}
+        <strong>Текущий уровень сертификации:</strong> {targetNameForBadge}
         {locked && (
           <span className="ml-2 inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
             выбор заблокирован до повышения уровня
@@ -147,7 +147,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
       </div>
 
       <p className="text-xs text-gray-600">
-        Цель определяет ваш путь: Инструктор, Куратор или Супервизор. После выбора изменить путь
+        Необходимо выбрать уровень: Инструктор, Куратор или Супервизор. После выбора изменить выбор
         нельзя, пока вы не подтвердите квалификацию. Если допустили ошибку, обратитесь к
         администратору.
       </p>

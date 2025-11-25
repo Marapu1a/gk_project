@@ -22,7 +22,7 @@ const tokenize = (s: string) =>
     .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
     .filter(Boolean);
 
-const MAX_HOURS_PER_REQUEST = 24;
+const MAX_HOURS_PER_REQUEST = 240;
 
 export function SupervisionRequestForm() {
   const navigate = useNavigate();
