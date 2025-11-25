@@ -8,7 +8,7 @@ type Props = {
 };
 
 export function CeuSummaryBlock({ level }: Props) {
-  const { data: summary, isLoading: loadingSummary } = useCeuSummary(level || undefined);
+  const { data: summary, isLoading: loadingSummary } = useCeuSummary(level ?? undefined);
 
   if (loadingSummary) {
     return <p className="text-sm text-blue-dark">Загрузка CEU…</p>;
@@ -28,9 +28,26 @@ export function CeuSummaryBlock({ level }: Props) {
 
   const fmtPercent = (v?: number) => (typeof v === 'number' ? Math.min(Math.max(v, 0), 100) : 0);
 
+  // Суммарное требуемое количество CEU по всем категориям
+  const totalRequired =
+    (summary.required?.ethics ?? 0) +
+    (summary.required?.cultDiver ?? 0) +
+    (summary.required?.supervision ?? 0) +
+    (summary.required?.general ?? 0);
+
+  // Для супервизоров/опытных супервизоров бэк теперь отдаёт 4+4+4+12 = 24
+  const isContinuous24 = totalRequired === 24;
+
   return (
     <div className="space-y-3 text-sm">
-      <h3 className="text-lg font-semibold text-blue-dark">CEU-баллы</h3>
+      <h3 className="text-lg font-semibold text-blue-dark">
+        CEU-баллы
+        {isContinuous24 && (
+          <span className="ml-2 text-xs font-normal text-gray-700">
+            (24 балла непрерывного образования)
+          </span>
+        )}
+      </h3>
 
       <div
         className="overflow-x-auto rounded-2xl border"
@@ -49,13 +66,9 @@ export function CeuSummaryBlock({ level }: Props) {
 
           <tbody>
             {categories.map((cat) => {
-              const requiredVal = summary.required?.[cat];
-
-              // 🔥 главное изменение — режем ненужную "Супервизию"
-              if (cat === 'supervision' && (!requiredVal || requiredVal === 0)) {
-                return null;
-              }
-
+              const requiredVal = summary.required?.[cat] ?? 0;
+              const usableVal = summary.usable[cat];
+              const totalVal = summary.total[cat];
               const percentValue = fmtPercent(summary.percent?.[cat]);
 
               return (
@@ -65,12 +78,12 @@ export function CeuSummaryBlock({ level }: Props) {
                   style={{ borderColor: 'var(--color-green-light)' }}
                 >
                   <td className="p-2">{categoryLabels[cat]}</td>
-                  <td className="p-2 text-center">{requiredVal ?? '—'}</td>
-                  <td className="p-2 text-center">{summary.usable[cat]}</td>
+                  <td className="p-2 text-center">{totalRequired > 0 ? requiredVal : '—'}</td>
+                  <td className="p-2 text-center">{usableVal}</td>
                   <td className="p-2 text-center">
                     <div className="w-full max-w-[100px] mx-auto">
                       <div
-                        className="h-2 rounded-full bg-gray-200 overflow-hidden"
+                        className="h-2 rounded-full overflow-hidden"
                         style={{ backgroundColor: 'var(--color-green-light)' }}
                       >
                         <div
@@ -84,9 +97,7 @@ export function CeuSummaryBlock({ level }: Props) {
                       <span className="text-xs text-gray-600">{percentValue}%</span>
                     </div>
                   </td>
-                  <td className="p-2 text-center">
-                    {summary.total[cat] > 0 ? summary.total[cat] : '—'}
-                  </td>
+                  <td className="p-2 text-center">{totalVal > 0 ? totalVal : '—'}</td>
                 </tr>
               );
             })}

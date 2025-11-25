@@ -113,8 +113,10 @@ export async function supervisionSummaryHandler(
       ? (() => {
         const total = usable.practice + usable.supervision + usable.supervisor;
         const pendingSum = pending.practice + pending.supervision + pending.supervisor;
-        const requiredTotal = 2000;
-        const pct = clampPct(Math.round((total / requiredTotal) * 100));
+        const requiredTotal = 24; // ⬅️ МАКСИМУМ МЕНТОРСКИХ ЧАСОВ
+        const pct = requiredTotal
+          ? clampPct(Math.round((total / requiredTotal) * 100))
+          : 0;
         return { total, required: requiredTotal, percent: pct, pending: pendingSum };
       })()
       : null;
@@ -196,8 +198,10 @@ export async function supervisionSummaryHandler(
     ? (() => {
       const total = usable.practice + usable.supervision + usable.supervisor;
       const pendingSum = pending.practice + pending.supervision + pending.supervisor;
-      const requiredTotal = 2000;
-      const pct = clampPct(Math.round((total / requiredTotal) * 100));
+      const requiredTotal = 24; // ⬅️ МАКСИМУМ МЕНТОРСКИХ ЧАСОВ
+      const pct = requiredTotal
+        ? clampPct(Math.round((total / requiredTotal) * 100))
+        : 0;
       return { total, required: requiredTotal, percent: pct, pending: pendingSum };
     })()
     : null;

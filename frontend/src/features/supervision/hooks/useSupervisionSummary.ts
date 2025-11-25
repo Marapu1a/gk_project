@@ -12,6 +12,9 @@ import {
  * level:
  * - если передан → бэк считает прогресс для конкретного трека (INSTRUCTOR / CURATOR / SUPERVISOR)
  * - если не передан → бэк сам выберет активную цель (targetLevel или next group)
+ *
+ * На бэке в ответе теперь всегда может приходить mentor-скала
+ * (для супервизоров/опытных супервизоров, required = 24).
  */
 export function useSupervisionSummary(level?: Level | null) {
   const lvl = level ?? undefined;

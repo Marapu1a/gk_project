@@ -2,17 +2,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCeuSummary, type CeuSummaryResponse, type Level } from '../api/getCeuSummary';
 
-/**
- * Хук CEU-сводки.
- * Если передан level — считаем требования по выбранной цели.
- * Если нет — поведение по умолчанию (лесенка/активная группа).
- */
 export function useCeuSummary(level?: Level | null) {
-  const lvl = level ?? undefined;
+  const lvl = level ?? 'auto';
 
   return useQuery<CeuSummaryResponse>({
-    queryKey: ['ceu', 'summary', lvl ?? 'default'],
-    queryFn: () => getCeuSummary(lvl),
+    queryKey: ['ceuSummary', { level: lvl }],
+    queryFn: () => getCeuSummary(level ?? undefined),
     staleTime: 5 * 60 * 1000,
   });
 }

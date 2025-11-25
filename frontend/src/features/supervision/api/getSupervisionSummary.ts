@@ -9,7 +9,7 @@ export type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
 export type SupervisionSummary = {
   practice: number;     // часы практики
   supervision: number;  // часы супервизии
-  supervisor: number;   // менторские часы
+  supervisor: number;   // менторские часы (записи SUPERVISOR)
 };
 
 export interface SupervisionSummaryResponse {
@@ -26,7 +26,9 @@ export interface SupervisionSummaryResponse {
   // Потенциальные часы, которые добавятся, если все pending-записи подтвердят
   pending: SupervisionSummary;
 
-  // Отдельная шкала для менторства (только если юзер уже супервизор/опытный супервизор)
+  // Отдельная шкала для менторства (только если юзер уже супервизор/опытный супервизор).
+  // На бэке сейчас жёстко: required = 24, total — сумма всех часов трека,
+  // percent — от 0 до 100, pending — сумма часов, которые ещё на проверке.
   mentor: {
     total: number;
     required: number;

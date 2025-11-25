@@ -13,6 +13,7 @@ import { BackButton } from '@/components/BackButton';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useUsers } from '@/features/admin/hooks/useUsers';
+import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
 
 // нормализация/токенизация как в AdminIssueCertificateForm / UsersTable
 const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
@@ -20,6 +21,8 @@ const tokenize = (s: string) =>
   norm(s)
     .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
     .filter(Boolean);
+
+const MAX_HOURS_PER_REQUEST = 24;
 
 export function SupervisionRequestForm() {
   const navigate = useNavigate();
@@ -37,6 +40,9 @@ export function SupervisionRequestForm() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // подтягиваем текущий суммарный прогресс по часам
+  const { data: supervisionSummary } = useSupervisionSummary();
+
   const form = useForm<SupervisionRequestFormData>({
     resolver: zodResolver(supervisionRequestSchema),
     defaultValues: {
@@ -47,7 +53,7 @@ export function SupervisionRequestForm() {
     reValidateMode: 'onChange',
   });
 
-  const { register, handleSubmit, control, formState, reset, setValue } = form;
+  const { register, handleSubmit, control, formState, reset, setValue, getValues } = form;
   const { errors, isSubmitting } = formState;
   const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
 
@@ -57,6 +63,17 @@ export function SupervisionRequestForm() {
   }, [user]);
 
   const userEmail = user?.email ?? 'без email';
+
+  // === остаток менторских часов (для супервизоров) ===
+  const mentorInfo = (supervisionSummary as any)?.mentor;
+  const mentorLimit: number | null =
+    isMentor && mentorInfo && typeof mentorInfo.required === 'number' ? mentorInfo.required : null;
+
+  const mentorAlready: number =
+    isMentor && mentorInfo ? (mentorInfo.total ?? 0) + (mentorInfo.pending ?? 0) : 0;
+
+  const mentorRemaining: number | null =
+    isMentor && mentorLimit !== null ? Math.max(0, mentorLimit - mentorAlready) : null;
 
   // состояние для поля "Email супервизора" с подсказками
   const [supervisorEmailInput, setSupervisorEmailInput] = useState('');
@@ -117,6 +134,31 @@ export function SupervisionRequestForm() {
   }, [errors]);
 
   const onSubmit = async (data: SupervisionRequestFormData) => {
+    const totalHours = (data.entries ?? []).reduce((sum, entry) => {
+      const val = typeof entry.value === 'number' ? entry.value : Number(entry.value) || 0;
+      return sum + val;
+    }, 0);
+
+    // базовый лимит на заявку
+    if (totalHours > MAX_HOURS_PER_REQUEST) {
+      toast.error(`В одной заявке можно указать не более ${MAX_HOURS_PER_REQUEST} часов`);
+      return;
+    }
+
+    // доп. ограничение для супервизоров: не перепрыгнуть общий лимит менторства
+    if (isMentor && mentorRemaining !== null) {
+      if (mentorRemaining <= 0) {
+        toast.error('Вы уже набрали максимально допустимое количество часов менторства.');
+        return;
+      }
+      if (totalHours > mentorRemaining) {
+        toast.error(
+          `Вы можете добавить не более ${mentorRemaining} часов менторства (лимит ${mentorLimit} часов).`,
+        );
+        return;
+      }
+    }
+
     try {
       const supervisor = await getUserByEmail(data.supervisorEmail);
       if (!supervisor?.id) {
@@ -249,7 +291,7 @@ export function SupervisionRequestForm() {
                     type="number"
                     step={1}
                     min={1}
-                    max={200}
+                    max={MAX_HOURS_PER_REQUEST}
                     {...register(`entries.${index}.value`, { valueAsNumber: true })}
                     className="input w-32"
                     aria-invalid={!!errors.entries?.[index]?.value || undefined}
@@ -273,9 +315,45 @@ export function SupervisionRequestForm() {
             ))}
           </div>
 
+          {isMentor && mentorRemaining !== null && (
+            <p className="mt-1 text-xs text-gray-600">
+              Можно добавить ещё не более <strong>{mentorRemaining}</strong> часов менторства из
+              максимально допустимых {mentorLimit}.
+            </p>
+          )}
+
           <button
             type="button"
-            onClick={() => append({ type: isMentor ? 'SUPERVISOR' : 'PRACTICE', value: 1 })}
+            onClick={() => {
+              const currentEntries = getValues('entries') ?? [];
+              const currentTotal = currentEntries.reduce((sum, entry: any) => {
+                const val =
+                  typeof entry?.value === 'number' ? entry.value : Number(entry?.value) || 0;
+                return sum + val;
+              }, 0);
+
+              // базовый лимит на заявку
+              if (currentTotal >= MAX_HOURS_PER_REQUEST) {
+                toast.error(`В одной заявке можно указать не более ${MAX_HOURS_PER_REQUEST} часов`);
+                return;
+              }
+
+              // доп. ограничение по остатку менторских часов
+              if (isMentor && mentorRemaining !== null) {
+                if (mentorRemaining <= 0) {
+                  toast.error('Вы уже набрали максимально допустимое количество часов менторства.');
+                  return;
+                }
+                if (currentTotal >= mentorRemaining) {
+                  toast.error(
+                    `Вы можете добавить в этой заявке не более ${mentorRemaining} часов менторства.`,
+                  );
+                  return;
+                }
+              }
+
+              append({ type: isMentor ? 'SUPERVISOR' : 'PRACTICE', value: 1 });
+            }}
             disabled={isSubmitting}
             className="btn btn-brand mt-2 disabled:opacity-50"
           >

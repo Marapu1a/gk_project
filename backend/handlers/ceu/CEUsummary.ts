@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import { RecordStatus, CEUCategory } from '@prisma/client';
 import {
   ceuRequirementsByGroup as requirementsByGroup,
+  annualCeuRequirementsByGroup,
   getNextGroupName,
   type CEUSummary,
   type GroupName,
@@ -21,7 +22,7 @@ type Query = { level?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' };
 
 export async function ceuSummaryHandler(
   req: FastifyRequest<{ Querystring: Query }>,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) {
   const { user } = req;
   if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
@@ -68,23 +69,38 @@ export async function ceuSummaryHandler(
     });
   }
 
-  const explicitLevel = req.query?.level;
-  const targetFromUser = dbUser.targetLevel ?? undefined;
+  const primaryName = primaryGroup.name as GroupName | string;
+  const isSupervisorGroup =
+    primaryName === 'Супервизор' || primaryName === 'Опытный Супервизор';
 
-  const targetGroupName =
-    (explicitLevel && RU_BY_LEVEL[explicitLevel]) ||
-    (targetFromUser && RU_BY_LEVEL[targetFromUser]) ||
-    getNextGroupName(primaryGroup.name);
+  let required: CEUSummary | null = null;
 
-  const required =
-    (targetGroupName &&
-      (requirementsByGroup[targetGroupName as GroupName] ?? null)) ||
-    null;
+  if (isSupervisorGroup) {
+    // 🔹 ДЛЯ СУПЕРВИЗОРОВ: годовые требования непрерывного образования (24 CEU)
+    const annual = annualCeuRequirementsByGroup[primaryName as GroupName];
+    required = annual ?? null;
+  } else {
+    // 🔹 Для всех остальных: экзаменационные требования к целевой группе (как было)
+    const explicitLevel = req.query?.level;
+    const targetFromUser = dbUser.targetLevel ?? undefined;
+
+    const targetGroupName =
+      (explicitLevel && RU_BY_LEVEL[explicitLevel]) ||
+      (targetFromUser && RU_BY_LEVEL[targetFromUser]) ||
+      getNextGroupName(primaryGroup.name);
+
+    required =
+      (targetGroupName &&
+        (requirementsByGroup[targetGroupName as GroupName] ?? null)) ||
+      null;
+  }
 
   const percent = required ? computePercent(usable, required) : null;
 
   return reply.send({ required, percent, usable, spent, total });
 }
+
+// ----------------- helpers -----------------
 
 function emptySummary(): CEUSummary {
   return { ethics: 0, cultDiver: 0, supervision: 0, general: 0 };

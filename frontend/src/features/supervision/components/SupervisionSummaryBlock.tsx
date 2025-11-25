@@ -20,6 +20,7 @@ export function SupervisionSummaryBlock({ user, level }: Props) {
   const activeGroup = user.activeGroup?.name;
   const isSupervisor = activeGroup === 'Супервизор';
   const isSeniorSupervisor = activeGroup === 'Опытный Супервизор';
+  const isSupervisorLike = isSupervisor || isSeniorSupervisor;
 
   if (loadingSummary || loadingUnconfirmed) {
     return <p className="text-sm text-blue-dark">Загрузка часов супервизии…</p>;
@@ -50,36 +51,24 @@ export function SupervisionSummaryBlock({ user, level }: Props) {
     );
   };
 
-  // === Опытный супервизор ===
-  if (isSeniorSupervisor) {
-    return (
-      <div className="space-y-3 text-sm">
-        <h3 className="text-lg font-semibold text-blue-dark">Менторство / опыт</h3>
-        <div className="rounded-xl p-3" style={{ background: 'var(--color-blue-soft)' }}>
-          <p>Здесь можно показать полезную сводку для опытных супервизоров.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // === Супервизор: суммарные менторские (practice + supervision + supervisor), цель 2000 ===
-  if (isSupervisor) {
-    // если бэк прислал mentor — используем его, иначе считаем fallback
+  // === Супервизоры и опытные супервизоры: менторская шкала (0 / 24) ===
+  if (isSupervisorLike) {
+    // по бэку mentor уже содержит total/required/percent/pending
     const mentor = summary.mentor ?? {
-      total:
-        (summary.usable.practice ?? 0) +
-        (summary.usable.supervision ?? 0) +
-        (summary.usable.supervisor ?? 0),
-      required: 2000,
+      total: 0,
+      required: 24,
       percent: 0,
-      pending:
-        (unconfirmed.practice ?? 0) +
-        (unconfirmed.supervision ?? 0) +
-        (unconfirmed.supervisor ?? 0),
+      pending: 0,
     };
 
     const usedClamped = mentor.required ? Math.min(mentor.total, mentor.required) : mentor.total;
-    const percent = mentor.percent ?? (mentor.required ? (usedClamped / mentor.required) * 100 : 0);
+
+    const percent =
+      typeof mentor.percent === 'number'
+        ? mentor.percent
+        : mentor.required
+          ? (usedClamped / mentor.required) * 100
+          : 0;
 
     return (
       <div className="space-y-3 text-sm">

@@ -29,18 +29,52 @@ export function ProgressSummary() {
   const activeGroupName = user?.activeGroup?.name ?? null;
   const activeGroupLc = activeGroupName?.toLowerCase() ?? null;
 
+  const isAdmin = user?.role === 'ADMIN';
+
   // если есть выбранная цель — показываем её; иначе — «лесенка»
   const explicitTargetRu = user?.targetLevel ? RU_BY_LEVEL[user.targetLevel] : null;
   const ladderTarget = activeGroupLc ? GROUP_PROGRESS_PATH[activeGroupLc] : null;
   const targetToShow = explicitTargetRu ?? ladderTarget;
 
-  // enum-уровень для расчётов CEU/часов
-  const levelForRequirements = user?.targetLevel ?? undefined;
-
   const isSupervisor = activeGroupLc === 'супервизор';
   const isSeniorSupervisor = activeGroupLc === 'опытный супервизор';
-  const isAboveCeu = isSupervisor || isSeniorSupervisor;
+  const isSupervisorLike = isSupervisor || isSeniorSupervisor;
 
+  // enum-уровень для расчётов ЧАСОВ (экзаменационный трек / цель)
+  const levelForRequirements = user?.targetLevel ?? undefined;
+
+  // для CEU:
+  // - у Соискателя/Инструктора/Куратора — считаем по целевой ступени (levelForRequirements)
+  // - у Супервизора/Опытного — бэк сам подставляет годовые требования по активной группе,
+  //   level там не нужен
+  const ceuLevelForRequirements = isSupervisorLike ? undefined : levelForRequirements;
+
+  // ===== Режим для админов: только заглушка =====
+  if (isAdmin) {
+    return (
+      <div
+        className="rounded-2xl border header-shadow bg-white"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
+          <h2 className="text-xl font-semibold text-blue-dark">Прогресс CEU и супервизии</h2>
+        </div>
+
+        <div className="px-6 py-5 text-sm">
+          <p className="text-gray-700">
+            Для администраторов индивидуальный прогресс CEU и часов супервизии здесь не
+            отображается.
+          </p>
+          <p className="mt-1 text-gray-600">
+            Позже на этом месте будет администраторский блок с агрегированной статистикой и сводками
+            по пользователям.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== Обычный режим (не админ) =====
   return (
     <div
       className="rounded-2xl border header-shadow bg-white"
@@ -61,30 +95,26 @@ export function ProgressSummary() {
           </div>
         )}
 
-        {isSupervisor && (
-          <div
-            className="rounded-xl p-3 border"
-            style={{ borderColor: 'var(--color-green-light)' }}
-          >
-            <p className="text-red-600">
-              Напоминание: не забывайте проходить <strong>менторство</strong>.
-            </p>
-          </div>
-        )}
-
-        {targetToShow && !isAboveCeu && (
+        {/* Цель по "лесенке" имеет смысл показывать только пока есть следующая ступень.
+           Для опытных супервизоров и выше "цели" в классическом смысле нет. */}
+        {targetToShow && !isSupervisorLike && (
           <div className="rounded-xl p-3" style={{ background: 'var(--color-blue-soft)' }}>
             <p>
               Цель: <strong>{targetToShow}</strong>
-              {explicitTargetRu ? ' (выбрана пользователем)' : ' (выбрана пользователем)'}
+              {explicitTargetRu
+                ? ' (выбрана пользователем)'
+                : ' (определена автоматически по текущему уровню)'}
             </p>
           </div>
         )}
 
-        {/* CEU пересчитывается по целевому уровню */}
-        {!isAboveCeu && <CeuSummaryBlock level={levelForRequirements} />}
+        {/* CEU:
+            - для Соискателя / Инструктора / Куратора — требования к следующей группе;
+            - для Супервизора / Опытного Супервизора — годовые требования
+              (24 балла непрерывного образования), бэк смотрит на активную группу. */}
+        <CeuSummaryBlock level={ceuLevelForRequirements} />
 
-        {/* Часы тоже пересчитываются по целевому уровню */}
+        {/* Часы супервизии / менторства считаются по целевому уровню / треку */}
         {user && <SupervisionSummaryBlock user={user} level={levelForRequirements} />}
       </div>
     </div>

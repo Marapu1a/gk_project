@@ -49,6 +49,11 @@ export function UserInfo() {
 
   const hasTargetLevel = !!user.targetLevel;
 
+  // 🔑 Оплата:
+  // - обычные: только при выбранной цели
+  // - супервизоры / опытные: всегда доступна, цель им не нужна
+  const canShowPayments = isSupervisorLike || hasTargetLevel;
+
   return (
     <div
       className="rounded-2xl border header-shadow bg-white"
@@ -139,8 +144,8 @@ export function UserInfo() {
               )
             )}
 
-            {/* === Оплата: недоступна, пока цель не выбрана === */}
-            {hasTargetLevel ? (
+            {/* === Оплата === */}
+            {canShowPayments ? (
               <UserPaymentDashboard
                 activeGroupName={user.activeGroup?.name || ''}
                 targetLevelName={targetLevelName}

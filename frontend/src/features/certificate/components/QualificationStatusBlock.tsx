@@ -63,6 +63,52 @@ export function QualificationStatusBlock({
     );
   }
 
+  // === ОТДЕЛЬНЫЙ РЕЖИМ ДЛЯ СУПЕРВИЗОРОВ ===
+  // Им цель не выбирают, экзамена у них нет — только менторство и документы.
+  if (isSupervisor) {
+    return (
+      <div
+        className="rounded-2xl border header-shadow bg-white"
+        style={{ borderColor: 'var(--color-green-light)' }}
+      >
+        <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
+          <h3 className="text-lg font-semibold text-blue-dark">Продление статуса супервизора</h3>
+        </div>
+
+        <div className="px-6 py-5 space-y-4 text-sm">
+          <p className="text-xs text-gray-700">
+            Для супервизоров цель сертификации не выбирается. Для поддержания статуса достаточно
+            набрать нужное количество часов менторства и иметь подтверждённые документы.
+          </p>
+
+          <ul className="space-y-1">
+            <li className="flex items-center gap-2">
+              {supervisionReady ? (
+                <CheckCircle className="text-green-600" size={18} />
+              ) : (
+                <XCircle className="text-red-600" size={18} />
+              )}
+              Часы менторства: {supervisionReady ? 'достаточно' : 'недостаточно'}
+            </li>
+
+            <li className="flex items-center gap-2">
+              {documentsReady ? (
+                <CheckCircle className="text-green-600" size={18} />
+              ) : (
+                <XCircle className="text-red-600" size={18} />
+              )}
+              Документы: {documentsReady ? 'подтверждены' : 'не подтверждены'}
+            </li>
+          </ul>
+
+          {/* Для супервизора мы НЕ показываем общий "допуск" и причины — только факты */}
+        </div>
+      </div>
+    );
+  }
+
+  // === ОБЫЧНЫЙ РЕЖИМ (не супервизор) ===
+
   const hasTargetGroup = Boolean(targetGroup);
 
   return (
@@ -92,16 +138,14 @@ export function QualificationStatusBlock({
 
         <ul className="space-y-1">
           {/* CEU показываем только если это НЕ супервизор */}
-          {!isSupervisor && (
-            <li className="flex items-center gap-2">
-              {ceuReady ? (
-                <CheckCircle className="text-green-600" size={18} />
-              ) : (
-                <XCircle className="text-red-600" size={18} />
-              )}
-              CEU-баллы: {ceuReady ? 'достаточно' : 'недостаточно'}
-            </li>
-          )}
+          <li className="flex items-center gap-2">
+            {ceuReady ? (
+              <CheckCircle className="text-green-600" size={18} />
+            ) : (
+              <XCircle className="text-red-600" size={18} />
+            )}
+            CEU-баллы: {ceuReady ? 'достаточно' : 'недостаточно'}
+          </li>
 
           <li className="flex items-center gap-2">
             {supervisionReady ? (
@@ -109,8 +153,7 @@ export function QualificationStatusBlock({
             ) : (
               <XCircle className="text-red-600" size={18} />
             )}
-            {isSupervisor ? 'Часы менторства' : 'Часы супервизии'}:{' '}
-            {supervisionReady ? 'достаточно' : 'недостаточно'}
+            Часы супервизии: {supervisionReady ? 'достаточно' : 'недостаточно'}
           </li>
 
           <li className="flex items-center gap-2">
@@ -133,7 +176,7 @@ export function QualificationStatusBlock({
         </p>
 
         {/* Экзаменная часть полностью скрыта для супервизоров */}
-        {!isSupervisor && <ExamSection isEligible={!!isEligible} examPaid={!!examPaid} />}
+        <ExamSection isEligible={!!isEligible} examPaid={!!examPaid} />
 
         {!isEligible && normalizedReasons.length > 0 && (
           <div>
