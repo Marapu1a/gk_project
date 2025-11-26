@@ -26,7 +26,7 @@ export function Dashboard() {
 
   const handleReauth = () => {
     localStorage.removeItem('token');
-    qc.removeQueries(); // достаточно снести кэш запросов
+    qc.removeQueries();
     navigate('/login?to=/dashboard', { replace: true });
   };
 
@@ -51,14 +51,6 @@ export function Dashboard() {
 
   const { data: payments = [], isLoading: paymentsLoading } = useUserPayments();
   const [openNotif, setOpenNotif] = useState(false);
-
-  const isAdmin = user?.role === 'ADMIN';
-
-  const registrationPaid = useMemo(() => {
-    const paid = (t: 'REGISTRATION' | 'FULL_PACKAGE') =>
-      payments.some((p) => p.type === t && p.status === 'PAID');
-    return paid('REGISTRATION') || paid('FULL_PACKAGE');
-  }, [payments]);
 
   if (isLoading || paymentsLoading) {
     return (
@@ -87,6 +79,22 @@ export function Dashboard() {
       </div>
     );
   }
+
+  const isAdmin = user.role === 'ADMIN';
+
+  const registrationPaid = useMemo(() => {
+    const paid = (t: 'REGISTRATION' | 'FULL_PACKAGE') =>
+      payments.some((p) => p.type === t && p.status === 'PAID');
+    return paid('REGISTRATION') || paid('FULL_PACKAGE');
+  }, [payments]);
+
+  const isSupervisorLike =
+    user.activeGroup?.name === 'Супервизор' || user.activeGroup?.name === 'Опытный Супервизор';
+
+  const hasTargetLevel = !!user.targetLevel;
+
+  // можно ли показывать правый блок
+  const canShowProgress = isAdmin || (registrationPaid && (hasTargetLevel || isSupervisorLike));
 
   return (
     <div className="container-fixed p-6 space-y-6">
@@ -131,7 +139,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <UserInfo />
 
-        {isAdmin || registrationPaid ? (
+        {canShowProgress ? (
           <ProgressSummary />
         ) : (
           <div
@@ -139,7 +147,10 @@ export function Dashboard() {
             style={{ borderColor: 'var(--color-green-light)' }}
           >
             <p className="text-sm text-gray-600">
-              Прогресс сертификации станет доступен после оплаты регистрации.
+              Прогресс сертификации станет доступен после оплаты регистрации
+              {isSupervisorLike
+                ? '.'
+                : ' и выбора цели сертификации (Инструктор / Куратор / Супервизор).'}
             </p>
           </div>
         )}

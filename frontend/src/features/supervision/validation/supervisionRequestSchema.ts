@@ -12,7 +12,6 @@ export const supervisionRequestSchema = z.object({
       value: z
         .number({ invalid_type_error: 'Введите число' })
         .positive({ message: 'Должно быть положительное число' })
-        .max(200, { message: 'Слишком много часов' }),
     })
   ).min(1, { message: 'Нужно добавить хотя бы одну запись' }),
 });

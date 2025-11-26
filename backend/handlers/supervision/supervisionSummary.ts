@@ -66,6 +66,8 @@ export async function supervisionSummaryHandler(
     });
   }
 
+  const hasInstructorGroup = groupList.some((g) => g.name === 'Инструктор');
+
   // ----------------- определяем целевой уровень / группу -----------------
 
   const explicitLevel = req.query?.level;
@@ -89,48 +91,7 @@ export async function supervisionSummaryHandler(
     ? supervisionRequirementsByGroup[targetGroupName] ?? null
     : null;
 
-  // если нет цели (например, верхняя ступень) — просто отдаём нули
-  if (!targetGroupName || !required) {
-    // всё равно посчитаем usable/pending, чтобы фронт мог их показать как "просто статистику"
-    const [confirmed, unconfirmed] = await Promise.all([
-      prisma.supervisionHour.findMany({
-        where: { record: { userId: user.userId }, status: RecordStatus.CONFIRMED },
-        select: { type: true, value: true },
-      }),
-      prisma.supervisionHour.findMany({
-        where: { record: { userId: user.userId }, status: RecordStatus.UNCONFIRMED },
-        select: { type: true, value: true },
-      }),
-    ]);
-
-    const usable = aggregate(confirmed);
-    const pending = aggregate(unconfirmed);
-
-    const isSupervisor =
-      primaryGroup.name === 'Супервизор' || primaryGroup.name === 'Опытный Супервизор';
-
-    const mentor = isSupervisor
-      ? (() => {
-        const total = usable.practice + usable.supervision + usable.supervisor;
-        const pendingSum = pending.practice + pending.supervision + pending.supervisor;
-        const requiredTotal = 24; // ⬅️ МАКСИМУМ МЕНТОРСКИХ ЧАСОВ
-        const pct = requiredTotal
-          ? clampPct(Math.round((total / requiredTotal) * 100))
-          : 0;
-        return { total, required: requiredTotal, percent: pct, pending: pendingSum };
-      })()
-      : null;
-
-    return reply.send({
-      required: null,
-      percent: null,
-      usable,
-      pending,
-      mentor,
-    });
-  }
-
-  // ----------------- собираем часы из базы -----------------
+  // ----------------- собираем часы из базы (один раз) -----------------
 
   const [confirmed, unconfirmed] = await Promise.all([
     prisma.supervisionHour.findMany({
@@ -146,21 +107,46 @@ export async function supervisionSummaryHandler(
   const usableRaw = aggregate(confirmed);
   const pendingRaw = aggregate(unconfirmed);
 
-  // ----------------- трек и сгорание инструкторских часов -----------------
+  // ----------------- кейс: цели нет, просто статистика + менторство -----------------
 
-  // по ТЗ: сгорают только инструкторские часы при движении дальше
-  // записи в базе вечные, режем только "учитываемую" часть
+  if (!targetGroupName || !required) {
+    const isSupervisor =
+      primaryGroup.name === 'Супервизор' || primaryGroup.name === 'Опытный Супервизор';
 
+    const mentor = isSupervisor
+      ? (() => {
+        // менторство: считаем только SUPERVISOR-часы, цель 24
+        const total = usableRaw.supervisor;
+        const pendingSum = pendingRaw.supervisor;
+        const requiredTotal = 24;
+        const pct = requiredTotal
+          ? clampPct(Math.round((total / requiredTotal) * 100))
+          : 0;
+        return { total, required: requiredTotal, percent: pct, pending: pendingSum };
+      })()
+      : null;
+
+    return reply.send({
+      required: null,
+      percent: null,
+      usable: usableRaw,
+      pending: pendingRaw,
+      mentor,
+    });
+  }
+
+  // ----------------- трек и СГОРАНИЕ инструкторских -----------------
+  // Инструкторские 300/10 сгорают во всех треках выше инструктора,
+  // если пользователь когда-либо был в группе "Инструктор".
   const burnedBase = getBurnedBaseForTrack({
-    primaryGroupName: primaryGroup.name,
+    hasInstructorGroup,
     targetLevel: effectiveLevel,
   });
 
-  // сколько практики считаем для ЭТОГО трека (после сгорания)
   const practiceConfirmedForTrack = Math.max(0, usableRaw.practice - burnedBase.practice);
-  const practicePendingForTrack = pendingRaw.practice; // pending считаем как текущий трек
+  const practicePendingForTrack = pendingRaw.practice;
 
-  // авто-супервизия считаем только от практики текущего трека
+  // авто-супервизия считаем от practiceConfirmedForTrack
   const autoConfirmed = calcAutoSupervisionHours({
     groupName: targetGroupName,
     practiceHours: practiceConfirmedForTrack,
@@ -173,21 +159,18 @@ export async function supervisionSummaryHandler(
 
   const autoPending = Math.max(0, autoTotalIfAllConfirmed - autoConfirmed);
 
-  // usable/pending в разрезе текущего трека:
-  // practice — уже с учётом сгорания инструкторских часов
-  let usable: SupervisionSummary = {
+  const usable: SupervisionSummary = {
     practice: practiceConfirmedForTrack,
     supervision: autoConfirmed,
     supervisor: usableRaw.supervisor,
   };
 
-  let pending: SupervisionSummary = {
+  const pending: SupervisionSummary = {
     practice: practicePendingForTrack,
     supervision: autoPending,
     supervisor: pendingRaw.supervisor,
   };
 
-  // проценты считаем от "usable" по треку и требований к целевой группе
   const percent = computePercent(usable, required);
 
   // Менторская шкала только для реальных супервизоров
@@ -196,9 +179,9 @@ export async function supervisionSummaryHandler(
 
   const mentor = isSupervisor
     ? (() => {
-      const total = usable.practice + usable.supervision + usable.supervisor;
-      const pendingSum = pending.practice + pending.supervision + pending.supervisor;
-      const requiredTotal = 24; // ⬅️ МАКСИМУМ МЕНТОРСКИХ ЧАСОВ
+      const total = usable.supervisor;
+      const pendingSum = pending.supervisor;
+      const requiredTotal = 24;
       const pct = requiredTotal
         ? clampPct(Math.round((total / requiredTotal) * 100))
         : 0;
@@ -238,34 +221,29 @@ function aggregate(entries: Array<{ type: PracticeLevel; value: number }>): Supe
 /**
  * Сгорание инструкторских часов:
  *
- * - если цель = INSTRUCTOR → ничего не сгорает, считаем всё с нуля до 300/10
- * - если человек уже Инструктор и идёт дальше (CURATOR или SUPERVISOR),
- *   инструкторские часы (300 практики, 10 супервизии) не учитываем в прогрессе
- * - для Куратора и Супервизора часы не сгорают, они накапливаются
+ * - цель = INSTRUCTOR → ничего не сгорает
+ * - цель = CURATOR или SUPERVISOR и пользователь когда-либо был "Инструктором" →
+ *   выкидываем 300/10 (инструкторский пакет) из прогресса.
+ * - если группы "Инструктор" нет (чел сразу пошёл на Куратора/Супервизора) → не жжём.
  */
 function getBurnedBaseForTrack(params: {
-  primaryGroupName: string;
+  hasInstructorGroup: boolean;
   targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
 }): { practice: number; supervision: number } {
-  const { primaryGroupName, targetLevel } = params;
+  const { hasInstructorGroup, targetLevel } = params;
 
-  if (!targetLevel) return { practice: 0, supervision: 0 };
+  if (!targetLevel || targetLevel === 'INSTRUCTOR') {
+    return { practice: 0, supervision: 0 };
+  }
 
-  // трек на Инструктора — идём с нуля, ничего не режем
-  if (targetLevel === 'INSTRUCTOR') return { practice: 0, supervision: 0 };
-
-  // если пользователь уже Инструктор и идёт выше (на Куратора или сразу на Супервизора),
-  // инструкторские часы выкидываем из расчёта прогресса:
-  // с 0 до 300 он шёл на инструктора, дальше новый трек с нуля
-  if (primaryGroupName === 'Инструктор') {
+  if (hasInstructorGroup && (targetLevel === 'CURATOR' || targetLevel === 'SUPERVISOR')) {
     const instReq = supervisionRequirementsByGroup['Инструктор'];
     return {
-      practice: instReq.practice,       // 300
+      practice: instReq.practice, // 300
       supervision: instReq.supervision, // 10
     };
   }
 
-  // во всех прочих случаях (Соискатель, Куратор и т.д.) — ничего не сгорает
   return { practice: 0, supervision: 0 };
 }
 
