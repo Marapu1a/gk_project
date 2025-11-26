@@ -1,5 +1,5 @@
 // src/features/dashboard/components/Dashboard.tsx
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
@@ -82,11 +82,11 @@ export function Dashboard() {
 
   const isAdmin = user.role === 'ADMIN';
 
-  const registrationPaid = useMemo(() => {
+  const registrationPaid = (() => {
     const paid = (t: 'REGISTRATION' | 'FULL_PACKAGE') =>
       payments.some((p) => p.type === t && p.status === 'PAID');
     return paid('REGISTRATION') || paid('FULL_PACKAGE');
-  }, [payments]);
+  })();
 
   const isSupervisorLike =
     user.activeGroup?.name === 'Супервизор' || user.activeGroup?.name === 'Опытный Супервизор';

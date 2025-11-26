@@ -109,11 +109,10 @@ export async function supervisionSummaryHandler(
 
   // ----------------- кейс: цели нет, просто статистика + менторство -----------------
 
-  if (!targetGroupName || !required) {
-    const isSupervisor =
-      primaryGroup.name === 'Супервизор' || primaryGroup.name === 'Опытный Супервизор';
+  const isBasicSupervisor = primaryGroup.name === 'Супервизор';
 
-    const mentor = isSupervisor
+  if (!targetGroupName || !required) {
+    const mentor = isBasicSupervisor
       ? (() => {
         // менторство: считаем только SUPERVISOR-часы, цель 24
         const total = usableRaw.supervisor;
@@ -173,11 +172,8 @@ export async function supervisionSummaryHandler(
 
   const percent = computePercent(usable, required);
 
-  // Менторская шкала только для реальных супервизоров
-  const isSupervisor =
-    primaryGroup.name === 'Супервизор' || primaryGroup.name === 'Опытный Супервизор';
-
-  const mentor = isSupervisor
+  // Менторская шкала только для простых супервизоров
+  const mentor = isBasicSupervisor
     ? (() => {
       const total = usable.supervisor;
       const pendingSum = pending.supervisor;

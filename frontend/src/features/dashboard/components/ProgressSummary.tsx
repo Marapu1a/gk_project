@@ -49,6 +49,9 @@ export function ProgressSummary() {
   //   level там не нужен
   const ceuLevelForRequirements = isSupervisorLike ? undefined : levelForRequirements;
 
+  // для опытных супервизоров summary часов не показываем (они не набирают часы)
+  const shouldShowSupervisionSummary = !!user && !isSeniorSupervisor;
+
   // ===== Режим для админов: только заглушка =====
   if (isAdmin) {
     return (
@@ -114,8 +117,11 @@ export function ProgressSummary() {
               (24 балла непрерывного образования), бэк смотрит на активную группу. */}
         <CeuSummaryBlock level={ceuLevelForRequirements} />
 
-        {/* Часы супервизии / менторства считаются по целевому уровню / треку */}
-        {user && <SupervisionSummaryBlock user={user} level={levelForRequirements} />}
+        {/* Часы супервизии / менторства:
+            - для всех, кроме опытных супервизоров */}
+        {shouldShowSupervisionSummary && (
+          <SupervisionSummaryBlock user={user!} level={levelForRequirements} />
+        )}
       </div>
     </div>
   );
