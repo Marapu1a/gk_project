@@ -21,7 +21,7 @@ interface Props {
 }
 
 const LOCAL_STORAGE_KEY = 'files:documents';
-const MAX_FILES = 5;
+const MAX_FILES = 7;
 const MAX_SIZE_MB = 20;
 
 export function MultiFileUpload({ onChange, disabled }: Props) {

@@ -9,16 +9,15 @@ const ALLOWED_TYPES = new Set([
   'DOCUMENT',
   'EXAM',
   'PAYMENT',
-  'NEW_USER', // <-- добавили
+  'NEW_USER',
 ] as const);
 
 type AllowedType = typeof ALLOWED_TYPES extends Set<infer U> ? U : never;
 
 export async function createNotificationHandler(req: FastifyRequest, reply: FastifyReply) {
-
   const body = req.body as {
     userId: string;
-    type: AllowedType; // <-- теперь включает NEW_USER
+    type: AllowedType;
     message: string;
     link?: string;
   };
@@ -36,6 +35,7 @@ export async function createNotificationHandler(req: FastifyRequest, reply: Fast
       type: body.type as any,
       message: body.message,
       link: body.link || null,
+      isRead: false, // 👈 новое
     },
   });
 

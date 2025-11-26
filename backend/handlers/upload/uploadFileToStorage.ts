@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR; // на серве есть, локально нет
+const MAX_FILES = 10;
 
 export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -17,17 +18,31 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
     return reply.code(400).send({ error: 'Файл не получен' });
   }
 
-  // ⬇️ добавили webp
   const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
   if (!allowed.includes(data.mimetype)) {
     return reply.code(415).send({ error: 'Недопустимый тип файла' });
   }
 
-  // ⬇️ нормализация и базовая валидация категории (без whitelisting, чтобы не ломать текущие)
   const rawCategory = (req.query as { category?: string })?.category ?? 'misc';
   const category = String(rawCategory).trim().toLowerCase();
   if (!/^[a-z0-9_-]+$/i.test(category)) {
     return reply.code(400).send({ error: 'Недопустимая категория' });
+  }
+
+  // 🔒 ЛИМИТ ФАЙЛОВ ДЛЯ DOCUMENTS
+  if (category === 'documents') {
+    const existingCount = await prisma.uploadedFile.count({
+      where: {
+        userId: user.userId,
+        fileId: { contains: '/documents/' },
+      },
+    });
+
+    if (existingCount >= MAX_FILES) {
+      return reply.code(400).send({
+        error: `Можно загрузить не более ${MAX_FILES} файлов`,
+      });
+    }
   }
 
   const ext = path.extname(data.filename);
@@ -39,14 +54,15 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
 
   const dir = path.join(baseDir, String(user.userId), category);
 
-  // ⬇️ если аватар — подчистили папку и БД-записи перед записью нового файла
+  // очистка аватаров
   if (category === 'avatar') {
     try {
       const names = await fs.readdir(dir);
       await Promise.all(names.map(n => fs.unlink(path.join(dir, n)).catch(() => { })));
     } catch (e: any) {
-      if (e.code !== 'ENOENT') throw e; // если папки нет — ок
+      if (e.code !== 'ENOENT') throw e;
     }
+
     await prisma.uploadedFile.deleteMany({
       where: {
         userId: user.userId,

@@ -1,3 +1,4 @@
+// handlers/notifications/getNotificationsHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 

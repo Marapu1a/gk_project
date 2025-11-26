@@ -3,13 +3,19 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useNotifications, useDeleteNotification } from '../hooks/useNotifications';
+import {
+  useNotifications,
+  useDeleteNotification,
+  useMarkNotificationRead,
+} from '../hooks/useNotifications';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
+import { NOTIFICATION_TYPE_LABELS, NOTIFICATION_TYPE_COLORS } from '@/utils/notificationDictionary';
 
 export function NotificationModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data = [] } = useNotifications();
   const deleteNotif = useDeleteNotification();
+  const markRead = useMarkNotificationRead();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [deletingAll, setDeletingAll] = useState(false);
@@ -49,27 +55,6 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
     }
   };
 
-  const typeBadgeClass = (t: string) => {
-    switch (t) {
-      case 'CEU':
-        return 'bg-green-600';
-      case 'EXAM':
-        return 'bg-blue-600';
-      case 'PAYMENT':
-        return 'bg-gray-700';
-      case 'DOCUMENT':
-        return 'bg-orange-600';
-      case 'SUPERVISION':
-        return 'bg-purple-600';
-      case 'MENTORSHIP':
-        return 'bg-indigo-600';
-      case 'NEW_USER':
-        return 'bg-emerald-600';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
   const modal = (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center px-4">
       <div
@@ -105,49 +90,60 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
         {/* List */}
         <div className="space-y-2 max-h-96 overflow-y-auto p-4">
           {data.length === 0 ? (
-            <p className="text-sm text-gray-500">Нет новых уведомлений</p>
+            <p className="text-sm text-gray-500">Уведомлений нет</p>
           ) : (
-            data.slice(0, 10).map((n) => (
-              <div
-                key={n.id}
-                className="group flex items-start gap-3 bg-white border rounded-xl px-4 py-3 hover:shadow-sm transition"
-                style={{ borderColor: 'var(--color-green-light)' }}
-              >
-                <span
-                  className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium text-white ${typeBadgeClass(
-                    n.type as string,
-                  )}`}
-                >
-                  {n.type}
-                </span>
+            data.slice(0, 10).map((n) => {
+              const isUnread = !n.isRead;
+              const badgeColor = NOTIFICATION_TYPE_COLORS[n.type] ?? 'bg-gray-500';
+              const badgeLabel = NOTIFICATION_TYPE_LABELS[n.type] ?? 'Уведомление';
 
-                <button
-                  onClick={() => {
-                    if (n.link) navigate(n.link);
-                    onClose();
-                  }}
-                  className="text-left text-sm text-blue-dark hover:underline flex-1"
-                  title={n.message}
+              return (
+                <div
+                  key={n.id}
+                  className={`group flex items-start gap-3 border rounded-xl px-4 py-3 hover:shadow-sm transition ${
+                    isUnread ? 'bg-blue-50' : 'bg-white'
+                  }`}
+                  style={{ borderColor: 'var(--color-green-light)' }}
                 >
-                  <div className="line-clamp-2">{n.message}</div>
-                  {n.createdAt && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {new Date(n.createdAt).toLocaleString('ru-RU')}
+                  <span
+                    className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium text-white ${badgeColor}`}
+                  >
+                    {badgeLabel}
+                  </span>
+
+                  <button
+                    onClick={() => {
+                      if (isUnread) {
+                        markRead.mutate(n.id);
+                      }
+                      if (n.link) navigate(n.link);
+                      onClose();
+                    }}
+                    className="text-left text-sm text-blue-dark hover:underline flex-1"
+                    title={n.message}
+                  >
+                    <div className={`line-clamp-2 ${isUnread ? 'font-semibold' : ''}`}>
+                      {n.message}
                     </div>
-                  )}
-                </button>
+                    {n.createdAt && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {new Date(n.createdAt).toLocaleString('ru-RU')}
+                      </div>
+                    )}
+                  </button>
 
-                <button
-                  onClick={() => handleDelete(n.id)}
-                  className="ml-1 text-gray-400 hover:text-red-600"
-                  aria-label="Удалить"
-                  title="Удалить"
-                  disabled={deleteNotif.isPending}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))
+                  <button
+                    onClick={() => handleDelete(n.id)}
+                    className="ml-1 text-gray-400 hover:text-red-600"
+                    aria-label="Удалить"
+                    title="Удалить"
+                    disabled={deleteNotif.isPending}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

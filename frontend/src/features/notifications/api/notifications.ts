@@ -1,4 +1,5 @@
-import { api } from "@/lib/axios";
+// src/features/notifications/api/notifications.ts
+import { api } from '@/lib/axios';
 
 export type Notification = {
   id: string;
@@ -6,6 +7,7 @@ export type Notification = {
   message: string;
   link: string | null;
   createdAt: string;
+  isRead: boolean; // 👈 новое поле
 };
 
 export async function getNotifications(): Promise<Notification[]> {
@@ -24,4 +26,9 @@ export async function postNotification(data: {
 
 export async function deleteNotification(id: string): Promise<void> {
   await api.delete(`/notifications/${id}`);
+}
+
+// 👇 новое — отметить как прочитанное
+export async function markNotificationRead(id: string): Promise<void> {
+  await api.patch(`/notifications/${id}/read`);
 }

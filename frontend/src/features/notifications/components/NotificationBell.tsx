@@ -1,10 +1,13 @@
+// src/features/notifications/components/NotificationBell.tsx
 import { Bell } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 
 export function NotificationBell({ onClick }: { onClick: () => void }) {
   const { data: notifications } = useNotifications();
-  const count = notifications?.length ?? 0;
-  const hasNotifications = count > 0;
+
+  // считаем только непрочитанные
+  const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
+  const hasNotifications = unreadCount > 0;
 
   return (
     <button
@@ -19,7 +22,7 @@ export function NotificationBell({ onClick }: { onClick: () => void }) {
           className="absolute -top-0.5 -right-0.5 text-white text-[11px] font-semibold rounded-full w-5 h-5 flex items-center justify-center z-10"
           style={{ backgroundColor: 'var(--sonner-error)' }}
         >
-          {count > 99 ? '99+' : count}
+          {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
     </button>
