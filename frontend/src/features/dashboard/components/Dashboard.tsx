@@ -111,6 +111,27 @@ export function Dashboard() {
           <NotificationBell onClick={() => setOpenNotif(true)} />
         </div>
 
+        {/* Объявление под заголовком */}
+        <div className="px-6 py-4">
+          <div
+            className="rounded-xl p-4"
+            style={{
+              background: 'var(--color-blue-soft)',
+              border: '1px solid rgba(31,48,94,0.2)',
+            }}
+          >
+            <p className="text-sm text-blue-dark">
+              Уважаемые пользователи! Произошло обновление реестра и кабинета пользователей. Просьба
+              отредактировать ваши личные данные. Будем благодарны за обратную связь, просьба все
+              ваши замечания и пожелания по работе кабинета отправлять на почту{' '}
+              <a href="mailto:CSPAP@yandex.ru" className="underline hover:no-underline">
+                CSPAP@yandex.ru
+              </a>
+              .
+            </p>
+          </div>
+        </div>
+
         {!isAdmin && !registrationPaid && (
           <div className="px-6 py-4">
             <div

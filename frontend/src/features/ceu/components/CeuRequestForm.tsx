@@ -172,7 +172,7 @@ export function CeuRequestForm() {
                 <input
                   type="number"
                   step="0.1"
-                  max={9}
+                  max={12}
                   className="input w-24"
                   disabled={isSubmitting}
                   aria-invalid={!!errors.entries?.[index]?.value}
