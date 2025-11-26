@@ -25,8 +25,8 @@ export default function DocumentReviewPage() {
     return <p className="text-sm text-blue-dark p-6">Загрузка…</p>;
   }
 
-  const canResubmit = !request || request.status === 'REJECTED';
   const documentPayment = payments?.find((p) => p.type === 'DOCUMENT_REVIEW');
+  const status = request?.status as RequestStatus | undefined;
 
   const StatusPill = ({ s }: { s: RequestStatus }) => {
     const bg =
@@ -35,6 +35,7 @@ export default function DocumentReviewPage() {
         : s === 'UNCONFIRMED'
           ? 'var(--color-blue-dark)'
           : '#ef4444';
+
     return (
       <span
         className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
@@ -54,6 +55,7 @@ export default function DocumentReviewPage() {
         : st === 'PENDING'
           ? 'var(--color-blue-dark)'
           : '#ef4444';
+
     return (
       <span
         className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
@@ -63,6 +65,16 @@ export default function DocumentReviewPage() {
       </span>
     );
   };
+
+  // Форма доступна:
+  // - когда заявки вообще нет;
+  // - когда заявка ОТКЛОНЕНА;
+  // - когда заявка БЫЛА ОДОБРЕНА (дополняем её новыми файлами).
+  // НЕДОСТУПНА только при UNCONFIRMED — запрос на проверке.
+  const canSubmit = !status || status === 'REJECTED' || status === 'CONFIRMED';
+
+  const lastAdminComment =
+    status === 'REJECTED' && request?.comment?.trim() ? request.comment : undefined;
 
   return (
     <div
@@ -80,31 +92,32 @@ export default function DocumentReviewPage() {
 
       {/* Body */}
       <div className="p-6 space-y-6">
-        {canResubmit ? (
-          <DocumentReviewForm
-            lastAdminComment={
-              request?.status === 'REJECTED' && request?.comment?.trim()
-                ? request.comment
-                : undefined
-            }
-          />
-        ) : (
+        {status && (
           <div
             className="rounded-2xl border p-4 space-y-3"
             style={{ borderColor: 'var(--color-green-light)' }}
           >
             <div className="flex flex-wrap gap-2">
-              <StatusPill s={request.status as RequestStatus} />
+              <StatusPill s={status} />
               <PaymentPill />
             </div>
 
-            {request.comment && request.status === 'REJECTED' && (
+            {status === 'REJECTED' && request?.comment && (
               <p className="text-sm text-red-700">
                 Комментарий модератора: <span className="font-medium">{request.comment}</span>
               </p>
             )}
+
+            {status === 'CONFIRMED' && (
+              <p className="text-sm text-gray-700">
+                Если вы забыли добавить какие-либо документы или хотите отправить дополнительные —
+                ниже вы можете дополнить свою заявку. После отправки она снова уйдёт на проверку.
+              </p>
+            )}
           </div>
         )}
+
+        {canSubmit && <DocumentReviewForm lastAdminComment={lastAdminComment} />}
       </div>
     </div>
   );

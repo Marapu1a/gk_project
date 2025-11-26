@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAllDocReviewRequests } from '../hooks/useAllDocReviewRequests';
 import {
@@ -14,16 +14,35 @@ type RequestRow = {
   user?: { email?: string | null } | null;
 };
 
-export function AdminDocumentReviewList() {
-  const [searchEmail, setSearchEmail] = useState('');
-  const [submittedEmail, setSubmittedEmail] = useState('');
+// нормализация для поиска
+const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
+const tokenize = (s: string) =>
+  norm(s)
+    .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
+    .filter(Boolean);
 
-  const { data: requests = [], isLoading, error } = useAllDocReviewRequests(submittedEmail);
+export function AdminDocumentReviewList() {
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState(''); // уходит на сервер
+
+  const { data: requests = [], isLoading, error } = useAllDocReviewRequests(search);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmittedEmail(searchEmail.trim());
+    setSearch(searchInput.trim());
   };
+
+  // ⚡ Мгновенный клиентский фильтр только по email
+  const filteredRequests = useMemo(() => {
+    const tokens = tokenize(searchInput);
+    if (tokens.length === 0) return requests;
+
+    return (requests as RequestRow[]).filter((r) => {
+      const email = r.user?.email ?? '';
+      const hay = norm(email);
+      return tokens.every((t) => hay.includes(t));
+    });
+  }, [requests, searchInput]);
 
   return (
     <div
@@ -35,18 +54,30 @@ export function AdminDocumentReviewList() {
         className="px-6 py-4 border-b flex items-center justify-between gap-3"
         style={{ borderColor: 'var(--color-green-light)' }}
       >
-        <h1 className="text-xl font-bold text-blue-dark">Все заявки на проверку документов</h1>
+        <h1 className="text-xl font-bold text-blue-dark">
+          Все заявки на проверку документов ({filteredRequests.length})
+        </h1>
 
         <form onSubmit={handleSearchSubmit} className="flex items-end gap-2">
-          <div>
-            <label className="block mb-1 text-sm text-blue-dark">Поиск по email</label>
+          <div className="relative">
+            <label className="block mb-1 text-sm text-blue-dark">Фильтр по email</label>
             <input
               type="text"
-              value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Введите email"
-              className="input w-64"
+              className="input w-64 pr-8"
             />
+            {searchInput && (
+              <button
+                type="button"
+                className="absolute right-2 bottom-2 text-blue-dark/60 hover:text-blue-dark"
+                onClick={() => setSearchInput('')}
+                title="Очистить"
+              >
+                ×
+              </button>
+            )}
           </div>
           <button type="submit" className="btn btn-brand">
             Поиск
@@ -60,19 +91,19 @@ export function AdminDocumentReviewList() {
           <p className="text-sm text-blue-dark">Загрузка…</p>
         ) : error ? (
           <p className="text-error">Ошибка загрузки</p>
-        ) : requests.length === 0 ? (
+        ) : filteredRequests.length === 0 ? (
           <p className="text-sm text-gray-600">
-            Ничего не найдено{submittedEmail ? ` по «${submittedEmail}»` : ''}.
+            Ничего не найдено{searchInput ? ` по «${searchInput}»` : ''}.
           </p>
         ) : (
           <div
             className="overflow-x-auto rounded-2xl border"
             style={{ borderColor: 'var(--color-green-light)' }}
           >
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-auto">
               <thead>
                 <tr className="text-blue-dark" style={{ background: 'var(--color-blue-soft)' }}>
-                  <th className="p-2 text-left">ID</th>
+                  <th className="p-2 text-left w-16">№</th>
                   <th className="p-2 text-left">Email</th>
                   <th className="p-2 text-left">Статус</th>
                   <th className="p-2 text-left">Комментарий</th>
@@ -81,17 +112,21 @@ export function AdminDocumentReviewList() {
                 </tr>
               </thead>
               <tbody>
-                {(requests as RequestRow[]).map((req) => (
+                {(filteredRequests as RequestRow[]).map((req, idx) => (
                   <tr
                     key={req.id}
                     className="border-t hover:bg-gray-50"
                     style={{ borderColor: 'var(--color-green-light)' }}
                   >
-                    <td className="p-2">{req.id.slice(0, 6)}</td>
+                    {/* вместо db id — порядковый номер */}
+                    <td className="p-2">{idx + 1}</td>
+
                     <td className="p-2">{req.user?.email || '—'}</td>
+
                     <td className={`p-2 ${documentReviewStatusColors[req.status] || ''}`}>
                       {documentReviewStatusLabels[req.status] || req.status}
                     </td>
+
                     <td className="p-2">
                       {req.status === 'REJECTED' && req.comment ? (
                         <span className="text-red-600">{req.comment}</span>
@@ -99,11 +134,13 @@ export function AdminDocumentReviewList() {
                         '—'
                       )}
                     </td>
+
                     <td className="p-2">
                       {req.submittedAt
                         ? new Date(req.submittedAt).toLocaleDateString('ru-RU')
                         : '—'}
                     </td>
+
                     <td className="p-2">
                       <Link
                         to={`/admin/document-review/${req.id}`}

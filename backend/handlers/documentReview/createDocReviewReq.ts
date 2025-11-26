@@ -12,16 +12,27 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
     comment?: string;
   };
 
-  // Проверка на активную заявку
-  const existing = await prisma.documentReviewRequest.findFirst({
+  // Защита от пустого списка файлов
+  if (!fileIds || fileIds.length === 0) {
+    return reply.code(400).send({ error: 'Не выбраны файлы для проверки' });
+  }
+
+  // 1) Проверяем, нет ли активной заявки на рассмотрении
+  const existingUnconfirmed = await prisma.documentReviewRequest.findFirst({
     where: { userId: user.userId, status: 'UNCONFIRMED' },
   });
 
-  if (existing) {
+  if (existingUnconfirmed) {
     return reply.code(400).send({ error: 'У вас уже есть активная заявка' });
   }
 
-  // Проверка файлов
+  // 2) Ищем последнюю подтверждённую заявку (её будем дополнять при необходимости)
+  const existingConfirmed = await prisma.documentReviewRequest.findFirst({
+    where: { userId: user.userId, status: 'CONFIRMED' },
+    orderBy: { submittedAt: 'desc' },
+  });
+
+  // 3) Проверка файлов (общая часть)
   const files = await prisma.uploadedFile.findMany({
     where: {
       id: { in: fileIds },
@@ -30,22 +41,53 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
   });
 
   if (files.length !== fileIds.length) {
-    return reply.code(400).send({ error: 'Некоторые файлы не найдены или вам не принадлежат' });
+    return reply
+      .code(400)
+      .send({ error: 'Некоторые файлы не найдены или вам не принадлежат' });
   }
 
   if (files.some((f) => f.type === null)) {
-    return reply.code(400).send({ error: 'У всех файлов должен быть выбран тип документа' });
+    return reply
+      .code(400)
+      .send({ error: 'У всех файлов должен быть выбран тип документа' });
   }
 
+  const trimmedComment = comment?.trim() || null;
+
+  // 4) Если есть подтверждённая заявка — дополняем её и возвращаем в статус UNCONFIRMED
+  if (existingConfirmed) {
+    const updatedReq = await prisma.$transaction(async (tx) => {
+      // привязываем новые файлы к существующей заявке
+      await tx.uploadedFile.updateMany({
+        where: { id: { in: fileIds }, userId: user.userId },
+        data: { requestId: existingConfirmed.id },
+      });
+
+      // сбрасываем статус и метаданные ревью
+      return tx.documentReviewRequest.update({
+        where: { id: existingConfirmed.id },
+        data: {
+          status: 'UNCONFIRMED',
+          comment: trimmedComment,
+          reviewedAt: null,
+          reviewerEmail: null,
+        },
+      });
+    });
+
+    return reply.code(200).send(updatedReq);
+  }
+
+  // 5) Иначе создаём НОВУЮ заявку (случай "первый раз" или после REJECTED)
   const reqNew = await prisma.documentReviewRequest.create({
     data: {
       userId: user.userId,
-      comment: comment?.trim() || null,
+      comment: trimmedComment,
     },
   });
 
   await prisma.uploadedFile.updateMany({
-    where: { id: { in: fileIds } },
+    where: { id: { in: fileIds }, userId: user.userId },
     data: { requestId: reqNew.id },
   });
 
