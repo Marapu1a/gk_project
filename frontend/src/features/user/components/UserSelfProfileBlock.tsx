@@ -120,19 +120,32 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
   };
 
   const onSave = async () => {
-    const ln = titleCaseAny(form.lastName);
-    const fn = titleCaseAny(form.firstName);
-    const mn = form.middleName ? titleCaseAny(form.middleName) : '';
+    // сырые значения
+    const lnRaw = form.lastName.trim();
+    const fnRaw = form.firstName.trim();
+    const mnRaw = form.middleName.trim();
+    const lnLatRaw = form.lastNameLatin.trim();
+    const fnLatRaw = form.firstNameLatin.trim();
 
-    if (!ln || !fn) {
-      toast.error('Имя и фамилия обязательны');
+    // 1) ФИО русское обязательно
+    if (!lnRaw || !fnRaw || !mnRaw) {
+      toast.error('Фамилия, имя и отчество обязательны');
       return;
     }
 
+    // 2) Имя и фамилия латиницей обязательно
+    if (!lnLatRaw || !fnLatRaw) {
+      toast.error('Имя и фамилия латиницей обязательны');
+      return;
+    }
+
+    const ln = titleCaseAny(lnRaw);
+    const fn = titleCaseAny(fnRaw);
+    const mn = titleCaseAny(mnRaw);
     const fullName = [ln, fn, mn].filter(Boolean).join(' ');
 
-    const lnLat = titleCaseAny(form.lastNameLatin);
-    const fnLat = titleCaseAny(form.firstNameLatin);
+    const lnLat = titleCaseAny(lnLatRaw);
+    const fnLat = titleCaseAny(fnLatRaw);
     const fullNameLatin = [lnLat, fnLat].filter(Boolean).join(' ');
 
     const phoneIntl = normalizePhone(form.phone);
@@ -182,7 +195,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Фамилия (рус.)">
+          <Field label="Фамилия (рус.)" required>
             <input
               className="input w-full"
               value={form.lastName}
@@ -190,7 +203,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             />
           </Field>
 
-          <Field label="Имя (рус.)">
+          <Field label="Имя (рус.)" required>
             <input
               className="input w-full"
               value={form.firstName}
@@ -198,7 +211,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             />
           </Field>
 
-          <Field label="Отчество (если есть)">
+          <Field label="Отчество (рус.)" required>
             <input
               className="input w-full"
               value={form.middleName}
@@ -211,7 +224,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             ФИО латиницей — как в загранпаспорте
           </div>
 
-          <Field label="Фамилия (лат.)">
+          <Field label="Фамилия (лат.)" required>
             <input
               className="input w-full"
               value={form.lastNameLatin}
@@ -219,7 +232,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             />
           </Field>
 
-          <Field label="Имя (лат.)">
+          <Field label="Имя (лат.)" required>
             <input
               className="input w-full"
               value={form.firstNameLatin}
@@ -227,7 +240,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             />
           </Field>
 
-          <Field label="Телефон">
+          <Field label="Телефон" required>
             <PhoneInput
               country="ru"
               enableSearch
@@ -245,7 +258,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             />
           </Field>
 
-          <Field label="Дата рождения">
+          <Field label="Дата рождения" required>
             <input
               type="date"
               className="input w-full"
@@ -296,10 +309,21 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  required,
+}: {
+  label: string;
+  children: React.ReactNode;
+  required?: boolean;
+}) {
   return (
     <div>
-      <label className="block text-sm mb-1 text-blue-dark">{label}</label>
+      <label className="block text-sm mb-1 text-blue-dark">
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
       {children}
     </div>
   );

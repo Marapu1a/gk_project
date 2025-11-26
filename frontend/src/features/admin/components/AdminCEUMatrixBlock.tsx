@@ -66,10 +66,14 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
     }
   };
 
-  // 🔥 ключевая правка — скрываем SUPERVISION если её не должно быть
+  // 🔥 защищаемся от отсутствия строки SUPERVISION
   const shouldHideSupervisionRow = () => {
     const row = data.matrix.SUPERVISION;
-    return row.CONFIRMED === 0 && row.SPENT === 0 && row.REJECTED === 0;
+    if (!row) return true; // нет строки — просто прячем
+
+    const { CONFIRMED = 0, SPENT = 0, REJECTED = 0 } = row as Partial<Record<CEUStatus, number>>;
+
+    return CONFIRMED === 0 && SPENT === 0 && REJECTED === 0;
   };
 
   const hideSupervision = shouldHideSupervisionRow();
@@ -107,10 +111,13 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
 
           <tbody>
             {Object.entries(categoryLabels).map(([cat, catLabel]) => {
-              // 🔥 режем SUPERVISION, если не нужна
               if (cat === 'SUPERVISION' && hideSupervision) {
                 return null;
               }
+
+              const row = data.matrix[cat as CEUCategory] as
+                | Partial<Record<CEUStatus, number>>
+                | undefined;
 
               return (
                 <tr
@@ -121,8 +128,9 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
                   <td className="py-2 px-3 font-medium">{catLabel}</td>
 
                   {Object.keys(statusLabels).map((st) => {
-                    const isEditing = editing?.category === cat && editing?.status === st;
-                    const current = data.matrix[cat as CEUCategory][st as CEUStatus];
+                    const status = st as CEUStatus;
+                    const isEditing = editing?.category === cat && editing?.status === status;
+                    const current = row?.[status] ?? 0;
 
                     return (
                       <td key={st} className="py-2 px-3">
@@ -155,7 +163,9 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
                         ) : (
                           <button
                             className="btn btn-ghost"
-                            onClick={() => startEdit(cat as CEUCategory, st as CEUStatus, current)}
+                            onClick={() =>
+                              startEdit(cat as CEUCategory, status as CEUStatus, current)
+                            }
                             disabled={mutation.isPending}
                           >
                             {current}

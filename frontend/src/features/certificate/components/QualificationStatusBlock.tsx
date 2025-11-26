@@ -30,13 +30,11 @@ export function QualificationStatusBlock({
     examPaid,
   } = useQualificationProgress(activeGroupName, targetLevel ?? null) as any;
 
-  // Нормализуем причины недопуска под роль
   const normalizedReasons =
     (reasons as string[] | undefined)?.reduce<string[]>((acc, r) => {
       let reason = r;
 
       if (isSupervisor) {
-        // 1) У супервизоров CEU не считаются => отбрасываем любые CEU-причины
         const isCeuReason =
           /ceu/i.test(reason) ||
           /ceu-?балл/i.test(reason) ||
@@ -44,7 +42,6 @@ export function QualificationStatusBlock({
           /недостаточно\s+ceu/i.test(reason);
         if (isCeuReason) return acc;
 
-        // 2) «супервизия» → «менторство»
         reason = reason.replace(/супервизии/gi, 'менторства').replace(/супервизия/gi, 'менторство');
       }
 
@@ -64,7 +61,6 @@ export function QualificationStatusBlock({
   }
 
   // === ОТДЕЛЬНЫЙ РЕЖИМ ДЛЯ СУПЕРВИЗОРОВ ===
-  // Им цель не выбирают, экзамена у них нет — только менторство и документы.
   if (isSupervisor) {
     return (
       <div
@@ -100,8 +96,6 @@ export function QualificationStatusBlock({
               Документы: {documentsReady ? 'подтверждены' : 'не подтверждены'}
             </li>
           </ul>
-
-          {/* Для супервизора мы НЕ показываем общий "допуск" и причины — только факты */}
         </div>
       </div>
     );
@@ -116,14 +110,12 @@ export function QualificationStatusBlock({
       className="rounded-2xl border header-shadow bg-white"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
-      {/* Header */}
       <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
         <h3 className="text-lg font-semibold text-blue-dark">
           Сертификация (первичная или продление действующего сертификата)
         </h3>
       </div>
 
-      {/* Body */}
       <div className="px-6 py-5 space-y-4 text-sm">
         {hasTargetGroup ? (
           <p>
@@ -137,7 +129,6 @@ export function QualificationStatusBlock({
         )}
 
         <ul className="space-y-1">
-          {/* CEU показываем только если это НЕ супервизор */}
           <li className="flex items-center gap-2">
             {ceuReady ? (
               <CheckCircle className="text-green-600" size={18} />
@@ -175,7 +166,6 @@ export function QualificationStatusBlock({
           )}
         </p>
 
-        {/* Экзаменная часть полностью скрыта для супервизоров */}
         <ExamSection isEligible={!!isEligible} examPaid={!!examPaid} />
 
         {!isEligible && normalizedReasons.length > 0 && (
@@ -217,10 +207,8 @@ function ExamSection({ isEligible, examPaid }: { isEligible: boolean; examPaid: 
             const moderators = await getModerators();
             const email = app.user?.email || 'без email';
 
-            // Только админы
-            const admins = (moderators || []).filter(
-              (u: any) => u?.role === 'ADMIN' || u?.roles?.includes?.('ADMIN'),
-            );
+            // ⚠️ Только чистые ADMIN по основному полю role
+            const admins = (moderators || []).filter((u: any) => u?.role === 'ADMIN');
 
             if (admins.length === 0) {
               console.warn('Нет получателей-админов для уведомления EXAM');

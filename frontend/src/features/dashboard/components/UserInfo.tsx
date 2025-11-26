@@ -46,7 +46,6 @@ export function UserInfo() {
     payments.some((p) => p.type === 'FULL_PACKAGE' && p.status === 'PAID');
 
   const targetLevelName = user.targetLevel ? RU_BY_LEVEL[user.targetLevel as Level] : undefined;
-
   const hasTargetLevel = !!user.targetLevel;
 
   // 🔑 Оплата:
@@ -121,28 +120,55 @@ export function UserInfo() {
             {/* === Выбор цели === */}
             {!isSupervisorLike && <TargetLevelSelector user={user} isAdmin={isAdmin} />}
 
-            {/* Статус допуска — только после оплаты (как и было) */}
-            {!payLoading && (isAdmin || registrationPaid) ? (
-              <QualificationStatusBlock
-                activeGroupName={user.activeGroup?.name}
-                targetLevel={user.targetLevel as TargetLevel}
-              />
-            ) : (
-              !payLoading && (
-                <div
-                  className="mt-3 rounded-xl p-3 text-sm"
-                  style={{
-                    background: 'var(--color-blue-soft)',
-                    border: '1px solid rgba(31,48,94,0.2)',
-                  }}
-                >
-                  <p>
-                    Доступ к сертификации откроется после оплаты{' '}
-                    <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
-                  </p>
-                </div>
-              )
-            )}
+            {/* === Статус допуска === */}
+            {(() => {
+              if (payLoading) return null;
+
+              // оплаты ещё нет — показываем только подсказку про оплату
+              if (!registrationPaid) {
+                return (
+                  <div
+                    className="mt-3 rounded-xl p-3 text-sm"
+                    style={{
+                      background: 'var(--color-blue-soft)',
+                      border: '1px solid rgba(31,48,94,0.2)',
+                    }}
+                  >
+                    <p>
+                      Доступ к сертификации откроется после оплаты{' '}
+                      <strong>«Регистрация и супервизия»</strong> или{' '}
+                      <strong>«Полный пакет»</strong>.
+                    </p>
+                  </div>
+                );
+              }
+
+              // оплата есть, но цель не выбрана (и это не супервизор) → прячем большой блок
+              if (!isSupervisorLike && !hasTargetLevel) {
+                return (
+                  <div
+                    className="mt-3 rounded-xl p-3 text-sm"
+                    style={{
+                      background: 'var(--color-blue-soft)',
+                      border: '1px solid rgba(31,48,94,0.2)',
+                    }}
+                  >
+                    <p>
+                      Выберите <strong>уровень сертификации</strong> выше, чтобы увидеть статус
+                      допуска и прогресс по требованиям.
+                    </p>
+                  </div>
+                );
+              }
+
+              // всё есть — показываем QualificationStatusBlock
+              return (
+                <QualificationStatusBlock
+                  activeGroupName={user.activeGroup?.name}
+                  targetLevel={user.targetLevel as TargetLevel}
+                />
+              );
+            })()}
 
             {/* === Оплата === */}
             {canShowPayments ? (

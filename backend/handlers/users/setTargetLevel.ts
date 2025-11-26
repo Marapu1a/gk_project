@@ -185,7 +185,7 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     const reset = await tx.payment.updateMany({
       where: {
         userId: id,
-        type: { in: ['REGISTRATION', 'EXAM_ACCESS', 'FULL_PACKAGE'] },
+        type: { in: ['DOCUMENT_REVIEW', 'REGISTRATION', 'EXAM_ACCESS', 'FULL_PACKAGE'] },
         status: { in: ['PENDING', 'PAID'] },
       },
       data: {

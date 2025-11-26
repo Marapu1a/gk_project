@@ -146,7 +146,9 @@ export function UserLocationFields({ countries, cities, onChange }: Props) {
   return (
     <>
       <div>
-        <label className="block text-sm mb-1 text-blue-dark">Страны</label>
+        <label className="block text-sm mb-1 text-blue-dark">
+          Страны<span className="text-red-500 ml-1">*</span>
+        </label>
         <Select
           isMulti
           options={COUNTRY_OPTIONS}
@@ -162,7 +164,9 @@ export function UserLocationFields({ countries, cities, onChange }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm mb-1 text-blue-dark">Города</label>
+        <label className="block text-sm mb-1 text-blue-dark">
+          Города<span className="text-red-500 ml-1">*</span>
+        </label>
         <AsyncCreatableSelect
           isMulti
           cacheOptions

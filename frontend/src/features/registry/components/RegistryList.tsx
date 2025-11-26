@@ -1,5 +1,5 @@
 // src/features/registry/features/RegistryList.tsx
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRegistry } from '../hooks/useRegistry';
 import type { RegistryCard as RegistryCardType } from '../api/getRegistry';
 import { RegistryCard } from '../components/RegistryCard';
@@ -16,22 +16,6 @@ const tokenize = (s: string) =>
     .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
     .filter(Boolean);
 
-// базовая проверка полноты профиля для попадания в реестр
-// ВРЕМЕННО ОТКЛЮЧЕНО — показываем всех
-/*
-const isProfileComplete = (u: RegistryCardType) => {
-  const hasFullName = typeof u.fullName === 'string' && u.fullName.trim().length > 0;
-  const hasFullNameLatin =
-    typeof u.fullNameLatin === 'string' && u.fullNameLatin.trim().length > 0;
-  const hasCountry = typeof u.country === 'string' && u.country.trim().length > 0;
-  const hasCity = typeof u.city === 'string' && u.city.trim().length > 0;
-  const hasAvatar = typeof u.avatarUrl === 'string' && u.avatarUrl.trim().length > 0;
-  const hasBio = typeof u.bio === 'string' && u.bio.trim().length > 0;
-
-  return hasFullName && hasFullNameLatin && hasCountry && hasCity && hasAvatar && hasBio;
-};
-*/
-
 const isCertified = (u: RegistryCardType) => Boolean(u.isCertified);
 
 const formatDate = (iso?: string) => {
@@ -40,6 +24,31 @@ const formatDate = (iso?: string) => {
   if (d.length !== 3) return iso;
   return `${d[2]}.${d[1]}.${d[0]}`;
 };
+
+const STORAGE_KEY = 'registryFiltersV1';
+
+type PersistedState = {
+  page: number;
+  view: 'cards' | 'table';
+  nameFilter: string;
+  countryFilter: string;
+  cityFilter: string;
+  groupFilter: string;
+  statusFilter: 'all' | 'certified';
+  sortKey: SortKey;
+  sortDir: SortDir;
+};
+
+function loadPersistedState(): Partial<PersistedState> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as PersistedState;
+  } catch {
+    return {};
+  }
+}
 
 // Табличный режим
 function RegistryTableView({
@@ -142,27 +151,30 @@ function RegistryTableView({
 
 // Основной компонент
 export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
-  const [page, setPage] = useState(1);
-  const [view, setView] = useState<'cards' | 'table'>('cards');
+  const persisted = loadPersistedState();
+
+  const [page, setPage] = useState<number>(persisted.page ?? 1);
+  const [view, setView] = useState<'cards' | 'table'>(persisted.view ?? 'cards');
 
   // фильтры
-  const [nameFilter, setNameFilter] = useState('');
-  const [countryFilter, setCountryFilter] = useState('');
-  const [cityFilter, setCityFilter] = useState('');
-  const [groupFilter, setGroupFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'certified'>('all');
+  const [nameFilter, setNameFilter] = useState(persisted.nameFilter ?? '');
+  const [countryFilter, setCountryFilter] = useState(persisted.countryFilter ?? '');
+  const [cityFilter, setCityFilter] = useState(persisted.cityFilter ?? '');
+  const [groupFilter, setGroupFilter] = useState(persisted.groupFilter ?? '');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'certified'>(
+    persisted.statusFilter ?? 'all',
+  );
 
   // сортировка
-  const [sortKey, setSortKey] = useState<SortKey>('createdAt');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [sortKey, setSortKey] = useState<SortKey>(persisted.sortKey ?? 'createdAt');
+  const [sortDir, setSortDir] = useState<SortDir>(persisted.sortDir ?? 'desc');
 
+  // Берём большую выборку и дальше всё режем на фронте.
   const { data, isLoading } = useRegistry({
-    page,
-    limit: pageSize,
+    page: 1,
+    limit: 1000,
   });
 
-  const total = data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const items = (data?.items ?? []) as RegistryCardType[];
 
   const resetFilters = () => {
@@ -171,7 +183,13 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     setCityFilter('');
     setGroupFilter('');
     setStatusFilter('all');
+    setSortKey('createdAt');
+    setSortDir('desc');
     setPage(1);
+
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem(STORAGE_KEY);
+    }
   };
 
   // простой и явный тоггл сортировки
@@ -184,15 +202,38 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     }
   };
 
-  // раньше выкидывали неполные профили
-  // const eligibleItems = useMemo(() => items.filter((u) => isProfileComplete(u)), [items]);
+  // 🔐 сохраняем состояние в sessionStorage при изменении
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const snapshot: PersistedState = {
+      page,
+      view,
+      nameFilter,
+      countryFilter,
+      cityFilter,
+      groupFilter,
+      statusFilter,
+      sortKey,
+      sortDir,
+    };
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+  }, [
+    page,
+    view,
+    nameFilter,
+    countryFilter,
+    cityFilter,
+    groupFilter,
+    statusFilter,
+    sortKey,
+    sortDir,
+  ]);
 
   // фильтрация по полям
   const filtered = useMemo(() => {
     const nameTokens = tokenize(nameFilter);
     const countryTokens = tokenize(countryFilter);
     const cityTokens = tokenize(cityFilter);
-    const groupTokens = tokenize(groupFilter);
 
     return items.filter((u) => {
       if (statusFilter === 'certified' && !isCertified(u)) return false;
@@ -212,9 +253,10 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
         if (!cityTokens.every((t) => hayCity.includes(t))) return false;
       }
 
-      if (groupTokens.length > 0) {
+      if (groupFilter) {
         const hayGroup = norm(u.groupName ?? '');
-        if (!groupTokens.every((t) => hayGroup.includes(t))) return false;
+        const needle = norm(groupFilter);
+        if (!hayGroup.includes(needle)) return false;
       }
 
       return true;
@@ -265,6 +307,23 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
 
     return arr;
   }, [filtered, sortKey, sortDir]);
+
+  // пагинация после фильтров/сортировки
+  const totalFiltered = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+
+  // если фильтрами сузили выборку и текущая страница стала "лишней" — сдвинем назад
+  useEffect(() => {
+    setPage((p) => {
+      const clamped = Math.min(Math.max(1, totalPages), p);
+      return clamped;
+    });
+  }, [totalPages]);
+
+  const pageItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, page, pageSize]);
 
   return (
     <div className="space-y-4">
@@ -328,13 +387,18 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
 
           <div className="flex flex-col">
             <label className="text-sm text-blue-dark">Квалификация (группа)</label>
-            <input
-              type="text"
+            <select
               className="input"
               value={groupFilter}
               onChange={(e) => setGroupFilter(e.target.value)}
-              placeholder="Инструктор, Куратор…"
-            />
+            >
+              <option value="">Все уровни</option>
+              <option value="Соискатель">Соискатель</option>
+              <option value="Инструктор">Инструктор</option>
+              <option value="Куратор">Куратор</option>
+              <option value="Супервизор">Супервизор</option>
+              <option value="Опытный Супервизор">Опытный Супервизор</option>
+            </select>
           </div>
 
           <div className="flex flex-col">
@@ -360,7 +424,7 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
         <div>Ничего не найдено</div>
       ) : view === 'table' ? (
         <RegistryTableView
-          items={sorted}
+          items={pageItems}
           onOpenProfile={onOpenProfile}
           sortKey={sortKey}
           sortDir={sortDir}
@@ -368,7 +432,7 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sorted.map((u) => (
+          {pageItems.map((u) => (
             <RegistryCard key={u.id} {...u} onOpenProfile={onOpenProfile} />
           ))}
         </div>
@@ -380,7 +444,7 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
           Назад
         </Button>
         <div className="text-sm text-gray-600">
-          Стр. {page} из {totalPages} • Всего: {total}
+          Стр. {page} из {totalPages} • Всего: {totalFiltered}
         </div>
         <Button
           disabled={page >= totalPages}

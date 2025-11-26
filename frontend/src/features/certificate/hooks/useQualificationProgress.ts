@@ -49,39 +49,74 @@ export function useQualificationProgress(
 
   // 🔧 нормализуем имя группы
   const g = (activeGroupName ?? '').toLowerCase().trim();
+  const isSupervisorGroup = g === 'супервизор';
+  const isExperiencedSupervisorGroup = g === 'опытный супервизор';
 
   const mode: QualificationMode =
-    g === 'супервизор' || g === 'опытный супервизор' ? 'RENEWAL' : 'EXAM';
+    isSupervisorGroup || isExperiencedSupervisorGroup ? 'RENEWAL' : 'EXAM';
 
-  // 👇 ключевая правка: целевая группа только из targetLevel
-  const targetGroup =
-    mode === 'EXAM' && targetLevel ? RU_BY_LEVEL[targetLevel] : null;
+  // 👇 целевая группа только из targetLevel (только для EXAM)
+  const targetGroup = mode === 'EXAM' && targetLevel ? RU_BY_LEVEL[targetLevel] : null;
 
   // === CEU ===
-  const ceuReady =
-    !!ceuSummary?.percent &&
-    ceuSummary.percent.ethics >= 100 &&
-    ceuSummary.percent.cultDiver >= 100 &&
-    (targetGroup === 'Супервизор' ? ceuSummary.percent.supervision >= 100 : true) &&
-    ceuSummary.percent.general >= 100;
+  let ceuReady = false;
+
+  if (ceuSummary?.percent) {
+    const p = ceuSummary.percent as any;
+
+    if (isSupervisorGroup || isExperiencedSupervisorGroup) {
+      // супервизоры / опытные супервизоры — годовая норма 4+4+4+12
+      ceuReady =
+        p.ethics >= 100 &&
+        p.cultDiver >= 100 &&
+        p.supervision >= 100 &&
+        p.general >= 100;
+    } else {
+      // обычный экзаменационный путь
+      const supervisionOk =
+        targetGroup === 'Супервизор' ? p.supervision >= 100 : true;
+
+      ceuReady =
+        p.ethics >= 100 &&
+        p.cultDiver >= 100 &&
+        supervisionOk &&
+        p.general >= 100;
+    }
+  } else {
+    ceuReady = false;
+  }
 
   // === Supervision / менторство ===
   let supervisionReady = false;
+
   if (mode === 'EXAM') {
-    supervisionReady =
-      !!supervisionSummary?.percent &&
-      (supervisionSummary.percent as any).practice >= 100 &&
-      (supervisionSummary.percent as any).supervision >= 100;
+    // классический путь: практика + супервизия
+    const p = (supervisionSummary?.percent || {}) as any;
+    supervisionReady = p.practice >= 100 && p.supervision >= 100;
   } else {
-    const usablePractice = (supervisionSummary?.usable as any)?.practice ?? 0;
-    const usableSupervision = (supervisionSummary?.usable as any)?.supervision ?? 0;
-    const usableSupervisor = (supervisionSummary?.usable as any)?.supervisor ?? 0;
-    const totalUsable = usablePractice + usableSupervision + usableSupervisor;
-    const REQUIRED_TOTAL = 2000;
-    supervisionReady = totalUsable >= REQUIRED_TOTAL;
+    // RENEWAL — только супервизоры / опытные супервизоры
+    if (isExperiencedSupervisorGroup) {
+      // опытный супервизор: менторские часы не требуются
+      supervisionReady = true;
+    } else if (isSupervisorGroup) {
+      // обычный супервизор: смотрим на менторскую шкалу с бэка
+      const mentor = (supervisionSummary as any)?.mentor as
+        | { total: number; required: number; percent: number; pending: number }
+        | null
+        | undefined;
+
+      if (mentor && typeof mentor.required === 'number' && mentor.required > 0) {
+        supervisionReady =
+          mentor.percent >= 100 || mentor.total >= mentor.required;
+      } else {
+        supervisionReady = false;
+      }
+    } else {
+      supervisionReady = false;
+    }
   }
 
-  // Документы + оплата проверки документов
+  // === Документы + оплата проверки документов ===
   const documentPayment = payments?.find((p) => p.type === 'DOCUMENT_REVIEW');
   const documentsReady =
     docReview?.status === 'CONFIRMED' && documentPayment?.status === 'PAID';
@@ -91,7 +126,7 @@ export function useQualificationProgress(
     (p) => p.type === 'EXAM_ACCESS' && p.status === 'PAID',
   );
 
-  // Причины (только EXAM)
+  // Причины (только EXAM — супервизорам причины не показываем)
   const reasons: string[] = [];
   if (mode === 'EXAM') {
     if (!targetGroup) reasons.push('Цель сертификации не выбрана');
@@ -105,7 +140,7 @@ export function useQualificationProgress(
 
   const isEligible =
     mode === 'RENEWAL'
-      ? ceuReady && documentsReady
+      ? ceuReady && supervisionReady && documentsReady
       : hasTarget && ceuReady && supervisionReady && documentsReady;
 
   return {
