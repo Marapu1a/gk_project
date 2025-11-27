@@ -32,10 +32,10 @@ const LEVEL_BY_RU: Record<string, 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | unde
 type Query = { level?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' };
 
 export async function supervisionSummaryHandler(
-  req: FastifyRequest<{ Querystring: Query }>,
+  req: FastifyRequest, // 🔹 убрали дженерик с Querystring
   reply: FastifyReply,
 ) {
-  const { user } = req;
+  const { user } = req as any;
   if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
   const dbUser = await prisma.user.findUnique({
@@ -70,7 +70,8 @@ export async function supervisionSummaryHandler(
 
   // ----------------- определяем целевой уровень / группу -----------------
 
-  const explicitLevel = req.query?.level;
+  const q = (req.query ?? {}) as Query;
+  const explicitLevel = q.level;
   const targetFromUser = dbUser.targetLevel ?? undefined;
 
   // сначала enum-уровень, потом уже русское имя

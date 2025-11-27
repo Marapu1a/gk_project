@@ -21,10 +21,10 @@ const RU_BY_LEVEL: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
 type Query = { level?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' };
 
 export async function ceuSummaryHandler(
-  req: FastifyRequest<{ Querystring: Query }>,
+  req: FastifyRequest, // <- убрали дженерик
   reply: FastifyReply,
 ) {
-  const { user } = req;
+  const { user } = req as any;
   if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
   const dbUser = await prisma.user.findUnique({
@@ -81,7 +81,8 @@ export async function ceuSummaryHandler(
     required = annual ?? null;
   } else {
     // 🔹 Для всех остальных: экзаменационные требования к целевой группе (как было)
-    const explicitLevel = req.query?.level;
+    const q = (req.query ?? {}) as Query;
+    const explicitLevel = q.level;
     const targetFromUser = dbUser.targetLevel ?? undefined;
 
     const targetGroupName =
