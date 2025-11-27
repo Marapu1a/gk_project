@@ -93,7 +93,7 @@ export function SupervisionRequestForm() {
   // === итоговый лимит для ЭТОЙ заявки ===
   const requestLimit: number | null = useMemo(() => {
     if (isMentor) {
-      // для менторства: не больше 24 за заявку и не больше остатка до 2000
+      // для менторства: не больше 24 за заявку и не больше остатка до лимита
       if (mentorRemaining === null) return MAX_MENTOR_HOURS_PER_REQUEST;
       return Math.max(0, Math.min(MAX_MENTOR_HOURS_PER_REQUEST, mentorRemaining));
     }
@@ -121,15 +121,35 @@ export function SupervisionRequestForm() {
   });
 
   const allUsers = usersData?.users ?? [];
-  // только админы в подсказках
-  const adminUsers = useMemo(() => allUsers.filter((u: any) => u.role === 'ADMIN'), [allUsers]);
 
-  // ⚡ фильтр по ФИО/email/группам среди админов
+  // ⚡ только подходящие ревьюеры в подсказках:
+  // - если автор супервизор (isMentor) → опытные супервизоры ИЛИ админы
+  // - если автор не супервизор → супервизоры, опытные супервизоры ИЛИ админы
+  const eligibleReviewers = useMemo(() => {
+    return allUsers.filter((u: any) => {
+      const groupNames = ((u.groups as { name: string }[] | undefined) ?? []).map((g) => g.name);
+      const isExperienced = groupNames.includes('Опытный Супервизор');
+      const isSupervisor = groupNames.includes('Супервизор') || isExperienced;
+      const isAdmin = u.role === 'ADMIN';
+
+      if (isMentor) {
+        // супервизор запрашивает проверку своих менторских часов:
+        // опытный супервизор или админ
+        return isExperienced || isAdmin;
+      }
+
+      // инструктор/куратор и прочие:
+      // любой супервизор/опытный супервизор или админ
+      return isSupervisor || isAdmin;
+    });
+  }, [allUsers, isMentor]);
+
+  // ⚡ фильтр по ФИО/email/группам среди допустимых ревьюеров
   const matchedUsers = useMemo(() => {
     const tokens = tokenize(supervisorEmailInput);
     if (tokens.length === 0) return [];
 
-    return adminUsers.filter((u: any) => {
+    return eligibleReviewers.filter((u: any) => {
       const hayParts = [
         u.fullName,
         u.email,
@@ -138,7 +158,7 @@ export function SupervisionRequestForm() {
       const hay = norm(hayParts.filter(Boolean).join(' '));
       return tokens.every((t) => hay.includes(t));
     });
-  }, [adminUsers, supervisorEmailInput]);
+  }, [eligibleReviewers, supervisorEmailInput]);
 
   // первичная инициализация
   useEffect(() => {
@@ -223,10 +243,10 @@ export function SupervisionRequestForm() {
       </h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Email супервизора c подсказками по админам */}
+        {/* Email супервизора c подсказками по группам супервизоров и админам */}
         <div className="relative">
           <label className="block font-medium mb-1">
-            Email {isMentor ? 'опытного супервизора' : 'супервизора'}
+            Email {isMentor ? 'опытного супервизора или админа' : 'супервизора или админа'}
           </label>
           <input
             type="text"

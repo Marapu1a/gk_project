@@ -35,7 +35,7 @@ function detectRole(tok: string): 'ADMIN' | 'REVIEWER' | 'STUDENT' | null {
 
 export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) {
   const { role, group, search, page, perPage } = req.query as Q;
-  const actorRole = (req as any).user?.role ?? (req as any).user?.role; // на всякий, если типы кривые
+  const actorRole = (req as any).user?.role ?? (req as any).user?.role;
 
   if (!actorRole) {
     return reply.code(401).send({ error: 'Не авторизован' });
@@ -47,13 +47,11 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
 
   let where: any = {};
 
-  // 1) фильтр по роли
-  if (actorRole === 'ADMIN') {
-    if (role && ['ADMIN', 'REVIEWER', 'STUDENT'].includes(role)) {
-      where.role = role;
-    }
-  } else {
-    where.role = 'ADMIN';
+  // 1) фильтр по роли — БЕЗ форсированного "только ADMIN" для не-админов.
+  // Если явно передали role — применяем (и админ, и не-админ могут этим пользоваться),
+  // иначе не ограничиваем по роли вообще.
+  if (role && ['ADMIN', 'REVIEWER', 'STUDENT'].includes(role)) {
+    where.role = role;
   }
 
   // 2) фильтр по группе
@@ -75,6 +73,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
         { email: { contains: tok, mode: 'insensitive' } },
         { groups: { some: { group: { name: { contains: tok, mode: 'insensitive' } } } } },
       ];
+      // только админ может искать по тексту «админ/ревьюер/соискатель» и этим менять фильтр по роли
       if (actorRole === 'ADMIN' && r) OR.push({ role: r });
       AND.push({ OR });
     }
@@ -96,7 +95,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
         fullNameLatin: true,
         role: true,
         createdAt: true,
-        avatarUrl: true, // 👈 добавили аватар
+        avatarUrl: true,
         groups: { select: { group: { select: { id: true, name: true } } } },
       },
     }),
@@ -113,7 +112,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
       fullNameLatin: u.fullNameLatin,
       role: u.role,
       createdAt: u.createdAt,
-      avatarUrl: u.avatarUrl ?? null, // 👈 протащили в DTO
+      avatarUrl: u.avatarUrl ?? null,
       groups: u.groups.map((g) => g.group),
     })),
   });

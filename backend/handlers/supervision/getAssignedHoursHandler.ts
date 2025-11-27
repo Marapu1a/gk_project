@@ -19,11 +19,7 @@ function normalizeLevel(type: string): string {
 
 export async function getAssignedHoursHandler(req: FastifyRequest, reply: FastifyReply) {
   const reviewerId = req.user?.userId;
-  const role = req.user?.role;
   if (!reviewerId) return reply.code(401).send({ error: 'Не авторизован' });
-  if (role !== 'REVIEWER' && role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Недостаточно прав' });
-  }
 
   const { status = 'UNCONFIRMED', take = '25', cursor } = req.query as Query;
 

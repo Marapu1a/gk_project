@@ -10,7 +10,9 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
 
   const parsed = createSupervisionSchema.safeParse(req.body);
   if (!parsed.success) {
-    return reply.code(400).send({ error: 'Неверные данные', details: parsed.error.flatten() });
+    return reply
+      .code(400)
+      .send({ error: 'Неверные данные', details: parsed.error.flatten() });
   }
   const { fileId, entries, supervisorEmail } = parsed.data;
 
@@ -19,14 +21,18 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     where: { email: supervisorEmail },
     include: { groups: { include: { group: true } } },
   });
-  if (!reviewer) return reply.code(400).send({ error: 'Супервизор с таким email не найден' });
+  if (!reviewer) {
+    return reply.code(400).send({ error: 'Супервизор с таким email не найден' });
+  }
 
   // --- автор заявки ---
   const currentUser = await prisma.user.findUnique({
     where: { id: userId },
     include: { groups: { include: { group: true } } },
   });
-  if (!currentUser) return reply.code(400).send({ error: 'Пользователь не найден' });
+  if (!currentUser) {
+    return reply.code(400).send({ error: 'Пользователь не найден' });
+  }
 
   const userGroups = currentUser.groups.map((g) => g.group.name);
   const reviewerGroups = reviewer.groups.map((g) => g.group.name);
@@ -34,17 +40,23 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   const isAuthorSupervisor =
     userGroups.includes('Супервизор') || userGroups.includes('Опытный Супервизор');
 
+  const isReviewerAdmin = reviewer.role === 'ADMIN';
   const isReviewerExperienced = reviewerGroups.includes('Опытный Супервизор');
   const isReviewerSupervisor = reviewerGroups.includes('Супервизор') || isReviewerExperienced;
 
-  if (isAuthorSupervisor && !isReviewerExperienced) {
+  // автор — супервизор (он отправляет менторские часы):
+  // ревьюер: опытный супервизор ИЛИ админ
+  if (isAuthorSupervisor && !(isReviewerExperienced || isReviewerAdmin)) {
     return reply.code(400).send({
-      error: 'Супервизоры могут отправлять часы только опытным супервизорам',
+      error: 'Супервизоры могут отправлять часы только опытным супервизорам или админам',
     });
   }
-  if (!isAuthorSupervisor && !isReviewerSupervisor) {
+
+  // автор не супервизор (он отправляет часы практики):
+  // ревьюер: супервизор/опытный супервизор ИЛИ админ
+  if (!isAuthorSupervisor && !(isReviewerSupervisor || isReviewerAdmin)) {
     return reply.code(400).send({
-      error: 'Проверяющий должен быть супервизором или выше',
+      error: 'Проверяющий должен быть супервизором, опытным супервизором или админом',
     });
   }
 
@@ -90,7 +102,8 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   } catch (e: any) {
     if (e?.message === 'ONLY_PRACTICE_ALLOWED') {
       return reply.code(400).send({
-        error: 'Можно отправлять только часы практики. Часы супервизии теперь считаются автоматически.',
+        error:
+          'Можно отправлять только часы практики. Часы супервизии теперь считаются автоматически.',
       });
     }
     throw e;
