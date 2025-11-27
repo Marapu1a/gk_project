@@ -11,8 +11,8 @@ type UserRow = {
   role: Role;
   createdAt: string;
   groups: { id: string; name: string }[];
-  avatarUrl?: string | null;      // 👈 аватар
-  fullNameLatin?: string | null;  // 👈 если вдруг пригодится где-то ещё
+  avatarUrl?: string | null;
+  fullNameLatin?: string | null;
 };
 
 type UsersResponse = {
@@ -25,24 +25,41 @@ type UsersResponse = {
 type Params = {
   search?: string;
   page?: number;
-  perPage?: number; // бек всё равно обрежет до 100
+  perPage?: number;
   role?: string;
   group?: string;
+
+  // режим подбора для часов
+  // practice — практика → супервизоры, опытные, админы
+  // mentor   — менторство → опытные, админы
+  supervision?: 'practice' | 'mentor';
 };
 
 export function useUsers(params: Params) {
-  const { search = '', page = 1, perPage = 20, role, group } = params;
+  const {
+    search = '',
+    page = 1,
+    perPage = 20,
+    role,
+    group,
+    supervision,
+  } = params;
 
   return useQuery<UsersResponse, Error>({
-    // стабильный ключ без лишних объектов
-    queryKey: ['users', search, page, perPage, role ?? '', group ?? ''],
+    queryKey: ['users', search, page, perPage, role ?? '', group ?? '', supervision ?? ''],
     queryFn: async () => {
       const { data } = await api.get('/admin/users', {
-        params: { search, page, perPage, role, group },
+        params: {
+          search,
+          page,
+          perPage,
+          role,
+          group,
+          supervision,
+        },
       });
       return data as UsersResponse;
     },
-    // аналог старого keepPreviousData: true
     placeholderData: keepPreviousData,
     staleTime: 30_000,
   });

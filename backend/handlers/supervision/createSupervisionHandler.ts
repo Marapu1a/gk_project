@@ -37,26 +37,40 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   const userGroups = currentUser.groups.map((g) => g.group.name);
   const reviewerGroups = reviewer.groups.map((g) => g.group.name);
 
-  const isAuthorSupervisor =
-    userGroups.includes('Супервизор') || userGroups.includes('Опытный Супервизор');
+  // авторские группы
+  const isAuthorSimpleSupervisor = userGroups.includes('Супервизор');
+  const isAuthorExperiencedSupervisor = userGroups.includes('Опытный Супервизор');
+  const isAuthorAnySupervisor = isAuthorSimpleSupervisor || isAuthorExperiencedSupervisor;
 
+  // ревьюерские роли/группы
   const isReviewerAdmin = reviewer.role === 'ADMIN';
   const isReviewerExperienced = reviewerGroups.includes('Опытный Супервизор');
   const isReviewerSupervisor = reviewerGroups.includes('Супервизор') || isReviewerExperienced;
 
-  // автор — супервизор (он отправляет менторские часы):
-  // ревьюер: опытный супервизор ИЛИ админ
-  if (isAuthorSupervisor && !(isReviewerExperienced || isReviewerAdmin)) {
+  // опытный супервизор не набирает часы вообще
+  if (isAuthorExperiencedSupervisor) {
     return reply.code(400).send({
-      error: 'Супервизоры могут отправлять часы только опытным супервизорам или админам',
+      error: 'Опытные супервизоры не набирают часы. Для менторских часов выбирают вас.',
     });
   }
 
-  // автор не супервизор (он отправляет часы практики):
-  // ревьюер: супервизор/опытный супервизор ИЛИ админ
-  if (!isAuthorSupervisor && !(isReviewerSupervisor || isReviewerAdmin)) {
+  // ===== Правила адресата =====
+  // 1) Часы практики → супервизоры, опытные супервизоры, админы
+  // 2) Менторские часы → опытные супервизоры, админы
+
+  // автор — простой супервизор (он отправляет менторские часы):
+  // ревьюер: опытный супервизор ИЛИ админ
+  if (isAuthorSimpleSupervisor && !(isReviewerExperienced || isReviewerAdmin)) {
     return reply.code(400).send({
-      error: 'Проверяющий должен быть супервизором, опытным супервизором или админом',
+      error: 'Менторские часы можно отправлять только опытным супервизорам или админам',
+    });
+  }
+
+  // автор НЕ супервизор (он отправляет часы практики):
+  // ревьюер: супервизор/опытный супервизор ИЛИ админ
+  if (!isAuthorAnySupervisor && !(isReviewerSupervisor || isReviewerAdmin)) {
+    return reply.code(400).send({
+      error: 'Часы практики можно отправлять только супервизорам, опытным супервизорам или админам',
     });
   }
 
@@ -66,10 +80,10 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
 
   // Новая логика:
   // - НЕ супервизор: может отправлять ТОЛЬКО часы практики (PRACTICE).
-  // - Супервизор / опытный супервизор: любые введённые часы считаем менторскими (SUPERVISOR).
+  // - Простой супервизор: любые введённые часы считаем менторскими (SUPERVISOR).
   const normalized = entries.map(({ type, value }) => {
-    if (isAuthorSupervisor) {
-      // автор — супервизор, он фиксирует менторские часы
+    if (isAuthorSimpleSupervisor) {
+      // автор — простой супервизор, он фиксирует менторские часы
       return { type: PracticeLevel.SUPERVISOR, value };
     }
 

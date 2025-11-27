@@ -8,6 +8,10 @@ type Q = {
   search?: string;
   page?: string | number;
   perPage?: string | number;
+  // спец-режим для фильтра выборки рецензентов часов
+  // 'practice'  — получатели часов практики
+  // 'mentor'    — получатели менторских часов
+  supervision?: string;
 };
 
 function toInt(v: Q['page'], def: number) {
@@ -34,7 +38,7 @@ function detectRole(tok: string): 'ADMIN' | 'REVIEWER' | 'STUDENT' | null {
 }
 
 export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) {
-  const { role, group, search, page, perPage } = req.query as Q;
+  const { role, group, search, page, perPage, supervision } = req.query as Q;
   const actorRole = (req as any).user?.role ?? (req as any).user?.role;
 
   if (!actorRole) {
@@ -79,6 +83,49 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
     }
 
     where = Object.keys(where).length ? { AND: [where, { AND }] } : { AND };
+  }
+
+  // 4) спец-режим для выбора рецензентов часов
+  //
+  // Требования:
+  // 1. Часы ПРАКТИКИ отправляем супервизорам, опытным супервизорам и админам
+  // 2. МЕНТОРСКИЕ часы отправляем опытным супервизорам и админам
+  //
+  // => supervision=practice:
+  //    (role = ADMIN) OR (group IN ["Супервизор", "Опытный Супервизор"])
+  // => supervision=mentor:
+  //    (role = ADMIN) OR (group = "Опытный Супервизор")
+  if (supervision === 'practice' || supervision === 'mentor') {
+    const OR: any[] = [{ role: 'ADMIN' }];
+
+    if (supervision === 'practice') {
+      OR.push({
+        groups: {
+          some: {
+            group: {
+              name: { in: ['Супервизор', 'Опытный Супервизор'] },
+            },
+          },
+        },
+      });
+    } else {
+      // mentor
+      OR.push({
+        groups: {
+          some: {
+            group: {
+              name: 'Опытный Супервизор',
+            },
+          },
+        },
+      });
+    }
+
+    if (Object.keys(where).length) {
+      where = { AND: [where, { OR }] };
+    } else {
+      where = { OR };
+    }
   }
 
   const [total, users] = await Promise.all([

@@ -20,8 +20,13 @@ const typeLabel: Record<'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR', string> = {
   SUPERVISOR: 'Менторство',
 };
 
-const notifLabel = (t: HourType) =>
-  normalizeType(t) === 'SUPERVISOR' ? 'менторские часы' : 'часы супервизии';
+// более точный текст для уведомлений
+const notifLabel = (t: HourType) => {
+  const nt = normalizeType(t);
+  if (nt === 'SUPERVISOR') return 'менторские часы';
+  if (nt === 'PRACTICE') return 'часы практики';
+  return 'часы супервизии';
+};
 
 export function SupervisionReviewForm() {
   const {
@@ -137,7 +142,10 @@ export function SupervisionReviewForm() {
                         className="input w-44"
                         value={rejectedReasonMap[hour.id] ?? ''}
                         onChange={(e) =>
-                          setRejectedReasonMap((prev) => ({ ...prev, [hour.id]: e.target.value }))
+                          setRejectedReasonMap((prev) => ({
+                            ...prev,
+                            [hour.id]: e.target.value,
+                          }))
                         }
                         disabled={mutation.isPending}
                       />

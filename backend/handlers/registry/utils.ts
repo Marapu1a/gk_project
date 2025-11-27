@@ -1,4 +1,3 @@
-// src/.../getRegistry.ts (или где у тебя эта утилка)
 import { prisma } from '../../lib/prisma';
 
 /** Активный = expiresAt >= now(). Последний по issuedAt активный сертификат или null. */
@@ -43,7 +42,10 @@ export async function getRegistryList({
 }) {
   const skip = (page - 1) * limit;
 
-  const where: any = {};
+  // базовый фильтр: админы в публичный реестр не попадают
+  const where: any = {
+    role: { not: 'ADMIN' },
+  };
   if (country) where.country = country;
   if (city) where.city = city;
 

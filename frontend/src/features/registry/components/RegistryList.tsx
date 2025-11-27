@@ -1,4 +1,3 @@
-// src/features/registry/features/RegistryList.tsx
 import { useMemo, useState, useEffect } from 'react';
 import { useRegistry } from '../hooks/useRegistry';
 import type { RegistryCard as RegistryCardType } from '../api/getRegistry';
@@ -192,7 +191,6 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     }
   };
 
-  // простой и явный тоггл сортировки
   const handleChangeSort = (key: SortKey) => {
     if (key === sortKey) {
       setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -202,7 +200,6 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     }
   };
 
-  // 🔐 сохраняем состояние в sessionStorage при изменении
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const snapshot: PersistedState = {
@@ -256,7 +253,8 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
       if (groupFilter) {
         const hayGroup = norm(u.groupName ?? '');
         const needle = norm(groupFilter);
-        if (!hayGroup.includes(needle)) return false;
+        // строгий матч, чтобы "Супервизор" не ловил "Опытный Супервизор"
+        if (hayGroup !== needle) return false;
       }
 
       return true;
@@ -308,11 +306,9 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     return arr;
   }, [filtered, sortKey, sortDir]);
 
-  // пагинация после фильтров/сортировки
   const totalFiltered = sorted.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
 
-  // если фильтрами сузили выборку и текущая страница стала "лишней" — сдвинем назад
   useEffect(() => {
     setPage((p) => {
       const clamped = Math.min(Math.max(1, totalPages), p);

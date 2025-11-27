@@ -25,6 +25,23 @@ const tokenize = (s: string) =>
 // максимум в ОДНОЙ заявке для менторских часов
 const MAX_MENTOR_HOURS_PER_REQUEST = 24;
 
+// приоритет групп для выбора "главной"
+const GROUP_PRIORITY: Record<string, number> = {
+  Соискатель: 1,
+  Инструктор: 2,
+  Куратор: 3,
+  Супервизор: 4,
+  'Опытный Супервизор': 5,
+};
+
+function getPrimaryGroupName(groups?: { name: string }[] | null) {
+  if (!groups || groups.length === 0) return null;
+  const sorted = [...groups].sort(
+    (a, b) => (GROUP_PRIORITY[b.name] ?? 0) - (GROUP_PRIORITY[a.name] ?? 0),
+  );
+  return sorted[0]?.name ?? null;
+}
+
 export function SupervisionRequestForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -44,6 +61,20 @@ export function SupervisionRequestForm() {
   // подтягиваем текущий суммарный прогресс по часам
   const { data: supervisionSummary } = useSupervisionSummary();
 
+  // ===== автор: кто он по группам =====
+  const { isMentor, isExperiencedSupervisor } = useMemo(() => {
+    const names = user?.groups?.map((g: { name: string }) => g.name) ?? [];
+    const isSupervisor = names.includes('Супервизор');
+    const isExp = names.includes('Опытный Супервизор');
+    // только простой "Супервизор" набирает менторские часы
+    return {
+      isMentor: isSupervisor,
+      isExperiencedSupervisor: isExp,
+    };
+  }, [user]);
+
+  const userEmail = user?.email ?? 'без email';
+
   const form = useForm<SupervisionRequestFormData>({
     resolver: zodResolver(supervisionRequestSchema),
     defaultValues: {
@@ -57,13 +88,6 @@ export function SupervisionRequestForm() {
   const { register, handleSubmit, control, formState, reset, setValue, getValues } = form;
   const { errors, isSubmitting } = formState;
   const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
-
-  const isMentor = useMemo(() => {
-    const names = user?.groups?.map((g: { name: string }) => g.name) ?? [];
-    return names.includes('Супервизор') || names.includes('Опытный Супервизор');
-  }, [user]);
-
-  const userEmail = user?.email ?? 'без email';
 
   // === информация по менторству из summary (для супервизоров) ===
   const mentorInfo = (supervisionSummary as any)?.mentor;
@@ -93,11 +117,9 @@ export function SupervisionRequestForm() {
   // === итоговый лимит для ЭТОЙ заявки ===
   const requestLimit: number | null = useMemo(() => {
     if (isMentor) {
-      // для менторства: не больше 24 за заявку и не больше остатка до лимита
       if (mentorRemaining === null) return MAX_MENTOR_HOURS_PER_REQUEST;
       return Math.max(0, Math.min(MAX_MENTOR_HOURS_PER_REQUEST, mentorRemaining));
     }
-    // для практики: сколько осталось до цели
     return practiceRemaining;
   }, [isMentor, mentorRemaining, practiceRemaining]);
 
@@ -106,7 +128,7 @@ export function SupervisionRequestForm() {
   const [search, setSearch] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // дергаем сервер с дебаунсом (как в AdminIssueCertificateForm/UsersTable)
+  // дергаем сервер с дебаунсом
   useEffect(() => {
     const t = setTimeout(() => {
       setSearch(supervisorEmailInput.trim());
@@ -114,17 +136,17 @@ export function SupervisionRequestForm() {
     return () => clearTimeout(t);
   }, [supervisorEmailInput]);
 
+  // ВАЖНО: режим фильтра по типу часов
   const { data: usersData, isLoading: isUsersLoading } = useUsers({
     search,
     page: 1,
     perPage: 20,
+    supervision: isMentor ? 'mentor' : 'practice',
   });
 
   const allUsers = usersData?.users ?? [];
 
-  // ⚡ только подходящие ревьюеры в подсказках:
-  // - если автор супервизор (isMentor) → опытные супервизоры ИЛИ админы
-  // - если автор не супервизор → супервизоры, опытные супервизоры ИЛИ админы
+  // только подходящие ревьюеры
   const eligibleReviewers = useMemo(() => {
     return allUsers.filter((u: any) => {
       const groupNames = ((u.groups as { name: string }[] | undefined) ?? []).map((g) => g.name);
@@ -133,18 +155,13 @@ export function SupervisionRequestForm() {
       const isAdmin = u.role === 'ADMIN';
 
       if (isMentor) {
-        // супервизор запрашивает проверку своих менторских часов:
-        // опытный супервизор или админ
         return isExperienced || isAdmin;
       }
-
-      // инструктор/куратор и прочие:
-      // любой супервизор/опытный супервизор или админ
       return isSupervisor || isAdmin;
     });
   }, [allUsers, isMentor]);
 
-  // ⚡ фильтр по ФИО/email/группам среди допустимых ревьюеров
+  // фильтр по строке поиска
   const matchedUsers = useMemo(() => {
     const tokens = tokenize(supervisorEmailInput);
     if (tokens.length === 0) return [];
@@ -172,7 +189,7 @@ export function SupervisionRequestForm() {
     }
   }, [user, isMentor, reset]);
 
-  // глобальное уведомление, если форма не прошла валидацию
+  // уведомление, если есть ошибки
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
       toast.error('Проверьте форму — есть ошибки');
@@ -185,7 +202,6 @@ export function SupervisionRequestForm() {
       return sum + val;
     }, 0);
 
-    // если лимит известен — не даём перелить шкалу
     if (requestLimit !== null && totalHours > requestLimit) {
       if (isMentor) {
         toast.error(
@@ -197,7 +213,6 @@ export function SupervisionRequestForm() {
       return;
     }
 
-    // доп. проверка для супервизоров: глобальный остаток
     if (isMentor && mentorRemaining !== null && mentorRemaining <= 0) {
       toast.error('Вы уже набрали максимально допустимое количество часов менторства.');
       return;
@@ -233,8 +248,21 @@ export function SupervisionRequestForm() {
   if (isLoading) return <p>Загрузка...</p>;
   if (isError || !user) return <p className="text-error">Ошибка загрузки пользователя</p>;
 
-  // регистрируем поле, но управляем значением руками
   const supervisorEmailField = register('supervisorEmail');
+
+  // опытный супервизор не набирает часы вообще
+  if (isExperiencedSupervisor) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto space-y-6 bg-white border border-blue-dark/10 rounded-xl shadow-sm">
+        <h1 className="text-2xl font-bold text-blue-dark">Заявка на часы недоступна</h1>
+        <p className="text-sm text-gray-700">
+          Опытные супервизоры не набирают часы менторства или практики. Для менторских часов вас
+          выбирают как проверяющего.
+        </p>
+        <BackButton />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6 bg-white border border-blue-dark/10 rounded-xl shadow-sm">
@@ -243,7 +271,7 @@ export function SupervisionRequestForm() {
       </h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Email супервизора c подсказками по группам супервизоров и админам */}
+        {/* Email супервизора c подсказками */}
         <div className="relative">
           <label className="block font-medium mb-1">
             Email {isMentor ? 'опытного супервизора или админа' : 'супервизора или админа'}
@@ -275,27 +303,30 @@ export function SupervisionRequestForm() {
               className="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-2xl bg-white header-shadow"
               style={{ border: '1px solid var(--color-green-light)' }}
             >
-              {matchedUsers.map((u: any) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  className="w-full text-left px-3 py-2 text-sm border-b last:border-b-0"
-                  style={{ borderColor: 'var(--color-green-light)' }}
-                  onClick={() => {
-                    setSupervisorEmailInput(u.email);
-                    setValue('supervisorEmail', u.email, { shouldValidate: true });
-                    setShowSuggestions(false);
-                  }}
-                >
-                  <div className="font-medium">{u.fullName || 'Без имени'}</div>
-                  <div className="text-xs text-gray-600">{u.email}</div>
-                  {u.groups && u.groups.length > 0 && (
-                    <div className="text-xs text-gray-500">
-                      Группы: {u.groups.map((g: any) => g.name).join(', ')}
-                    </div>
-                  )}
-                </button>
-              ))}
+              {matchedUsers.map((u: any) => {
+                const primaryGroup = getPrimaryGroupName(
+                  u.groups as { name: string }[] | undefined,
+                );
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-sm border-b last:border-b-0"
+                    style={{ borderColor: 'var(--color-green-light)' }}
+                    onClick={() => {
+                      setSupervisorEmailInput(u.email);
+                      setValue('supervisorEmail', u.email, { shouldValidate: true });
+                      setShowSuggestions(false);
+                    }}
+                  >
+                    <div className="font-medium">{u.fullName || 'Без имени'}</div>
+                    <div className="text-xs text-gray-600">{u.email}</div>
+                    {primaryGroup && (
+                      <div className="text-xs text-gray-500">Группа: {primaryGroup}</div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -323,7 +354,6 @@ export function SupervisionRequestForm() {
           <div className="space-y-2">
             {fields.map((field, index) => (
               <div key={field.id} className="flex gap-2 items-start">
-                {/* тип фиксирован: у обычных всегда PRACTICE, у супервизоров SUPERVISOR */}
                 <input
                   type="hidden"
                   value={isMentor ? 'SUPERVISOR' : 'PRACTICE'}
