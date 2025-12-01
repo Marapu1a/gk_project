@@ -8,7 +8,11 @@ export function useUpdateMe() {
   return useMutation({
     mutationFn: (payload: UpdateMePayload) => updateMe(payload),
     onSuccess: (user) => {
-      qc.setQueryData(['me'], user); // этого достаточно
+      // мягкое обновление, не убивает поля, которых нет в ответе
+      qc.setQueryData(['me'], (old: any) => {
+        if (!old) return user;
+        return { ...old, ...user };
+      });
     },
   });
 }

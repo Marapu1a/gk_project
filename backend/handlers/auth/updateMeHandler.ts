@@ -26,7 +26,7 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
 
   const data: Record<string, any> = {};
   if (body.fullName !== undefined) data.fullName = body.fullName.trim();
-  if (body.fullNameLatin !== undefined) data.fullNameLatin = body.fullNameLatin.trim(); // ← добавили
+  if (body.fullNameLatin !== undefined) data.fullNameLatin = body.fullNameLatin.trim();
   if (body.phone !== undefined) data.phone = body.phone.trim();
   if (birthDateISO !== undefined) data.birthDate = birthDateISO;
   if (body.country !== undefined) data.country = body.country.trim();
@@ -47,13 +47,15 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
       email: true,
       role: true,
       fullName: true,
-      fullNameLatin: true, // ← добавили
+      fullNameLatin: true,
       phone: true,
       birthDate: true,
       country: true,
       city: true,
       avatarUrl: true,
       bio: true,
+      targetLevel: true,       // ← добавлено
+      targetLockRank: true,    // ← добавлено
       groups: { include: { group: { select: { id: true, name: true, rank: true } } } },
     },
   });
@@ -72,13 +74,15 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
     email: updated.email,
     role: updated.role,
     fullName: updated.fullName,
-    fullNameLatin: updated.fullNameLatin, // ← добавили
+    fullNameLatin: updated.fullNameLatin,
     phone: updated.phone,
     birthDate: updated.birthDate,
     country: updated.country,
     city: updated.city,
     avatarUrl: updated.avatarUrl,
     bio: updated.bio,
+    targetLevel: updated.targetLevel,
+    targetLockRank: updated.targetLockRank,
     groups: groupList.map(({ id, name }) => ({ id, name })),
     activeGroup,
   });
