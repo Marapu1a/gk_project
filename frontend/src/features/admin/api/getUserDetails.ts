@@ -15,6 +15,8 @@ export async function getUserDetails(id: string) {
     isEmailConfirmed: boolean;
     role: 'ADMIN' | 'REVIEWER' | 'STUDENT';
     createdAt: string;
+    targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
+    targetLockRank: number | null;
 
     groups: { id: string; name: string; rank: number }[];
 

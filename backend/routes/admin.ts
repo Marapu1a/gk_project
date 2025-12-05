@@ -18,11 +18,17 @@ import { updateUserSupervisionMatrixAdminHandler } from '../handlers/admin/super
 
 import { verifyToken } from '../middlewares/verifyToken';
 
+// импорт целевого уровня
+import { updateTargetLevelHandler } from '../handlers/admin/updateTargetLevel';
+
 export async function usersRoutes(app: FastifyInstance) {
   app.patch('/admin/users/:id/role', { preHandler: verifyToken }, toggleUserRoleHandler);
   app.get('/admin/users/:id/details', { preHandler: verifyToken }, getUserFullDetailsHandler);
   app.get('/admin/users', { preHandler: verifyToken }, getUsersHandler);
   app.patch('/admin/users/:id', { preHandler: verifyToken }, updateUserBasicInfoHandler);
+
+  // Добавлен новый маршрут для таргет-левела
+  app.patch('/admin/users/:id/target-level', { preHandler: verifyToken }, updateTargetLevelHandler);
 
   // Supervision (admin-only)
   app.get('/admin/supervision/:userId/matrix', { preHandler: verifyToken }, getUserSupervisionMatrixAdminHandler);

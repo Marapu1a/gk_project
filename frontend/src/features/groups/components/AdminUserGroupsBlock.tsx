@@ -6,14 +6,29 @@ import { useUserGroupsById } from '@/features/groups/hooks/useUserGroupsById';
 import { useUpdateUserGroups } from '@/features/groups/hooks/useUpdateUserGroups';
 import { toast } from 'sonner';
 
+import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
+import { useUpdateTargetLevel } from '@/features/admin/hooks/useUpdateTargetLevel';
+
 export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
   const { data, isLoading, error } = useUserGroupsById(userId, true);
   const mutation = useUpdateUserGroups(userId);
+
   const { data: currentUser } = useQuery({
     queryKey: ['me'],
     queryFn: fetchCurrentUser,
     staleTime: 300_000,
   });
+
+  // 🔥 Данные о пользователе для targetLevel
+  const { data: userDetails } = useUserDetails(userId);
+  const updateTargetLevel = useUpdateTargetLevel(userId);
+  const [target, setTarget] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (userDetails?.targetLevel !== undefined) {
+      setTarget(userDetails.targetLevel);
+    }
+  }, [userDetails]);
 
   const [selected, setSelected] = useState<string[]>([]);
   useEffect(() => {
@@ -36,6 +51,15 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
       await mutation.mutateAsync(selected);
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Ошибка при сохранении');
+    }
+  };
+
+  const saveTarget = async () => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    try {
+      await updateTargetLevel.mutateAsync(target as any);
+    } catch {
+      toast.error('Ошибка обновления уровня');
     }
   };
 
@@ -124,6 +148,34 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
             <p className="text-sm italic">
               Текущая активная группа: <strong>{activeGroupName}</strong>
             </p>
+
+            {currentUser?.role === 'ADMIN' && (
+              <div className="mt-6 space-y-2">
+                <label className="text-sm font-medium text-blue-dark block">
+                  Целевой уровень пользователя
+                </label>
+
+                <select
+                  className="border rounded-lg p-2 w-full"
+                  style={{ borderColor: 'var(--color-green-light)' }}
+                  value={target ?? ''}
+                  onChange={(e) => setTarget(e.target.value || null)}
+                >
+                  <option value="">— не выбран —</option>
+                  <option value="INSTRUCTOR">Инструктор</option>
+                  <option value="CURATOR">Куратор</option>
+                  <option value="SUPERVISOR">Супервизор</option>
+                </select>
+
+                <button
+                  className="btn btn-brand mt-2"
+                  onClick={saveTarget}
+                  disabled={updateTargetLevel.isPending}
+                >
+                  {updateTargetLevel.isPending ? 'Сохраняем…' : 'Сохранить целевой уровень'}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

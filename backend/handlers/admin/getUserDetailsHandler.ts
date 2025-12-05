@@ -31,6 +31,10 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
       role: true,
       createdAt: true,
 
+      // 🔥 Добавлено
+      targetLevel: true,
+      targetLockRank: true,
+
       groups: { select: { group: { select: { id: true, name: true, rank: true } } } },
 
       certificates: {
@@ -139,5 +143,11 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
     hours: r.hours.map((h) => ({ ...h, type: normalizeLevel(h.type) })),
   }));
 
-  return reply.send({ ...user, groups, supervisionRecords });
+  return reply.send({
+    ...user,
+    groups,
+    supervisionRecords,
+    targetLevel: user.targetLevel,        // 👈 теперь UI увидит
+    targetLockRank: user.targetLockRank,  // 👈 пригодится для историй-логики
+  });
 }
