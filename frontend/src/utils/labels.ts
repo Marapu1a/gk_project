@@ -15,6 +15,14 @@ export const practiceLevelLabels: Record<string, string> = {
   EXPERIENCED_SUPERVISOR: 'Опытный супервизор',
 };
 
+// Уровни для выбора
+export const targetLevelLabels: Record<string, string> = {
+  INSTRUCTOR: 'Инструктор',
+  CURATOR: 'Куратор',
+  SUPERVISOR: 'Супервизор',
+};
+
+
 // Статусы записей
 export const recordStatusLabels: Record<string, string> = {
   CONFIRMED: 'Подтверждено',

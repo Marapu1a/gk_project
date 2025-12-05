@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import { useUpdateTargetLevel } from '@/features/admin/hooks/useUpdateTargetLevel';
 
+import { targetLevelLabels } from '@/utils/labels';
+
 export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
   const { data, isLoading, error } = useUserGroupsById(userId, true);
   const mutation = useUpdateUserGroups(userId);
@@ -19,16 +21,13 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     staleTime: 300_000,
   });
 
-  // 🔥 Данные о пользователе для targetLevel
   const { data: userDetails } = useUserDetails(userId);
   const updateTargetLevel = useUpdateTargetLevel(userId);
-  const [target, setTarget] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (userDetails?.targetLevel !== undefined) {
-      setTarget(userDetails.targetLevel);
-    }
-  }, [userDetails]);
+  const currentTarget = userDetails?.targetLevel ?? null;
+  const [target, setTarget] = useState<string | null>(currentTarget);
+
+  useEffect(() => setTarget(userDetails?.targetLevel ?? null), [userDetails]);
 
   const [selected, setSelected] = useState<string[]>([]);
   useEffect(() => {
@@ -71,6 +70,17 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     return selectedGroups[0]?.name ?? '—';
   })();
 
+  const currentRank = data?.allGroups.find((g) => g.name === activeGroupName)?.rank ?? 0;
+
+  const priorities = { INSTRUCTOR: 1, CURATOR: 2, SUPERVISOR: 3 } as const;
+
+  // 🎯 уровни, доступные к повышению
+  const availableLevels = Object.keys(priorities).filter(
+    (lvl) => priorities[lvl as keyof typeof priorities] > currentRank,
+  );
+
+  const isSupervisorAlready = availableLevels.length === 0;
+
   return (
     <div
       className="rounded-2xl border header-shadow bg-white"
@@ -82,7 +92,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
       >
         <h2 className="text-xl font-semibold text-blue-dark">Группы пользователя</h2>
         <button className="btn btn-brand" onClick={save} disabled={mutation.isPending || isLoading}>
-          {mutation.isPending ? 'Сохраняем…' : 'Сохранить изменения'}
+          {mutation.isPending ? 'Сохраняем…' : 'Сохранить группы'}
         </button>
       </div>
 
@@ -146,34 +156,48 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
             </div>
 
             <p className="text-sm italic">
-              Текущая активная группа: <strong>{activeGroupName}</strong>
+              Активная группа: <strong>{activeGroupName}</strong>
             </p>
 
             {currentUser?.role === 'ADMIN' && (
-              <div className="mt-6 space-y-2">
-                <label className="text-sm font-medium text-blue-dark block">
-                  Целевой уровень пользователя
-                </label>
+              <div className="mt-6 space-y-3">
+                <div className="text-sm text-blue-dark">
+                  Текущий целевой уровень:{' '}
+                  <b>{targetLevelLabels[userDetails?.targetLevel ?? ''] ?? '— нет —'}</b>
+                </div>
 
-                <select
-                  className="border rounded-lg p-2 w-full"
-                  style={{ borderColor: 'var(--color-green-light)' }}
-                  value={target ?? ''}
-                  onChange={(e) => setTarget(e.target.value || null)}
-                >
-                  <option value="">— не выбран —</option>
-                  <option value="INSTRUCTOR">Инструктор</option>
-                  <option value="CURATOR">Куратор</option>
-                  <option value="SUPERVISOR">Супервизор</option>
-                </select>
+                {isSupervisorAlready ? (
+                  <p className="text-xs italic text-blue-dark">
+                    Пользователь уже на максимальном уровне — дальнейшее повышение недоступно.
+                  </p>
+                ) : (
+                  <>
+                    <label className="text-sm font-medium text-blue-dark block">
+                      Назначить новый целевой уровень
+                    </label>
+                    <select
+                      className="border rounded-lg p-2 w-full"
+                      style={{ borderColor: 'var(--color-green-light)' }}
+                      value={target ?? ''}
+                      onChange={(e) => setTarget(e.target.value || null)}
+                    >
+                      <option value="">— выбрать уровень —</option>
+                      {availableLevels.map((lvl) => (
+                        <option key={lvl} value={lvl}>
+                          {targetLevelLabels[lvl]}
+                        </option>
+                      ))}
+                    </select>
 
-                <button
-                  className="btn btn-brand mt-2"
-                  onClick={saveTarget}
-                  disabled={updateTargetLevel.isPending}
-                >
-                  {updateTargetLevel.isPending ? 'Сохраняем…' : 'Сохранить целевой уровень'}
-                </button>
+                    <button
+                      className="btn btn-brand mt-2"
+                      onClick={saveTarget}
+                      disabled={updateTargetLevel.isPending}
+                    >
+                      {updateTargetLevel.isPending ? 'Сохраняем…' : 'Сохранить целевой уровень'}
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </>
