@@ -62,24 +62,21 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     }
   };
 
-  const activeGroupName = (() => {
-    if (!data) return '—';
-    const selectedGroups = data.allGroups
-      .filter((g) => selected.includes(g.id))
-      .sort((a, b) => b.rank - a.rank);
-    return selectedGroups[0]?.name ?? '—';
-  })();
+  const activeGroup = data?.allGroups
+    .filter((g) => selected.includes(g.id))
+    .sort((a, b) => b.rank - a.rank)[0];
 
-  const currentRank = data?.allGroups.find((g) => g.name === activeGroupName)?.rank ?? 0;
+  const activeGroupName = activeGroup?.name ?? '—';
+  const currentRank = activeGroup?.rank ?? 0; // ← теперь правильно
 
-  const priorities = { INSTRUCTOR: 1, CURATOR: 2, SUPERVISOR: 3 } as const;
+  // уровни повышения строго по rank (DB → единственно верный источник истины)
+  const levelMap = { INSTRUCTOR: 2, CURATOR: 3, SUPERVISOR: 4 } as const;
 
-  // 🎯 уровни, доступные к повышению
-  const availableLevels = Object.keys(priorities).filter(
-    (lvl) => priorities[lvl as keyof typeof priorities] > currentRank,
-  );
+  const availableLevels = Object.entries(levelMap)
+    .filter(([, rank]) => rank > currentRank) // только выше текущего
+    .map(([lvl]) => lvl);
 
-  const isSupervisorAlready = availableLevels.length === 0;
+  const isSupervisorAlready = availableLevels.length === 0; // достиг потолка
 
   return (
     <div
@@ -168,13 +165,14 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
 
                 {isSupervisorAlready ? (
                   <p className="text-xs italic text-blue-dark">
-                    Пользователь уже на максимальном уровне — дальнейшее повышение недоступно.
+                    Пользователь уже на максимальном уровне — повышение недоступно.
                   </p>
                 ) : (
                   <>
                     <label className="text-sm font-medium text-blue-dark block">
                       Назначить новый целевой уровень
                     </label>
+
                     <select
                       className="border rounded-lg p-2 w-full"
                       style={{ borderColor: 'var(--color-green-light)' }}
@@ -194,7 +192,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
                       onClick={saveTarget}
                       disabled={updateTargetLevel.isPending}
                     >
-                      {updateTargetLevel.isPending ? 'Сохраняем…' : 'Сохранить целевой уровень'}
+                      {updateTargetLevel.isPending ? 'Сохраняем…' : 'Сохранить уровень'}
                     </button>
                   </>
                 )}

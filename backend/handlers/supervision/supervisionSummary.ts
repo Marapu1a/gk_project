@@ -251,7 +251,12 @@ function computePercent(
   const p = empty();
   for (const k of SUMMARY_KEYS) {
     const req = (required as any)[k] ?? 0;
-    p[k] = req > 0 ? clampPct(Math.round((usable[k] / req) * 100)) : 0;
+    if (req > 0) {
+      const raw = (usable[k] / req) * 100;
+      p[k] = clampPct(Math.floor(raw)); // 498/500 → 99, больше никакой халявы
+    } else {
+      p[k] = 0;
+    }
   }
   return p;
 }
