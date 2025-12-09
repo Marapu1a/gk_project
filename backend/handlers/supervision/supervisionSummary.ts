@@ -3,25 +3,23 @@ import { prisma } from '../../lib/prisma';
 import { PracticeLevel, RecordStatus } from '@prisma/client';
 import {
   supervisionRequirementsByGroup,
-  getNextGroupName,
-  type SupervisionRequirement,
   calcAutoSupervisionHours,
+  getNextGroupName,
 } from '../../utils/supervisionRequirements';
 
 type SupervisionSummary = {
   practice: number;
   supervision: number;
-  supervisor: number; // менторские
+  supervisor: number;
 };
 
 const SUMMARY_KEYS: (keyof SupervisionSummary)[] = ['practice', 'supervision', 'supervisor'];
 
-// enum-уровень цели -> русское имя группы, чьи требования показывать
-const RU_BY_LEVEL: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
+const RU_BY_LEVEL = {
   INSTRUCTOR: 'Инструктор',
   CURATOR: 'Куратор',
   SUPERVISOR: 'Супервизор',
-};
+} as const;
 
 const LEVEL_BY_RU: Record<string, 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | undefined> = {
   'Инструктор': 'INSTRUCTOR',
@@ -31,10 +29,28 @@ const LEVEL_BY_RU: Record<string, 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | unde
 
 type Query = { level?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' };
 
-export async function supervisionSummaryHandler(
-  req: FastifyRequest, // 🔹 убрали дженерик с Querystring
-  reply: FastifyReply,
-) {
+// =============================================================
+//  💡 НОВАЯ МОДЕЛЬ
+//  minPractice = 500 только при (current='Куратор' && target='Супервизор')
+//  иначе min=0
+//  max=requirePractice[target]
+// =============================================================
+function getPracticeRange(current: string, target: string | null) {
+  if (!target) return null;
+
+  const max = supervisionRequirementsByGroup[target]?.practice ?? null;
+  if (!max) return null;
+
+  let min = 0;
+  if (current === 'Куратор' && target === 'Супервизор') min = 500;
+
+  return { min, max };
+}
+
+// =============================================================
+//  Главный handler — переписан начисто
+// =============================================================
+export async function supervisionSummaryHandler(req: FastifyRequest, reply: FastifyReply) {
   const { user } = req as any;
   if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
@@ -42,225 +58,126 @@ export async function supervisionSummaryHandler(
     where: { id: user.userId },
     select: {
       id: true,
-      targetLevel: true, // выбор трека: INSTRUCTOR | CURATOR | SUPERVISOR
-      groups: {
-        select: {
-          group: { select: { id: true, name: true, rank: true } },
-        },
-      },
+      targetLevel: true,
+      groups: { select: { group: { select: { name: true, rank: true } } } },
     },
   });
 
   if (!dbUser) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  const groupList = dbUser.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank);
-  const primaryGroup = groupList[0];
+  const groups = dbUser.groups.map(g => g.group).sort((a, b) => b.rank - a.rank);
+  const current = groups[0]?.name;                 // активная квалификация
 
-  if (!primaryGroup) {
-    return reply.send({
-      required: null,
-      percent: null,
-      usable: empty(),
-      pending: empty(),
-      mentor: null,
-    });
+  if (!current) {
+    return reply.send({ required: null, percent: null, usable: empty(), pending: empty(), mentor: null });
   }
 
-  const hasInstructorGroup = groupList.some((g) => g.name === 'Инструктор');
-
-  // ----------------- определяем целевой уровень / группу -----------------
-
+  // ---- определяем target
   const q = (req.query ?? {}) as Query;
-  const explicitLevel = q.level;
-  const targetFromUser = dbUser.targetLevel ?? undefined;
+  const explicit = q.level;
+  const userTarget = dbUser.targetLevel ?? null;
 
-  // сначала enum-уровень, потом уже русское имя
-  let effectiveLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null =
-    explicitLevel || targetFromUser || null;
+  let effective: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null =
+    explicit || userTarget || null;
 
-  if (!effectiveLevel) {
-    const nextGroupName = getNextGroupName(primaryGroup.name);
-    if (nextGroupName) {
-      const lvl = LEVEL_BY_RU[nextGroupName];
-      if (lvl) effectiveLevel = lvl;
+  if (!effective) {
+    const next = getNextGroupName(current);
+    if (next) {
+      const lvl = LEVEL_BY_RU[next];
+      if (lvl) effective = lvl;
     }
   }
 
-  const targetGroupName = effectiveLevel ? RU_BY_LEVEL[effectiveLevel] : null;
+  const target = effective ? RU_BY_LEVEL[effective] : null;
+  const reqSet = target ? supervisionRequirementsByGroup[target] : null;
 
-  const required: SupervisionRequirement | null = targetGroupName
-    ? supervisionRequirementsByGroup[targetGroupName] ?? null
-    : null;
-
-  // ----------------- собираем часы из базы (один раз) -----------------
-
+  // ---- собираем practice/supervisor по статусам
   const [confirmed, unconfirmed] = await Promise.all([
-    prisma.supervisionHour.findMany({
-      where: { record: { userId: user.userId }, status: RecordStatus.CONFIRMED },
-      select: { type: true, value: true },
-    }),
-    prisma.supervisionHour.findMany({
-      where: { record: { userId: user.userId }, status: RecordStatus.UNCONFIRMED },
-      select: { type: true, value: true },
-    }),
+    prisma.supervisionHour.findMany({ where: { record: { userId: user.userId }, status: 'CONFIRMED' }, select: { type: true, value: true } }),
+    prisma.supervisionHour.findMany({ where: { record: { userId: user.userId }, status: 'UNCONFIRMED' }, select: { type: true, value: true } })
   ]);
 
   const usableRaw = aggregate(confirmed);
   const pendingRaw = aggregate(unconfirmed);
 
-  // ----------------- кейс: цели нет, просто статистика + менторство -----------------
+  // ---- если target не определён → просто статистика
+  const isBasicSupervisor = current === 'Супервизор';
 
-  const isBasicSupervisor = primaryGroup.name === 'Супервизор';
-
-  if (!targetGroupName || !required) {
-    const mentor = isBasicSupervisor
-      ? (() => {
-        // менторство: считаем только SUPERVISOR-часы, цель 24
-        const total = usableRaw.supervisor;
-        const pendingSum = pendingRaw.supervisor;
-        const requiredTotal = 24;
-        const pct = requiredTotal
-          ? clampPct(Math.round((total / requiredTotal) * 100))
-          : 0;
-        return { total, required: requiredTotal, percent: pct, pending: pendingSum };
-      })()
-      : null;
-
-    return reply.send({
-      required: null,
-      percent: null,
-      usable: usableRaw,
-      pending: pendingRaw,
-      mentor,
-    });
+  if (!target || !reqSet) {
+    const mentor = isBasicSupervisor ? calcMentor(usableRaw, pendingRaw) : null;
+    return reply.send({ required: null, percent: null, usable: usableRaw, pending: pendingRaw, mentor });
   }
 
-  // ----------------- трек и СГОРАНИЕ инструкторских -----------------
-  // Инструкторские 300/10 сгорают во всех треках выше инструктора,
-  // если пользователь когда-либо был в группе "Инструктор".
-  const burnedBase = getBurnedBaseForTrack({
-    hasInstructorGroup,
-    targetLevel: effectiveLevel,
-  });
+  // ---- новая формула min/max
+  const range = getPracticeRange(current, target);
+  if (!range) {
+    const mentor = isBasicSupervisor ? calcMentor(usableRaw, pendingRaw) : null;
+    return reply.send({ required: null, percent: null, usable: usableRaw, pending: pendingRaw, mentor });
+  }
 
-  const practiceConfirmedForTrack = Math.max(0, usableRaw.practice - burnedBase.practice);
-  const practicePendingForTrack = pendingRaw.practice;
+  const { min, max } = range;
 
-  // авто-супервизия считаем от practiceConfirmedForTrack
-  const autoConfirmed = calcAutoSupervisionHours({
-    groupName: targetGroupName,
-    practiceHours: practiceConfirmedForTrack,
-  });
+  const practiceConfirmed = Math.max(0, Math.min(usableRaw.practice, max));
+  const practicePending = Math.max(0, Math.min(usableRaw.practice + pendingRaw.practice, max)) - practiceConfirmed;
 
-  const autoTotalIfAllConfirmed = calcAutoSupervisionHours({
-    groupName: targetGroupName,
-    practiceHours: practiceConfirmedForTrack + practicePendingForTrack,
-  });
-
-  const autoPending = Math.max(0, autoTotalIfAllConfirmed - autoConfirmed);
+  // ---- авто супервизия без burn
+  const autoConfirmed = calcAutoSupervisionHours({ groupName: target, practiceHours: practiceConfirmed });
+  const autoPending = Math.max(0,
+    calcAutoSupervisionHours({ groupName: target, practiceHours: practiceConfirmed + practicePending })
+    - autoConfirmed
+  );
 
   const usable: SupervisionSummary = {
-    practice: practiceConfirmedForTrack,
+    practice: practiceConfirmed,
     supervision: autoConfirmed,
     supervisor: usableRaw.supervisor,
   };
 
   const pending: SupervisionSummary = {
-    practice: practicePendingForTrack,
+    practice: practicePending,
     supervision: autoPending,
     supervisor: pendingRaw.supervisor,
   };
 
-  const percent = computePercent(usable, required);
+  const percent = {
+    practice: pct(practiceConfirmed, min, max),
+    supervision: reqSet.supervision > 0 ? Math.floor((autoConfirmed / reqSet.supervision) * 100) : 0,
+    supervisor: 0,
+  };
 
-  // Менторская шкала только для простых супервизоров
-  const mentor = isBasicSupervisor
-    ? (() => {
-      const total = usable.supervisor;
-      const pendingSum = pending.supervisor;
-      const requiredTotal = 24;
-      const pct = requiredTotal
-        ? clampPct(Math.round((total / requiredTotal) * 100))
-        : 0;
-      return { total, required: requiredTotal, percent: pct, pending: pendingSum };
-    })()
-    : null;
+  const mentor = isBasicSupervisor ? calcMentor(usableRaw, pendingRaw) : null;
 
-  return reply.send({ required, percent, usable, pending, mentor });
+  return reply.send({ required: reqSet, percent, usable, pending, mentor });
 }
 
-// ----------------- helpers -----------------
+
+// ================= helpers ==================
 
 function empty(): SupervisionSummary {
   return { practice: 0, supervision: 0, supervisor: 0 };
 }
 
-function aggregate(entries: Array<{ type: PracticeLevel; value: number }>): SupervisionSummary {
+function aggregate(rows: Array<{ type: PracticeLevel, value: number }>): SupervisionSummary {
   const s = empty();
-  for (const h of entries) {
+  for (const h of rows) {
     switch (h.type) {
-      case PracticeLevel.PRACTICE:
-      case PracticeLevel.INSTRUCTOR:
-        s.practice += h.value;
-        break;
-      case PracticeLevel.SUPERVISION:
-      case PracticeLevel.CURATOR:
-        s.supervision += h.value;
-        break;
-      case PracticeLevel.SUPERVISOR:
-        s.supervisor += h.value;
-        break;
+      case 'PRACTICE':
+      case 'INSTRUCTOR': s.practice += h.value; break;
+      case 'SUPERVISION':
+      case 'CURATOR': s.supervision += h.value; break; // авто всё равно пересчитываем
+      case 'SUPERVISOR': s.supervisor += h.value; break;
     }
   }
   return s;
 }
 
-/**
- * Сгорание инструкторских часов:
- *
- * - цель = INSTRUCTOR → ничего не сгорает
- * - цель = CURATOR или SUPERVISOR и пользователь когда-либо был "Инструктором" →
- *   выкидываем 300/10 (инструкторский пакет) из прогресса.
- * - если группы "Инструктор" нет (чел сразу пошёл на Куратора/Супервизора) → не жжём.
- */
-function getBurnedBaseForTrack(params: {
-  hasInstructorGroup: boolean;
-  targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
-}): { practice: number; supervision: number } {
-  const { hasInstructorGroup, targetLevel } = params;
-
-  if (!targetLevel || targetLevel === 'INSTRUCTOR') {
-    return { practice: 0, supervision: 0 };
-  }
-
-  if (hasInstructorGroup && (targetLevel === 'CURATOR' || targetLevel === 'SUPERVISOR')) {
-    const instReq = supervisionRequirementsByGroup['Инструктор'];
-    return {
-      practice: instReq.practice, // 300
-      supervision: instReq.supervision, // 10
-    };
-  }
-
-  return { practice: 0, supervision: 0 };
+function pct(confirmed: number, min: number, max: number) {
+  return max > min ? Math.floor((confirmed - min) / (max - min) * 100) : 0;
 }
 
-function computePercent(
-  usable: SupervisionSummary,
-  required: SupervisionRequirement,
-): SupervisionSummary {
-  const p = empty();
-  for (const k of SUMMARY_KEYS) {
-    const req = (required as any)[k] ?? 0;
-    if (req > 0) {
-      const raw = (usable[k] / req) * 100;
-      p[k] = clampPct(Math.floor(raw)); // 498/500 → 99, больше никакой халявы
-    } else {
-      p[k] = 0;
-    }
-  }
-  return p;
-}
-
-function clampPct(x: number) {
-  return Math.max(0, Math.min(100, x));
+function calcMentor(usable: SupervisionSummary, pending: SupervisionSummary) {
+  const total = usable.supervisor;
+  const requiredTotal = 24;
+  const pct = Math.floor((total / requiredTotal) * 100);
+  return { total, required: requiredTotal, percent: pct, pending: pending.supervisor };
 }

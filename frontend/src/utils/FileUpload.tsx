@@ -99,9 +99,20 @@ export function FileUpload({
     if (file) {
       try {
         await deleteFile(file.id);
-      } catch (err) {
-        // не фатально
-        console.warn('Ошибка при удалении предыдущего файла:', err);
+      } catch (err: any) {
+        const msg =
+          err?.response?.data?.error ??
+          (err?.response?.status === 413
+            ? `Файл превышает допустимый размер (${maxSizeMB}MB)`
+            : 'Ошибка загрузки файла');
+
+        makeObjectPreview(null);
+        setFile(null);
+        setError(msg);
+        onError?.(new Error(msg));
+        console.error('Ошибка загрузки файла:', err);
+      } finally {
+        setUploading(false);
       }
     }
 
@@ -117,7 +128,7 @@ export function FileUpload({
       // откатываем превью при реальном фейле
       makeObjectPreview(null);
       setFile(null);
-      setError('Ошибка загрузки файла, не тот формат или ещё какая беда, попробуйте снова.');
+      setError('Ошибка загрузки файла, не тот формат или превышен размер файла, попробуйте снова.');
       onError?.(err);
       console.error('Ошибка загрузки файла:', err);
     } finally {

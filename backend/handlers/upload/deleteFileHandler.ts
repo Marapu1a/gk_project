@@ -18,18 +18,18 @@ export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply
     return reply.code(404).send({ error: 'Файл не найден' });
   }
 
-  // проверка прав
+  // доступ: владелец или админ
   if (file.userId !== user.userId && user.role !== 'ADMIN') {
     return reply.code(403).send({ error: 'Нет доступа к этому файлу' });
   }
 
-  // запрет на удаление, если прикреплён
-  const usedInCeu = await prisma.cEURecord.findFirst({ where: { fileId: id } });
+  // ❗ фикс бага — CEU ищем по file.fileId, а не по id
+  const usedInCeu = await prisma.cEURecord.findFirst({ where: { fileId: file.fileId } });
   if (usedInCeu) {
     return reply.code(400).send({ error: 'Файл уже прикреплён к заявке и не может быть удалён' });
   }
 
-  // путь до файла: прод — из UPLOAD_DIR, локалка — старый public/uploads
+  // путь до файла
   const baseDir = UPLOAD_DIR
     ? path.resolve(UPLOAD_DIR)
     : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');

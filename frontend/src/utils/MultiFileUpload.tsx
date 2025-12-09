@@ -21,8 +21,8 @@ interface Props {
 }
 
 const LOCAL_STORAGE_KEY = 'files:documents';
-const MAX_FILES = 7;
-const MAX_SIZE_MB = 20;
+const MAX_FILES = 10;
+const MAX_SIZE_MB = 10;
 
 export function MultiFileUpload({ onChange, disabled }: Props) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -74,7 +74,13 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
       saveState(updated);
       toast.success('Файл загружен');
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Ошибка загрузки файла');
+      const msg =
+        err?.response?.data?.error ??
+        (err?.response?.status === 413
+          ? `Файл превышает допустимый размер (${MAX_SIZE_MB}MB)`
+          : 'Ошибка загрузки файла');
+
+      toast.error(msg);
     } finally {
       setUploading(false);
     }

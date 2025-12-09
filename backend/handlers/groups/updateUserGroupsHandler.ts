@@ -44,7 +44,7 @@ export async function updateUserGroupsHandler(
       });
     }
 
-    // 2) Новый ранг после изменения групп
+    // 2) Новый ранг
     const newGroups = await tx.userGroup.findMany({
       where: { userId },
       include: { group: true },
@@ -52,11 +52,12 @@ export async function updateUserGroupsHandler(
     const newMaxRank =
       newGroups.length ? Math.max(...newGroups.map((g) => g.group.rank)) : -Infinity;
 
-    // 3) Разлок цели, если активный ранг изменился
+    // 3) Разблок цели
     await unlockTargetIfRankChanged(userId, tx);
 
     // 4) Побочные эффекты при повышении
     let burned = 0;
+    let burnedPractice = 0; // <-- NEW
     let examReset = false;
     let examPaymentReset = false;
     let examPaymentResetCount = 0;
@@ -64,6 +65,21 @@ export async function updateUserGroupsHandler(
     const upgraded = newMaxRank > oldMaxRank;
 
     if (upgraded) {
+      // ---------- 🔥 NEW: сгорание PRACTICE только если впервые получен "Инструктор" ----------
+      const hadInstructorBefore = user.groups.some(g => g.group.name === 'Инструктор');
+      const hasInstructorAfter = newGroups.some(g => g.group.name === 'Инструктор');
+
+      if (!hadInstructorBefore && hasInstructorAfter) {
+        const burn = await tx.supervisionHour.deleteMany({
+          where: {
+            record: { userId },
+            type: { in: ['PRACTICE', 'INSTRUCTOR'] } // SUPERVISION не трогаем — она авто
+          }
+        });
+        burnedPractice = burn.count;
+      }
+
+      // ---------- CEU SPENT как у тебя ----------
       const burnRes = await tx.cEUEntry.updateMany({
         where: { record: { userId }, status: 'CONFIRMED' },
         data: { status: 'SPENT', reviewedAt: new Date() },
@@ -85,7 +101,7 @@ export async function updateUserGroupsHandler(
       examPaymentReset = payRes.count > 0;
     }
 
-    // 5) Роль: REVIEWER при наличии группы "Супервизор" (админа не трогаем)
+    // 5) Авто-роли
     const supervisorGroup = await tx.group.findFirst({ where: { name: 'Супервизор' } });
     if (user.role !== 'ADMIN' && supervisorGroup) {
       const isReviewerNow = newGroups.some((g) => g.groupId === supervisorGroup.id);
@@ -96,8 +112,10 @@ export async function updateUserGroupsHandler(
     }
 
     return {
+      success: true,
       upgraded,
-      burned,
+      burned,            // CEU
+      burnedPractice,    // NEW поле про практике
       oldMaxRank,
       newMaxRank,
       examReset,
@@ -106,5 +124,5 @@ export async function updateUserGroupsHandler(
     };
   });
 
-  return reply.send({ success: true, ...result });
+  return reply.send(result);
 }

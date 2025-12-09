@@ -28,6 +28,8 @@ dotenv.config()
 
 const app = Fastify()
 
+const MAX_FILE_SIZE_MB = 10
+
 app.register(cors, {
   origin: true,
   credentials: true,
@@ -36,7 +38,7 @@ app.register(cors, {
 
 app.register(multipart, {
   limits: {
-    fileSize: 20 * 1024 * 1024, // 20 MB
+    fileSize: MAX_FILE_SIZE_MB * 1024 * 1024, // 10 MB
   },
 });
 
@@ -72,6 +74,13 @@ app.register(locationRoutes);
 app.get('/', async () => ({ ok: true }))
 
 const PORT = process.env.PORT || 3000
+
+app.setErrorHandler((error, req, reply) => {
+  if (error.code === 'FST_REQ_FILE_TOO_LARGE') {
+    return reply.code(413).send({ error: `Файл превышает ${MAX_FILE_SIZE_MB}MB` });
+  }
+  reply.code(error.statusCode || 500).send({ error: error.message });
+});
 
 app.listen({ port: +PORT, host: '0.0.0.0' }, (err, address) => {
   if (err) {

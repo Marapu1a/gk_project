@@ -1,141 +1,208 @@
-// src/handlers/admin/supervision/getUserSupervisionMatrixAdminHandler.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../../lib/prisma';
-import { RecordStatus } from '@prisma/client';
+import { PracticeLevel, RecordStatus } from '@prisma/client';
 import {
   supervisionRequirementsByGroup,
-  getNextGroupName,
-  getPrevGroupName,
   calcAutoSupervisionHours,
+  getNextGroupName,
 } from '../../../utils/supervisionRequirements';
 
-/**
- * Категории выводим в новой модели:
- * PRACTICE (ранее INSTRUCTOR)
- * SUPERVISION (ранее CURATOR) — теперь только вычисляется из практики
- * SUPERVISOR (менторские)
- */
 type Level = 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR';
-
-const LEVELS: readonly Level[] = ['PRACTICE', 'SUPERVISION', 'SUPERVISOR'] as const;
-// НЕ readonly-тип, иначе Prisma ругается на where.status.in
+const LEVELS: Level[] = ['PRACTICE', 'SUPERVISION', 'SUPERVISOR'];
 const STATUSES: RecordStatus[] = ['CONFIRMED', 'UNCONFIRMED'];
 
-// enum-уровень цели -> русское имя группы, чьи требования показывать
-const RU_BY_LEVEL: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
+const RU_BY_LEVEL = {
   INSTRUCTOR: 'Инструктор',
   CURATOR: 'Куратор',
-  SUPERVISOR: 'Супервизор',
+  SUPERVISOR: 'Супервизор'
+} as const;
+
+const LEVEL_BY_RU: Record<string, 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | undefined> = {
+  'Инструктор': 'INSTRUCTOR',
+  'Куратор': 'CURATOR',
+  'Супервизор': 'SUPERVISOR'
 };
 
-interface Route extends RouteGenericInterface {
-  Params: { userId: string };
-}
+interface Route extends RouteGenericInterface { Params: { userId: string } }
 
-// Приводим старые значения к новой схеме
-// ❗ SUPERVISION/CURATOR из БД теперь игнорируем — считаем их только авто.
-function normalizeLevel(type: string): Level | null {
-  if (type === 'INSTRUCTOR' || type === 'PRACTICE') return 'PRACTICE';
-  if (type === 'SUPERVISOR') return 'SUPERVISOR';
-  return null;
+type SupervisionSummary = { practice: number; supervision: number; supervisor: number };
+
+// =============== NEW core rules ===============
+function getPracticeRange(current: string, target: string | null) {
+  if (!target) return null;
+  const max = supervisionRequirementsByGroup[target]?.practice ?? null;
+  if (!max) return null;
+
+  let min = 0;
+  if (current === 'Куратор' && target === 'Супервизор') min = 500; // единственный сдвиг
+
+  return { min, max };
 }
 
 export async function getUserSupervisionMatrixAdminHandler(
-  req: FastifyRequest<Route>,
-  reply: FastifyReply,
+  req: FastifyRequest<Route>, reply: FastifyReply
 ) {
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Только администратор' });
-  }
-
+  if (req.user.role !== 'ADMIN') return reply.code(403).send({ error: 'Только администратор' });
   const { userId } = req.params;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      id: true,
-      email: true,
-      fullName: true,
-      targetLevel: true,
-      groups: {
-        select: {
-          group: { select: { id: true, name: true, rank: true } },
-        },
-      },
-    },
+      id: true, email: true, fullName: true, targetLevel: true,
+      groups: { select: { group: { select: { name: true, rank: true } } } }
+    }
   });
   if (!user) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  const groupList = user.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank);
-  const primaryGroup = groupList[0] || null;
+  const groups = user.groups.map(g => g.group).sort((a, b) => b.rank - a.rank);
+  const current = groups[0]?.name;
+  if (!current) return reply.send(blank(user, matrixEmpty()));
 
-  // Суммируем только CONFIRMED и UNCONFIRMED
+  // ===== matrix aggregation =====
   const grouped = await prisma.supervisionHour.groupBy({
     by: ['type', 'status'],
-    where: {
-      record: { userId },
-      status: { in: STATUSES },
-    },
-    _sum: { value: true },
+    where: { record: { userId }, status: { in: STATUSES } },
+    _sum: { value: true }
   });
 
-  // matrix[level][status] = сумма часов
-  const matrix: Record<Level, Record<RecordStatus, number>> = LEVELS.reduce((acc, lvl) => {
-    acc[lvl] = { CONFIRMED: 0, UNCONFIRMED: 0 } as Record<RecordStatus, number>;
-    return acc;
-  }, {} as Record<Level, Record<RecordStatus, number>>);
-
+  const matrix = matrixEmpty();
   for (const g of grouped) {
-    const lvl = normalizeLevel(g.type);
-    const st = g.status as RecordStatus;
-    if (!lvl || (st !== 'CONFIRMED' && st !== 'UNCONFIRMED')) continue;
-
-    const sum = (g._sum?.value ?? 0) as number;
-    matrix[lvl][st] = sum;
+    const lvl = normalize(g.type);
+    if (!lvl) continue;
+    matrix[lvl][g.status as RecordStatus] = g._sum.value ?? 0;
   }
 
-  // ---- автосупервизия из практики по тем же правилам, что и в summary ----
-  if (primaryGroup) {
-    const targetFromUser = user.targetLevel ?? undefined;
-    const targetGroupName =
-      (targetFromUser && RU_BY_LEVEL[targetFromUser]) ||
-      getNextGroupName(primaryGroup.name);
-
-    if (targetGroupName) {
-      const prevGroupName = getPrevGroupName(targetGroupName);
-      const prevReq = prevGroupName ? supervisionRequirementsByGroup[prevGroupName] : null;
-      const prevPracticeFloor = prevReq?.practice ?? 0;
-
-      const practiceConfirmedRaw = matrix.PRACTICE.CONFIRMED;
-      const practicePendingRaw = matrix.PRACTICE.UNCONFIRMED;
-
-      const practiceConfirmedDelta = Math.max(0, practiceConfirmedRaw - prevPracticeFloor);
-      const practicePendingDelta = practicePendingRaw;
-
-      const autoConfirmed = calcAutoSupervisionHours({
-        groupName: targetGroupName,
-        practiceHours: practiceConfirmedDelta,
-      });
-
-      const autoTotalIfAll = calcAutoSupervisionHours({
-        groupName: targetGroupName,
-        practiceHours: practiceConfirmedDelta + practicePendingDelta,
-      });
-
-      const autoPending = Math.max(0, autoTotalIfAll - autoConfirmed);
-
-      matrix.SUPERVISION.CONFIRMED = autoConfirmed;
-      matrix.SUPERVISION.UNCONFIRMED = autoPending;
+  // ========== determine target ==========
+  let effective: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null = user.targetLevel ?? null;
+  if (!effective) {
+    const next = getNextGroupName(current);
+    if (next) {
+      const lvl = LEVEL_BY_RU[next];
+      if (lvl) effective = lvl;
     }
   }
 
-  // во внешнем ответе user без служебных полей
+  const target = effective ? RU_BY_LEVEL[effective] : null;
+  const required = target ? supervisionRequirementsByGroup[target] ?? null : null;
+
+  // RAW totals (before range logic)
+  const usableRaw: SupervisionSummary = {
+    practice: matrix.PRACTICE.CONFIRMED,
+    supervision: 0,
+    supervisor: matrix.SUPERVISOR.CONFIRMED
+  };
+  const pendingRaw: SupervisionSummary = {
+    practice: matrix.PRACTICE.UNCONFIRMED,
+    supervision: 0,
+    supervisor: matrix.SUPERVISOR.UNCONFIRMED
+  };
+
+  const isBasicSupervisor = current === 'Супервизор';
+
+  // ===== no target → only stats & mentor =====
+  if (!target || !required) {
+    return reply.send({
+      user: short(user),
+      matrix,
+      summary: {
+        required: null, percent: null, usable: usableRaw, pending: pendingRaw,
+        mentor: isBasicSupervisor ? mentor(usableRaw, pendingRaw) : null
+      }
+    });
+  }
+
+  // ===== apply min/max rules =====
+  const range = getPracticeRange(current, target);
+  if (!range) {
+    return reply.send({
+      user: short(user),
+      matrix,
+      summary: {
+        required: null, percent: null, usable: usableRaw, pending: pendingRaw,
+        mentor: isBasicSupervisor ? mentor(usableRaw, pendingRaw) : null
+      }
+    });
+  }
+
+  const { min, max } = range;
+
+  const practiceConfirmed = Math.max(min, Math.min(usableRaw.practice, max));
+  const practicePending = Math.max(0, Math.min(usableRaw.practice + pendingRaw.practice, max) - practiceConfirmed);
+
+  // === auto supervision ===
+  const autoConfirmed = calcAutoSupervisionHours({ groupName: target, practiceHours: practiceConfirmed });
+  const autoPending = Math.max(
+    0,
+    calcAutoSupervisionHours({ groupName: target, practiceHours: practiceConfirmed + practicePending })
+    - autoConfirmed
+  );
+
+  const usable = {
+    practice: practiceConfirmed,
+    supervision: autoConfirmed,
+    supervisor: usableRaw.supervisor
+  };
+  const pending = {
+    practice: practicePending,
+    supervision: autoPending,
+    supervisor: pendingRaw.supervisor
+  };
+
+  const percent = {
+    practice: pct(practiceConfirmed, min, max),
+    supervision: required.supervision > 0 ? Math.floor((autoConfirmed / required.supervision) * 100) : 0,
+    supervisor: 0
+  };
+
+  // update matrix for admin view (so they see auto-hours too)
+  matrix.SUPERVISION.CONFIRMED = autoConfirmed;
+  matrix.SUPERVISION.UNCONFIRMED = autoPending;
+
   return reply.send({
-    user: {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-    },
+    user: short(user),
     matrix,
+    summary: {
+      required, percent, usable, pending,
+      mentor: isBasicSupervisor ? mentor(usableRaw, pendingRaw) : null
+    }
   });
+}
+
+// ================= helpers ===================
+function normalize(type: string): Level | null {
+  if (type === 'INSTRUCTOR' || type === 'PRACTICE') return 'PRACTICE';
+  if (type === 'SUPERVISOR') return 'SUPERVISOR';
+  return null;
+}
+
+function matrixEmpty(): Record<Level, Record<RecordStatus, number>> {
+  return {
+    PRACTICE: {
+      CONFIRMED: 0, UNCONFIRMED: 0,
+      REJECTED: 0,
+      SPENT: 0
+    },
+    SUPERVISION: {
+      CONFIRMED: 0, UNCONFIRMED: 0,
+      REJECTED: 0,
+      SPENT: 0
+    },
+    SUPERVISOR: {
+      CONFIRMED: 0, UNCONFIRMED: 0,
+      REJECTED: 0,
+      SPENT: 0
+    }
+  }
+}
+function emptySummary(): SupervisionSummary { return { practice: 0, supervision: 0, supervisor: 0 }; }
+function pct(v: number, min: number, max: number) { return max > min ? Math.floor((v - min) / (max - min) * 100) : 0; }
+
+function mentor(u: SupervisionSummary, p: SupervisionSummary) {
+  const total = u.supervisor;
+  const required = 24;
+  return { total, required, percent: Math.floor(total / required * 100), pending: p.supervisor };
+}
+function short(u: any) { return { id: u.id, email: u.email, fullName: u.fullName }; }
+function blank(u: any, matrix: any) {
+  return { user: short(u), matrix, summary: { required: null, percent: null, usable: emptySummary(), pending: emptySummary(), mentor: null } }
 }
