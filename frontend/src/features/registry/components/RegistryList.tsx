@@ -3,19 +3,15 @@ import { useRegistry } from '../hooks/useRegistry';
 import type { RegistryCard as RegistryCardType } from '../api/getRegistry';
 import { RegistryCard } from '../components/RegistryCard';
 import { Button } from '@/components/Button';
+import { smartDefaultSort, userSort, type SortKey, type SortDir } from '@/utils/sortRegistry';
 
 type Props = { onOpenProfile?: (userId: string) => void; pageSize?: number };
-
-type SortKey = 'name' | 'location' | 'group' | 'createdAt';
-type SortDir = 'asc' | 'desc';
 
 const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
 const tokenize = (s: string) =>
   norm(s)
     .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
     .filter(Boolean);
-
-const isCertified = (u: RegistryCardType) => Boolean(u.isCertified);
 
 const formatDate = (iso?: string) => {
   if (!iso) return '—';
@@ -36,6 +32,9 @@ type PersistedState = {
   statusFilter: 'all' | 'certified';
   sortKey: SortKey;
   sortDir: SortDir;
+
+  // ✅ новый флаг: пользователь вручную трогал сортировку
+  userSorted?: boolean;
 };
 
 function loadPersistedState(): Partial<PersistedState> {
@@ -48,6 +47,8 @@ function loadPersistedState(): Partial<PersistedState> {
     return {};
   }
 }
+
+const isCertified = (u: RegistryCardType) => Boolean(u.isCertified);
 
 // Табличный режим
 function RegistryTableView({
@@ -164,9 +165,12 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     persisted.statusFilter ?? 'all',
   );
 
-  // сортировка
+  // сортировка (ручная)
   const [sortKey, setSortKey] = useState<SortKey>(persisted.sortKey ?? 'createdAt');
   const [sortDir, setSortDir] = useState<SortDir>(persisted.sortDir ?? 'desc');
+
+  // ✅ smart-default активен, пока пользователь не трогал сортировку
+  const [isUserSorting, setIsUserSorting] = useState<boolean>(persisted.userSorted ?? false);
 
   // Берём большую выборку и дальше всё режем на фронте.
   const { data, isLoading } = useRegistry({
@@ -182,8 +186,12 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     setCityFilter('');
     setGroupFilter('');
     setStatusFilter('all');
+
+    // возвращаем дефолтные значения (и включаем smart-default)
     setSortKey('createdAt');
     setSortDir('desc');
+    setIsUserSorting(false);
+
     setPage(1);
 
     if (typeof window !== 'undefined') {
@@ -192,6 +200,9 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
   };
 
   const handleChangeSort = (key: SortKey) => {
+    // любое действие по сортировке = ручной режим
+    setIsUserSorting(true);
+
     if (key === sortKey) {
       setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -212,6 +223,7 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
       statusFilter,
       sortKey,
       sortDir,
+      userSorted: isUserSorting,
     };
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
   }, [
@@ -224,6 +236,7 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     statusFilter,
     sortKey,
     sortDir,
+    isUserSorting,
   ]);
 
   // фильтрация по полям
@@ -261,50 +274,10 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
     });
   }, [items, nameFilter, countryFilter, cityFilter, groupFilter, statusFilter]);
 
-  // сортировка
+  // сортировка (вынесена в утилку)
   const sorted = useMemo(() => {
-    const arr = [...filtered];
-
-    arr.sort((a, b) => {
-      const dir = sortDir === 'asc' ? 1 : -1;
-
-      if (sortKey === 'name') {
-        const aName = norm(a.fullName);
-        const bName = norm(b.fullName);
-        if (aName < bName) return -1 * dir;
-        if (aName > bName) return 1 * dir;
-        return 0;
-      }
-
-      if (sortKey === 'location') {
-        const aLoc = norm(`${a.country || ''} ${a.city || ''}`);
-        const bLoc = norm(`${b.country || ''} ${b.city || ''}`);
-        if (aLoc < bLoc) return -1 * dir;
-        if (aLoc > bLoc) return 1 * dir;
-        return 0;
-      }
-
-      if (sortKey === 'group') {
-        const aRank = a.groupRank ?? 0;
-        const bRank = b.groupRank ?? 0;
-        if (aRank < bRank) return -1 * dir;
-        if (aRank > bRank) return 1 * dir;
-        const aName = norm(a.groupName || '');
-        const bName = norm(b.groupName || '');
-        if (aName < bName) return -1 * dir;
-        if (aName > bName) return 1 * dir;
-        return 0;
-      }
-
-      const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
-      const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
-      if (aTime < bTime) return -1 * dir;
-      if (aTime > bTime) return 1 * dir;
-      return 0;
-    });
-
-    return arr;
-  }, [filtered, sortKey, sortDir]);
+    return isUserSorting ? userSort(filtered, sortKey, sortDir) : smartDefaultSort(filtered);
+  }, [filtered, sortKey, sortDir, isUserSorting]);
 
   const totalFiltered = sorted.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
