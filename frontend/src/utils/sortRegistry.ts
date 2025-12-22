@@ -7,8 +7,8 @@ const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
 
 const hasAvatar = (u: RegistryCardType) => Boolean((u as any).avatarUrl);
 const hasCity = (u: RegistryCardType) => Boolean(u.city && u.city.trim().length > 0);
-
-const isCandidate = (u: RegistryCardType) => norm(u.groupName ?? '') === norm('Соискатель');
+const isCandidate = (u: RegistryCardType) =>
+  norm(u.groupName ?? '') === norm('Соискатель');
 
 /**
  * Детерминированный shuffle (не прыгает при каждом рендере)
@@ -35,52 +35,44 @@ function getDailySeed(): number {
 
 /**
  * BASE SORT (без рандома)
- * Реализует список заказчика 1-в-1:
- * 1) сначала НЕ соискатели, потом соискатели
- * 2) внутри НЕ соискателей: (аватар+город) -> (аватар) -> (город) -> (ничего), и внутри по уровню
- * 3) затем соискатели с теми же 4 состояниями
+ *
+ * Приоритеты:
+ * 1) НЕ соискатели выше соискателей
+ * 2) аватарка
+ * 3) группа (groupRank)
+ * 4) город
+ * 5) стабилизаторы
  */
 function baseSort(items: RegistryCardType[]): RegistryCardType[] {
   const arr = [...items];
 
   arr.sort((a, b) => {
-    // A) соискатели всегда внизу
+    // 1) соискатели всегда внизу
     const aCand = isCandidate(a);
     const bCand = isCandidate(b);
     if (aCand !== bCand) return aCand ? 1 : -1;
 
-    // B) состояние профиля: аватар+город -> аватар -> город -> ничего
+    // 2) аватарка
     const aAv = hasAvatar(a);
     const bAv = hasAvatar(b);
-    const aCt = hasCity(a);
-    const bCt = hasCity(b);
+    if (aAv !== bAv) return aAv ? -1 : 1;
 
-    const aProfile =
-      aAv && aCt ? 0 :
-        aAv ? 1 :
-          aCt ? 2 :
-            3;
-
-    const bProfile =
-      bAv && bCt ? 0 :
-        bAv ? 1 :
-          bCt ? 2 :
-            3;
-
-    if (aProfile !== bProfile) return aProfile - bProfile;
-
-    // C) уровень (только внутри одинакового блока профиля)
-    // (опытный > супервизор > куратор > инструктор > соискатель)
+    // 3) группа (уровень)
     const aRank = a.groupRank ?? 0;
     const bRank = b.groupRank ?? 0;
     if (aRank !== bRank) return bRank - aRank;
 
-    // D) дата регистрации (новые выше)
+    // 4) город
+    const aCity = hasCity(a);
+    const bCity = hasCity(b);
+    if (aCity !== bCity) return aCity ? -1 : 1;
+
+    // 5) дата регистрации (новые выше)
     const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
     const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
     if (aTime !== bTime) return bTime - aTime;
 
-    // E) стабильность
+    // 6) стабильность
     const aName = norm(a.fullName || '');
     const bName = norm(b.fullName || '');
     if (aName !== bName) return aName < bName ? -1 : 1;
@@ -104,9 +96,7 @@ export function smartDefaultSort(items: RegistryCardType[]): RegistryCardType[] 
   const top = sorted.slice(0, TOP_N);
   const rest = sorted.slice(TOP_N);
 
-  const seed = getDailySeed();
-  const shuffledTop = seededShuffle(top, seed);
-
+  const shuffledTop = seededShuffle(top, getDailySeed());
   return [...shuffledTop, ...rest];
 }
 
