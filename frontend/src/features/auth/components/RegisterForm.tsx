@@ -1,9 +1,8 @@
 // src/features/auth/components/RegisterForm.tsx
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   registerInputSchema,
-  registerSchema,
   type RegisterFormValues,
   type RegisterDto,
 } from '../validation/registerSchema';
@@ -14,6 +13,104 @@ import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import { Button } from '@/components/Button';
 import { toast } from 'sonner';
+import { isValidPhoneNumber } from 'libphonenumber-js';
+
+// utils
+import { buildFullNameRu, buildFullNameLatin } from '@/features/user/utils/name';
+import { normalizePhone } from '@/features/user/utils/phone';
+import { UserLocationFields } from '@/features/user/components/UserLocationFields';
+
+const arrToStr = (arr: string[]) =>
+  arr
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .join(', ');
+
+// Человеческие названия полей
+const fieldLabel: Record<string, string> = {
+  email: 'Email',
+  lastName: 'Фамилия (рус.)',
+  firstName: 'Имя (рус.)',
+  middleName: 'Отчество (рус.)',
+  lastNameLatin: 'Фамилия (лат.)',
+  firstNameLatin: 'Имя (лат.)',
+  phone: 'Телефон',
+  birthDate: 'Дата рождения',
+  countries: 'Страна',
+  cities: 'Город',
+  password: 'Пароль',
+  confirmPassword: 'Повторите пароль',
+};
+
+// Ищем первую ошибку по порядку формы
+function getFirstError(errors: FieldErrors<RegisterFormValues>) {
+  const order: (keyof RegisterFormValues)[] = [
+    'email',
+    'lastName',
+    'firstName',
+    'middleName',
+    'lastNameLatin',
+    'firstNameLatin',
+    'phone',
+    'birthDate',
+    'countries',
+    'cities',
+    'password',
+    'confirmPassword',
+  ];
+
+  for (const name of order) {
+    const err: any = errors[name];
+    if (!err) continue;
+
+    const message =
+      typeof err.message === 'string'
+        ? err.message
+        : Array.isArray(err) && err[0]?.message
+          ? err[0].message
+          : '';
+
+    return { name, message };
+  }
+
+  return null;
+}
+
+// Приводим сообщения к нормальному человеческому виду
+function humanizeError(field: string, raw: string) {
+  const label = fieldLabel[field] || field;
+  const msg = raw?.toLowerCase() ?? '';
+
+  if (msg.includes('латин')) {
+    return `Введите «${label}» латиницей`;
+  }
+
+  if (msg.includes('кирил')) {
+    return `Введите «${label}» кириллицей`;
+  }
+
+  if (field === 'phone') {
+    return 'Введите корректный номер телефона';
+  }
+
+  if (field === 'countries') {
+    return 'Укажите страну';
+  }
+
+  if (field === 'cities') {
+    return 'Укажите город';
+  }
+
+  if (field === 'confirmPassword') {
+    return raw || 'Пароли не совпадают';
+  }
+
+  if (msg.includes('min') || msg.includes('миним')) {
+    return `Заполните поле «${label}»`;
+  }
+
+  return raw || `Проверьте поле «${label}»`;
+}
 
 export function RegisterForm() {
   const navigate = useNavigate();
@@ -21,6 +118,10 @@ export function RegisterForm() {
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerInputSchema),
     mode: 'onSubmit',
+    defaultValues: {
+      countries: [],
+      cities: [],
+    },
   });
 
   const mutation = useMutation({
@@ -31,20 +132,58 @@ export function RegisterForm() {
       navigate('/dashboard');
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.error || 'Ошибка регистрации';
-      toast.error(message);
+      toast.error(error?.response?.data?.error || 'Ошибка регистрации');
     },
   });
 
-  const onSubmit = form.handleSubmit((raw) => {
-    const parsed = registerSchema.safeParse(raw);
-    if (!parsed.success) {
-      const msg = parsed.error.issues?.[0]?.message ?? 'Проверьте поля формы';
-      toast.error(msg);
-      return;
-    }
-    mutation.mutate(parsed.data);
-  });
+  const onSubmit = form.handleSubmit(
+    (raw) => {
+      const {
+        lastName,
+        firstName,
+        middleName,
+        lastNameLatin,
+        firstNameLatin,
+        phone,
+        birthDate,
+        countries,
+        cities,
+        email,
+        password,
+      } = raw;
+
+      const fullName = buildFullNameRu(lastName, firstName, middleName);
+      const fullNameLatin = buildFullNameLatin(lastNameLatin, firstNameLatin);
+
+      const phoneIntl = normalizePhone(phone);
+      if (phoneIntl && !isValidPhoneNumber(phoneIntl)) {
+        toast.error('Введите корректный номер телефона');
+        form.setFocus('phone');
+        return;
+      }
+
+      mutation.mutate({
+        email,
+        password,
+        fullName,
+        fullNameLatin,
+        phone: phoneIntl,
+        birthDate,
+        country: arrToStr(countries),
+        city: arrToStr(cities),
+      });
+    },
+    (errors) => {
+      const first = getFirstError(errors);
+      if (!first) {
+        toast.error('Проверьте поля формы');
+        return;
+      }
+
+      toast.error(humanizeError(first.name as string, first.message));
+      form.setFocus(first.name);
+    },
+  );
 
   const disabled = mutation.isPending;
 
@@ -54,30 +193,35 @@ export function RegisterForm() {
       style={{ borderColor: 'var(--color-green-light)' }}
     >
       <form onSubmit={onSubmit} className="px-6 py-5 space-y-4">
-        {/* Email */}
-        <div>
-          <label htmlFor="email" className="block mb-1 text-sm text-blue-dark">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            className="input"
-            disabled={disabled}
-            {...form.register('email')}
-          />
+        <div
+          className="text-s font-medium text-blue-dark/70 px-3 py-2 rounded-xl"
+          style={{ background: 'var(--color-blue-soft)' }}
+        >
+          После регистрации добавьте фото — так в реестре вы будете выглядеть живым человеком, а не
+          пустой карточкой 🙂
         </div>
 
-        {/* Русское ФИО */}
+        {/* Email */}
+        <div>
+          <label className="block mb-1 text-sm text-blue-dark">
+            Email<span className="text-red-500 ml-1">*</span>
+          </label>
+          <input type="email" className="input" disabled={disabled} {...form.register('email')} />
+        </div>
+
+        {/* ФИО рус */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">Фамилия (рус.)</label>
+            <label className="block mb-1 text-sm text-blue-dark">
+              Фамилия (рус.)<span className="text-red-500 ml-1">*</span>
+            </label>
             <input className="input" disabled={disabled} {...form.register('lastName')} />
           </div>
 
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">Имя (рус.)</label>
+            <label className="block mb-1 text-sm text-blue-dark">
+              Имя (рус.)<span className="text-red-500 ml-1">*</span>
+            </label>
             <input className="input" disabled={disabled} {...form.register('firstName')} />
           </div>
 
@@ -87,32 +231,38 @@ export function RegisterForm() {
           </div>
         </div>
 
-        {/* Разделитель */}
+        {/* разделитель */}
         <div className="pt-2">
           <div
-            className="text-xs font-medium text-blue-dark/70 px-3 py-2 rounded-xl"
+            className="text-s font-medium text-blue-dark/70 px-3 py-2 rounded-xl"
             style={{ background: 'var(--color-blue-soft)' }}
           >
-            ФИО латиницей — введите как указано в загранпаспорте
+            ФИО латиницей — как в загранпаспорте
           </div>
         </div>
 
-        {/* Латиница */}
+        {/* ФИО лат */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">Фамилия (лат.)</label>
+            <label className="block mb-1 text-sm text-blue-dark">
+              Фамилия (лат.)<span className="text-red-500 ml-1">*</span>
+            </label>
             <input className="input" disabled={disabled} {...form.register('lastNameLatin')} />
           </div>
 
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">Имя (лат.)</label>
+            <label className="block mb-1 text-sm text-blue-dark">
+              Имя (лат.)<span className="text-red-500 ml-1">*</span>
+            </label>
             <input className="input" disabled={disabled} {...form.register('firstNameLatin')} />
           </div>
         </div>
 
         {/* Телефон */}
         <div>
-          <label className="block mb-1 text-sm text-blue-dark">Телефон</label>
+          <label className="block mb-1 text-sm text-blue-dark">
+            Телефон<span className="text-red-500 ml-1">*</span>
+          </label>
           <Controller
             name="phone"
             control={form.control}
@@ -132,10 +282,35 @@ export function RegisterForm() {
           />
         </div>
 
+        {/* Дата рождения */}
+        <div>
+          <label className="block mb-1 text-sm text-blue-dark">
+            Дата рождения<span className="text-red-500 ml-1">*</span>
+          </label>
+          <input
+            type="date"
+            className="input"
+            disabled={disabled}
+            {...form.register('birthDate')}
+          />
+        </div>
+
+        {/* Страна / город — КАК В РЕДАКТУРЕ */}
+        <UserLocationFields
+          countries={form.watch('countries')}
+          cities={form.watch('cities')}
+          onChange={({ countries, cities }) => {
+            form.setValue('countries', countries, { shouldValidate: true });
+            form.setValue('cities', cities, { shouldValidate: true });
+          }}
+        />
+
         {/* Пароль */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">Пароль</label>
+            <label className="block mb-1 text-sm text-blue-dark">
+              Пароль<span className="text-red-500 ml-1">*</span>
+            </label>
             <input
               type="password"
               className="input"
@@ -145,7 +320,9 @@ export function RegisterForm() {
           </div>
 
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">Повторите пароль</label>
+            <label className="block mb-1 text-sm text-blue-dark">
+              Повторите пароль<span className="text-red-500 ml-1">*</span>
+            </label>
             <input
               type="password"
               className="input"

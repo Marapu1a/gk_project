@@ -39,7 +39,16 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
   }
 
   // ⬇️ добавили fullNameLatin
-  const { email, fullName, fullNameLatin, phone, password } = parsed.data;
+  const {
+    email,
+    fullName,
+    fullNameLatin,
+    phone,
+    birthDate,
+    country,
+    city,
+    password,
+  } = parsed.data;
 
   if (await emailExistsByCanonSimple(email)) {
     return reply.code(409).send({ error: 'Email уже используется' });
@@ -57,11 +66,15 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       email,
       password: hashedPassword,
       fullName,
-      fullNameLatin: fullNameLatin?.trim() || null, // ← сохраняем
+      fullNameLatin: fullNameLatin?.trim() || null,
       phone,
+      birthDate: birthDate ? new Date(birthDate) : null,
+      country: country || null,
+      city: city || null,
       role: 'STUDENT',
     },
   });
+
 
   await prisma.payment.createMany({
     data: [

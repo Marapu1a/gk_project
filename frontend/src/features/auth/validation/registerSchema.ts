@@ -1,40 +1,11 @@
 // src/features/auth/validation/registerSchema.ts
 import { z } from 'zod';
-import { isValidPhoneNumber } from 'libphonenumber-js';
+
+// ===== regex =====
+const NAME_RX = /^[А-ЯЁа-яё\-ʼ' ]+$/;
+const NAME_LAT_RX = /^[A-Za-z\-ʼ' ]+$/;
 
 // ===== helpers =====
-const NAME_RX = /^[А-ЯЁа-яё\-ʼ' ]+$/; // кириллица + пробел/дефис/апостроф
-const NAME_LAT_RX = /^[A-Za-z\-ʼ' ]+$/; // латиница + пробел/дефис/апостроф
-
-const titleCaseRu = (s: string) =>
-  s
-    .trim()
-    .split(/\s+/)
-    .map(token =>
-      token
-        .split('-')
-        .map(p => (p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p))
-        .join('-'),
-    )
-    .join(' ');
-
-const titleCaseEn = (s: string) =>
-  s
-    .trim()
-    .split(/\s+/)
-    .map(token =>
-      token
-        .split('-')
-        .map(p => (p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p))
-        .join('-'),
-    )
-    .join(' ');
-
-const normalizePhone = (raw: string) => {
-  const digits = String(raw).replace(/[^\d+]/g, '');
-  return digits.startsWith('+') ? digits : `+${digits}`;
-};
-
 const namePartRu = (label: string) =>
   z
     .string()
@@ -48,7 +19,10 @@ const namePartRuOptional = (label: string) =>
     .string()
     .trim()
     .max(60, `${label}: максимум 60 символов`)
-    .refine(v => v === '' || NAME_RX.test(v), `${label}: только кириллица, пробелы, дефис, апостроф`);
+    .refine(
+      v => v === '' || NAME_RX.test(v),
+      `${label}: только кириллица, пробелы, дефис, апостроф`,
+    );
 
 const namePartLat = (label: string) =>
   z
@@ -58,7 +32,10 @@ const namePartLat = (label: string) =>
     .max(60, `${label}: максимум 60 символов`)
     .refine(v => NAME_LAT_RX.test(v), `${label}: только латиница, пробелы, дефис, апостроф`);
 
-// ===== схема ввода (UI -> форма) =====
+const nonEmptyArray = (label: string) =>
+  z.array(z.string().trim().min(1)).min(1, `Укажите ${label}`);
+
+// ===== схема формы (UI) =====
 export const registerInputSchema = z
   .object({
     email: z
@@ -66,53 +43,45 @@ export const registerInputSchema = z
       .trim()
       .toLowerCase()
       .min(5, 'Введите email')
-      .email({ message: 'Некорректный email' }),
+      .email('Некорректный email'),
 
-    // Русское ФИО
+    // ФИО (рус.)
     lastName: namePartRu('Фамилия (рус.)'),
     firstName: namePartRu('Имя (рус.)'),
-    middleName: namePartRuOptional('Отчество (рус., при наличии)'),
+    middleName: namePartRuOptional('Отчество (рус.)'),
 
-    // Латинское ФИО (без отчества)
+    // ФИО (лат.)
     lastNameLatin: namePartLat('Фамилия (лат.)'),
     firstNameLatin: namePartLat('Имя (лат.)'),
 
     phone: z
       .string()
-      .transform(normalizePhone)
-      .refine(val => isValidPhoneNumber(val), { message: 'Неверный номер' }),
+      .min(1, 'Введите телефон'),
 
-    password: z.string().min(6, 'Минимум 6 символов').max(100, 'Слишком длинный пароль'),
+    birthDate: z.string().min(1, 'Укажите дату рождения'),
+
+    // КАК В РЕДАКТУРЕ
+    countries: nonEmptyArray('страну'),
+    cities: nonEmptyArray('город'),
+
+    password: z.string().min(6, 'Минимум 6 символов').max(100),
     confirmPassword: z.string(),
   })
   .refine(d => d.password === d.confirmPassword, {
-    message: 'Пароли не совпадают',
     path: ['confirmPassword'],
+    message: 'Пароли не совпадают',
   });
 
-// ===== схема для API (трансформируем в fullName / fullNameLatin) =====
-export const registerSchema = registerInputSchema.transform(d => {
-  // RU
-  const ln = titleCaseRu(d.lastName);
-  const fn = titleCaseRu(d.firstName);
-  const mn = d.middleName ? titleCaseRu(d.middleName) : '';
-  const fullName = [ln, fn, mn].filter(Boolean).join(' ');
-
-  // LAT — ТОЛЬКО фамилия + имя
-  const lnLat = titleCaseEn(d.lastNameLatin);
-  const fnLat = titleCaseEn(d.firstNameLatin);
-  const fullNameLatin = [lnLat, fnLat].filter(Boolean).join(' ');
-
-  return {
-    email: d.email,
-    phone: d.phone,
-    password: d.password,
-    confirmPassword: d.confirmPassword,
-    fullName,
-    fullNameLatin,
-  };
-});
-
-// типы
+// ===== типы =====
 export type RegisterFormValues = z.infer<typeof registerInputSchema>;
-export type RegisterDto = z.infer<typeof registerSchema>;
+
+export type RegisterDto = {
+  email: string;
+  password: string;
+  fullName: string;
+  fullNameLatin: string;
+  phone: string;
+  birthDate: string;
+  country: string;
+  city: string;
+};

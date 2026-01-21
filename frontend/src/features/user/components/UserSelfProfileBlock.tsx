@@ -6,6 +6,10 @@ import PhoneInput from 'react-phone-input-2';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import { UserLocationFields } from './UserLocationFields';
 
+// utils
+import { splitFullName, buildFullNameRu, buildFullNameLatin } from '@/features/user/utils/name';
+import { normalizePhone } from '@/features/user/utils/phone';
+
 const roleLabels = {
   STUDENT: 'Соискатель',
   REVIEWER: 'Супервизор',
@@ -16,43 +20,18 @@ const roleLabels = {
 function toDateInput(iso: string) {
   return iso.slice(0, 10);
 }
-function titleCaseAny(s: string) {
-  return s
-    .trim()
-    .split(/\s+/)
-    .map((token) =>
-      token
-        .split('-')
-        .map((p) => (p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : p))
-        .join('-'),
-    )
-    .join(' ');
-}
-function splitFullName(fullName?: string | null) {
-  const parts = String(fullName || '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .split(' ')
-    .filter(Boolean);
-  const [lastName = '', firstName = '', ...rest] = parts;
-  const middleName = rest.length ? rest.join(' ') : '';
-  return { lastName, firstName, middleName };
-}
+
 const strToArr = (s?: string | null) =>
   (s || '')
     .split(',')
     .map((x) => x.trim())
     .filter(Boolean);
+
 const arrToStr = (arr: string[]) =>
   arr
     .map((x) => x.trim())
     .filter(Boolean)
     .join(', ');
-
-const normalizePhone = (raw: string) => {
-  const digits = String(raw).replace(/[^\d+]/g, '');
-  return digits ? (digits.startsWith('+') ? digits : `+${digits}`) : '';
-};
 
 export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
   const [edit, setEdit] = useState(false);
@@ -120,33 +99,24 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
   };
 
   const onSave = async () => {
-    // сырые значения
     const lnRaw = form.lastName.trim();
     const fnRaw = form.firstName.trim();
     const mnRaw = form.middleName.trim();
     const lnLatRaw = form.lastNameLatin.trim();
     const fnLatRaw = form.firstNameLatin.trim();
 
-    // 1) ФИО русское обязательно
     if (!lnRaw || !fnRaw || !mnRaw) {
       toast.error('Фамилия, имя и отчество обязательны');
       return;
     }
 
-    // 2) Имя и фамилия латиницей обязательно
     if (!lnLatRaw || !fnLatRaw) {
       toast.error('Имя и фамилия латиницей обязательны');
       return;
     }
 
-    const ln = titleCaseAny(lnRaw);
-    const fn = titleCaseAny(fnRaw);
-    const mn = titleCaseAny(mnRaw);
-    const fullName = [ln, fn, mn].filter(Boolean).join(' ');
-
-    const lnLat = titleCaseAny(lnLatRaw);
-    const fnLat = titleCaseAny(fnLatRaw);
-    const fullNameLatin = [lnLat, fnLat].filter(Boolean).join(' ');
+    const fullName = buildFullNameRu(lnRaw, fnRaw, mnRaw);
+    const fullNameLatin = buildFullNameLatin(lnLatRaw, fnLatRaw);
 
     const phoneIntl = normalizePhone(form.phone);
     if (phoneIntl && !isValidPhoneNumber(phoneIntl)) {
@@ -219,7 +189,6 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             />
           </Field>
 
-          {/* разделитель */}
           <div className="col-span-full text-xs text-gray-500 text-center mt-2">
             ФИО латиницей — как в загранпаспорте
           </div>
