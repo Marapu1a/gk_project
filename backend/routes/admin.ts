@@ -7,6 +7,7 @@ import { updateUserBasicInfoHandler } from '../handlers/admin/updateUserBasicInf
 import { updatePaymentHandler } from '../handlers/admin/updatePayment';
 import { getUserExportHandler } from '../handlers/admin/getUserExportHandler';
 import { updateUserPasswordAdminHandler } from '../handlers/admin/updateUserPasswordAdminHandler';
+import { getUsersExportXlsxHandler } from "../handlers/admin/getUsersExportXlsxHandler";
 
 // CEU god-mode
 import { getUserCEUMatrixAdminHandler } from '../handlers/admin/ceu/getUserCEUMatrixAdminHandler';
@@ -44,4 +45,7 @@ export async function usersRoutes(app: FastifyInstance) {
 
   // Users
   app.patch('/admin/users/:id/password', { preHandler: verifyToken }, updateUserPasswordAdminHandler);
+
+  // Exel export
+  app.get("/admin/users/export.xlsx", { preHandler: verifyToken }, getUsersExportXlsxHandler);
 }

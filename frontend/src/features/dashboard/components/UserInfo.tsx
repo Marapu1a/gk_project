@@ -13,6 +13,7 @@ import { UserSelfProfileBlock } from '@/features/user/components/UserSelfProfile
 import { BioEditModal } from '@/features/user/components/BioEditModal';
 import { AdminDbBackupBlock } from '@/features/backup/components/AdminDbBackupBlock';
 import { TargetLevelSelector } from './TargetLevelSelector';
+import { useDownloadUsersExport } from '@/features/admin/hooks/useDownloadUsersExport';
 import type { TargetLevel } from '@/features/user/api/setTargetLevel';
 
 // фиксируем тип уровня
@@ -30,6 +31,7 @@ export function UserInfo() {
   const logout = useLogout();
   const navigate = useNavigate();
   const { data: payments = [], isLoading: payLoading } = useUserPayments();
+  const exportUsers = useDownloadUsersExport();
 
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [bioOpen, setBioOpen] = useState(false);
@@ -108,6 +110,15 @@ export function UserInfo() {
             <Button onClick={() => navigate('/admin/document-review')} className="mr-2">
               Проверка документов
             </Button>
+
+            <Button
+              onClick={() => exportUsers.mutate()}
+              disabled={exportUsers.isPending}
+              className="mr-2"
+            >
+              {exportUsers.isPending ? 'Формирую XLSX…' : 'Выгрузка пользователей (XLSX)'}
+            </Button>
+
             <AdminDbBackupBlock />
           </>
         ) : (
@@ -192,8 +203,9 @@ export function UserInfo() {
             )}
           </>
         )}
-
-        <Button onClick={logout}>Выйти</Button>
+        <Button className="ml-2" onClick={logout}>
+          Выйти
+        </Button>
       </div>
     </div>
   );

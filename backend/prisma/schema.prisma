@@ -105,6 +105,7 @@ model User {
   notifications            Notification[]
 
   createdAt                DateTime @default(now())
+  lastActiveAt             DateTime?
 
   targetLevel              TargetLevel? // Целевой уровень специализации (лесенка, если NULL)
   targetLockRank           Int?        // ранг, при котором цель была выбрана
