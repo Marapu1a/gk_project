@@ -42,7 +42,7 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
                 <span>
                   {isSupervisor || isExperiencedSupervisor
                     ? 'Добавить часы менторства'
-                    : 'Добавить часы супервизии'}
+                    : 'Отправить часы практики супервизору'}
                 </span>
               </div>
             </Link>

@@ -267,14 +267,29 @@ export function SupervisionRequestForm() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6 bg-white border border-blue-dark/10 rounded-xl shadow-sm">
       <h1 className="text-2xl font-bold text-blue-dark">
-        {isMentor ? 'Новая заявка на менторство' : 'Новая заявка на супервизию'}
+        {isMentor
+          ? 'Новая заявка на менторство'
+          : 'Отправка часов практики на подтверждение супервизору'}
       </h1>
+
+      <div
+        className="rounded-xl p-4"
+        style={{
+          background: 'var(--color-blue-soft)',
+          border: '1px solid rgba(31,48,94,0.2)',
+        }}
+      >
+        <p className="text-sm text-blue-dark">
+          Вы отправляете часы практики супервизору для подтверждения. После подтверждения они
+          автоматически пересчитаются в часы супервизии.
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Email супервизора c подсказками */}
         <div className="relative">
           <label className="block font-medium mb-1">
-            Email {isMentor ? 'опытного супервизора или админа' : 'супервизора или админа'}
+            Email {isMentor ? 'опытного супервизора или админа' : 'супервизора или его фамилия'}
           </label>
           <input
             type="text"
@@ -297,6 +312,21 @@ export function SupervisionRequestForm() {
             placeholder="Начните вводить ФИО или email…"
             autoComplete="off"
           />
+
+          <div
+            className="rounded-xl p-4 mt-6"
+            style={{
+              background: 'var(--color-blue-soft)',
+              border: '1px solid rgba(31,48,94,0.2)',
+            }}
+          >
+            <p className="text-sm text-blue-dark">
+              Часы практики подтверждаются супервизором и автоматически пересчитываются в часы
+              супервизии. Минимум: 30 часов для Инструктора и Куратора, 20 часов для Супервизора = 1
+              час супервизии. Если часов практики меньше минимального значения, супервизия будет
+              начислена, когда часов практики накопится до 20 или 30 часов.
+            </p>
+          </div>
 
           {showSuggestions && supervisorEmailInput.trim() && matchedUsers.length > 0 && (
             <div
