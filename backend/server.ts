@@ -21,6 +21,7 @@ import { moderatorsRoutes } from './routes/users';
 import { paymentRoutes } from './routes/payment';
 import { examApplicationRoutes } from './routes/examApplications';
 import { registryRoutes } from './routes/registry';
+import { cycleRoutes } from './routes/cycleRoutes';
 import { backupRoutes } from './routes/backup';
 import { locationRoutes } from './routes/location';
 
@@ -68,6 +69,7 @@ app.register(moderatorsRoutes);
 app.register(paymentRoutes);
 app.register(examApplicationRoutes);
 app.register(registryRoutes);
+app.register(cycleRoutes);
 app.register(backupRoutes);
 app.register(locationRoutes);
 

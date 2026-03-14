@@ -1,4 +1,4 @@
-// src/features/certificate/features/MyCertificatesBlock.tsx
+// src/features/certificate/components/MyCertificatesBlock.tsx
 import { useMemo, useState } from 'react';
 import { useMyCertificates } from '../hooks/useMyCertificates';
 

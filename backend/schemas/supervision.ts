@@ -1,10 +1,14 @@
 // schemas/createSupervisionSchema.ts
 import { z } from 'zod';
 
-// Принимаем старые и новые значения
-const hourTypeEnum = z.union([
-  z.enum(['INSTRUCTOR', 'CURATOR', 'SUPERVISOR']), // legacy
-  z.enum(['PRACTICE', 'SUPERVISION', 'SUPERVISOR']), // новые
+// Принимаем старые и новые значения ТОЛЬКО ради совместимости.
+// В новой модели type может игнорироваться/нормализоваться на стороне хендлера.
+const hourTypeEnum = z.enum([
+  'INSTRUCTOR',   // legacy
+  'CURATOR',      // legacy
+  'SUPERVISOR',   // legacy + new (mentor)
+  'PRACTICE',     // new
+  'SUPERVISION',  // legacy-след (если где-то остался)
 ]);
 
 export const createSupervisionSchema = z.object({
@@ -12,17 +16,8 @@ export const createSupervisionSchema = z.object({
   fileId: z.string().optional(),
   entries: z.array(
     z.object({
-      type: hourTypeEnum,
+      type: hourTypeEnum.optional(), // <-- важное: опционально
       value: z.number().min(0.1),
     })
   ),
 });
-
-// Хелпер для нормализации
-export function normalizeHourType(
-  type: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | 'PRACTICE' | 'SUPERVISION'
-): 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR' {
-  if (type === 'INSTRUCTOR') return 'PRACTICE';
-  if (type === 'CURATOR') return 'SUPERVISION';
-  return type;
-}

@@ -1,8 +1,5 @@
 // src/features/supervision/components/SupervisionSummaryBlock.tsx
 import { useSupervisionSummary } from '../hooks/useSupervisionSummary';
-import { useSupervisionUnconfirmed } from '../hooks/useSupervisionUnconfirmed';
-
-type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
 
 // привели к супермножеству фактического типа
 type Props = {
@@ -10,23 +7,35 @@ type Props = {
     role: 'STUDENT' | 'REVIEWER' | 'ADMIN';
     activeGroup?: { id?: string; name: string; rank?: number } | null;
   };
-  level?: Level | null; // ⬅️ целевой уровень (если есть)
 };
 
-export function SupervisionSummaryBlock({ user, level }: Props) {
-  const { data: summary, isLoading: loadingSummary } = useSupervisionSummary(level ?? undefined);
-  const { data: unconfirmed, isLoading: loadingUnconfirmed } = useSupervisionUnconfirmed();
+export function SupervisionSummaryBlock({ user }: Props) {
+  const { data: summary, isLoading: loadingSummary } = useSupervisionSummary();
 
   const activeGroup = user.activeGroup?.name;
   const isSupervisor = activeGroup === 'Супервизор';
   const isSeniorSupervisor = activeGroup === 'Опытный Супервизор';
   const isSupervisorLike = isSupervisor || isSeniorSupervisor;
 
-  if (loadingSummary || loadingUnconfirmed) {
+  if (loadingSummary) {
     return <p className="text-sm text-blue-dark">Загрузка часов супервизии…</p>;
   }
-  if (!summary || !unconfirmed) {
+  if (!summary) {
     return <p className="text-error">Ошибка загрузки супервизии</p>;
+  }
+
+  // нет активного цикла => required/percent = null, суммы = 0
+  if (!summary.required) {
+    return (
+      <div className="space-y-2 text-sm">
+        <h3 className="text-lg font-semibold text-blue-dark">
+          {isSupervisorLike ? 'Часы менторства' : 'Часы супервизии'}
+        </h3>
+        <p className="text-gray-700">
+          Нет активного цикла — прогресс часов сейчас не рассчитывается.
+        </p>
+      </div>
+    );
   }
 
   // helper: прогрессбар
@@ -53,7 +62,6 @@ export function SupervisionSummaryBlock({ user, level }: Props) {
 
   // === Супервизоры и опытные супервизоры: менторская шкала (0 / 24) ===
   if (isSupervisorLike) {
-    // по бэку mentor уже содержит total/required/percent/pending
     const mentor = summary.mentor ?? {
       total: 0,
       required: 24,
@@ -133,7 +141,6 @@ export function SupervisionSummaryBlock({ user, level }: Props) {
               const usable = summary.usable[cat] ?? 0;
               const used = req ? Math.min(usable, req) : usable;
 
-              // процент пытаемся взять с бэка, если он есть
               const percentFromBackend = summary.percent?.[cat];
               const percent =
                 typeof percentFromBackend === 'number'
@@ -143,7 +150,6 @@ export function SupervisionSummaryBlock({ user, level }: Props) {
                     : 0;
 
               const pending = summary.pending?.[cat] ?? 0;
-              const pendingFallback = pending || (unconfirmed[cat] ?? 0);
 
               return (
                 <tr
@@ -156,7 +162,7 @@ export function SupervisionSummaryBlock({ user, level }: Props) {
                   <td className="p-2 text-center">
                     <Bar percent={percent} />
                   </td>
-                  <td className="p-2 text-center">{pendingFallback > 0 ? pendingFallback : '—'}</td>
+                  <td className="p-2 text-center">{pending > 0 ? pending : '—'}</td>
                 </tr>
               );
             })}

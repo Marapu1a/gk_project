@@ -1,48 +1,56 @@
 // src/features/supervision/api/getSupervisionSummary.ts
 import { api } from '@/lib/axios';
 
-// enum цели (трека)
-export type Level = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
-
-// Структура совпадает по форме и с "требованиями", и с фактическими часами.
-// Семантика разная, но по типам нам этого достаточно.
 export type SupervisionSummary = {
-  practice: number;     // часы практики
-  supervision: number;  // часы супервизии
-  supervisor: number;   // менторские часы (записи SUPERVISOR)
+  practice: number;
+  supervision: number;
+  supervisor: number; // менторские часы (для супервизоров)
+};
+
+export type MentorSummary = {
+  total: number;
+  required: number; // сейчас 24
+  percent: number;
+  pending: number;
+};
+
+export type BonusSummary = {
+  practice: number;
+  fromCycleId: string | null;
 };
 
 export interface SupervisionSummaryResponse {
-  // Требования к целевой группе (или null, если цели нет — верхняя ступень и т.п.)
+  /**
+   * Требования к часам (в зависимости от targetLevel ACTIVE цикла).
+   * null если:
+   * - нет активного цикла
+   * - или не удалось определить набор требований
+   */
   required: SupervisionSummary | null;
 
-  // Проценты выполнения по practice/supervision/supervisor относительно required
-  // (null, если required = null)
+  /**
+   * Процент прогресса.
+   * null если required === null
+   */
   percent: SupervisionSummary | null;
 
-  // Фактически засчитанные часы по текущему треку (с учётом "сгорания" инструктора)
+  /** CONFIRMED (и авто-расчёт супервизии) */
   usable: SupervisionSummary;
 
-  // Потенциальные часы, которые добавятся, если все pending-записи подтвердят
+  /** UNCONFIRMED (и авто-расчёт супервизии) */
   pending: SupervisionSummary;
 
-  // Отдельная шкала для менторства (только если юзер уже супервизор/опытный супервизор).
-  // На бэке сейчас жёстко: required = 24, total — сумма всех часов трека,
-  // percent — от 0 до 100, pending — сумма часов, которые ещё на проверке.
-  mentor: {
-    total: number;
-    required: number;
-    percent: number;
-    pending: number;
-  } | null;
+  /** Только для базового "Супервизор", иначе null */
+  mentor: MentorSummary | null;
+
+  /**
+   * Бонус-практика из последнего COMPLETED CURATOR цикла (если целимся в SUPERVISOR).
+   * null если бонуса нет/не применим.
+   */
+  bonus: BonusSummary | null;
 }
 
-export async function getSupervisionSummary(
-  level?: Level | null,
-): Promise<SupervisionSummaryResponse> {
-  const params = level ? { level } : undefined;
-  const { data } = await api.get<SupervisionSummaryResponse>('/supervision/summary', {
-    params,
-  });
+export async function getSupervisionSummary(): Promise<SupervisionSummaryResponse> {
+  const { data } = await api.get<SupervisionSummaryResponse>('/supervision/summary');
   return data;
 }

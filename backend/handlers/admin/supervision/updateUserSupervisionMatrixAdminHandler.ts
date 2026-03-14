@@ -1,12 +1,8 @@
 // src/handlers/admin/supervision/updateUserSupervisionMatrixAdminHandler.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
-import {
-  labelSupervisionLevel,
-  labelSupervisionStatus,
-} from '../../../utils/labels';
 import { prisma } from '../../../lib/prisma';
 import { z } from 'zod';
-import { PracticeLevel, RecordStatus } from '@prisma/client';
+import { PracticeLevel, RecordStatus, CycleStatus } from '@prisma/client';
 
 // Принимаем legacy-уровни, но внутри работаем только с новыми.
 type IncomingLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | 'PRACTICE' | 'SUPERVISION';
@@ -29,13 +25,12 @@ function normalizeLevel(lvl: IncomingLevel): NormalizedLevel {
   if (lvl === 'INSTRUCTOR') return 'PRACTICE';
   if (lvl === 'CURATOR') return 'SUPERVISION';
   if (lvl === 'PRACTICE' || lvl === 'SUPERVISION' || lvl === 'SUPERVISOR') return lvl;
-  // на всякий случай, но сюда не дойдём из-за zod
   return 'PRACTICE';
 }
 
 export async function updateUserSupervisionMatrixAdminHandler(
   req: FastifyRequest<Route>,
-  reply: FastifyReply,
+  reply: FastifyReply
 ) {
   if (req.user.role !== 'ADMIN') {
     return reply.code(403).send({ error: 'Только администратор' });
@@ -48,8 +43,9 @@ export async function updateUserSupervisionMatrixAdminHandler(
 
   const { userId } = req.params;
   const incoming = parsed.data;
+
   const level = normalizeLevel(incoming.level);
-  const status = incoming.status as RecordStatus; // 'CONFIRMED' | 'UNCONFIRMED'
+  const status = incoming.status as RecordStatus; // CONFIRMED | UNCONFIRMED
   const value = incoming.value;
 
   // ❌ Супервизию руками больше не трогаем: она считается авто из практики
@@ -59,7 +55,7 @@ export async function updateUserSupervisionMatrixAdminHandler(
     });
   }
 
-  // --- активная группа пользователя (максимальный rank)
+  // --- пользователь и группы
   const userWithGroups = await prisma.user.findUnique({
     where: { id: userId },
     include: { groups: { include: { group: true } } },
@@ -70,6 +66,15 @@ export async function updateUserSupervisionMatrixAdminHandler(
   const isSupervisorUser =
     topGroup?.name === 'Супервизор' || topGroup?.name === 'Опытный Супервизор';
 
+  // --- активный цикл обязателен (в эпоху циклов правим только внутри него)
+  const activeCycle = await prisma.certificationCycle.findFirst({
+    where: { userId, status: CycleStatus.ACTIVE },
+    select: { id: true },
+  });
+  if (!activeCycle) {
+    return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
+  }
+
   // --- правила редактирования:
   // до супервизора не даём править менторские,
   // у супервизоров не редактируем PRACTICE агрегатами.
@@ -77,39 +82,46 @@ export async function updateUserSupervisionMatrixAdminHandler(
     return reply.code(403).send({ error: 'Менторские часы недоступны до уровня Супервизор' });
   }
   if (isSupervisorUser && level === 'PRACTICE') {
-    return reply
-      .code(403)
-      .send({ error: 'Часы практики у супервизоров не редактируются агрегатами' });
+    return reply.code(403).send({ error: 'Часы практики у супервизоров не редактируются агрегатами' });
   }
 
-  // --- текущая сумма в ячейке
+  // --- текущая сумма в ячейке (ТОЛЬКО ACTIVE cycle)
   const grouped = await prisma.supervisionHour.groupBy({
     by: ['type', 'status'],
     where: {
-      record: { userId },
+      record: { userId, cycleId: activeCycle.id },
       type: level as PracticeLevel,
-      status, // только CONFIRMED/UNCONFIRMED
+      status, // CONFIRMED/UNCONFIRMED
     },
     _sum: { value: true },
   });
+
   const current = (grouped[0]?._sum?.value ?? 0) as number;
 
   if (current === value) {
-    return reply.send({ ok: true, unchanged: true, current });
+    return reply.send({ ok: true, unchanged: true, current, cycleId: activeCycle.id });
   }
 
-  // --- очистка старых часов в этой ячейке
+  // --- очистка старых часов в этой ячейке (ТОЛЬКО ACTIVE cycle)
   await prisma.supervisionHour.deleteMany({
-    where: { record: { userId }, type: level as PracticeLevel, status },
+    where: {
+      record: { userId, cycleId: activeCycle.id },
+      type: level as PracticeLevel,
+      status,
+    },
   });
 
   // --- создаём агрегат единственной записью при value > 0
   if (value > 0) {
     let record = await prisma.supervisionRecord.findFirst({
-      where: { userId },
+      where: { userId, cycleId: activeCycle.id },
       orderBy: { createdAt: 'desc' },
     });
-    if (!record) record = await prisma.supervisionRecord.create({ data: { userId } });
+    if (!record) {
+      record = await prisma.supervisionRecord.create({
+        data: { userId, cycleId: activeCycle.id },
+      });
+    }
 
     const isConfirmed = status === 'CONFIRMED';
 
@@ -119,12 +131,12 @@ export async function updateUserSupervisionMatrixAdminHandler(
         type: level as PracticeLevel,
         value,
         status,
-        reviewerId: req.user.userId, // кто изменил — тот и назначен
-        reviewedAt: isConfirmed ? new Date() : null, // дату ставим только при CONFIRMED
+        reviewerId: req.user.userId,
+        reviewedAt: isConfirmed ? new Date() : null,
         rejectedReason: null,
       },
     });
   }
 
-  return reply.send({ ok: true, level, status, newValue: value });
+  return reply.send({ ok: true, level, status, newValue: value, cycleId: activeCycle.id });
 }

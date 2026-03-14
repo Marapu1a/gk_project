@@ -1,6 +1,7 @@
 // src/handlers/admin/ceu/getUserCEUMatrixAdminHandler.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../../lib/prisma';
+import { CycleStatus } from '@prisma/client';
 
 type CEUCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
 type CEUStatus = 'CONFIRMED' | 'SPENT' | 'REJECTED';
@@ -28,10 +29,19 @@ export async function getUserCEUMatrixAdminHandler(
   });
   if (!user) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  // сгруппировать CEU по category+status
+  // ACTIVE cycle обязателен: админка смотрит матрицу только внутри активного цикла
+  const activeCycle = await prisma.certificationCycle.findFirst({
+    where: { userId, status: CycleStatus.ACTIVE },
+    select: { id: true },
+  });
+  if (!activeCycle) {
+    return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
+  }
+
+  // сгруппировать CEU по category+status (ТОЛЬКО ACTIVE cycle)
   const grouped = await prisma.cEUEntry.groupBy({
     by: ['category', 'status'],
-    where: { record: { userId } },
+    where: { record: { userId, cycleId: activeCycle.id } },
     _sum: { value: true },
   });
 
@@ -50,5 +60,5 @@ export async function getUserCEUMatrixAdminHandler(
     }
   }
 
-  return reply.send({ user, matrix });
+  return reply.send({ user, cycleId: activeCycle.id, matrix });
 }

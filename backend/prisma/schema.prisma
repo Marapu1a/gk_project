@@ -32,14 +32,29 @@ enum PracticeLevel {
   INSTRUCTOR
   CURATOR
   SUPERVISOR
-  PRACTICE
-  SUPERVISION
+
+  PRACTICE      // старый формат обычной практики, продолжаем учитывать
+  SUPERVISION   // менторские часы для супервизоров, продолжаем использовать
+
+  IMPLEMENTING  // новый подтип практики
+  PROGRAMMING   // новый подтип практики
 }
 
 enum TargetLevel {
   INSTRUCTOR
   CURATOR
   SUPERVISOR
+}
+
+enum CycleType {
+  CERTIFICATION
+  RENEWAL
+}
+
+enum CycleStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
 }
 
 enum PaymentType {
@@ -109,6 +124,49 @@ model User {
 
   targetLevel              TargetLevel? // Целевой уровень специализации (лесенка, если NULL)
   targetLockRank           Int?        // ранг, при котором цель была выбрана
+
+  cycles                   CertificationCycle[]
+}
+
+model CertificationCycle {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  targetLevel     TargetLevel
+  type            CycleType   @default(CERTIFICATION)
+  status          CycleStatus @default(ACTIVE)
+
+  startedAt       DateTime    @default(now())
+  endedAt         DateTime?
+  abandonedReason String?
+
+  // records live inside cycle
+  ceuRecords        CEURecord[]
+  supervisionRecords SupervisionRecord[]
+
+  // certificate knows the cycle (1 cycle -> 0..1 certificate)
+  certificate     Certificate?
+
+  requirementsSnapshot Json?
+  modifiersSnapshot Json?
+
+  @@index([userId])
+  @@index([userId, status])
+}
+
+model SupervisionDistribution {
+  id                     String   @id @default(cuid())
+
+  cycleId                String   @unique
+
+  directIndividual       Float    @default(0)
+  directGroup            Float    @default(0)
+  nonObservingIndividual Float    @default(0)
+  nonObservingGroup      Float    @default(0)
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }
 
 model CustomCity {
@@ -182,6 +240,9 @@ model Certificate {
   number        String
   title         String
   createdAt     DateTime       @default(now())
+
+  cycleId String? @unique
+  cycle   CertificationCycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
 }
 
 model CEURecord {
@@ -194,6 +255,12 @@ model CEURecord {
   createdAt  DateTime @default(now())
 
   entries    CEUEntry[]
+
+  cycleId    String?
+  cycle      CertificationCycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([cycleId])
 }
 
 model CEUEntry {
@@ -219,6 +286,12 @@ model SupervisionRecord {
   createdAt  DateTime @default(now())
 
   hours      SupervisionHour[]
+
+  cycleId    String?
+  cycle      CertificationCycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([cycleId])
 }
 
 model SupervisionHour {
@@ -285,4 +358,3 @@ model UploadedFile {
   requestId String?
   request       DocumentReviewRequest? @relation(fields: [requestId], references: [id])
 }
-

@@ -1,30 +1,38 @@
 // src/handlers/user/updateTargetLevel.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { CycleStatus, TargetLevel } from '@prisma/client';
+import { setTargetLevelHandler } from '../users/setTargetLevel';
 
 export async function updateTargetLevelHandler(req: FastifyRequest, reply: FastifyReply) {
   const { id } = req.params as { id: string };
-  const { targetLevel } = req.body as {
-    targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
-  };
+  const { targetLevel } = req.body as { targetLevel: TargetLevel | null };
 
   if (req.user.role !== 'ADMIN') {
     return reply.code(403).send({ error: 'Недостаточно прав' });
   }
 
-  // Запрос должен явно уметь сбрасывать уровень (null)
-  try {
-    await prisma.user.update({
-      where: { id },
-      data: {
-        targetLevel: targetLevel ?? null,
-        // targetLockRank можно не трогать или обнулять — делаю **минимально**
-        // targetLockRank: null
-      },
-    });
+  // 1) Если уже есть активный цикл — здесь запрещаем менять/ставить цель.
+  // Для этого будет отдельная ручка "abort".
+  const activeCycle = await prisma.certificationCycle.findFirst({
+    where: { userId: id, status: CycleStatus.ACTIVE },
+    select: { id: true, targetLevel: true },
+  });
 
-    return reply.send({ ok: true, targetLevel });
-  } catch (err) {
-    return reply.code(500).send({ error: 'Не удалось обновить targetLevel' });
+  if (activeCycle) {
+    return reply.code(400).send({
+      error: 'ACTIVE_CYCLE_EXISTS',
+      message:
+        'У пользователя уже есть активный цикл. Сначала прервите цикл (ABANDONED), затем выбирайте цель заново.',
+      cycle: { id: activeCycle.id, targetLevel: activeCycle.targetLevel },
+    });
   }
+
+  // 2) Если цикла нет — запускаем ту же логику, что у пользователя:
+  // setTargetLevelHandler создаст ACTIVE cycle и поставит lock.
+  // Эта ручка выступает как "админский помощник" и НЕ делает прямых апдейтов поля.
+  (req as any).params = { id };
+  (req as any).body = { targetLevel };
+
+  return setTargetLevelHandler(req as any, reply as any);
 }

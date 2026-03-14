@@ -1,3 +1,4 @@
+// src/features/admin/components/PaymentsBlock.tsx
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { paymentTypeLabels, paymentStatusLabels } from '@/utils/labels';
@@ -33,7 +34,13 @@ export default function PaymentsBlock({
 
   const invalidate = async () => {
     await Promise.all([
-      qc.invalidateQueries({ queryKey: ['payments', userId] }),
+      // варианты ключей по оплатам (у тебя встречаются разные)
+      qc.invalidateQueries({ queryKey: ['payments'] }),
+      qc.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
+      qc.invalidateQueries({ queryKey: ['payments', userId] }), // пусть живёт, если где-то есть
+      qc.invalidateQueries({ queryKey: ['userPayments', userId] }),
+
+      // админские карточки пользователя
       qc.invalidateQueries({ queryKey: ['admin', 'user', userId] }),
       qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
     ]);
@@ -53,12 +60,18 @@ export default function PaymentsBlock({
 
     try {
       await mutate.mutateAsync({ id, status: 'PAID' });
-      await postNotification({
-        userId,
-        type: 'PAYMENT',
-        message: 'Оплата подтверждена',
-        link: '/dashboard',
-      });
+
+      try {
+        await postNotification({
+          userId,
+          type: 'PAYMENT',
+          message: 'Оплата подтверждена',
+          link: '/dashboard',
+        });
+      } catch {
+        // не валим UX из-за нотификаций
+      }
+
       await invalidate();
       toast.success('Оплата подтверждена');
     } catch (e: any) {
@@ -73,19 +86,26 @@ export default function PaymentsBlock({
 
   const submitCancel = async () => {
     if (!cancelId) return;
+
     const ok = await confirmToast('Отменить оплату?');
     if (!ok) return;
 
     try {
       await mutate.mutateAsync({ id: cancelId, status: 'UNPAID', comment: cancelComment });
-      await postNotification({
-        userId,
-        type: 'PAYMENT',
-        message: cancelComment.trim()
-          ? `Оплата отменена администратором: ${cancelComment.trim()}`
-          : 'Оплата отменена администратором',
-        link: '/dashboard',
-      });
+
+      try {
+        await postNotification({
+          userId,
+          type: 'PAYMENT',
+          message: cancelComment.trim()
+            ? `Оплата отменена администратором: ${cancelComment.trim()}`
+            : 'Оплата отменена администратором',
+          link: '/dashboard',
+        });
+      } catch {
+        // ignore
+      }
+
       await invalidate();
       toast.success('Оплата отменена');
       setCancelId(null);

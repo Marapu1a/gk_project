@@ -40,14 +40,11 @@ export function ProgressSummary() {
   const isSeniorSupervisor = activeGroupLc === 'опытный супервизор';
   const isSupervisorLike = isSupervisor || isSeniorSupervisor;
 
-  // enum-уровень для расчётов ЧАСОВ (экзаменационный трек / цель)
-  const levelForRequirements = user?.targetLevel ?? undefined;
-
   // для CEU:
-  // - у Соискателя/Инструктора/Куратора — считаем по целевой ступени (levelForRequirements)
+  // - у Соискателя/Инструктора/Куратора — считаем по целевой ступени (user.targetLevel)
   // - у Супервизора/Опытного — бэк сам подставляет годовые требования по активной группе,
   //   level там не нужен
-  const ceuLevelForRequirements = isSupervisorLike ? undefined : levelForRequirements;
+  const ceuLevelForRequirements = isSupervisorLike ? undefined : (user?.targetLevel ?? undefined);
 
   // для опытных супервизоров summary часов не показываем (они не набирают часы)
   const shouldShowSupervisionSummary = !!user && !isSeniorSupervisor;
@@ -111,17 +108,11 @@ export function ProgressSummary() {
           </div>
         )}
 
-        {/* CEU:
-            - для Соискателя / Инструктора / Куратора — требования к следующей группе;
-            - для Супервизора / Опытного Супервизора — годовые требования
-              (24 балла непрерывного образования), бэк смотрит на активную группу. */}
         <CeuSummaryBlock level={ceuLevelForRequirements} />
 
         {/* Часы супервизии / менторства:
             - для всех, кроме опытных супервизоров */}
-        {shouldShowSupervisionSummary && (
-          <SupervisionSummaryBlock user={user!} level={levelForRequirements} />
-        )}
+        {shouldShowSupervisionSummary && <SupervisionSummaryBlock user={user!} />}
       </div>
     </div>
   );

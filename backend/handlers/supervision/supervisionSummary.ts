@@ -1,55 +1,21 @@
+// src/handlers/supervision/supervisionSummary.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { PracticeLevel, RecordStatus } from '@prisma/client';
-import {
-  supervisionRequirementsByGroup,
-  calcAutoSupervisionHours,
-  getNextGroupName,
-} from '../../utils/supervisionRequirements';
+import { PracticeLevel, CycleStatus, TargetLevel } from '@prisma/client';
+import { supervisionRequirementsByGroup, calcAutoSupervisionHours } from '../../utils/supervisionRequirements';
 
 type SupervisionSummary = {
   practice: number;
   supervision: number;
-  supervisor: number;
+  supervisor: number; // менторские часы (для супервизоров)
 };
 
-const SUMMARY_KEYS: (keyof SupervisionSummary)[] = ['practice', 'supervision', 'supervisor'];
-
-const RU_BY_LEVEL = {
+const RU_BY_LEVEL: Record<TargetLevel, 'Инструктор' | 'Куратор' | 'Супервизор'> = {
   INSTRUCTOR: 'Инструктор',
   CURATOR: 'Куратор',
   SUPERVISOR: 'Супервизор',
-} as const;
-
-const LEVEL_BY_RU: Record<string, 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | undefined> = {
-  'Инструктор': 'INSTRUCTOR',
-  'Куратор': 'CURATOR',
-  'Супервизор': 'SUPERVISOR',
 };
 
-type Query = { level?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' };
-
-// =============================================================
-//  💡 НОВАЯ МОДЕЛЬ
-//  minPractice = 500 только при (current='Куратор' && target='Супервизор')
-//  иначе min=0
-//  max=requirePractice[target]
-// =============================================================
-function getPracticeRange(current: string, target: string | null) {
-  if (!target) return null;
-
-  const max = supervisionRequirementsByGroup[target]?.practice ?? null;
-  if (!max) return null;
-
-  let min = 0;
-  if (current === 'Куратор' && target === 'Супервизор') min = 500;
-
-  return { min, max };
-}
-
-// =============================================================
-//  Главный handler — переписан начисто
-// =============================================================
 export async function supervisionSummaryHandler(req: FastifyRequest, reply: FastifyReply) {
   const { user } = req as any;
   if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
@@ -58,98 +24,166 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     where: { id: user.userId },
     select: {
       id: true,
-      targetLevel: true,
       groups: { select: { group: { select: { name: true, rank: true } } } },
     },
   });
 
   if (!dbUser) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  const groups = dbUser.groups.map(g => g.group).sort((a, b) => b.rank - a.rank);
-  const current = groups[0]?.name;                 // активная квалификация
+  // ⚠️ Без активного цикла — ничего не показываем
+  const activeCycle = await prisma.certificationCycle.findFirst({
+    where: { userId: user.userId, status: CycleStatus.ACTIVE },
+    select: { id: true, targetLevel: true },
+  });
+
+  if (!activeCycle) {
+    return reply.send({
+      required: null,
+      percent: null,
+      usable: empty(),
+      pending: empty(),
+      mentor: null,
+      bonus: null,
+    });
+  }
+
+  const groups = dbUser.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank);
+  const current = groups[0]?.name;
 
   if (!current) {
-    return reply.send({ required: null, percent: null, usable: empty(), pending: empty(), mentor: null });
+    return reply.send({
+      required: null,
+      percent: null,
+      usable: empty(),
+      pending: empty(),
+      mentor: null,
+      bonus: null,
+    });
   }
 
-  // ---- определяем target
-  const q = (req.query ?? {}) as Query;
-  const explicit = q.level;
-  const userTarget = dbUser.targetLevel ?? null;
+  const isBasicSupervisor = current === 'Супервизор';
 
-  let effective: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null =
-    explicit || userTarget || null;
+  // target — строго из цикла
+  const targetRu = RU_BY_LEVEL[activeCycle.targetLevel];
+  const reqSet = supervisionRequirementsByGroup[targetRu] ?? null;
 
-  if (!effective) {
-    const next = getNextGroupName(current);
-    if (next) {
-      const lvl = LEVEL_BY_RU[next];
-      if (lvl) effective = lvl;
-    }
-  }
-
-  const target = effective ? RU_BY_LEVEL[effective] : null;
-  const reqSet = target ? supervisionRequirementsByGroup[target] : null;
-
-  // ---- собираем practice/supervisor по статусам
+  // ---- собираем PRACTICE/SUPERVISOR по статусам (ТОЛЬКО ACTIVE CYCLE)
   const [confirmed, unconfirmed] = await Promise.all([
-    prisma.supervisionHour.findMany({ where: { record: { userId: user.userId }, status: 'CONFIRMED' }, select: { type: true, value: true } }),
-    prisma.supervisionHour.findMany({ where: { record: { userId: user.userId }, status: 'UNCONFIRMED' }, select: { type: true, value: true } })
+    prisma.supervisionHour.findMany({
+      where: {
+        status: 'CONFIRMED',
+        type: { in: [PracticeLevel.PRACTICE, PracticeLevel.SUPERVISOR] },
+        record: { cycleId: activeCycle.id },
+      },
+      select: { type: true, value: true },
+    }),
+    prisma.supervisionHour.findMany({
+      where: {
+        status: 'UNCONFIRMED',
+        type: { in: [PracticeLevel.PRACTICE, PracticeLevel.SUPERVISOR] },
+        record: { cycleId: activeCycle.id },
+      },
+      select: { type: true, value: true },
+    }),
   ]);
 
   const usableRaw = aggregate(confirmed);
   const pendingRaw = aggregate(unconfirmed);
 
-  // ---- если target не определён → просто статистика
-  const isBasicSupervisor = current === 'Супервизор';
+  // ---- бонус: если целимся в SUPERVISOR, добавляем PRACTICE из последнего COMPLETED CURATOR цикла
+  let bonusPractice = 0;
+  let bonusSourceCycleId: string | null = null;
 
-  if (!target || !reqSet) {
-    const mentor = isBasicSupervisor ? calcMentor(usableRaw, pendingRaw) : null;
-    return reply.send({ required: null, percent: null, usable: usableRaw, pending: pendingRaw, mentor });
+  if (activeCycle.targetLevel === TargetLevel.SUPERVISOR) {
+    const lastCompletedCurator = await prisma.certificationCycle.findFirst({
+      where: {
+        userId: user.userId,
+        status: CycleStatus.COMPLETED,
+        targetLevel: TargetLevel.CURATOR,
+      },
+      orderBy: { endedAt: 'desc' }, // берём последний завершённый
+      select: { id: true },
+    });
+
+    if (lastCompletedCurator) {
+      const bonusAgg = await prisma.supervisionHour.aggregate({
+        where: {
+          status: 'CONFIRMED',
+          type: PracticeLevel.PRACTICE,
+          record: { cycleId: lastCompletedCurator.id },
+        },
+        _sum: { value: true },
+      });
+
+      bonusPractice = bonusAgg._sum.value ?? 0;
+      bonusSourceCycleId = lastCompletedCurator.id;
+    }
   }
 
-  // ---- новая формула min/max
-  const range = getPracticeRange(current, target);
-  if (!range) {
+  // ---- если target/reqSet не определены → просто статистика (в рамках цикла)
+  if (!reqSet) {
     const mentor = isBasicSupervisor ? calcMentor(usableRaw, pendingRaw) : null;
-    return reply.send({ required: null, percent: null, usable: usableRaw, pending: pendingRaw, mentor });
+    return reply.send({
+      required: null,
+      percent: null,
+      usable: usableRaw,
+      pending: pendingRaw,
+      mentor,
+      bonus: bonusPractice > 0 ? { practice: bonusPractice, fromCycleId: bonusSourceCycleId } : null,
+    });
   }
 
-  const { min, max } = range;
+  // ---- считаем "итоговую практику" для автосупервизии
+  const practiceConfirmedTotal = usableRaw.practice + bonusPractice;
+  const practiceTotalWithPending = usableRaw.practice + pendingRaw.practice + bonusPractice;
 
-  const practiceConfirmed = Math.max(0, Math.min(usableRaw.practice, max));
-  const practicePending = Math.max(0, Math.min(usableRaw.practice + pendingRaw.practice, max)) - practiceConfirmed;
+  const autoConfirmed = calcAutoSupervisionHours({
+    groupName: targetRu,
+    practiceHours: practiceConfirmedTotal,
+  });
 
-  // ---- авто супервизия без burn
-  const autoConfirmed = calcAutoSupervisionHours({ groupName: target, practiceHours: practiceConfirmed });
-  const autoPending = Math.max(0,
-    calcAutoSupervisionHours({ groupName: target, practiceHours: practiceConfirmed + practicePending })
-    - autoConfirmed
-  );
+  const autoTotalWithPending = calcAutoSupervisionHours({
+    groupName: targetRu,
+    practiceHours: practiceTotalWithPending,
+  });
+
+  const autoPending = Math.max(0, autoTotalWithPending - autoConfirmed);
 
   const usable: SupervisionSummary = {
-    practice: practiceConfirmed,
+    practice: practiceConfirmedTotal,
     supervision: autoConfirmed,
     supervisor: usableRaw.supervisor,
   };
 
   const pending: SupervisionSummary = {
-    practice: practicePending,
+    practice: pendingRaw.practice, // бонус не "на проверке"
     supervision: autoPending,
     supervisor: pendingRaw.supervisor,
   };
 
   const percent = {
-    practice: pct(practiceConfirmed, min, max),
-    supervision: reqSet.supervision > 0 ? Math.floor((autoConfirmed / reqSet.supervision) * 100) : 0,
+    practice:
+      reqSet.practice > 0
+        ? Math.floor((Math.min(usable.practice, reqSet.practice) / reqSet.practice) * 100)
+        : 0,
+    supervision:
+      reqSet.supervision > 0
+        ? Math.floor((Math.min(usable.supervision, reqSet.supervision) / reqSet.supervision) * 100)
+        : 0,
     supervisor: 0,
   };
 
   const mentor = isBasicSupervisor ? calcMentor(usableRaw, pendingRaw) : null;
 
-  return reply.send({ required: reqSet, percent, usable, pending, mentor });
+  return reply.send({
+    required: reqSet,
+    percent,
+    usable,
+    pending,
+    mentor,
+    bonus: bonusPractice > 0 ? { practice: bonusPractice, fromCycleId: bonusSourceCycleId } : null,
+  });
 }
-
 
 // ================= helpers ==================
 
@@ -157,27 +191,18 @@ function empty(): SupervisionSummary {
   return { practice: 0, supervision: 0, supervisor: 0 };
 }
 
-function aggregate(rows: Array<{ type: PracticeLevel, value: number }>): SupervisionSummary {
+function aggregate(rows: Array<{ type: PracticeLevel; value: number }>): SupervisionSummary {
   const s = empty();
   for (const h of rows) {
-    switch (h.type) {
-      case 'PRACTICE':
-      case 'INSTRUCTOR': s.practice += h.value; break;
-      case 'SUPERVISION':
-      case 'CURATOR': s.supervision += h.value; break; // авто всё равно пересчитываем
-      case 'SUPERVISOR': s.supervisor += h.value; break;
-    }
+    if (h.type === PracticeLevel.PRACTICE) s.practice += h.value;
+    if (h.type === PracticeLevel.SUPERVISOR) s.supervisor += h.value;
   }
   return s;
-}
-
-function pct(confirmed: number, min: number, max: number) {
-  return max > min ? Math.floor((confirmed - min) / (max - min) * 100) : 0;
 }
 
 function calcMentor(usable: SupervisionSummary, pending: SupervisionSummary) {
   const total = usable.supervisor;
   const requiredTotal = 24;
-  const pct = Math.floor((total / requiredTotal) * 100);
-  return { total, required: requiredTotal, percent: pct, pending: pending.supervisor };
+  const percent = Math.floor((total / requiredTotal) * 100);
+  return { total, required: requiredTotal, percent, pending: pending.supervisor };
 }

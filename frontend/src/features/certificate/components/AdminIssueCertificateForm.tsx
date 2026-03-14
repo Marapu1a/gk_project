@@ -1,4 +1,4 @@
-// src/features/certificate/features/AdminIssueCertificateForm.tsx
+// src/features/certificate/components/AdminIssueCertificateForm.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useIssueCertificate } from '../hooks/useIssueCertificate';
 import { Button } from '@/components/Button';
@@ -7,17 +7,17 @@ import { updateFile } from '@/features/files/api/updateFile';
 import { toast } from 'sonner';
 import { useUsers } from '@/features/admin/hooks/useUsers';
 
-type Props = {
-  defaultEmail?: string;
-  onSuccess?: () => void;
-};
-
 // нормализуем под сравнение (как в UsersTable)
 const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
 const tokenize = (s: string) =>
   norm(s)
     .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
     .filter(Boolean);
+
+type Props = {
+  defaultEmail?: string;
+  onSuccess?: () => void;
+};
 
 export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Props) {
   // это то, что реально уйдёт в мутацию (email пользователя)
@@ -93,6 +93,15 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
     !!expiresDate &&
     !!uploadedFileId;
 
+  const mapError = (err: any) => {
+    const code = err?.response?.data?.error;
+    if (code === 'NO_ACTIVE_CYCLE') return 'Нет активного цикла — выдача сертификата невозможна.';
+    if (code === 'CYCLE_ALREADY_HAS_CERTIFICATE')
+      return 'На этот цикл уже выдан сертификат (повторная выдача запрещена).';
+    if (code === 'TARGET_GROUP_NOT_CONFIGURED') return 'Целевая группа не настроена в системе.';
+    return code || err?.message || 'Не удалось выдать сертификат';
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit || mutation.isPending) return;
@@ -100,7 +109,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
     if (!(await confirmToast('Выдать сертификат этому пользователю?'))) return;
 
     try {
-      await mutation.mutateAsync({
+      const res = await mutation.mutateAsync({
         email: email.trim(),
         title: title.trim(),
         number: number.trim(),
@@ -109,7 +118,20 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
         uploadedFileId,
       });
 
-      toast.success('Сертификат выдан');
+      const spent =
+        typeof (res as any).spentCeuCount === 'number' ? (res as any).spentCeuCount : null;
+      const resetPayments =
+        typeof (res as any).paymentsResetCount === 'number'
+          ? (res as any).paymentsResetCount
+          : null;
+
+      const detailsParts: string[] = [];
+      if (spent !== null) detailsParts.push(`CEU списано: ${spent}`);
+      if (resetPayments !== null) detailsParts.push(`оплаты сброшены: ${resetPayments}`);
+
+      toast.success(
+        detailsParts.length ? `Сертификат выдан. ${detailsParts.join(', ')}.` : 'Сертификат выдан',
+      );
 
       // Сброс формы + скрываем превью (ремоунт FileUpload)
       setTitle('');
@@ -121,8 +143,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
 
       onSuccess?.();
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Не удалось выдать сертификат';
-      toast.error(msg);
+      toast.error(mapError(err));
     }
   }
 

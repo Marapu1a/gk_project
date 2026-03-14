@@ -1,3 +1,4 @@
+// src/features/payment/components/PaymentStatusToggle.tsx
 import { useUpdatePaymentStatus } from '../hooks/useUpdatePaymentStatus';
 import { useQueryClient } from '@tanstack/react-query';
 import { getModerators } from '@/features/notifications/api/moderators';
@@ -20,9 +21,20 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
   const mutation = useUpdatePaymentStatus(payment.userId);
   const queryClient = useQueryClient();
 
-  const queryKey = isAdmin ? ['payments', payment.userId] : ['payments', 'user'];
   const userEmail = payment.userEmail ?? payment.user?.email ?? '—';
   const adminUserLink = `/admin/users/${payment.userId}`;
+
+  const invalidateAllPayments = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['payments'] }),
+      queryClient.invalidateQueries({ queryKey: ['payments', 'user', payment.userId] }),
+      queryClient.invalidateQueries({ queryKey: ['payments', payment.userId] }),
+      queryClient.invalidateQueries({ queryKey: ['userPayments', payment.userId] }),
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', payment.userId] }),
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'details', payment.userId] }),
+      queryClient.invalidateQueries({ queryKey: ['me'] }), // у юзера дашборд часто рядом
+    ]);
+  };
 
   const confirmToast = (message: string) =>
     new Promise<boolean>((resolve) => {
@@ -55,11 +67,11 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
       await mutation.mutateAsync({ id: payment.id, status: nextStatus });
 
       if (isAdmin) {
-        // админ → уведомляем пользователя
         const msg =
           nextStatus === 'PAID'
             ? `Оплата для ${userEmail} подтверждена`
             : `Оплата снята на перепроверку администратором`;
+
         try {
           await postNotification({
             userId: payment.userId,
@@ -70,14 +82,14 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
         } catch {
           toast.info('Статус обновлён, но уведомление пользователю не доставлено.');
         }
+
         toast.success(msg);
       } else {
-        // пользователь → уведомляем ТОЛЬКО админов
         const moderators = await getModerators();
         const admins = (moderators as any[])
           .filter((m) => String(m?.role).toUpperCase() === 'ADMIN')
-          .filter((m, i, a) => a.findIndex((x) => x?.id === m?.id) === i) // дедуп
-          .filter((m) => m?.id !== payment.userId); // себе не шлём
+          .filter((m, i, a) => a.findIndex((x) => x?.id === m?.id) === i)
+          .filter((m) => m?.id !== payment.userId);
 
         const msg =
           nextStatus === 'PENDING'
@@ -94,15 +106,17 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
             }),
           ),
         );
+
         if (results.some((r) => r.status === 'rejected')) {
           toast.info('Статус обновлён, но часть уведомлений админам не ушла.');
         }
+
         toast.success(
           nextStatus === 'PENDING' ? 'Отметка отправлена на подтверждение' : 'Отметка отменена',
         );
       }
 
-      await queryClient.invalidateQueries({ queryKey });
+      await invalidateAllPayments();
     } catch (err: any) {
       const message = err?.response?.data?.error || 'Ошибка обновления статуса оплаты';
       toast.error(message);

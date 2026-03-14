@@ -8,13 +8,25 @@ type Props = {
 };
 
 export function CeuSummaryBlock({ level }: Props) {
-  const { data: summary, isLoading: loadingSummary } = useCeuSummary(level ?? undefined);
+  const { data: summary, isLoading: loadingSummary } = useCeuSummary(level ?? null);
 
   if (loadingSummary) {
     return <p className="text-sm text-blue-dark">Загрузка CEU…</p>;
   }
   if (!summary) {
     return <p className="text-error">Ошибка загрузки CEU</p>;
+  }
+
+  // нет активного цикла => required/percent = null, суммы = 0
+  if (!summary.required) {
+    return (
+      <div className="space-y-2 text-sm">
+        <h3 className="text-lg font-semibold text-blue-dark">CEU-баллы</h3>
+        <p className="text-gray-700">
+          Нет активного цикла — прогресс CEU сейчас не рассчитывается.
+        </p>
+      </div>
+    );
   }
 
   const categories = ['ethics', 'cultDiver', 'supervision', 'general'] as const;
@@ -26,16 +38,15 @@ export function CeuSummaryBlock({ level }: Props) {
     general: 'Общие баллы',
   };
 
-  const fmtPercent = (v?: number) => (typeof v === 'number' ? Math.min(Math.max(v, 0), 100) : 0);
+  const fmtPercent = (v?: number | null) =>
+    typeof v === 'number' ? Math.min(Math.max(v, 0), 100) : 0;
 
-  // Суммарное требуемое количество CEU по всем категориям
   const totalRequired =
-    (summary.required?.ethics ?? 0) +
-    (summary.required?.cultDiver ?? 0) +
-    (summary.required?.supervision ?? 0) +
-    (summary.required?.general ?? 0);
+    (summary.required.ethics ?? 0) +
+    (summary.required.cultDiver ?? 0) +
+    (summary.required.supervision ?? 0) +
+    (summary.required.general ?? 0);
 
-  // Для супервизоров/опытных супервизоров бэк теперь отдаёт 4+4+4+12 = 24
   const isContinuous24 = totalRequired === 24;
 
   return (
@@ -78,7 +89,7 @@ export function CeuSummaryBlock({ level }: Props) {
                   style={{ borderColor: 'var(--color-green-light)' }}
                 >
                   <td className="p-2">{categoryLabels[cat]}</td>
-                  <td className="p-2 text-center">{totalRequired > 0 ? requiredVal : '—'}</td>
+                  <td className="p-2 text-center">{requiredVal}</td>
                   <td className="p-2 text-center">{usableVal}</td>
                   <td className="p-2 text-center">
                     <div className="w-full max-w-[100px] mx-auto">

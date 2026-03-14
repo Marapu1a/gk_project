@@ -1,7 +1,7 @@
 // src/handlers/supervision/history.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { RecordStatus } from '@prisma/client';
+import { RecordStatus, CycleStatus } from '@prisma/client';
 
 type Query = {
   status?: RecordStatus; // UNCONFIRMED | CONFIRMED | REJECTED | SPENT
@@ -9,8 +9,6 @@ type Query = {
   cursor?: string;       // пагинация по hour.id
 };
 
-// Локальная нормализация типов для обратной совместимости UI:
-// INSTRUCTOR → PRACTICE, CURATOR → SUPERVISION, остальное как есть.
 function normalizeLevel(type: string): string {
   if (type === 'INSTRUCTOR') return 'PRACTICE';
   if (type === 'CURATOR') return 'SUPERVISION';
@@ -30,11 +28,20 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
   const limitNum = Number(take);
   const limit = Math.max(1, Math.min(100, Number.isFinite(limitNum) ? limitNum : 25));
 
-  const where: any = { record: { userId } };
-  if (status) where.status = status;
+  const activeCycle = await prisma.certificationCycle.findFirst({
+    where: { userId, status: CycleStatus.ACTIVE },
+    select: { id: true },
+  });
 
-  // Сортировка истории:
-  // 1) свежие заявки выше; 2) внутри — последние ревью выше; 3) стабильность курсора по id.
+  if (!activeCycle) {
+    return reply.send({ items: [], nextCursor: null });
+  }
+
+  const where = {
+    record: { userId, cycleId: activeCycle.id },
+    ...(status ? { status } : {}),
+  };
+
   const hours = await prisma.supervisionHour.findMany({
     where,
     select: {
@@ -49,11 +56,7 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
     },
     take: limit,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: [
-      { record: { createdAt: 'desc' } },
-      { reviewedAt: 'desc' },
-      { id: 'desc' },
-    ],
+    orderBy: { id: 'desc' }, // ✅ стабильная пагинация
   });
 
   const nextCursor = hours.length === limit ? hours[hours.length - 1].id : null;
@@ -63,7 +66,7 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
       id: h.id,
       recordId: h.record.id,
       fileId: h.record.fileId,
-      type: normalizeLevel(h.type), // приводим к PRACTICE/SUPERVISION для старых значений
+      type: normalizeLevel(h.type),
       value: h.value,
       status: h.status,
       createdAt: h.record.createdAt,

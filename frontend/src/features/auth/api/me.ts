@@ -1,6 +1,21 @@
 // src/features/auth/api/me.ts
 import { api } from '@/lib/axios';
 
+export type ActiveCycle = {
+  id: string;
+  status: 'ACTIVE' | 'COMPLETED' | 'ABANDONED';
+  type: 'CERTIFICATION' | 'RENEWAL';
+  targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+  startedAt: string; // ISO
+};
+
+export type CycleStats = {
+  ceuRecords: number;
+  supervisionRecords: number;
+  ceuRecordsUnlinked: number;
+  supervisionRecordsUnlinked: number;
+};
+
 export type CurrentUser = {
   id: string;
   email: string;
@@ -13,15 +28,25 @@ export type CurrentUser = {
   avatarUrl: string | null;
   bio: string | null;
   targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
-  targetLockRank: number | null; // ⬅️ добавили
+  targetLockRank: number | null;
   groups: { id: string; name: string }[];
   activeGroup: { id: string; name: string; rank: number } | null;
+
+  // temp: for testing cycles; can be removed later
+  activeCycle?: ActiveCycle | null;
+  cycleStats?: CycleStats | null;
 };
 
 export async function fetchCurrentUser(): Promise<CurrentUser> {
   const { data } = await api.get('/auth/me');
   return data;
 }
+
+// если захочешь дергать статистику только вручную:
+// export async function fetchCurrentUserDebug(): Promise<CurrentUser> {
+//   const { data } = await api.get('/auth/me', { params: { debug: '1' } });
+//   return data;
+// }
 
 /** Проверяет, заблокирован ли выбор новой цели */
 export function isTargetLocked(user: CurrentUser | null | undefined): boolean {

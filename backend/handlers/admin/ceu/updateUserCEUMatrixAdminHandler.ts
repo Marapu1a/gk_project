@@ -3,6 +3,7 @@ import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../../lib/prisma';
 import { labelCEUCategory, labelCEUStatus } from '../../../utils/labels';
 import { z } from 'zod';
+import { CycleStatus } from '@prisma/client';
 
 type CEUCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
 type CEUStatus = 'CONFIRMED' | 'SPENT' | 'REJECTED';
@@ -38,33 +39,44 @@ export async function updateUserCEUMatrixAdminHandler(
   const { userId } = req.params;
   const { category, status, value } = parsed.data;
 
-  // посчитаем текущую сумму
+  // ACTIVE cycle обязателен: правим CEU только в рамках активного цикла
+  const activeCycle = await prisma.certificationCycle.findFirst({
+    where: { userId, status: CycleStatus.ACTIVE },
+    select: { id: true },
+  });
+  if (!activeCycle) {
+    return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
+  }
+
+  // посчитаем текущую сумму (ТОЛЬКО ACTIVE cycle)
   const grouped = await prisma.cEUEntry.groupBy({
     by: ['category', 'status'],
-    where: { record: { userId }, category, status },
+    where: { record: { userId, cycleId: activeCycle.id }, category, status },
     _sum: { value: true },
   });
   const current = grouped[0]?._sum.value ?? 0;
 
   if (current === value) {
-    return reply.send({ ok: true, unchanged: true, current });
+    return reply.send({ ok: true, unchanged: true, current, cycleId: activeCycle.id });
   }
 
-  // для простоты god-mode: удалить старые entry и создать один новый
+  // god-mode: удалить старые entry в этой ячейке (ТОЛЬКО ACTIVE cycle)
   await prisma.cEUEntry.deleteMany({
-    where: { record: { userId }, category, status },
+    where: { record: { userId, cycleId: activeCycle.id }, category, status },
   });
 
   if (value > 0) {
-    // нужен CEURecord для связи
+    // CEURecord строго в ACTIVE cycle
     let record = await prisma.cEURecord.findFirst({
-      where: { userId },
+      where: { userId, cycleId: activeCycle.id },
       orderBy: { createdAt: 'desc' },
     });
+
     if (!record) {
       record = await prisma.cEURecord.create({
         data: {
           userId,
+          cycleId: activeCycle.id,
           eventName: 'God-mode update',
           eventDate: new Date(),
         },
@@ -93,5 +105,5 @@ export async function updateUserCEUMatrixAdminHandler(
     },
   });
 
-  return reply.send({ ok: true, category, status, newValue: value });
+  return reply.send({ ok: true, category, status, newValue: value, cycleId: activeCycle.id });
 }

@@ -1,11 +1,8 @@
 // schemas/supervisionApplicationSchema.ts
 import { z } from 'zod';
 
-// Допускаем старые и новые значения, чтобы не ломать старых клиентов
-const hourTypeEnum = z.union([
-  z.enum(['INSTRUCTOR', 'CURATOR', 'SUPERVISOR']), // legacy
-  z.enum(['PRACTICE', 'SUPERVISION', 'SUPERVISOR']), // актуальные
-]);
+// ✅ Только новая модель. Легаси больше не принимаем.
+export const hourTypeEnum = z.enum(['PRACTICE', 'SUPERVISOR']);
 
 export const supervisionApplicationSchema = z.object({
   supervisorEmail: z.string().email(),
@@ -16,12 +13,3 @@ export const supervisionApplicationSchema = z.object({
     })
   ),
 });
-
-// 🔹 Хелпер для нормализации типа внутри кода после валидации
-export function normalizeHourType(
-  type: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | 'PRACTICE' | 'SUPERVISION'
-): 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR' {
-  if (type === 'INSTRUCTOR') return 'PRACTICE';
-  if (type === 'CURATOR') return 'SUPERVISION';
-  return type; // SUPERVISOR / PRACTICE / SUPERVISION — как есть
-}

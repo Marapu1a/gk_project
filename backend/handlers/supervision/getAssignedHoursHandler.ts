@@ -4,17 +4,15 @@ import { prisma } from '../../lib/prisma';
 import { RecordStatus } from '@prisma/client';
 
 type Query = {
-  status?: RecordStatus; // UNCONFIRMED | CONFIRMED | REJECTED | SPENT
-  take?: string;         // кол-во записей
-  cursor?: string;       // пагинация по hour.id
+  status?: RecordStatus;
+  take?: string;
+  cursor?: string;
 };
 
-// Локальная нормализация для обратной совместимости UI:
-// - старые значения INSTRUCTOR/CURATOR отображаем как PRACTICE/SUPERVISION
 function normalizeLevel(type: string): string {
   if (type === 'INSTRUCTOR') return 'PRACTICE';
   if (type === 'CURATOR') return 'SUPERVISION';
-  return type; // SUPERVISOR / PRACTICE / SUPERVISION / прочие неизменны
+  return type;
 }
 
 export async function getAssignedHoursHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -29,17 +27,24 @@ export async function getAssignedHoursHandler(req: FastifyRequest, reply: Fastif
 
   const limit = Math.max(1, Math.min(100, Number.isFinite(+take) ? +take : 25));
 
-  // Новые — по дате заявки, ревью — по дате ревью
+  // ✅ для курсора стабильнее сортировать по id
   const orderBy =
     status === 'UNCONFIRMED'
-      ? { record: { createdAt: 'desc' as const } }
-      : { reviewedAt: 'desc' as const };
+      ? ({ id: 'desc' as const })
+      : ({ reviewedAt: 'desc' as const, id: 'desc' as const });
 
   const hoursRaw = await prisma.supervisionHour.findMany({
-    where: { reviewerId, status },
+    where: {
+      reviewerId,
+      status,
+      record: {
+        cycleId: { not: null },
+        cycle: { status: 'ACTIVE' }, // сначала режем по активному циклу у записи
+      },
+    },
     select: {
       id: true,
-      type: true, // сохраняем как есть из БД, ниже нормализуем для ответа
+      type: true,
       value: true,
       status: true,
       reviewedAt: true,
@@ -48,7 +53,9 @@ export async function getAssignedHoursHandler(req: FastifyRequest, reply: Fastif
         select: {
           id: true,
           createdAt: true,
+          userId: true,
           user: { select: { id: true, fullName: true, email: true } },
+          cycleId: true,
         },
       },
     },
@@ -57,8 +64,20 @@ export async function getAssignedHoursHandler(req: FastifyRequest, reply: Fastif
     orderBy,
   });
 
-  // Преобразуем тип для рендера UI, не меняя схему ответа
-  const hours = hoursRaw.map((h) => ({
+  // ✅ доказываем, что запись действительно в текущем ACTIVE цикле автора
+  const userIds = Array.from(new Set(hoursRaw.map((h) => h.record.userId)));
+  const activeCycles = await prisma.certificationCycle.findMany({
+    where: { userId: { in: userIds }, status: 'ACTIVE' },
+    select: { userId: true, id: true },
+  });
+  const activeCycleIdByUser = new Map(activeCycles.map((c) => [c.userId, c.id]));
+
+  const filtered = hoursRaw.filter((h) => {
+    const activeId = activeCycleIdByUser.get(h.record.userId);
+    return !!activeId && h.record.cycleId === activeId;
+  });
+
+  const hours = filtered.map((h) => ({
     ...h,
     type: normalizeLevel(h.type),
   }));

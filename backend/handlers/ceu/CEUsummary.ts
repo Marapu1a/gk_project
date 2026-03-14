@@ -1,7 +1,7 @@
 // src/handlers/ceu/ceuSummaryHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { RecordStatus, CEUCategory } from '@prisma/client';
+import { RecordStatus, CEUCategory, CycleStatus } from '@prisma/client';
 import {
   ceuRequirementsByGroup as requirementsByGroup,
   annualCeuRequirementsByGroup,
@@ -20,10 +20,7 @@ const RU_BY_LEVEL: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
 
 type Query = { level?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' };
 
-export async function ceuSummaryHandler(
-  req: FastifyRequest, // <- убрали дженерик
-  reply: FastifyReply,
-) {
+export async function ceuSummaryHandler(req: FastifyRequest, reply: FastifyReply) {
   const { user } = req as any;
   if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
@@ -31,12 +28,10 @@ export async function ceuSummaryHandler(
     where: { id: user.userId },
     select: {
       id: true,
-      targetLevel: true, // <-- важно
+      targetLevel: true,
       groups: {
         select: {
-          group: {
-            select: { id: true, name: true, rank: true },
-          },
+          group: { select: { id: true, name: true, rank: true } },
         },
       },
     },
@@ -46,12 +41,39 @@ export async function ceuSummaryHandler(
   const groupList = dbUser.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank);
   const primaryGroup = groupList[0];
 
+  // Берём активный цикл и считаем только его
+  const activeCycle = await prisma.certificationCycle.findFirst({
+    where: { userId: user.userId, status: CycleStatus.ACTIVE },
+    select: { id: true },
+  });
+
+  // Если цикла нет — показываем нули (и required/percent тоже null)
+  if (!activeCycle) {
+    const usable = emptySummary();
+    const spent = emptySummary();
+    const total = emptySummary();
+
+    return reply.send({
+      required: null,
+      percent: null,
+      usable,
+      spent,
+      total,
+    });
+  }
+
   const [confirmedEntries, spentEntries] = await Promise.all([
     prisma.cEUEntry.findMany({
-      where: { record: { userId: user.userId }, status: RecordStatus.CONFIRMED },
+      where: {
+        status: RecordStatus.CONFIRMED,
+        record: { cycleId: activeCycle.id },
+      },
     }),
     prisma.cEUEntry.findMany({
-      where: { record: { userId: user.userId }, status: RecordStatus.SPENT },
+      where: {
+        status: RecordStatus.SPENT,
+        record: { cycleId: activeCycle.id },
+      },
     }),
   ]);
 
@@ -70,17 +92,14 @@ export async function ceuSummaryHandler(
   }
 
   const primaryName = primaryGroup.name as GroupName | string;
-  const isSupervisorGroup =
-    primaryName === 'Супервизор' || primaryName === 'Опытный Супервизор';
+  const isSupervisorGroup = primaryName === 'Супервизор' || primaryName === 'Опытный Супервизор';
 
   let required: CEUSummary | null = null;
 
   if (isSupervisorGroup) {
-    // 🔹 ДЛЯ СУПЕРВИЗОРОВ: годовые требования непрерывного образования (24 CEU)
     const annual = annualCeuRequirementsByGroup[primaryName as GroupName];
     required = annual ?? null;
   } else {
-    // 🔹 Для всех остальных: экзаменационные требования к целевой группе (как было)
     const q = (req.query ?? {}) as Query;
     const explicitLevel = q.level;
     const targetFromUser = dbUser.targetLevel ?? undefined;
@@ -91,9 +110,7 @@ export async function ceuSummaryHandler(
       getNextGroupName(primaryGroup.name);
 
     required =
-      (targetGroupName &&
-        (requirementsByGroup[targetGroupName as GroupName] ?? null)) ||
-      null;
+      (targetGroupName && (requirementsByGroup[targetGroupName as GroupName] ?? null)) || null;
   }
 
   const percent = required ? computePercent(usable, required) : null;

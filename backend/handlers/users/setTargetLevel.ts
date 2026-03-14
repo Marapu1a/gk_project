@@ -1,11 +1,17 @@
 // src/handlers/users/setTargetLevel.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { TargetLevel } from '@prisma/client';
+import {
+  supervisionRequirementsByGroup,
+  getPracticeToSupervisionRatio,
+} from '../../utils/supervisionRequirements';
 
-type TargetLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
 type Body = { targetLevel: TargetLevel | null };
 
-const TARGET_NAME_BY_LEVEL: Record<TargetLevel, string> = {
+type RequirementsGroupName = keyof typeof supervisionRequirementsByGroup;
+
+const TARGET_RU_BY_LEVEL: Record<TargetLevel, RequirementsGroupName> = {
   INSTRUCTOR: 'Инструктор',
   CURATOR: 'Куратор',
   SUPERVISOR: 'Супервизор',
@@ -13,11 +19,32 @@ const TARGET_NAME_BY_LEVEL: Record<TargetLevel, string> = {
 
 // Какие цели можно выбирать с конкретной активной группы
 const ALLOWED_TARGETS_BY_GROUP: Record<string, TargetLevel[]> = {
-  'Соискатель': ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'],
-  'Инструктор': ['CURATOR', 'SUPERVISOR'],
-  'Куратор': ['SUPERVISOR'],
+  Соискатель: ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'],
+  Инструктор: ['CURATOR', 'SUPERVISOR'],
+  Куратор: ['SUPERVISOR'],
   // 'Супервизор' и 'Опытный Супервизор' — новых целей нет (кроме админских правок)
 };
+
+function buildRequirementsSnapshot(targetLevel: TargetLevel) {
+  const ru = TARGET_RU_BY_LEVEL[targetLevel];
+
+  const req = supervisionRequirementsByGroup[ru];
+  if (!req || typeof req.practice !== 'number') {
+    throw new Error('TARGET_REQUIREMENTS_NOT_CONFIGURED');
+  }
+
+  const ratio = getPracticeToSupervisionRatio(ru);
+  if (typeof ratio !== 'number' || ratio <= 0) {
+    throw new Error('TARGET_RATIO_NOT_CONFIGURED');
+  }
+
+  return {
+    targetLevel, // enum
+    practiceRequired: req.practice,
+    ratio,
+    mentorRequired: targetLevel === TargetLevel.SUPERVISOR ? 24 : 0,
+  };
+}
 
 export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyReply) {
   const { user } = req as any;
@@ -30,7 +57,10 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
   const isAdmin = user.role === 'ADMIN';
   if (!isSelf && !isAdmin) return reply.code(403).send({ error: 'FORBIDDEN' });
 
-  if (targetLevel !== null && !['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'].includes(targetLevel)) {
+  if (
+    targetLevel !== null &&
+    ![TargetLevel.INSTRUCTOR, TargetLevel.CURATOR, TargetLevel.SUPERVISOR].includes(targetLevel)
+  ) {
     return reply.code(400).send({ error: 'INVALID_TARGET_LEVEL' });
   }
 
@@ -48,9 +78,7 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
   });
   if (!dbUser) return reply.code(404).send({ error: 'USER_NOT_FOUND' });
 
-  const groupsSorted = dbUser.groups
-    .map((g) => g.group)
-    .sort((a, b) => b.rank - a.rank);
+  const groupsSorted = dbUser.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank);
 
   const activeRank = groupsSorted[0]?.rank ?? 0;
   const activeGroupName = groupsSorted[0]?.name ?? null;
@@ -65,11 +93,11 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
   // запрет опускать цель ниже достигнутого уровня
   if (targetLevel) {
     const targetGroups = await prisma.group.findMany({
-      where: { name: { in: Object.values(TARGET_NAME_BY_LEVEL) } },
+      where: { name: { in: Object.values(TARGET_RU_BY_LEVEL) } },
       select: { name: true, rank: true },
     });
     const rankByName = new Map(targetGroups.map((g) => [g.name, g.rank]));
-    const targetName = TARGET_NAME_BY_LEVEL[targetLevel];
+    const targetName = TARGET_RU_BY_LEVEL[targetLevel];
     const targetRank = rankByName.get(targetName);
 
     if (typeof targetRank !== 'number') {
@@ -86,7 +114,7 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
       const allowed =
         (activeGroupName && ALLOWED_TARGETS_BY_GROUP[activeGroupName]) ??
         // если групп ещё нет, считаем как "Соискатель"
-        ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'];
+        [TargetLevel.INSTRUCTOR, TargetLevel.CURATOR, TargetLevel.SUPERVISOR];
 
       if (!allowed.includes(targetLevel)) {
         return reply.code(400).send({ error: 'TARGET_NOT_ALLOWED_FOR_ACTIVE_GROUP' });
@@ -122,17 +150,32 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
 
   // --- Ветвление по целям ---
 
-  // 1) Сброс на "нет цели" (возврат к обязательному выбору пути).
-  // Разрешаем, если НЕ locked или админ.
+  // 1) Сброс на "нет цели"
   if (targetLevel === null) {
     if (lockedNow && !isAdmin) {
       return reply.code(403).send({ error: 'TARGET_LOCKED' });
     }
 
     const { updated, resetCount } = await prisma.$transaction(async (tx) => {
+      const activeCycle = await tx.certificationCycle.findFirst({
+        where: { userId: id, status: 'ACTIVE' },
+        select: { id: true, targetLevel: true, type: true },
+      });
+
+      if (activeCycle) {
+        await tx.certificationCycle.update({
+          where: { id: activeCycle.id },
+          data: {
+            status: 'ABANDONED',
+            endedAt: new Date(),
+            abandonedReason: 'Сброс цели пользователем/админом',
+          },
+        });
+      }
+
       const updated = await tx.user.update({
         where: { id },
-        data: { targetLevel: null, targetLockRank: null }, // сняли цель и замок
+        data: { targetLevel: null, targetLockRank: null },
         select: { id: true, targetLevel: true, targetLockRank: true },
       });
 
@@ -149,7 +192,6 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
         },
       });
 
-      // уведомляем админов
       if (adminIds.length) {
         const message =
           `Пользователь ${dbUser.fullName ?? dbUser.email ?? dbUser.id} ` +
@@ -170,15 +212,56 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     return reply.send({ ...updated, resetCount });
   }
 
-  // 2) Установка/смена цели на конкретный уровень: запрещаем, если locked и не админ
+  // 2) Установка/смена цели: запрещаем, если locked и не админ
   if (lockedNow && !isAdmin) {
     return reply.code(403).send({ error: 'TARGET_LOCKED' });
   }
 
+  let requirementsSnapshot: ReturnType<typeof buildRequirementsSnapshot>;
+  try {
+    requirementsSnapshot = buildRequirementsSnapshot(targetLevel);
+  } catch (e: any) {
+    if (e?.message === 'TARGET_REQUIREMENTS_NOT_CONFIGURED') {
+      return reply.code(500).send({ error: 'TARGET_REQUIREMENTS_NOT_CONFIGURED' });
+    }
+    if (e?.message === 'TARGET_RATIO_NOT_CONFIGURED') {
+      return reply.code(500).send({ error: 'TARGET_RATIO_NOT_CONFIGURED' });
+    }
+    throw e;
+  }
+
   const { updated, resetCount } = await prisma.$transaction(async (tx) => {
+    const activeCycle = await tx.certificationCycle.findFirst({
+      where: { userId: id, status: 'ACTIVE' },
+      select: { id: true, targetLevel: true, type: true },
+    });
+
+    if (activeCycle) {
+      await tx.certificationCycle.update({
+        where: { id: activeCycle.id },
+        data: {
+          status: 'ABANDONED',
+          endedAt: new Date(),
+          abandonedReason: `Смена цели: ${activeCycle.targetLevel} → ${targetLevel}`,
+        },
+      });
+    }
+
+    await tx.certificationCycle.create({
+      data: {
+        userId: id,
+        targetLevel,
+        type: 'CERTIFICATION',
+        status: 'ACTIVE',
+        requirementsSnapshot,
+        // modifiersSnapshot оставляем null
+      },
+      select: { id: true },
+    });
+
     const updated = await tx.user.update({
       where: { id },
-      data: { targetLevel, targetLockRank: activeRank }, // ставим замок на текущем ранге
+      data: { targetLevel, targetLockRank: activeRank },
       select: { id: true, targetLevel: true, targetLockRank: true },
     });
 
@@ -195,9 +278,8 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
       },
     });
 
-    // уведомляем админов
     if (adminIds.length) {
-      const targetName = TARGET_NAME_BY_LEVEL[targetLevel!];
+      const targetName = TARGET_RU_BY_LEVEL[targetLevel!];
       const message =
         `Пользователь ${dbUser.fullName ?? dbUser.email ?? dbUser.id} ` +
         `изменил цель на «${targetName}». Сброшено платежей: ${reset.count}.`;

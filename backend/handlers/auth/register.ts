@@ -31,85 +31,65 @@ async function emailExistsByCanonSimple(emailInput: string): Promise<boolean> {
 
 export async function registerHandler(req: FastifyRequest, reply: FastifyReply) {
   const parsed = registerSchema.safeParse(req.body);
-
   if (!parsed.success) {
-    return reply
-      .code(400)
-      .send({ error: 'Некорректные данные', details: parsed.error.flatten() });
+    return reply.code(400).send({ error: 'Некорректные данные', details: parsed.error.flatten() });
   }
 
-  // ⬇️ добавили fullNameLatin
-  const {
-    email,
-    fullName,
-    fullNameLatin,
-    phone,
-    birthDate,
-    country,
-    city,
-    password,
-  } = parsed.data;
+  const { email, fullName, fullNameLatin, phone, birthDate, country, city, password } = parsed.data;
 
   if (await emailExistsByCanonSimple(email)) {
     return reply.code(409).send({ error: 'Email уже используется' });
   }
 
-  // 💀 жёстко валидируем: если поле пришло — не пустое
   if (typeof fullNameLatin === 'string' && !fullNameLatin.trim()) {
     return reply.code(400).send({ error: 'ФИО латиницей не может быть пустым' });
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      fullName,
-      fullNameLatin: fullNameLatin?.trim() || null,
-      phone,
-      birthDate: birthDate ? new Date(birthDate) : null,
-      country: country || null,
-      city: city || null,
-      role: 'STUDENT',
-    },
-  });
+  const studentGroup = await prisma.group.findFirst({ where: { name: 'Соискатель' } });
+  if (!studentGroup) return reply.code(500).send({ error: 'Группа "Соискатель" не найдена' });
 
-
-  await prisma.payment.createMany({
-    data: [
-      PaymentType.DOCUMENT_REVIEW,
-      PaymentType.EXAM_ACCESS,
-      PaymentType.REGISTRATION,
-      PaymentType.FULL_PACKAGE,
-    ].map((type) => ({
-      userId: user.id,
-      type,
-      status: PaymentStatus.UNPAID,
-    })),
-  });
-
-  const studentGroup = await prisma.group.findFirst({
-    where: { name: 'Соискатель' },
-  });
-
-  if (!studentGroup) {
-    return reply.code(500).send({ error: 'Группа "Соискатель" не найдена' });
-  }
-
-  await prisma.userGroup.create({
-    data: {
-      userId: user.id,
-      groupId: studentGroup.id,
-    },
-  });
-
-  try {
-    const admins = await prisma.user.findMany({
-      where: { role: 'ADMIN' },
-      select: { id: true },
+  const user = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        fullName,
+        fullNameLatin: fullNameLatin?.trim() || null,
+        phone,
+        birthDate: birthDate ? new Date(birthDate) : null,
+        country: country || null,
+        city: city || null,
+        role: 'STUDENT',
+        targetLevel: null,
+        targetLockRank: null,
+      },
     });
 
+    await tx.payment.createMany({
+      data: [
+        PaymentType.DOCUMENT_REVIEW,
+        PaymentType.EXAM_ACCESS,
+        PaymentType.REGISTRATION,
+        PaymentType.FULL_PACKAGE,
+      ].map((type) => ({
+        userId: user.id,
+        type,
+        status: PaymentStatus.UNPAID,
+      })),
+    });
+
+    await tx.userGroup.create({
+      data: { userId: user.id, groupId: studentGroup.id },
+    });
+
+    return user;
+  });
+
+  // нотификации админам — как было (вне транзакции)
+  try {
+    const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
     if (admins.length) {
       await prisma.notification.createMany({
         data: admins.map((a) => ({
@@ -133,7 +113,7 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       email: user.email,
       role: user.role,
       fullName: user.fullName,
-      fullNameLatin: user.fullNameLatin, // ⬅️ отдаем
+      fullNameLatin: (user as any).fullNameLatin ?? null,
     },
   });
 }
