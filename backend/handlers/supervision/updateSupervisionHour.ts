@@ -25,6 +25,7 @@ export async function updateSupervisionHourHandler(
   if (desiredStatus !== 'CONFIRMED' && desiredStatus !== 'REJECTED') {
     return reply.code(400).send({ error: 'Недопустимый статус' });
   }
+
   const rejectedReason = rejectedReasonRaw.trim();
   if (desiredStatus === 'REJECTED' && !rejectedReason) {
     return reply.code(400).send({ error: 'Причина отклонения обязательна' });
@@ -39,6 +40,7 @@ export async function updateSupervisionHourHandler(
       record: { select: { userId: true, cycleId: true } },
     },
   });
+
   if (!existing) return reply.code(404).send({ error: 'Заявка не найдена' });
 
   const isAdmin = actorRole === 'ADMIN';
@@ -82,8 +84,14 @@ export async function updateSupervisionHourHandler(
   const isOwnerInstructorOrCurator =
     ownerGroupNames.includes('Инструктор') || ownerGroupNames.includes('Куратор');
 
-  // assigned-reviewer разрешаем ТОЛЬКО если текущая группа вообще даёт право ревьюить
-  const canUseAssigned = isAssignedReviewer && (isAdmin || isActorSupervisor || isActorExperiencedSupervisor);
+  const isPracticeHour =
+    existing.type === PracticeLevel.PRACTICE ||
+    existing.type === PracticeLevel.IMPLEMENTING ||
+    existing.type === PracticeLevel.PROGRAMMING;
+
+  const isMentorHour = existing.type === PracticeLevel.SUPERVISOR;
+
+  const canUseAssigned = isAssignedReviewer && (isAdmin || isActorSupervisor);
 
   let canReview = false;
 
@@ -91,9 +99,9 @@ export async function updateSupervisionHourHandler(
     canReview = true;
   } else if (canUseAssigned) {
     canReview = true;
-  } else if (existing.type === PracticeLevel.SUPERVISOR) {
+  } else if (isMentorHour) {
     canReview = isActorExperiencedSupervisor;
-  } else if (existing.type === PracticeLevel.PRACTICE && isOwnerInstructorOrCurator) {
+  } else if (isPracticeHour && isOwnerInstructorOrCurator) {
     canReview = isActorSupervisor;
   }
 
@@ -116,7 +124,7 @@ export async function updateSupervisionHourHandler(
       status: desiredStatus,
       reviewedAt: new Date(),
       rejectedReason: desiredStatus === 'REJECTED' ? rejectedReason : null,
-      reviewerId: actorId, // ✅ фактический проверяющий
+      reviewerId: actorId,
     },
   });
 

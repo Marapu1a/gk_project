@@ -7,7 +7,7 @@ export default function SiteHeader() {
         {/* Логотип */}
         <div className="flex items-center gap-2">
           <Link to={'http://www.reestrpap.ru'}>
-            <img src="/logo.svg" alt="ЦС ПАП" className="h-[64px] w-[146px]" />
+            <img src="/logo.svg" alt="ЦС ПАП" className="h-16 w-[146px]" />
           </Link>
         </div>
 

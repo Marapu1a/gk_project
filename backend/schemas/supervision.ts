@@ -1,23 +1,30 @@
 // schemas/createSupervisionSchema.ts
 import { z } from 'zod';
 
-// Принимаем старые и новые значения ТОЛЬКО ради совместимости.
-// В новой модели type может игнорироваться/нормализоваться на стороне хендлера.
+// Разрешаем старые и новые значения ради совместимости.
+// Хендлер всё равно будет нормализовывать/проверять их.
 const hourTypeEnum = z.enum([
   'INSTRUCTOR',   // legacy
   'CURATOR',      // legacy
-  'SUPERVISOR',   // legacy + new (mentor)
-  'PRACTICE',     // new
-  'SUPERVISION',  // legacy-след (если где-то остался)
+  'SUPERVISOR',   // mentor hours
+
+  'PRACTICE',     // legacy practice total
+  'SUPERVISION',  // legacy след (если где-то остался)
+
+  'IMPLEMENTING', // новый подтип практики
+  'PROGRAMMING',  // новый подтип практики
 ]);
 
 export const createSupervisionSchema = z.object({
   supervisorEmail: z.string().email(),
   fileId: z.string().optional(),
-  entries: z.array(
-    z.object({
-      type: hourTypeEnum.optional(), // <-- важное: опционально
-      value: z.number().min(0.1),
-    })
-  ),
+
+  entries: z
+    .array(
+      z.object({
+        type: hourTypeEnum.optional(), // type может быть не передан (legacy клиенты)
+        value: z.number().min(0.1),
+      })
+    )
+    .min(1),
 });

@@ -5,6 +5,7 @@ import { supervisionSummaryHandler } from '../handlers/supervision/supervisionSu
 import { supervisionHistoryHandler } from '../handlers/supervision/history';
 import { getAssignedHoursHandler } from '../handlers/supervision/getAssignedHoursHandler';
 import { updateSupervisionHourHandler } from '../handlers/supervision/updateSupervisionHour';
+import { upsertSupervisionDistributionHandler } from '../handlers/supervision/upsertSupervisionDistributionHandler';
 
 import { verifyToken } from '../middlewares/verifyToken'
 
@@ -15,4 +16,5 @@ export async function supervisionRoutes(app: FastifyInstance) {
   app.get('/supervision/history', { preHandler: [verifyToken] }, supervisionHistoryHandler);
   app.get('/supervision/review', { preHandler: [verifyToken] }, getAssignedHoursHandler);
   app.patch('/supervision/:id', { preHandler: [verifyToken] }, updateSupervisionHourHandler);
+  app.put('/supervision/distribution', { preHandler: [verifyToken] }, upsertSupervisionDistributionHandler);
 }

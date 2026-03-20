@@ -2,12 +2,54 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { PracticeLevel, CycleStatus, TargetLevel } from '@prisma/client';
-import { supervisionRequirementsByGroup, calcAutoSupervisionHours } from '../../utils/supervisionRequirements';
+import { supervisionRequirementsByGroup } from '../../utils/supervisionRequirements';
+import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
 
-type SupervisionSummary = {
+type SummaryTotals = {
   practice: number;
   supervision: number;
-  supervisor: number; // менторские часы (для супервизоров)
+  supervisor: number; // менторские часы
+};
+
+type PracticeBreakdown = {
+  total: number;
+  legacy: number;
+  implementing: number;
+  programming: number;
+  bonus: number;
+};
+
+type PendingPracticeBreakdown = {
+  total: number;
+  legacy: number;
+  implementing: number;
+  programming: number;
+};
+
+type Distribution = {
+  directIndividual: number;
+  directGroup: number;
+  nonObservingIndividual: number;
+  nonObservingGroup: number;
+};
+
+type SupervisionBreakdown = {
+  total: number;
+  direct: number;
+  nonObserving: number;
+  directIndividual: number;
+  directGroup: number;
+  nonObservingIndividual: number;
+  nonObservingGroup: number;
+  distributedTotal: number;
+  remaining: number;
+};
+
+type PracticeAgg = {
+  legacy: number;
+  implementing: number;
+  programming: number;
+  supervisor: number;
 };
 
 const RU_BY_LEVEL: Record<TargetLevel, 'Инструктор' | 'Куратор' | 'Супервизор'> = {
@@ -30,7 +72,6 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
 
   if (!dbUser) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  // ⚠️ Без активного цикла — ничего не показываем
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId: user.userId, status: CycleStatus.ACTIVE },
     select: { id: true, targetLevel: true },
@@ -40,10 +81,14 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     return reply.send({
       required: null,
       percent: null,
-      usable: empty(),
-      pending: empty(),
+      usable: emptyTotals(),
+      pending: emptyTotals(),
       mentor: null,
       bonus: null,
+      distribution: null,
+      practiceBreakdown: emptyPracticeBreakdown(),
+      pendingPracticeBreakdown: emptyPendingPracticeBreakdown(),
+      supervisionBreakdown: emptySupervisionBreakdown(),
     });
   }
 
@@ -54,25 +99,32 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     return reply.send({
       required: null,
       percent: null,
-      usable: empty(),
-      pending: empty(),
+      usable: emptyTotals(),
+      pending: emptyTotals(),
       mentor: null,
       bonus: null,
+      distribution: null,
+      practiceBreakdown: emptyPracticeBreakdown(),
+      pendingPracticeBreakdown: emptyPendingPracticeBreakdown(),
+      supervisionBreakdown: emptySupervisionBreakdown(),
     });
   }
 
   const isBasicSupervisor = current === 'Супервизор';
-
-  // target — строго из цикла
   const targetRu = RU_BY_LEVEL[activeCycle.targetLevel];
   const reqSet = supervisionRequirementsByGroup[targetRu] ?? null;
 
-  // ---- собираем PRACTICE/SUPERVISOR по статусам (ТОЛЬКО ACTIVE CYCLE)
-  const [confirmed, unconfirmed] = await Promise.all([
+  const practiceTypes = [
+    PracticeLevel.PRACTICE,
+    PracticeLevel.IMPLEMENTING,
+    PracticeLevel.PROGRAMMING,
+  ];
+
+  const [confirmed, unconfirmed, rawDistribution] = await Promise.all([
     prisma.supervisionHour.findMany({
       where: {
         status: 'CONFIRMED',
-        type: { in: [PracticeLevel.PRACTICE, PracticeLevel.SUPERVISOR] },
+        type: { in: [...practiceTypes, PracticeLevel.SUPERVISOR] },
         record: { cycleId: activeCycle.id },
       },
       select: { type: true, value: true },
@@ -80,17 +132,25 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     prisma.supervisionHour.findMany({
       where: {
         status: 'UNCONFIRMED',
-        type: { in: [PracticeLevel.PRACTICE, PracticeLevel.SUPERVISOR] },
+        type: { in: [...practiceTypes, PracticeLevel.SUPERVISOR] },
         record: { cycleId: activeCycle.id },
       },
       select: { type: true, value: true },
     }),
+    prisma.supervisionDistribution.findUnique({
+      where: { cycleId: activeCycle.id },
+      select: {
+        directIndividual: true,
+        directGroup: true,
+        nonObservingIndividual: true,
+        nonObservingGroup: true,
+      },
+    }),
   ]);
 
-  const usableRaw = aggregate(confirmed);
-  const pendingRaw = aggregate(unconfirmed);
+  const usableAgg = aggregate(confirmed);
+  const pendingAgg = aggregate(unconfirmed);
 
-  // ---- бонус: если целимся в SUPERVISOR, добавляем PRACTICE из последнего COMPLETED CURATOR цикла
   let bonusPractice = 0;
   let bonusSourceCycleId: string | null = null;
 
@@ -101,7 +161,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
         status: CycleStatus.COMPLETED,
         targetLevel: TargetLevel.CURATOR,
       },
-      orderBy: { endedAt: 'desc' }, // берём последний завершённый
+      orderBy: { endedAt: 'desc' },
       select: { id: true },
     });
 
@@ -109,7 +169,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
       const bonusAgg = await prisma.supervisionHour.aggregate({
         where: {
           status: 'CONFIRMED',
-          type: PracticeLevel.PRACTICE,
+          type: { in: practiceTypes },
           record: { cycleId: lastCompletedCurator.id },
         },
         _sum: { value: true },
@@ -120,46 +180,85 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     }
   }
 
-  // ---- если target/reqSet не определены → просто статистика (в рамках цикла)
+  const cycleTotals = await getCycleSupervisionTotals(
+    activeCycle.id,
+    activeCycle.targetLevel,
+    bonusPractice
+  );
+
+  const usable: SummaryTotals = {
+    practice: cycleTotals.practiceConfirmed,
+    supervision: cycleTotals.supervisionConfirmed,
+    supervisor: usableAgg.supervisor,
+  };
+
+  const pending: SummaryTotals = {
+    practice: cycleTotals.practicePending,
+    supervision: cycleTotals.supervisionPending,
+    supervisor: pendingAgg.supervisor,
+  };
+
+  const practiceBreakdown: PracticeBreakdown = {
+    total: cycleTotals.practiceConfirmed,
+    legacy: usableAgg.legacy,
+    implementing: usableAgg.implementing,
+    programming: usableAgg.programming,
+    bonus: bonusPractice,
+  };
+
+  const pendingPracticeBreakdown: PendingPracticeBreakdown = {
+    total: cycleTotals.practicePending,
+    legacy: pendingAgg.legacy,
+    implementing: pendingAgg.implementing,
+    programming: pendingAgg.programming,
+  };
+
+  const distribution: Distribution | null = rawDistribution
+    ? {
+      directIndividual: rawDistribution.directIndividual,
+      directGroup: rawDistribution.directGroup,
+      nonObservingIndividual: rawDistribution.nonObservingIndividual,
+      nonObservingGroup: rawDistribution.nonObservingGroup,
+    }
+    : null;
+
+  const directIndividual = distribution?.directIndividual ?? 0;
+  const directGroup = distribution?.directGroup ?? 0;
+  const nonObservingIndividual = distribution?.nonObservingIndividual ?? 0;
+  const nonObservingGroup = distribution?.nonObservingGroup ?? 0;
+
+  const direct = directIndividual + directGroup;
+  const nonObserving = nonObservingIndividual + nonObservingGroup;
+  const distributedTotal = direct + nonObserving;
+
+  const supervisionBreakdown: SupervisionBreakdown = {
+    total: cycleTotals.supervisionConfirmed,
+    direct,
+    nonObserving,
+    directIndividual,
+    directGroup,
+    nonObservingIndividual,
+    nonObservingGroup,
+    distributedTotal,
+    remaining: Math.max(0, cycleTotals.supervisionConfirmed - distributedTotal),
+  };
+
   if (!reqSet) {
-    const mentor = isBasicSupervisor ? calcMentor(usableRaw, pendingRaw) : null;
+    const mentor = isBasicSupervisor ? calcMentor(usable, pending) : null;
+
     return reply.send({
       required: null,
       percent: null,
-      usable: usableRaw,
-      pending: pendingRaw,
+      usable,
+      pending,
       mentor,
       bonus: bonusPractice > 0 ? { practice: bonusPractice, fromCycleId: bonusSourceCycleId } : null,
+      distribution,
+      practiceBreakdown,
+      pendingPracticeBreakdown,
+      supervisionBreakdown,
     });
   }
-
-  // ---- считаем "итоговую практику" для автосупервизии
-  const practiceConfirmedTotal = usableRaw.practice + bonusPractice;
-  const practiceTotalWithPending = usableRaw.practice + pendingRaw.practice + bonusPractice;
-
-  const autoConfirmed = calcAutoSupervisionHours({
-    groupName: targetRu,
-    practiceHours: practiceConfirmedTotal,
-  });
-
-  const autoTotalWithPending = calcAutoSupervisionHours({
-    groupName: targetRu,
-    practiceHours: practiceTotalWithPending,
-  });
-
-  const autoPending = Math.max(0, autoTotalWithPending - autoConfirmed);
-
-  const usable: SupervisionSummary = {
-    practice: practiceConfirmedTotal,
-    supervision: autoConfirmed,
-    supervisor: usableRaw.supervisor,
-  };
-
-  const pending: SupervisionSummary = {
-    practice: pendingRaw.practice, // бонус не "на проверке"
-    supervision: autoPending,
-    supervisor: pendingRaw.supervisor,
-  };
 
   const percent = {
     practice:
@@ -173,7 +272,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     supervisor: 0,
   };
 
-  const mentor = isBasicSupervisor ? calcMentor(usableRaw, pendingRaw) : null;
+  const mentor = isBasicSupervisor ? calcMentor(usable, pending) : null;
 
   return reply.send({
     required: reqSet,
@@ -182,25 +281,71 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     pending,
     mentor,
     bonus: bonusPractice > 0 ? { practice: bonusPractice, fromCycleId: bonusSourceCycleId } : null,
+    distribution,
+    practiceBreakdown,
+    pendingPracticeBreakdown,
+    supervisionBreakdown,
   });
 }
 
 // ================= helpers ==================
 
-function empty(): SupervisionSummary {
+function emptyTotals(): SummaryTotals {
   return { practice: 0, supervision: 0, supervisor: 0 };
 }
 
-function aggregate(rows: Array<{ type: PracticeLevel; value: number }>): SupervisionSummary {
-  const s = empty();
+function emptyPracticeBreakdown(): PracticeBreakdown {
+  return {
+    total: 0,
+    legacy: 0,
+    implementing: 0,
+    programming: 0,
+    bonus: 0,
+  };
+}
+
+function emptyPendingPracticeBreakdown(): PendingPracticeBreakdown {
+  return {
+    total: 0,
+    legacy: 0,
+    implementing: 0,
+    programming: 0,
+  };
+}
+
+function emptySupervisionBreakdown(): SupervisionBreakdown {
+  return {
+    total: 0,
+    direct: 0,
+    nonObserving: 0,
+    directIndividual: 0,
+    directGroup: 0,
+    nonObservingIndividual: 0,
+    nonObservingGroup: 0,
+    distributedTotal: 0,
+    remaining: 0,
+  };
+}
+
+function aggregate(rows: Array<{ type: PracticeLevel; value: number }>): PracticeAgg {
+  const s: PracticeAgg = {
+    legacy: 0,
+    implementing: 0,
+    programming: 0,
+    supervisor: 0,
+  };
+
   for (const h of rows) {
-    if (h.type === PracticeLevel.PRACTICE) s.practice += h.value;
+    if (h.type === PracticeLevel.PRACTICE) s.legacy += h.value;
+    if (h.type === PracticeLevel.IMPLEMENTING) s.implementing += h.value;
+    if (h.type === PracticeLevel.PROGRAMMING) s.programming += h.value;
     if (h.type === PracticeLevel.SUPERVISOR) s.supervisor += h.value;
   }
+
   return s;
 }
 
-function calcMentor(usable: SupervisionSummary, pending: SupervisionSummary) {
+function calcMentor(usable: SummaryTotals, pending: SummaryTotals) {
   const total = usable.supervisor;
   const requiredTotal = 24;
   const percent = Math.floor((total / requiredTotal) * 100);
