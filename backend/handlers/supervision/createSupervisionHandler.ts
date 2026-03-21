@@ -93,9 +93,13 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     }
   } else {
     for (const entry of entries) {
-      if (entry.type !== 'IMPLEMENTING' && entry.type !== 'PROGRAMMING') {
+      if (
+        entry.type !== 'PRACTICE' &&
+        entry.type !== 'IMPLEMENTING' &&
+        entry.type !== 'PROGRAMMING'
+      ) {
         return reply.code(400).send({
-          error: 'Для часов практики разрешены только типы IMPLEMENTING и PROGRAMMING',
+          error: 'Для часов практики разрешены типы PRACTICE, IMPLEMENTING и PROGRAMMING',
         });
       }
 
@@ -103,7 +107,9 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
         type:
           entry.type === 'IMPLEMENTING'
             ? PracticeLevel.IMPLEMENTING
-            : PracticeLevel.PROGRAMMING,
+            : entry.type === 'PROGRAMMING'
+              ? PracticeLevel.PROGRAMMING
+              : PracticeLevel.PRACTICE,
         value: entry.value,
       });
     }
