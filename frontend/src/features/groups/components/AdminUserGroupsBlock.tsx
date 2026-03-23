@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { useUserGroupsById } from '@/features/groups/hooks/useUserGroupsById';
 import { useUpdateUserGroups } from '@/features/groups/hooks/useUpdateUserGroups';
+import { useAbandonActiveCycle } from '@/features/admin/hooks/useAbandonActiveCycle';
 import { toast } from 'sonner';
 
 import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
@@ -23,6 +24,8 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
 
   const { data: userDetails } = useUserDetails(userId);
   const updateTargetLevel = useUpdateTargetLevel(userId);
+  const abandonCycle = useAbandonActiveCycle(userId);
+  const [abandonReason, setAbandonReason] = useState('');
 
   const currentTarget = userDetails?.targetLevel ?? null;
   const [target, setTarget] = useState<string | null>(currentTarget);
@@ -61,6 +64,25 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
       toast.error('Ошибка обновления уровня');
     }
   };
+
+  const handleAbandonCycle = async () => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+
+    const reason = abandonReason.trim();
+    if (!reason) {
+      toast.error('Укажите причину отмены цикла');
+      return;
+    }
+
+    try {
+      await abandonCycle.mutateAsync(reason);
+      setAbandonReason('');
+    } catch {
+      toast.error('Ошибка отмены цикла');
+    }
+  };
+
+  const hasTarget = !!userDetails?.targetLevel;
 
   const activeGroup = data?.allGroups
     .filter((g) => selected.includes(g.id))
@@ -194,6 +216,34 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
                     >
                       {updateTargetLevel.isPending ? 'Сохраняем…' : 'Сохранить уровень'}
                     </button>
+                    {hasTarget && (
+                      <div
+                        className="mt-6 p-4 rounded-xl border space-y-3"
+                        style={{ borderColor: 'var(--color-green-light)' }}
+                      >
+                        <div className="text-sm font-medium text-blue-dark">
+                          Отмена активного цикла
+                        </div>
+
+                        <textarea
+                          className="border rounded-lg p-2 w-full min-h-[90px]"
+                          style={{ borderColor: 'var(--color-green-light)' }}
+                          placeholder="Причина отмены цикла"
+                          value={abandonReason}
+                          onChange={(e) => setAbandonReason(e.target.value)}
+                          disabled={abandonCycle.isPending}
+                        />
+
+                        <button
+                          type="button"
+                          className="btn btn-brand mt-2"
+                          onClick={handleAbandonCycle}
+                          disabled={abandonCycle.isPending}
+                        >
+                          {abandonCycle.isPending ? 'Отменяем…' : 'Отменить активный цикл'}
+                        </button>
+                      </div>
+                    )}
                   </>
                 )}
               </div>

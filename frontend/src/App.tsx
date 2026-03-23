@@ -24,6 +24,7 @@ import CertificateIssuePage from '@/pages/CertificateIssuePage';
 import MyCertificatesPage from '@/pages/MyCertificatesPage';
 import RegistryPage from './pages/RegistryPage';
 import RegistryProfilePage from '@/pages/RegistryProfilePage';
+import DashboardPageV2 from './pages/DashboardPageV2';
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'dashboard', element: <DashboardPage /> },
+      { path: 'dashboard-v2', element: <DashboardPageV2 /> },
       { path: 'ceu/create', element: <CeuRequestPage /> },
       { path: 'supervision/create', element: <SupervisionRequestPage /> },
       { path: 'history', element: <HistoryPage /> },
