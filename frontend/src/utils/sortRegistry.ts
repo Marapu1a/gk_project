@@ -5,8 +5,12 @@ export type SortDir = 'asc' | 'desc';
 
 const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
 
-const hasAvatar = (u: RegistryCardType) => Boolean((u as any).avatarUrl);
-const hasCity = (u: RegistryCardType) => Boolean(u.city && u.city.trim().length > 0);
+const hasAvatar = (u: RegistryCardType) =>
+  typeof u.avatarUrl === 'string' && u.avatarUrl.trim().length > 0;
+
+const hasCity = (u: RegistryCardType) =>
+  typeof u.city === 'string' && u.city.trim().length > 0;
+
 const isCandidate = (u: RegistryCardType) =>
   norm(u.groupName ?? '') === norm('Соискатель');
 
@@ -136,7 +140,6 @@ export function userSort(
       return 0;
     }
 
-    // createdAt
     const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
     const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
     if (aTime < bTime) return -1 * dir;

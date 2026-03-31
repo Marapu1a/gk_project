@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { prisma } from '../../lib/prisma';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR; // на серве есть, локально отсутствует
+const UPLOAD_DIR = process.env.UPLOAD_DIR; // на серве есть, локально может отсутствовать
 
 export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -13,7 +13,10 @@ export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply
     return reply.code(401).send({ error: 'Не авторизован' });
   }
 
-  const file = await prisma.uploadedFile.findUnique({ where: { id } });
+  const file = await prisma.uploadedFile.findUnique({
+    where: { id },
+  });
+
   if (!file) {
     return reply.code(404).send({ error: 'Файл не найден' });
   }
@@ -23,13 +26,38 @@ export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply
     return reply.code(403).send({ error: 'Нет доступа к этому файлу' });
   }
 
-  // ❗ фикс бага — CEU ищем по file.fileId, а не по id
-  const usedInCeu = await prisma.cEURecord.findFirst({ where: { fileId: file.fileId } });
+  // CEU ищем по file.fileId, а не по id
+  const usedInCeu = await prisma.cEURecord.findFirst({
+    where: { fileId: file.fileId },
+    select: { id: true },
+  });
+
   if (usedInCeu) {
-    return reply.code(400).send({ error: 'Файл уже прикреплён к заявке и не может быть удалён' });
+    return reply
+      .code(400)
+      .send({ error: 'Файл уже прикреплён к заявке и не может быть удалён' });
   }
 
-  // путь до файла
+  const avatarUrl = `/uploads/${file.fileId}`;
+
+  await prisma.$transaction(async (tx) => {
+    // если удаляемый файл сейчас стоит аватаркой у пользователя — обнуляем avatarUrl
+    await tx.user.updateMany({
+      where: {
+        id: file.userId,
+        avatarUrl,
+      },
+      data: {
+        avatarUrl: null,
+      },
+    });
+
+    // удаляем запись о файле из БД всегда
+    await tx.uploadedFile.delete({
+      where: { id: file.id },
+    });
+  });
+
   const baseDir = UPLOAD_DIR
     ? path.resolve(UPLOAD_DIR)
     : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
@@ -39,10 +67,8 @@ export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply
   try {
     await fs.unlink(filePath);
   } catch {
-    // файл мог уже отсутствовать — игнорируем
+    // файл уже мог отсутствовать — это не критично
   }
-
-  await prisma.uploadedFile.delete({ where: { id } });
 
   return reply.send({ success: true });
 }

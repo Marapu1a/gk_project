@@ -34,15 +34,12 @@ export default function PaymentsBlock({
 
   const invalidate = async () => {
     await Promise.all([
-      // варианты ключей по оплатам (у тебя встречаются разные)
       qc.invalidateQueries({ queryKey: ['payments'] }),
+      qc.invalidateQueries({ queryKey: ['payments', 'me'] }),
       qc.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
-      qc.invalidateQueries({ queryKey: ['payments', userId] }), // пусть живёт, если где-то есть
-      qc.invalidateQueries({ queryKey: ['userPayments', userId] }),
-
-      // админские карточки пользователя
       qc.invalidateQueries({ queryKey: ['admin', 'user', userId] }),
       qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+      qc.invalidateQueries({ queryKey: ['me'] }),
     ]);
   };
 
@@ -54,8 +51,21 @@ export default function PaymentsBlock({
       });
     });
 
-  const confirmPay = async (id: string) => {
-    const ok = await confirmToast('Подтвердить оплату?');
+  const fullPackage = payments.find((p) => p.type === 'FULL_PACKAGE');
+  const isFullPackagePending = fullPackage?.status === 'PENDING';
+
+  const getDisplayStatus = (payment: Payment) => {
+    if (isFullPackagePending && payment.type !== 'FULL_PACKAGE' && payment.status === 'UNPAID') {
+      return 'Ожидает подтверждения пакетной оплаты';
+    }
+
+    return paymentStatusLabels[payment.status] || payment.status;
+  };
+
+  const confirmPay = async (id: string, type: string) => {
+    const ok = await confirmToast(
+      type === 'FULL_PACKAGE' ? 'Подтвердить пакетную оплату?' : 'Подтвердить оплату?',
+    );
     if (!ok) return;
 
     try {
@@ -65,15 +75,17 @@ export default function PaymentsBlock({
         await postNotification({
           userId,
           type: 'PAYMENT',
-          message: 'Оплата подтверждена',
+          message: type === 'FULL_PACKAGE' ? 'Пакетная оплата подтверждена' : 'Оплата подтверждена',
           link: '/dashboard',
         });
       } catch {
-        // не валим UX из-за нотификаций
+        //
       }
 
       await invalidate();
-      toast.success('Оплата подтверждена');
+      toast.success(
+        type === 'FULL_PACKAGE' ? 'Пакетная оплата подтверждена' : 'Оплата подтверждена',
+      );
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Не удалось подтвердить оплату');
     }
@@ -84,10 +96,12 @@ export default function PaymentsBlock({
     setCancelComment('');
   };
 
-  const submitCancel = async () => {
+  const submitCancel = async (type: string) => {
     if (!cancelId) return;
 
-    const ok = await confirmToast('Отменить оплату?');
+    const ok = await confirmToast(
+      type === 'FULL_PACKAGE' ? 'Отменить пакетную оплату?' : 'Отменить оплату?',
+    );
     if (!ok) return;
 
     try {
@@ -98,16 +112,18 @@ export default function PaymentsBlock({
           userId,
           type: 'PAYMENT',
           message: cancelComment.trim()
-            ? `Оплата отменена администратором: ${cancelComment.trim()}`
-            : 'Оплата отменена администратором',
+            ? `${
+                type === 'FULL_PACKAGE' ? 'Пакетная оплата' : 'Оплата'
+              } отменена администратором: ${cancelComment.trim()}`
+            : `${type === 'FULL_PACKAGE' ? 'Пакетная оплата' : 'Оплата'} отменена администратором`,
           link: '/dashboard',
         });
       } catch {
-        // ignore
+        //
       }
 
       await invalidate();
-      toast.success('Оплата отменена');
+      toast.success(type === 'FULL_PACKAGE' ? 'Пакетная оплата отменена' : 'Оплата отменена');
       setCancelId(null);
       setCancelComment('');
     } catch (e: any) {
@@ -141,7 +157,7 @@ export default function PaymentsBlock({
           </thead>
           <tbody>
             {payments.map((p) => {
-              const humanStatus = paymentStatusLabels[p.status] || p.status;
+              const humanStatus = getDisplayStatus(p);
               const isThisCancel = cancelId === p.id;
 
               return (
@@ -161,10 +177,10 @@ export default function PaymentsBlock({
                         {p.status !== 'PAID' && (
                           <button
                             className="btn btn-brand disabled:opacity-50"
-                            onClick={() => confirmPay(p.id)}
+                            onClick={() => confirmPay(p.id, p.type)}
                             disabled={mutate.isPending}
                           >
-                            Подтвердить
+                            {p.type === 'FULL_PACKAGE' ? 'Подтвердить пакет' : 'Подтвердить'}
                           </button>
                         )}
 
@@ -173,7 +189,13 @@ export default function PaymentsBlock({
                           onClick={() => startCancel(p.id)}
                           disabled={mutate.isPending}
                         >
-                          {p.status === 'PAID' ? 'Отменить оплату' : 'Отменить'}
+                          {p.type === 'FULL_PACKAGE'
+                            ? p.status === 'PAID'
+                              ? 'Отменить пакет'
+                              : 'Снять пакет'
+                            : p.status === 'PAID'
+                              ? 'Отменить оплату'
+                              : 'Отменить'}
                         </button>
                       </div>
                     ) : (
@@ -188,7 +210,7 @@ export default function PaymentsBlock({
                         <div className="flex gap-2">
                           <button
                             className="btn btn-danger disabled:opacity-50"
-                            onClick={submitCancel}
+                            onClick={() => submitCancel(p.type)}
                             disabled={mutate.isPending}
                           >
                             Подтвердить отмену

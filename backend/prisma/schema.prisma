@@ -179,17 +179,67 @@ model CustomCity {
   @@unique([countryCode, name])
 }
 
+enum PaymentProvider {
+  TOCHKA
+}
+
 model Payment {
-  id          String        @id @default(cuid())
-  userId      String
-  user        User          @relation(fields: [userId], references: [id])
+  id                    String           @id @default(cuid())
+  userId                String
+  user                  User             @relation(fields: [userId], references: [id])
 
-  type        PaymentType
-  status      PaymentStatus @default(UNPAID)
+  type                  PaymentType
+  provider              PaymentProvider  @default(TOCHKA)
+  status                PaymentStatus    @default(UNPAID)
 
-  createdAt   DateTime      @default(now())
-  confirmedAt DateTime?     // если статус PAID
-  comment     String?       // опционально
+  externalPaymentId     String?
+  externalCustomerCode  String?
+  paymentUrl            String?
+
+  providerStatus        String?
+  providerPayload       Json?
+
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  confirmedAt           DateTime?
+  comment               String?
+
+  webhookEvents         PaymentWebhookEvent[]
+
+  @@unique([provider, externalPaymentId])
+  @@unique([provider, externalCustomerCode])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model PaymentWebhookEvent {
+  id                   String           @id @default(cuid())
+
+  provider             PaymentProvider
+  eventType            String?
+  externalEventId      String?
+  externalPaymentId    String?
+  externalCustomerCode String?
+
+  paymentId            String?
+  payment              Payment?         @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  isValidSignature     Boolean          @default(false)
+  isProcessed          Boolean          @default(false)
+  processingError      String?
+
+  statusBefore         PaymentStatus?
+  statusAfter          PaymentStatus?
+
+  rawBody              String
+  payloadJson          Json?
+
+  receivedAt           DateTime         @default(now())
+  processedAt          DateTime?
+
+  @@index([provider, externalPaymentId])
+  @@index([provider, externalCustomerCode])
 }
 
 model Notification {

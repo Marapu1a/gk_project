@@ -1,3 +1,4 @@
+// handlers/payment/getPaymentsByUserHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 

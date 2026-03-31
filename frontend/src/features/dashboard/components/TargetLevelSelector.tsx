@@ -92,12 +92,17 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
           ? 'Нельзя выбрать цель ниже уже достигнутого уровня.'
           : serverErr === 'NO_TARGET_FOR_SUPERVISOR'
             ? 'Для супервизоров и опытных супервизоров цель больше не требуется.'
-            : null;
+            : serverErr === 'INVALID_GOAL_MODE'
+              ? 'Некорректный режим выбора цели.'
+              : null;
 
   const selectDisabled = locked || noTargetsForRole;
 
   const doMutate = (nextTarget: ApiTargetLevel | null) => {
-    setTarget.mutate(nextTarget);
+    setTarget.mutate({
+      targetLevel: nextTarget,
+      goalMode: 'CERTIFICATION',
+    });
   };
 
   const handleSave = () => {
@@ -105,7 +110,6 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
 
     const nextTarget = selected === '' ? null : (selected as ApiTargetLevel);
 
-    // выбор конкретной цели — с подтверждением
     if (nextTarget) {
       const label = RU_BY_LEVEL[nextTarget as Level];
 
@@ -125,7 +129,6 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
         },
       );
     } else {
-      // сброс цели на "нет пути" — тоже важное действие, но без модалки оставим (решать тебе)
       doMutate(null);
     }
   };
