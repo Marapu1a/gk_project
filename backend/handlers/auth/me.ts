@@ -2,6 +2,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { TargetLevel } from '@prisma/client';
+import { TRANSBORDER_CONSENT_DOCUMENT } from '../../utils/transborderConsentDocument';
 
 type RenewalEligibleLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
 
@@ -48,6 +49,25 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     return reply.code(404).send({ error: 'Пользователь не найден' });
   }
 
+  // === CONSENT CHECK ===
+  const documentType = TRANSBORDER_CONSENT_DOCUMENT.type;
+  const documentVersion = TRANSBORDER_CONSENT_DOCUMENT.version;
+
+  const consent = await prisma.userConsent.findFirst({
+    where: {
+      userId: dbUser.id,
+      documentType,
+      documentVersion,
+    },
+    select: {
+      id: true,
+      consentedAt: true,
+    },
+  });
+
+  const hasConsent = Boolean(consent);
+
+  // === GROUPS ===
   const groupList = dbUser.groups
     .map(({ group }) => ({ id: group.id, name: group.name, rank: group.rank }))
     .sort((a, b) => b.rank - a.rank);
@@ -141,6 +161,14 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     groups: groupList.map(({ id, name }) => ({ id, name })),
     activeGroup,
     renewalEligibleLevel,
+
+    // === CONSENT INFO ===
+    transborderConsent: {
+      required: true,
+      accepted: hasConsent,
+      documentVersion,
+      consentedAt: consent?.consentedAt ?? null,
+    },
 
     // temp: for testing cycles; can be removed later
     activeCycle,

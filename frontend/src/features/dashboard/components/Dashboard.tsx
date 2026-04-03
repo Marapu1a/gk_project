@@ -1,8 +1,8 @@
-// src/features/dashboard/components/Dashboard.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { fetchCurrentUser } from '@/features/auth/api/me';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
+import { TransborderConsentModal } from '@/features/auth/components/TransborderConsentModal';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { UserInfo } from './UserInfo';
 import { ProgressSummary } from './ProgressSummary';
@@ -14,15 +14,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const {
-    data: user,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ['me'],
-    queryFn: fetchCurrentUser,
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: user, isLoading, isError } = useCurrentUser();
 
   const handleReauth = () => {
     localStorage.removeItem('token');
@@ -104,41 +96,25 @@ export function Dashboard() {
 
   const canShowProgress = isAdmin || (hasRequiredPayment && (hasTargetLevel || isSupervisorLike));
 
+  const shouldShowTransborderConsentModal = Boolean(
+    user.transborderConsent?.required && !user.transborderConsent?.accepted,
+  );
+
   return (
-    <div className="container-fixed p-6 space-y-6">
-      <div
-        className="rounded-2xl border header-shadow bg-white"
-        style={{ borderColor: 'var(--color-green-light)' }}
-      >
+    <>
+      <div className="container-fixed p-6 space-y-6">
         <div
-          className="px-6 py-4 border-b flex items-center justify-between"
+          className="rounded-2xl border header-shadow bg-white"
           style={{ borderColor: 'var(--color-green-light)' }}
         >
-          <h1 className="text-2xl font-semibold text-blue-dark">Личный кабинет</h1>
-          <NotificationBell onClick={() => setOpenNotif(true)} />
-        </div>
-
-        <div className="px-6 py-4">
           <div
-            className="rounded-xl p-4"
-            style={{
-              background: 'var(--color-blue-soft)',
-              border: '1px solid rgba(31,48,94,0.2)',
-            }}
+            className="flex items-center justify-between border-b px-6 py-4"
+            style={{ borderColor: 'var(--color-green-light)' }}
           >
-            <p className="text-sm text-blue-dark">
-              Уважаемые пользователи! Произошло обновление реестра и кабинета пользователей. Просьба
-              отредактировать ваши личные данные. Будем благодарны за обратную связь, просьба все
-              ваши замечания и пожелания по работе кабинета отправлять на почту{' '}
-              <a href="mailto:CSPAP@yandex.ru" className="underline hover:no-underline">
-                CSPAP@yandex.ru
-              </a>
-              .
-            </p>
+            <h1 className="text-2xl font-semibold text-blue-dark">Личный кабинет</h1>
+            <NotificationBell onClick={() => setOpenNotif(true)} />
           </div>
-        </div>
 
-        {!isAdmin && !hasRequiredPayment && (
           <div className="px-6 py-4">
             <div
               className="rounded-xl p-4"
@@ -147,54 +123,84 @@ export function Dashboard() {
                 border: '1px solid rgba(31,48,94,0.2)',
               }}
             >
-              <p className="text-sm">
-                {isRenewalCycle ? (
-                  <>
-                    Для доступа к функциям ресертификации нужна оплата{' '}
-                    <strong>«Ресертификация»</strong>.
-                  </>
-                ) : (
-                  <>
-                    Для доступа к функциям сертификации нужна оплата{' '}
-                    <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
-                  </>
-                )}
+              <p className="text-sm text-blue-dark">
+                Уважаемые пользователи! Произошло обновление реестра и кабинета пользователей.
+                Просьба отредактировать ваши личные данные. Будем благодарны за обратную связь,
+                просьба все ваши замечания и пожелания по работе кабинета отправлять на почту{' '}
+                <a href="mailto:CSPAP@yandex.ru" className="underline hover:no-underline">
+                  CSPAP@yandex.ru
+                </a>
+                .
               </p>
-              <button className="text-brand hover:underline" onClick={scrollToBottomAndHighlight}>
-                Перейти к оплате
-              </button>
             </div>
           </div>
-        )}
+
+          {!isAdmin && !hasRequiredPayment && (
+            <div className="px-6 py-4">
+              <div
+                className="rounded-xl p-4"
+                style={{
+                  background: 'var(--color-blue-soft)',
+                  border: '1px solid rgba(31,48,94,0.2)',
+                }}
+              >
+                <p className="text-sm">
+                  {isRenewalCycle ? (
+                    <>
+                      Для доступа к функциям ресертификации нужна оплата{' '}
+                      <strong>«Ресертификация»</strong>.
+                    </>
+                  ) : (
+                    <>
+                      Для доступа к функциям сертификации нужна оплата{' '}
+                      <strong>«Регистрация и супервизия»</strong> или{' '}
+                      <strong>«Полный пакет»</strong>.
+                    </>
+                  )}
+                </p>
+                <button className="text-brand hover:underline" onClick={scrollToBottomAndHighlight}>
+                  Перейти к оплате
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {(isAdmin || hasRequiredPayment) && <DashboardTabs user={user} />}
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <UserInfo />
+
+          {canShowProgress ? (
+            <ProgressSummary />
+          ) : (
+            <div
+              className="rounded-2xl border header-shadow bg-white p-6"
+              style={{ borderColor: 'var(--color-green-light)' }}
+            >
+              <p className="text-sm text-gray-600">
+                {isRenewalCycle
+                  ? 'Прогресс ресертификации станет доступен после оплаты ресертификации.'
+                  : `Прогресс сертификации станет доступен после оплаты регистрации${
+                      isSupervisorLike
+                        ? '.'
+                        : ' и выбора цели сертификации (Инструктор / Куратор / Супервизор).'
+                    }`}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <NotificationModal open={openNotif} onClose={() => setOpenNotif(false)} />
+        <div id="page-bottom" style={{ height: 1 }} />
       </div>
 
-      {(isAdmin || hasRequiredPayment) && <DashboardTabs user={user} />}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <UserInfo />
-
-        {canShowProgress ? (
-          <ProgressSummary />
-        ) : (
-          <div
-            className="rounded-2xl border header-shadow bg-white p-6"
-            style={{ borderColor: 'var(--color-green-light)' }}
-          >
-            <p className="text-sm text-gray-600">
-              {isRenewalCycle
-                ? 'Прогресс ресертификации станет доступен после оплаты ресертификации.'
-                : `Прогресс сертификации станет доступен после оплаты регистрации${
-                    isSupervisorLike
-                      ? '.'
-                      : ' и выбора цели сертификации (Инструктор / Куратор / Супервизор).'
-                  }`}
-            </p>
-          </div>
-        )}
-      </div>
-
-      <NotificationModal open={openNotif} onClose={() => setOpenNotif(false)} />
-      <div id="page-bottom" style={{ height: 1 }} />
-    </div>
+      <TransborderConsentModal
+        open={shouldShowTransborderConsentModal}
+        source="LEGACY_MODAL"
+        onAccepted={() => {}}
+        onLogout={handleReauth}
+      />
+    </>
   );
 }

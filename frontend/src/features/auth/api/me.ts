@@ -16,6 +16,13 @@ export type CycleStats = {
   supervisionRecordsUnlinked: number;
 };
 
+export type TransborderConsentInfo = {
+  required: boolean;
+  accepted: boolean;
+  documentVersion: string;
+  consentedAt: string | null;
+};
+
 export type CurrentUser = {
   id: string;
   email: string;
@@ -36,6 +43,8 @@ export type CurrentUser = {
 
   activeCycle?: ActiveCycle | null;
   cycleStats?: CycleStats | null;
+
+  transborderConsent?: TransborderConsentInfo;
 };
 
 export async function fetchCurrentUser(): Promise<CurrentUser> {
@@ -43,15 +52,9 @@ export async function fetchCurrentUser(): Promise<CurrentUser> {
   return data;
 }
 
-// если захочешь дергать статистику только вручную:
-// export async function fetchCurrentUserDebug(): Promise<CurrentUser> {
-//   const { data } = await api.get('/auth/me', { params: { debug: '1' } });
-//   return data;
-// }
-
 /** Проверяет, заблокирован ли выбор новой цели */
 export function isTargetLocked(user: CurrentUser | null | undefined): boolean {
   if (!user?.activeGroup) return false;
-  if (!user.targetLevel) return false; // цель ещё не выбрана
+  if (!user.targetLevel) return false;
   return user.targetLockRank === user.activeGroup.rank;
 }

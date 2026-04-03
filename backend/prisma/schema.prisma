@@ -78,6 +78,21 @@ enum PaymentStatus {
   PAID
 }
 
+enum ConsentDocumentType {
+  TRANSBORDER_PD_TRANSFER
+}
+
+enum ConsentSource {
+  REGISTRATION_MODAL
+  LEGACY_MODAL
+}
+
+enum ConsentEmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 enum NotificationType {
   CEU
   SUPERVISION
@@ -119,6 +134,7 @@ model User {
   examApplication          ExamApplication?
   payments                 Payment[]
   notifications            Notification[]
+  consents                 UserConsent[]
 
   createdAt                DateTime @default(now())
   lastActiveAt             DateTime?
@@ -127,6 +143,39 @@ model User {
   targetLockRank           Int?        // ранг, при котором цель была выбрана
 
   cycles                   CertificationCycle[]
+}
+
+model UserConsent {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  documentType      ConsentDocumentType
+  documentVersion   String
+  documentTextHash  String
+
+  acceptedItems     Json
+
+  source            ConsentSource
+  emailAtMoment     String
+
+  ip                String?
+  userAgent         String?
+  clientId          String?
+  requestId         String?
+
+  consentedAt       DateTime            @default(now())
+
+  emailStatus       ConsentEmailStatus  @default(PENDING)
+  emailSentAt       DateTime?
+  emailError        String?
+
+  createdAt         DateTime            @default(now())
+
+  @@unique([userId, documentType, documentVersion])
+  @@index([userId])
+  @@index([documentType, documentVersion])
+  @@index([consentedAt])
 }
 
 model CertificationCycle {
