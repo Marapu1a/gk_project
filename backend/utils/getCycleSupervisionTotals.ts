@@ -1,7 +1,10 @@
 // src/utils/getCycleSupervisionTotals.ts
 import { prisma } from '../lib/prisma';
-import { PracticeLevel, TargetLevel } from '@prisma/client';
-import { calcAutoSupervisionHours } from './supervisionRequirements';
+import { PracticeLevel, TargetLevel, CycleType } from '@prisma/client';
+import {
+  calcAutoSupervisionHours,
+  calcAutoRenewalSupervisionHours,
+} from './supervisionRequirements';
 
 type RuTargetLevel = 'Инструктор' | 'Куратор' | 'Супервизор';
 
@@ -16,7 +19,11 @@ export async function getCycleSupervisionTotals(
     PracticeLevel.PROGRAMMING,
   ];
 
-  const [confirmed, pending] = await Promise.all([
+  const [cycle, confirmed, pending] = await Promise.all([
+    prisma.certificationCycle.findUnique({
+      where: { id: cycleId },
+      select: { type: true },
+    }),
     prisma.supervisionHour.aggregate({
       where: {
         status: 'CONFIRMED',
@@ -42,16 +49,27 @@ export async function getCycleSupervisionTotals(
   const practiceTotalWithPending = practiceConfirmed + practicePending;
 
   const groupName = mapTargetLevel(targetLevel);
+  const isRenewal = cycle?.type === CycleType.RENEWAL;
 
-  const supervisionConfirmed = calcAutoSupervisionHours({
-    groupName,
-    practiceHours: practiceConfirmed,
-  });
+  const supervisionConfirmed = isRenewal
+    ? calcAutoRenewalSupervisionHours({
+      groupName,
+      practiceHours: practiceConfirmed,
+    })
+    : calcAutoSupervisionHours({
+      groupName,
+      practiceHours: practiceConfirmed,
+    });
 
-  const supervisionTotalWithPending = calcAutoSupervisionHours({
-    groupName,
-    practiceHours: practiceTotalWithPending,
-  });
+  const supervisionTotalWithPending = isRenewal
+    ? calcAutoRenewalSupervisionHours({
+      groupName,
+      practiceHours: practiceTotalWithPending,
+    })
+    : calcAutoSupervisionHours({
+      groupName,
+      practiceHours: practiceTotalWithPending,
+    });
 
   const supervisionPending = Math.max(
     0,

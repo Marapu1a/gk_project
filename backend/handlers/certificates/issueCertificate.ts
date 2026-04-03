@@ -1,7 +1,14 @@
 // src/handlers/certificates/issueCertificate.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { CycleStatus, TargetLevel, RecordStatus, PaymentType, PaymentStatus } from '@prisma/client';
+import {
+  CycleStatus,
+  TargetLevel,
+  RecordStatus,
+  PaymentType,
+  PaymentStatus,
+  CycleType,
+} from '@prisma/client';
 
 interface IssueCertificateRoute extends RouteGenericInterface {
   Body: {
@@ -24,11 +31,39 @@ function roleByGroupName(groupName: string): 'STUDENT' | 'REVIEWER' {
   return groupName === 'Супервизор' || groupName === 'Опытный Супервизор' ? 'REVIEWER' : 'STUDENT';
 }
 
+function resolveIssuedGroupName(
+  cycleType: CycleType,
+  targetLevel: TargetLevel
+): 'Инструктор' | 'Куратор' | 'Супервизор' | 'Опытный Супервизор' {
+  if (cycleType === CycleType.RENEWAL && targetLevel === TargetLevel.SUPERVISOR) {
+    return 'Опытный Супервизор';
+  }
+
+  return GROUP_NAME_BY_TARGET[targetLevel];
+}
+
+function getChainGroupNames(
+  targetLevel: TargetLevel
+): Array<'Инструктор' | 'Куратор' | 'Супервизор' | 'Опытный Супервизор'> {
+  if (targetLevel === TargetLevel.SUPERVISOR) {
+    return ['Супервизор', 'Опытный Супервизор'];
+  }
+
+  return [GROUP_NAME_BY_TARGET[targetLevel]];
+}
+
+function resolveRenewalTargetLevel(
+  issuedGroupName: 'Инструктор' | 'Куратор' | 'Супервизор' | 'Опытный Супервизор'
+): TargetLevel {
+  if (issuedGroupName === 'Инструктор') return TargetLevel.INSTRUCTOR;
+  if (issuedGroupName === 'Куратор') return TargetLevel.CURATOR;
+  return TargetLevel.SUPERVISOR;
+}
+
 export async function issueCertificateHandler(
   req: FastifyRequest<IssueCertificateRoute>,
   reply: FastifyReply
 ) {
-  // 1) Auth
   const actor = (req as any).user;
   if (!actor?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
@@ -38,7 +73,6 @@ export async function issueCertificateHandler(
   });
   if (admin?.role !== 'ADMIN') return reply.code(403).send({ error: 'Нет доступа' });
 
-  // 2) Input
   let { email, title, number, issuedAt, expiresAt, uploadedFileId } = req.body || ({} as any);
   if (!email || !title || !number || !issuedAt || !expiresAt || !uploadedFileId) {
     return reply.code(400).send({
@@ -59,38 +93,47 @@ export async function issueCertificateHandler(
     return reply.code(422).send({ error: 'issuedAt должен быть корректной ISO-датой' });
   }
   if (Number.isNaN(exp.getTime())) {
-    return reply.code(422).send({ error: 'expiresAt должен быть корректной ISO-датой' });
+    return reply.code(422).send({ error: 'expiresAt должен быть позже issuedAt' });
   }
   if (iss > now) return reply.code(422).send({ error: 'issuedAt не может быть в будущем' });
   if (exp <= iss) return reply.code(422).send({ error: 'expiresAt должен быть позже issuedAt' });
 
-  // 3) Entities
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return reply.code(404).send({ error: 'Пользователь не найден' });
 
   const file = await prisma.uploadedFile.findUnique({ where: { id: uploadedFileId } });
   if (!file) return reply.code(404).send({ error: 'Файл не найден' });
 
-  // Предохранитель — нельзя повторно использовать файл
   const existingByFile = await prisma.certificate.findUnique({ where: { fileId: file.id } });
   if (existingByFile) {
     return reply.code(409).send({ error: 'Этот файл уже используется другим сертификатом' });
   }
 
-  // ACTIVE cycle обязателен
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId: user.id, status: CycleStatus.ACTIVE },
-    select: { id: true, targetLevel: true },
+    select: { id: true, targetLevel: true, type: true },
   });
   if (!activeCycle) return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
 
-  const groupName = GROUP_NAME_BY_TARGET[activeCycle.targetLevel];
-  const targetGroup = await prisma.group.findUnique({ where: { name: groupName } });
+  const issuedGroupName = resolveIssuedGroupName(activeCycle.type, activeCycle.targetLevel);
+  const renewalTargetLevel = resolveRenewalTargetLevel(issuedGroupName);
+
+  const targetGroup = await prisma.group.findUnique({ where: { name: issuedGroupName } });
   if (!targetGroup) return reply.code(500).send({ error: 'TARGET_GROUP_NOT_CONFIGURED' });
+
+  const chainGroupNames = getChainGroupNames(activeCycle.targetLevel);
+  const chainGroups = await prisma.group.findMany({
+    where: { name: { in: chainGroupNames } },
+    select: { id: true, name: true },
+  });
+
+  const chainGroupIds = chainGroups.map((g) => g.id);
+  if (!chainGroupIds.length) {
+    return reply.code(500).send({ error: 'CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED' });
+  }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // защита от двойной выдачи (двойной клик/ретрай)
       const already = await tx.certificate.findUnique({
         where: { cycleId: activeCycle.id },
         select: { id: true },
@@ -101,7 +144,6 @@ export async function issueCertificateHandler(
         throw err;
       }
 
-      // Идемпотентно переназначаем файл владельцу и типу
       if (file.userId !== user.id || file.type !== 'CERTIFICATE') {
         await tx.uploadedFile.update({
           where: { id: file.id },
@@ -109,11 +151,10 @@ export async function issueCertificateHandler(
         });
       }
 
-      // Вставка по времени: найдём соседей для issuedAt (в рамках targetGroup)
       const prev = await tx.certificate.findFirst({
         where: {
           userId: user.id,
-          groupId: targetGroup.id,
+          groupId: { in: chainGroupIds },
           issuedAt: { lt: iss },
         },
         orderBy: { issuedAt: 'desc' },
@@ -122,13 +163,12 @@ export async function issueCertificateHandler(
       const next = await tx.certificate.findFirst({
         where: {
           userId: user.id,
-          groupId: targetGroup.id,
+          groupId: { in: chainGroupIds },
           issuedAt: { gt: iss },
         },
         orderBy: { issuedAt: 'asc' },
       });
 
-      // Создаём сертификат и привязываем к cycleId
       const cert = await tx.certificate.create({
         data: {
           userId: user.id,
@@ -136,7 +176,7 @@ export async function issueCertificateHandler(
           fileId: file.id,
           issuedAt: iss,
           expiresAt: exp,
-          isRenewal: !!prev,
+          isRenewal: activeCycle.type === CycleType.RENEWAL,
           previousId: prev ? prev.id : null,
           confirmedById: actor.userId ?? null,
           number,
@@ -146,7 +186,6 @@ export async function issueCertificateHandler(
         include: { group: true, file: true, confirmedBy: true, cycle: true },
       });
 
-      // Если вставили "между" prev и next — перекидываем next.previousId на новый cert
       if (next) {
         await tx.certificate.update({
           where: { id: next.id },
@@ -154,7 +193,6 @@ export async function issueCertificateHandler(
         });
       }
 
-      // Закрываем цикл
       await tx.certificationCycle.update({
         where: { id: activeCycle.id },
         data: {
@@ -163,7 +201,6 @@ export async function issueCertificateHandler(
         },
       });
 
-      // CEU: CONFIRMED -> SPENT только в рамках этого цикла
       const spentRes = await tx.cEUEntry.updateMany({
         where: {
           status: RecordStatus.CONFIRMED,
@@ -175,7 +212,6 @@ export async function issueCertificateHandler(
         },
       });
 
-      // ===== группа, роль, сброс цели =====
       await tx.userGroup.deleteMany({ where: { userId: user.id } });
       await tx.userGroup.create({
         data: { userId: user.id, groupId: targetGroup.id },
@@ -192,8 +228,6 @@ export async function issueCertificateHandler(
         },
       });
 
-      // ===== RESET PAYMENTS (переключатели) =====
-      // После выдачи сертификата сбрасываем все оплаты, кроме проверки документов
       const paymentsReset = await tx.payment.updateMany({
         where: {
           userId: user.id,
@@ -207,7 +241,45 @@ export async function issueCertificateHandler(
         },
       });
 
-      // Уведомление пользователю
+      const existingRenewalPayment = await tx.payment.findFirst({
+        where: {
+          userId: user.id,
+          type: PaymentType.RENEWAL,
+          targetLevel: renewalTargetLevel,
+        },
+        select: { id: true },
+      });
+
+      let renewalPaymentId: string;
+
+      if (existingRenewalPayment) {
+        const updatedRenewal = await tx.payment.update({
+          where: { id: existingRenewalPayment.id },
+          data: {
+            status: PaymentStatus.UNPAID,
+            confirmedAt: null,
+            comment: 'Создано/обновлено после выдачи сертификата',
+            targetLevel: renewalTargetLevel,
+          },
+          select: { id: true },
+        });
+
+        renewalPaymentId = updatedRenewal.id;
+      } else {
+        const createdRenewal = await tx.payment.create({
+          data: {
+            userId: user.id,
+            type: PaymentType.RENEWAL,
+            targetLevel: renewalTargetLevel,
+            status: PaymentStatus.UNPAID,
+            comment: 'Создано после выдачи сертификата',
+          },
+          select: { id: true },
+        });
+
+        renewalPaymentId = createdRenewal.id;
+      }
+
       await tx.notification.create({
         data: {
           userId: user.id,
@@ -217,11 +289,13 @@ export async function issueCertificateHandler(
         },
       });
 
-      return { cert, spentCount: spentRes.count, paymentsResetCount: paymentsReset.count };
+      return {
+        cert,
+        spentCount: spentRes.count,
+        paymentsResetCount: paymentsReset.count,
+        renewalPaymentId,
+      };
     });
-
-    // TODO: cleanupCycleFiles(result.cert.cycleId)
-    // await cleanupCycleFiles(result.cert.cycleId)
 
     const created = result.cert;
 
@@ -246,10 +320,9 @@ export async function issueCertificateHandler(
       isActiveNow: now <= created.expiresAt,
       isExpired: now > created.expiresAt,
       closedCycleId: created.cycleId,
-
-      // debug-ish counters (можно убрать позже)
       spentCeuCount: result.spentCount,
       paymentsResetCount: result.paymentsResetCount,
+      renewalPaymentId: result.renewalPaymentId,
     });
   } catch (e: any) {
     if (e?.code === 'CYCLE_ALREADY_HAS_CERTIFICATE') {

@@ -1,5 +1,5 @@
 // src/features/user/components/TargetLevelSelector.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/Button';
 import { useSetTargetLevel } from '@/features/user/hooks/useSetTargetLevel';
 import type { TargetLevel as ApiTargetLevel } from '@/features/user/api/setTargetLevel';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 
 const LEVELS = ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'] as const;
 type Level = (typeof LEVELS)[number];
+type GoalMode = 'CERTIFICATION' | 'RENEWAL';
 
 const RU_BY_LEVEL: Record<Level, string> = {
   INSTRUCTOR: 'Инструктор',
@@ -16,7 +17,6 @@ const RU_BY_LEVEL: Record<Level, string> = {
   SUPERVISOR: 'Супервизор',
 };
 
-// порядок рангов (от Соискателя до вершины)
 const FULL_ORDER = [
   'Соискатель',
   'Инструктор',
@@ -29,6 +29,15 @@ function levelIndex(lvl: Level) {
   return FULL_ORDER.indexOf(RU_BY_LEVEL[lvl] as (typeof FULL_ORDER)[number]);
 }
 
+function resolveCurrentLevel(activeGroupName?: string | null): Level | null {
+  if (activeGroupName === 'Инструктор') return 'INSTRUCTOR';
+  if (activeGroupName === 'Куратор') return 'CURATOR';
+  if (activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор') {
+    return 'SUPERVISOR';
+  }
+  return null;
+}
+
 type Props = {
   user: CurrentUser;
   isAdmin: boolean;
@@ -37,10 +46,8 @@ type Props = {
 export function TargetLevelSelector({ user, isAdmin }: Props) {
   const setTarget = useSetTargetLevel(user.id);
 
-  // локальное состояние: либо Level, либо пустая строка для "цель не выбрана"
   const [selected, setSelected] = useState<Level | ''>((user.targetLevel ?? '') as Level | '');
 
-  // синхронимся, когда обновляется user.targetLevel
   useEffect(() => {
     setSelected((user.targetLevel ?? '') as Level | '');
   }, [user.targetLevel]);
@@ -50,13 +57,22 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
     : -1;
 
   const activeGroupName = user.activeGroup?.name;
-  const isSupervisor = activeGroupName === 'Супервизор';
-  const isSeniorSupervisor = activeGroupName === 'Опытный Супервизор';
+  const currentLevel = resolveCurrentLevel(activeGroupName);
+  const renewalEligibleLevel = (user.renewalEligibleLevel ?? null) as Level | null;
+  const canRenewCurrentLevel = !!currentLevel && renewalEligibleLevel === currentLevel;
 
-  // доступны только уровни строго выше активной группы
-  const availableLevels: Level[] = LEVELS.filter((lvl) => levelIndex(lvl) > activeIdx);
+  const isRenewalCycle = user.activeCycle?.type === 'RENEWAL';
 
-  // если выбранный уровень стал недоступен (повышение) — сброс на "нет цели"
+  const availableLevels: Level[] = useMemo(() => {
+    const levelsAbove = LEVELS.filter((lvl) => levelIndex(lvl) > activeIdx);
+
+    if (canRenewCurrentLevel && currentLevel && !levelsAbove.includes(currentLevel)) {
+      return [currentLevel, ...levelsAbove];
+    }
+
+    return levelsAbove;
+  }, [activeIdx, canRenewCurrentLevel, currentLevel]);
+
   useEffect(() => {
     if (selected && !availableLevels.includes(selected)) {
       setSelected('');
@@ -67,41 +83,39 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
 
   const targetLevel = user.targetLevel as ApiTargetLevel | null;
   const targetLevelName = targetLevel ? RU_BY_LEVEL[targetLevel as Level] : undefined;
-  const targetNameForBadge = targetLevelName ?? 'не выбран';
 
   const noChange =
     (selected === '' && targetLevel === null) || (selected !== '' && targetLevel === selected);
-
-  const noTargetsForRole = !isAdmin && (isSupervisor || isSeniorSupervisor);
 
   const saveDisabled =
     setTarget.isPending ||
     locked ||
     noChange ||
-    noTargetsForRole ||
     (selected !== '' && !availableLevels.includes(selected));
 
   const serverErr = (setTarget.error as any)?.response?.data?.error as string | undefined;
 
   const lockedMsg =
     serverErr === 'TARGET_LOCKED'
-      ? 'Цель уже выбрана. Сменить можно после повышения уровня или через администратора.'
+      ? 'Цель уже выбрана. Сменить можно после завершения текущего цикла или через администратора.'
       : serverErr === 'TARGET_NOT_ALLOWED_FOR_ACTIVE_GROUP'
         ? 'Эта цель недоступна для вашего текущего уровня.'
-        : serverErr === 'TARGET_BELOW_ACTIVE'
-          ? 'Нельзя выбрать цель ниже уже достигнутого уровня.'
-          : serverErr === 'NO_TARGET_FOR_SUPERVISOR'
-            ? 'Для супервизоров и опытных супервизоров цель больше не требуется.'
-            : serverErr === 'INVALID_GOAL_MODE'
-              ? 'Некорректный режим выбора цели.'
-              : null;
+        : serverErr === 'RENEWAL_TARGET_NOT_ALLOWED'
+          ? 'Ресертификация для этого уровня сейчас недоступна.'
+          : serverErr === 'RENEWAL_NOT_AVAILABLE'
+            ? 'Ресертификация недоступна: нет действующего сертификата.'
+            : serverErr === 'TARGET_BELOW_ACTIVE'
+              ? 'Нельзя выбрать цель ниже уже достигнутого уровня.'
+              : serverErr === 'INVALID_GOAL_MODE'
+                ? 'Некорректный режим выбора цели.'
+                : serverErr === 'ACTIVE_CYCLE_EXISTS'
+                  ? 'У вас уже есть активный цикл. Сначала прервите его.'
+                  : null;
 
-  const selectDisabled = locked || noTargetsForRole;
-
-  const doMutate = (nextTarget: ApiTargetLevel | null) => {
+  const doMutate = (nextTarget: ApiTargetLevel | null, goalMode: GoalMode) => {
     setTarget.mutate({
       targetLevel: nextTarget,
-      goalMode: 'CERTIFICATION',
+      goalMode,
     });
   };
 
@@ -112,93 +126,81 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
 
     if (nextTarget) {
       const label = RU_BY_LEVEL[nextTarget as Level];
+      const isRenewalChoice = canRenewCurrentLevel && currentLevel === nextTarget;
+      const goalMode: GoalMode = isRenewalChoice ? 'RENEWAL' : 'CERTIFICATION';
 
       toast(
-        `Вы собираетесь выбрать уровень: «${label}». После выбора изменить его нельзя, пока вы не получите соответствующую квалификацию.`,
+        isRenewalChoice
+          ? `Вы выбираете ресертификацию уровня «${label}». Изменить цель будет нельзя, пока цикл не завершён.`
+          : `Вы выбираете уровень «${label}». Изменить цель будет нельзя, пока цикл не завершён.`,
         {
           action: {
             label: 'Подтвердить',
-            onClick: () => doMutate(nextTarget),
+            onClick: () => doMutate(nextTarget, goalMode),
           },
           cancel: {
             label: 'Отмена',
             onClick: () => {
-              /* ничего не делаем */
+              //
             },
           },
         },
       );
     } else {
-      doMutate(null);
+      doMutate(null, 'CERTIFICATION');
     }
   };
 
   return (
     <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--color-blue-soft)' }}>
       <div>
-        <strong>Текущий уровень сертификации:</strong> {targetNameForBadge}
+        <strong>
+          {isRenewalCycle ? 'Текущая цель: ресертификация уровня' : 'Текущий уровень сертификации'}:
+        </strong>{' '}
+        {targetLevelName ?? 'не выбран'}
         {locked && (
           <span className="ml-2 inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
-            выбор заблокирован до повышения уровня
-          </span>
-        )}
-        {noTargetsForRole && !locked && (
-          <span className="ml-2 inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-            на вашем уровне дальнейшие цели не требуются
+            цель зафиксирована
           </span>
         )}
       </div>
 
       <p className="text-xs text-gray-600">
-        Необходимо выбрать уровень: Инструктор, Куратор или Супервизор. После выбора изменить выбор
-        нельзя, пока вы не подтвердите квалификацию. Если допустили ошибку, обратитесь к
-        администратору.
+        {isRenewalCycle
+          ? 'Вы находитесь в процессе ресертификации. Сменить цель нельзя до завершения или отмены текущего цикла.'
+          : 'Выберите цель: повышение уровня или ресертификацию текущего уровня, если она доступна. После выбора изменить цель нельзя до завершения цикла.'}
       </p>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <select
-          className="border rounded-md px-2 py-1"
-          value={selected}
-          onChange={(e) => {
-            const v = e.target.value as '' | Level;
-            setSelected(v === '' ? '' : (v as Level));
-          }}
-          disabled={selectDisabled}
-          title={
-            locked
-              ? 'Сменить можно после повышения уровня (или через администратора)'
-              : noTargetsForRole
-                ? 'Для супервизоров и опытных супервизоров цель больше не требуется'
-                : undefined
-          }
-        >
-          <option value="">— Выберите уровень сертификации —</option>
-          {availableLevels.map((lvl) => (
-            <option key={lvl} value={lvl}>
-              {RU_BY_LEVEL[lvl]}
-            </option>
-          ))}
-        </select>
+      {!isRenewalCycle && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            className="border rounded-md px-2 py-1"
+            value={selected}
+            onChange={(e) => {
+              const v = e.target.value as '' | Level;
+              setSelected(v === '' ? '' : (v as Level));
+            }}
+            disabled={locked}
+          >
+            <option value="">— Выберите уровень сертификации —</option>
+            {availableLevels.map((lvl) => (
+              <option key={lvl} value={lvl}>
+                {RU_BY_LEVEL[lvl]}
+                {canRenewCurrentLevel && currentLevel === lvl ? ' (ресертификация)' : ''}
+              </option>
+            ))}
+          </select>
 
-        <Button
-          onClick={handleSave}
-          disabled={saveDisabled}
-          title={
-            locked
-              ? 'Сменить можно после повышения уровня (или через администратора)'
-              : noTargetsForRole
-                ? 'Для супервизоров и опытных супервизоров цель больше не требуется'
-                : undefined
-          }
-        >
-          Сохранить
-        </Button>
+          <Button onClick={handleSave} disabled={saveDisabled}>
+            Сохранить
+          </Button>
 
-        {setTarget.isError && (
-          <span className="text-red-600">{lockedMsg ?? 'Ошибка сохранения цели'}</span>
-        )}
-        {setTarget.isSuccess && <span className="text-green-600">Цель обновлена</span>}
-      </div>
+          {setTarget.isError && (
+            <span className="text-red-600">{lockedMsg ?? 'Ошибка сохранения цели'}</span>
+          )}
+          {setTarget.isSuccess && <span className="text-green-600">Цель обновлена</span>}
+        </div>
+      )}
     </div>
   );
 }

@@ -17,11 +17,23 @@ interface UpdateCertificateRoute extends RouteGenericInterface {
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR;
 
+function getChainGroupNames(
+  groupName: string
+): Array<'Инструктор' | 'Куратор' | 'Супервизор' | 'Опытный Супервизор'> {
+  if (groupName === 'Супервизор' || groupName === 'Опытный Супервизор') {
+    return ['Супервизор', 'Опытный Супервизор'];
+  }
+
+  if (groupName === 'Инструктор') return ['Инструктор'];
+  if (groupName === 'Куратор') return ['Куратор'];
+
+  return [];
+}
+
 export async function updateCertificateHandler(
   req: FastifyRequest<UpdateCertificateRoute>,
   reply: FastifyReply
 ) {
-  // только админ
   const actor = (req as any).user;
   if (!actor?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
@@ -50,7 +62,6 @@ export async function updateCertificateHandler(
     });
   }
 
-  // текущий сертификат
   const existing = await prisma.certificate.findUnique({
     where: { id },
     include: {
@@ -65,11 +76,9 @@ export async function updateCertificateHandler(
     return reply.code(404).send({ error: 'Сертификат не найден' });
   }
 
-  // 1) Нормализация строк
   const nextTitle = typeof title === 'string' ? title.trim() : existing.title;
   const nextNumber = typeof number === 'string' ? number.trim() : existing.number;
 
-  // 2) Даты
   let nextIssuedAt = existing.issuedAt;
   let nextExpiresAt = existing.expiresAt;
 
@@ -99,7 +108,6 @@ export async function updateCertificateHandler(
     return reply.code(422).send({ error: 'expiresAt должен быть позже issuedAt' });
   }
 
-  // 3) Файл: выясняем, меняем ли мы файл и что за старый
   let fileToUse = existing.file;
   let newFileId = existing.fileId;
   let oldFileToDelete: { id: string; fileId: string | null } | null = null;
@@ -114,7 +122,6 @@ export async function updateCertificateHandler(
         return reply.code(404).send({ error: 'Файл не найден' });
       }
 
-      // проверка уникальности файла
       const existingByFile = await prisma.certificate.findFirst({
         where: {
           fileId: file.id,
@@ -127,7 +134,6 @@ export async function updateCertificateHandler(
           .send({ error: 'Этот файл уже используется другим сертификатом' });
       }
 
-      // будем использовать этот файл, а старый — удалить
       fileToUse = file;
       newFileId = file.id;
       if (existing.file) {
@@ -136,9 +142,23 @@ export async function updateCertificateHandler(
     }
   }
 
+  const chainGroupNames = getChainGroupNames(existing.group.name);
+  if (!chainGroupNames.length) {
+    return reply.code(500).send({ error: 'CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED' });
+  }
+
+  const chainGroups = await prisma.group.findMany({
+    where: { name: { in: chainGroupNames } },
+    select: { id: true, name: true },
+  });
+
+  const chainGroupIds = chainGroups.map((g) => g.id);
+  if (!chainGroupIds.length) {
+    return reply.code(500).send({ error: 'CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED' });
+  }
+
   try {
     const updated = await prisma.$transaction(async (tx) => {
-      // если сменили файл — идемпотентно привязываем его к пользователю и типу CERTIFICATE
       if (fileToUse && (fileToUse.userId !== existing.userId || fileToUse.type !== 'CERTIFICATE')) {
         await tx.uploadedFile.update({
           where: { id: fileToUse.id },
@@ -149,7 +169,6 @@ export async function updateCertificateHandler(
         });
       }
 
-      // обновляем сам сертификат
       const cert = await tx.certificate.update({
         where: { id: existing.id },
         data: {
@@ -166,25 +185,29 @@ export async function updateCertificateHandler(
         },
       });
 
-      // пересобираем цепочку previousId/isRenewal для данного user+group
       const all = await tx.certificate.findMany({
-        where: { userId: existing.userId, groupId: existing.groupId },
+        where: {
+          userId: existing.userId,
+          groupId: { in: chainGroupIds },
+        },
         orderBy: { issuedAt: 'asc' },
-        select: { id: true },
+        select: { id: true, groupId: true },
       });
 
       for (let i = 0; i < all.length; i++) {
         const prevId = i === 0 ? null : all[i - 1].id;
+        const currentGroupId = all[i].groupId;
+        const currentGroupName = chainGroups.find((g) => g.id === currentGroupId)?.name ?? null;
+
         await tx.certificate.update({
           where: { id: all[i].id },
           data: {
             previousId: prevId,
-            isRenewal: i > 0,
+            isRenewal: currentGroupName === 'Опытный Супервизор',
           },
         });
       }
 
-      // удаляем старую запись файла, если нужно
       if (oldFileToDelete) {
         await tx.uploadedFile.delete({ where: { id: oldFileToDelete.id } });
       }
@@ -192,7 +215,6 @@ export async function updateCertificateHandler(
       return cert;
     });
 
-    // после успешной транзакции — удаляем физический файл, если был
     if (oldFileToDelete?.fileId) {
       const baseDir = UPLOAD_DIR
         ? path.resolve(UPLOAD_DIR)

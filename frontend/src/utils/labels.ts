@@ -5,6 +5,7 @@ export const ceuCategoryLabels: Record<string, string> = {
   GENERAL: 'Общие',
   ETHICS: 'Этика',
   CULTURAL_DIVERSITY: 'Культурное разнообразие',
+  SUPERVISION: 'Супервизия',
 };
 
 // Типы практики (супервизия)
@@ -12,7 +13,10 @@ export const practiceLevelLabels: Record<string, string> = {
   INSTRUCTOR: 'Инструктор',
   CURATOR: 'Куратор',
   SUPERVISOR: 'Супервизор',
-  EXPERIENCED_SUPERVISOR: 'Опытный супервизор',
+  PRACTICE: 'Практика',
+  SUPERVISION: 'Менторство',
+  IMPLEMENTING: 'Имплементинг',
+  PROGRAMMING: 'Программинг',
 };
 
 // Уровни для выбора
@@ -21,7 +25,6 @@ export const targetLevelLabels: Record<string, string> = {
   CURATOR: 'Куратор',
   SUPERVISOR: 'Супервизор',
 };
-
 
 // Статусы записей
 export const recordStatusLabels: Record<string, string> = {
@@ -37,7 +40,18 @@ export const paymentTypeLabels: Record<string, string> = {
   EXAM_ACCESS: 'Доступ к экзамену',
   FULL_PACKAGE: 'Полный пакет',
   REGISTRATION: 'Регистрация',
+  RENEWAL: 'Ресертификация',
 };
+
+// Если нужен красивый вывод с уровнем
+export function getPaymentTypeLabel(type: string, targetLevel?: string | null): string {
+  if (type === 'RENEWAL') {
+    const level = targetLevel ? targetLevelLabels[targetLevel] || targetLevel : null;
+    return level ? `Ресертификация — ${level}` : 'Ресертификация';
+  }
+
+  return paymentTypeLabels[type] || type;
+}
 
 // Статусы платежей
 export const paymentStatusLabels: Record<string, string> = {
@@ -65,7 +79,7 @@ export const documentTypeLabels: Record<string, string> = {
   OTHER: 'Другое',
 };
 
-// Статусы заявок на проверку документов (широкое покрытие ключей)
+// Статусы заявок на проверку документов
 export const docReviewStatusLabels: Record<string, string> = {
   SUBMITTED: 'Отправлена',
   PENDING: 'В очереди',
@@ -77,7 +91,7 @@ export const docReviewStatusLabels: Record<string, string> = {
   UNCONFIRMED: 'Не подтверждена',
 };
 
-// Категории файлов (по сегменту в fileId — опционально для отображения)
+// Категории файлов
 export const fileCategoryLabels: Record<string, string> = {
   ceu: 'CEU',
   supervision: 'Супервизия',
@@ -92,4 +106,3 @@ export const yesNoLabels: Record<'true' | 'false', string> = {
   true: 'Да',
   false: 'Нет',
 };
-

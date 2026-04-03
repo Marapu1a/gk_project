@@ -13,18 +13,18 @@ export function useIssueCertificate() {
     mutationFn: issueCertificate,
 
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['certificates'] });
-      await qc.invalidateQueries({ queryKey: ['me'] });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['certificates'] }),
+        qc.invalidateQueries({ queryKey: ['me'] }),
 
-      await qc.invalidateQueries({ queryKey: ['ceuSummary'] });
-      await qc.invalidateQueries({ queryKey: ['supervisionSummary'] });
+        qc.invalidateQueries({ queryKey: ['ceuSummary'] }),
+        qc.invalidateQueries({ queryKey: ['supervisionSummary'] }),
 
-      // оплаты встречаются под разными ключами
-      await qc.invalidateQueries({ queryKey: ['payments'] });
-      await qc.invalidateQueries({ queryKey: ['userPayments'] });
+        qc.invalidateQueries({ queryKey: ['payments'] }),
+        qc.invalidateQueries({ queryKey: ['payments', 'me'] }),
 
-      // админская карточка юзера
-      await qc.invalidateQueries({ queryKey: ['admin', 'user'] });
+        qc.invalidateQueries({ queryKey: ['admin', 'user'] }),
+      ]);
     },
   });
 }

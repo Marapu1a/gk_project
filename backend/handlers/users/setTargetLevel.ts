@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import { TargetLevel, CycleType } from '@prisma/client';
 import {
   supervisionRequirementsByGroup,
+  renewalSupervisionRequirementsByGroup,
   getPracticeToSupervisionRatio,
 } from '../../utils/supervisionRequirements';
 
@@ -38,8 +39,28 @@ const ALLOWED_RENEWAL_TARGETS_BY_GROUP: Record<string, TargetLevel[]> = {
   'Опытный Супервизор': ['SUPERVISOR'],
 };
 
-function buildRequirementsSnapshot(targetLevel: TargetLevel) {
+function buildRequirementsSnapshot(targetLevel: TargetLevel, goalMode: GoalMode) {
   const ru = TARGET_RU_BY_LEVEL[targetLevel];
+
+  if (goalMode === 'RENEWAL') {
+    const req = renewalSupervisionRequirementsByGroup[ru];
+    if (!req || typeof req.practice !== 'number') {
+      throw new Error('TARGET_REQUIREMENTS_NOT_CONFIGURED');
+    }
+
+    const ratio =
+      req.practice > 0 && req.supervision > 0
+        ? req.practice / req.supervision
+        : null;
+
+    return {
+      targetLevel,
+      practiceRequired: req.practice,
+      ratio,
+      mentorRequired: req.supervisor,
+      mode: 'RENEWAL' as const,
+    };
+  }
 
   const req = supervisionRequirementsByGroup[ru];
   if (!req || typeof req.practice !== 'number') {
@@ -56,6 +77,7 @@ function buildRequirementsSnapshot(targetLevel: TargetLevel) {
     practiceRequired: req.practice,
     ratio,
     mentorRequired: targetLevel === TargetLevel.SUPERVISOR ? 24 : 0,
+    mode: 'CERTIFICATION' as const,
   };
 }
 
@@ -279,7 +301,7 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
 
   let requirementsSnapshot: ReturnType<typeof buildRequirementsSnapshot>;
   try {
-    requirementsSnapshot = buildRequirementsSnapshot(targetLevel);
+    requirementsSnapshot = buildRequirementsSnapshot(targetLevel, goalMode);
   } catch (e: any) {
     if (e?.message === 'TARGET_REQUIREMENTS_NOT_CONFIGURED') {
       return reply.code(500).send({ error: 'TARGET_REQUIREMENTS_NOT_CONFIGURED' });

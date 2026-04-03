@@ -16,16 +16,6 @@ import { TargetLevelSelector } from './TargetLevelSelector';
 import { useDownloadUsersExport } from '@/features/admin/hooks/useDownloadUsersExport';
 import type { TargetLevel } from '@/features/user/api/setTargetLevel';
 
-// фиксируем тип уровня
-const LEVELS = ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'] as const;
-type Level = (typeof LEVELS)[number];
-
-const RU_BY_LEVEL: Record<Level, string> = {
-  INSTRUCTOR: 'Инструктор',
-  CURATOR: 'Куратор',
-  SUPERVISOR: 'Супервизор',
-};
-
 export function UserInfo() {
   const { data: user, isLoading } = useCurrentUser();
   const logout = useLogout();
@@ -39,35 +29,33 @@ export function UserInfo() {
   if (isLoading || !user) return null;
 
   const isAdmin = user.role === 'ADMIN';
-  const isSupervisorLike = ['Супервизор', 'Опытный Супервизор'].includes(
-    user.activeGroup?.name ?? '',
-  );
+  const activeCycleType = user.activeCycle?.type ?? null;
+  const isRenewalCycle = activeCycleType === 'RENEWAL';
 
   const registrationPaid =
     payments.some((p) => p.type === 'REGISTRATION' && p.status === 'PAID') ||
     payments.some((p) => p.type === 'FULL_PACKAGE' && p.status === 'PAID');
 
-  const targetLevelName = user.targetLevel ? RU_BY_LEVEL[user.targetLevel as Level] : undefined;
-  const hasTargetLevel = !!user.targetLevel;
+  const renewalPaid = payments.some(
+    (p) =>
+      p.type === 'RENEWAL' &&
+      p.status === 'PAID' &&
+      (!user.targetLevel || p.targetLevel === user.targetLevel),
+  );
 
-  // 🔑 Оплата:
-  // - обычные: только при выбранной цели
-  // - супервизоры / опытные: всегда доступна, цель им не нужна
-  const canShowPayments = isSupervisorLike || hasTargetLevel;
+  const hasTargetLevel = !!user.targetLevel;
+  const canShowPayments = hasTargetLevel;
 
   return (
     <div
       className="rounded-2xl border header-shadow bg-white"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
-      {/* Header */}
       <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
         <h2 className="text-xl font-semibold text-blue-dark">Информация о пользователе</h2>
       </div>
 
-      {/* Body */}
       <div className="px-6 py-5 space-y-3 text-sm">
-        {/* Аватар */}
         <div className="flex items-start">
           <AvatarDisplay
             src={user.avatarUrl}
@@ -78,11 +66,11 @@ export function UserInfo() {
             onClick={() => setAvatarOpen(true)}
           />
         </div>
+
         {avatarOpen && <AvatarUploadModal userId={user.id} onClose={() => setAvatarOpen(false)} />}
 
         <UserSelfProfileBlock user={user} />
 
-        {/* === О себе === */}
         {user.bio ? (
           <div className="rounded-2xl p-4" style={{ background: 'var(--color-blue-soft)' }}>
             <div className="text-sm text-blue-dark whitespace-pre-wrap">{user.bio}</div>
@@ -98,9 +86,11 @@ export function UserInfo() {
             <p>Вы можете добавить краткое описание «О себе» (до 500 символов).</p>
           </div>
         )}
+
         <button className="btn btn-accent mr-2" onClick={() => setBioOpen(true)}>
           {user.bio ? 'Изменить «О себе»' : 'Добавить «О себе»'}
         </button>
+
         {bioOpen && (
           <BioEditModal userId={user.id} initial={user.bio} onClose={() => setBioOpen(false)} />
         )}
@@ -128,14 +118,45 @@ export function UserInfo() {
             </Button>
             <Button onClick={() => navigate('/my-certificate')}>Мой сертификат</Button>
 
-            {/* === Выбор цели === */}
-            {!isSupervisorLike && <TargetLevelSelector user={user} isAdmin={isAdmin} />}
+            <TargetLevelSelector user={user} isAdmin={isAdmin} />
 
-            {/* === Статус допуска === */}
             {(() => {
               if (payLoading) return null;
 
-              // оплаты ещё нет — показываем только подсказку про оплату
+              if (isRenewalCycle) {
+                if (!renewalPaid) {
+                  return (
+                    <div
+                      className="mt-3 rounded-xl p-3 text-sm"
+                      style={{
+                        background: 'var(--color-blue-soft)',
+                        border: '1px solid rgba(31,48,94,0.2)',
+                      }}
+                    >
+                      <p>
+                        Доступ к ресертификации откроется после оплаты{' '}
+                        <strong>«Ресертификация»</strong>.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    className="mt-3 rounded-xl p-3 text-sm"
+                    style={{
+                      background: 'var(--color-blue-soft)',
+                      border: '1px solid rgba(31,48,94,0.2)',
+                    }}
+                  >
+                    <p>
+                      Оплата ресертификации подтверждена. Блок прогресса по ресертификации
+                      доработаем следующим шагом.
+                    </p>
+                  </div>
+                );
+              }
+
               if (!registrationPaid) {
                 return (
                   <div
@@ -154,8 +175,7 @@ export function UserInfo() {
                 );
               }
 
-              // оплата есть, но цель не выбрана (и это не супервизор) → прячем большой блок
-              if (!isSupervisorLike && !hasTargetLevel) {
+              if (!hasTargetLevel) {
                 return (
                   <div
                     className="mt-3 rounded-xl p-3 text-sm"
@@ -172,7 +192,6 @@ export function UserInfo() {
                 );
               }
 
-              // всё есть — показываем QualificationStatusBlock
               return (
                 <QualificationStatusBlock
                   activeGroupName={user.activeGroup?.name}
@@ -181,11 +200,11 @@ export function UserInfo() {
               );
             })()}
 
-            {/* === Оплата === */}
             {canShowPayments ? (
               <UserPaymentDashboard
                 activeGroupName={user.activeGroup?.name || ''}
-                targetLevelName={targetLevelName}
+                targetLevel={user.targetLevel ?? null}
+                cycleType={activeCycleType}
               />
             ) : (
               <div
@@ -203,6 +222,7 @@ export function UserInfo() {
             )}
           </>
         )}
+
         <Button className="ml-2" onClick={logout}>
           Выйти
         </Button>

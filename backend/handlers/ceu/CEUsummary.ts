@@ -1,16 +1,21 @@
 // src/handlers/ceu/ceuSummaryHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { RecordStatus, CEUCategory, CycleStatus } from '@prisma/client';
+import { RecordStatus, CEUCategory, CycleStatus, CycleType } from '@prisma/client';
 import {
   ceuRequirementsByGroup as requirementsByGroup,
-  annualCeuRequirementsByGroup,
+  renewalCeuRequirementsByGroup,
   getNextGroupName,
   type CEUSummary,
   type GroupName,
 } from '../../utils/ceuRequirements';
 
-const CEU_KEYS: (keyof CEUSummary)[] = ['ethics', 'cultDiver', 'supervision', 'general'];
+const CEU_KEYS: Array<Exclude<keyof CEUSummary, 'total'>> = [
+  'ethics',
+  'cultDiver',
+  'supervision',
+  'general',
+];
 
 const RU_BY_LEVEL: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
   INSTRUCTOR: 'Инструктор',
@@ -41,13 +46,11 @@ export async function ceuSummaryHandler(req: FastifyRequest, reply: FastifyReply
   const groupList = dbUser.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank);
   const primaryGroup = groupList[0];
 
-  // Берём активный цикл и считаем только его
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId: user.userId, status: CycleStatus.ACTIVE },
-    select: { id: true },
+    select: { id: true, type: true, targetLevel: true },
   });
 
-  // Если цикла нет — показываем нули (и required/percent тоже null)
   if (!activeCycle) {
     const usable = emptySummary();
     const spent = emptySummary();
@@ -91,14 +94,11 @@ export async function ceuSummaryHandler(req: FastifyRequest, reply: FastifyReply
     });
   }
 
-  const primaryName = primaryGroup.name as GroupName | string;
-  const isSupervisorGroup = primaryName === 'Супервизор' || primaryName === 'Опытный Супервизор';
-
   let required: CEUSummary | null = null;
 
-  if (isSupervisorGroup) {
-    const annual = annualCeuRequirementsByGroup[primaryName as GroupName];
-    required = annual ?? null;
+  if (activeCycle.type === CycleType.RENEWAL) {
+    const renewalGroupName = RU_BY_LEVEL[activeCycle.targetLevel] as GroupName;
+    required = renewalCeuRequirementsByGroup[renewalGroupName] ?? null;
   } else {
     const q = (req.query ?? {}) as Query;
     const explicitLevel = q.level;
@@ -121,11 +121,12 @@ export async function ceuSummaryHandler(req: FastifyRequest, reply: FastifyReply
 // ----------------- helpers -----------------
 
 function emptySummary(): CEUSummary {
-  return { ethics: 0, cultDiver: 0, supervision: 0, general: 0 };
+  return { ethics: 0, cultDiver: 0, supervision: 0, general: 0, total: 0 };
 }
 
 function aggregateCEU(entries: any[]): CEUSummary {
   const summary = emptySummary();
+
   for (const e of entries) {
     switch (e.category as CEUCategory) {
       case CEUCategory.ETHICS:
@@ -142,6 +143,13 @@ function aggregateCEU(entries: any[]): CEUSummary {
         break;
     }
   }
+
+  summary.total =
+    summary.ethics +
+    summary.cultDiver +
+    summary.supervision +
+    summary.general;
+
   return summary;
 }
 
@@ -151,13 +159,22 @@ function addSums(a: CEUSummary, b: CEUSummary): CEUSummary {
     cultDiver: a.cultDiver + b.cultDiver,
     supervision: a.supervision + b.supervision,
     general: a.general + b.general,
+    total: a.total + b.total,
   };
 }
 
 function computePercent(usable: CEUSummary, required: CEUSummary): CEUSummary {
   const percent: CEUSummary = emptySummary();
+
   for (const key of CEU_KEYS) {
-    percent[key] = required[key] > 0 ? Math.round((usable[key] / required[key]) * 100) : 0;
+    percent[key] = required[key] > 0
+      ? Math.round((Math.min(usable[key], required[key]) / required[key]) * 100)
+      : 0;
   }
+
+  percent.total = required.total > 0
+    ? Math.round((Math.min(usable.total, required.total) / required.total) * 100)
+    : 0;
+
   return percent;
 }

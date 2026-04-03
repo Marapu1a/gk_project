@@ -20,36 +20,37 @@ type Props = {
 };
 
 export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Props) {
-  // это то, что реально уйдёт в мутацию (email пользователя)
   const [email, setEmail] = useState(defaultEmail);
 
-  // это текст в инпуте, по нему ищем по ФИО/email/группам
   const [userSearchInput, setUserSearchInput] = useState(defaultEmail);
   const [search, setSearch] = useState(defaultEmail);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [title, setTitle] = useState('');
   const [number, setNumber] = useState('');
-  const [issuedDate, setIssuedDate] = useState(''); // yyyy-mm-dd
-  const [expiresDate, setExpiresDate] = useState(''); // yyyy-mm-dd
+  const [issuedDate, setIssuedDate] = useState('');
+  const [expiresDate, setExpiresDate] = useState('');
   const [uploadedFileId, setUploadedFileId] = useState<string>('');
-  const [resetKey, setResetKey] = useState(0); // чтобы сбрасывать FileUpload/превью
+  const [resetKey, setResetKey] = useState(0);
 
   const mutation = useIssueCertificate();
 
-  // дергаем сервер с дебаунсом (как в UsersTable)
   useEffect(() => {
     const t = setTimeout(() => {
       setSearch(userSearchInput.trim());
     }, 250);
+
     return () => clearTimeout(t);
   }, [userSearchInput]);
 
-  const { data: usersData, isLoading: isUsersLoading } = useUsers({ search, page: 1, perPage: 20 });
+  const { data: usersData, isLoading: isUsersLoading } = useUsers({
+    search,
+    page: 1,
+    perPage: 20,
+  });
 
   const allUsers = usersData?.users ?? [];
 
-  // ⚡ Мгновенный фильтр по ФИО/email/группам
   const matchedUsers = useMemo(() => {
     const tokens = tokenize(userSearchInput);
     if (tokens.length === 0) return [];
@@ -60,6 +61,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
         u.email,
         ...((u.groups as { name: string }[] | undefined)?.map((g) => g.name) ?? []),
       ];
+
       const hay = norm(hayParts.filter(Boolean).join(' '));
       return tokens.every((t) => hay.includes(t));
     });
@@ -75,13 +77,13 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
 
   function toISOStartOfDay(dateStr: string) {
     if (!dateStr) return '';
-    const d = new Date(dateStr + 'T00:00:00');
+    const d = new Date(`${dateStr}T00:00:00`);
     return d.toISOString();
   }
 
   function toISOEndOfDay(dateStr: string) {
     if (!dateStr) return '';
-    const d = new Date(dateStr + 'T23:59:59');
+    const d = new Date(`${dateStr}T23:59:59`);
     return d.toISOString();
   }
 
@@ -95,9 +97,13 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
 
   const mapError = (err: any) => {
     const code = err?.response?.data?.error;
+    const message = err?.response?.data?.message;
+
+    if (typeof message === 'string' && message.trim()) return message;
     if (code === 'NO_ACTIVE_CYCLE') return 'Нет активного цикла — выдача сертификата невозможна.';
-    if (code === 'CYCLE_ALREADY_HAS_CERTIFICATE')
-      return 'На этот цикл уже выдан сертификат (повторная выдача запрещена).';
+    if (code === 'CYCLE_ALREADY_HAS_CERTIFICATE') {
+      return 'На этот цикл уже выдан сертификат.';
+    }
     if (code === 'TARGET_GROUP_NOT_CONFIGURED') return 'Целевая группа не настроена в системе.';
     return code || err?.message || 'Не удалось выдать сертификат';
   };
@@ -106,7 +112,8 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
     e.preventDefault();
     if (!canSubmit || mutation.isPending) return;
 
-    if (!(await confirmToast('Выдать сертификат этому пользователю?'))) return;
+    const ok = await confirmToast('Выдать сертификат этому пользователю?');
+    if (!ok) return;
 
     try {
       const res = await mutation.mutateAsync({
@@ -118,22 +125,21 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
         uploadedFileId,
       });
 
-      const spent =
-        typeof (res as any).spentCeuCount === 'number' ? (res as any).spentCeuCount : null;
+      const spent = typeof res.spentCeuCount === 'number' ? res.spentCeuCount : null;
       const resetPayments =
-        typeof (res as any).paymentsResetCount === 'number'
-          ? (res as any).paymentsResetCount
-          : null;
+        typeof res.paymentsResetCount === 'number' ? res.paymentsResetCount : null;
+      const renewalPaymentCreated =
+        typeof res.renewalPaymentId === 'string' && !!res.renewalPaymentId;
 
       const detailsParts: string[] = [];
       if (spent !== null) detailsParts.push(`CEU списано: ${spent}`);
       if (resetPayments !== null) detailsParts.push(`оплаты сброшены: ${resetPayments}`);
+      if (renewalPaymentCreated) detailsParts.push('флаг ресертификации создан');
 
       toast.success(
         detailsParts.length ? `Сертификат выдан. ${detailsParts.join(', ')}.` : 'Сертификат выдан',
       );
 
-      // Сброс формы + скрываем превью (ремоунт FileUpload)
       setTitle('');
       setNumber('');
       setIssuedDate('');
@@ -149,7 +155,6 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5 max-w-xl">
-      {/* Поиск пользователя / выбор email */}
       <div className="relative">
         <label className="block text-sm font-medium text-blue-dark mb-1">Email пользователя</label>
         <input
@@ -158,14 +163,13 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
           onChange={(e) => {
             const v = e.target.value;
             setUserSearchInput(v);
-            setEmail(v); // админ может вбить email руками
+            setEmail(v);
             setShowSuggestions(true);
           }}
           onFocus={() => {
             if (userSearchInput.trim()) setShowSuggestions(true);
           }}
           onBlur={() => {
-            // даём клику по элементу списка успеть сработать
             setTimeout(() => setShowSuggestions(false), 150);
           }}
           className="input"
@@ -174,7 +178,6 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
           required
         />
 
-        {/* Дропдаун совпадений */}
         {showSuggestions && userSearchInput.trim() && matchedUsers.length > 0 && (
           <div
             className="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-2xl bg-white header-shadow"
@@ -188,7 +191,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
                 style={{ borderColor: 'var(--color-green-light)' }}
                 onClick={() => {
                   setEmail(u.email);
-                  setUserSearchInput(u.email); // в инпуте оставляем email
+                  setUserSearchInput(u.email);
                   setShowSuggestions(false);
                 }}
               >
@@ -280,14 +283,17 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
               setUploadedFileId('');
               return;
             }
+
             try {
               await updateFile(f.id, 'CERTIFICATE');
             } catch {
               toast.info('Файл загружен, но не удалось обновить метаданные.');
             }
+
             setUploadedFileId(f.id);
           }}
         />
+
         {!uploadedFileId && (
           <p className="text-xs text-gray-500 mt-1">Загрузите PDF/изображение сертификата.</p>
         )}

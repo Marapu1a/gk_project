@@ -16,7 +16,6 @@ export async function getPaymentsByUserIdHandler(req: FastifyRequest, reply: Fas
     include: { user: { select: { email: true } } },
   });
 
-  // отдаем плоскую структуру: userEmail + без вложенного user
   const result = payments.map(({ user, ...p }) => ({
     ...p,
     userEmail: user?.email ?? null,

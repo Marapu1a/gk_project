@@ -37,6 +37,11 @@ const PAYMENT_LINKS: Record<string, Partial<Record<PaymentTypeExtended, string>>
 export function getPaymentLink(type: PaymentItem['type'], billingGroup?: string): string | null {
   if (!billingGroup) return null;
 
+  // для ресертификации ссылка пока не заведена
+  if (type === 'RENEWAL') {
+    return null;
+  }
+
   const normalizedGroup = billingGroup.toLowerCase().trim();
   const url = PAYMENT_LINKS[normalizedGroup]?.[type];
 

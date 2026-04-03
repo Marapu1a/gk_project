@@ -1,12 +1,12 @@
-// src/features/payment/hooks/useUpdatePaymentStatus.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updatePaymentStatus } from '../api/updatePaymentStatus';
+import type { PaymentStatus } from '../api/getUserPayments';
 import { userPaymentsQueryKey } from './useUserPayments';
 import { userPaymentsByIdQueryKey } from './useUserPaymentsById';
 
 type UpdatePaymentStatusInput = {
   id: string;
-  status: 'UNPAID' | 'PENDING' | 'PAID';
+  status: PaymentStatus;
   comment?: string;
 };
 

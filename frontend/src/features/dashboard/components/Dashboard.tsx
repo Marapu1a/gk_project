@@ -81,24 +81,31 @@ export function Dashboard() {
   }
 
   const isAdmin = user.role === 'ADMIN';
+  const activeCycleType = user.activeCycle?.type ?? null;
+  const isRenewalCycle = activeCycleType === 'RENEWAL';
 
-  const registrationPaid = (() => {
-    const paid = (t: 'REGISTRATION' | 'FULL_PACKAGE') =>
-      payments.some((p) => p.type === t && p.status === 'PAID');
-    return paid('REGISTRATION') || paid('FULL_PACKAGE');
-  })();
+  const registrationPaid =
+    payments.some((p) => p.type === 'REGISTRATION' && p.status === 'PAID') ||
+    payments.some((p) => p.type === 'FULL_PACKAGE' && p.status === 'PAID');
+
+  const renewalPaid = payments.some(
+    (p) =>
+      p.type === 'RENEWAL' &&
+      p.status === 'PAID' &&
+      (!user.targetLevel || p.targetLevel === user.targetLevel),
+  );
+
+  const hasRequiredPayment = isRenewalCycle ? renewalPaid : registrationPaid;
 
   const isSupervisorLike =
     user.activeGroup?.name === 'Супервизор' || user.activeGroup?.name === 'Опытный Супервизор';
 
   const hasTargetLevel = !!user.targetLevel;
 
-  // можно ли показывать правый блок
-  const canShowProgress = isAdmin || (registrationPaid && (hasTargetLevel || isSupervisorLike));
+  const canShowProgress = isAdmin || (hasRequiredPayment && (hasTargetLevel || isSupervisorLike));
 
   return (
     <div className="container-fixed p-6 space-y-6">
-      {/* Header */}
       <div
         className="rounded-2xl border header-shadow bg-white"
         style={{ borderColor: 'var(--color-green-light)' }}
@@ -111,7 +118,6 @@ export function Dashboard() {
           <NotificationBell onClick={() => setOpenNotif(true)} />
         </div>
 
-        {/* Объявление под заголовком */}
         <div className="px-6 py-4">
           <div
             className="rounded-xl p-4"
@@ -132,7 +138,7 @@ export function Dashboard() {
           </div>
         </div>
 
-        {!isAdmin && !registrationPaid && (
+        {!isAdmin && !hasRequiredPayment && (
           <div className="px-6 py-4">
             <div
               className="rounded-xl p-4"
@@ -142,8 +148,17 @@ export function Dashboard() {
               }}
             >
               <p className="text-sm">
-                Для доступа к функциям сертификации нужна оплата{' '}
-                <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
+                {isRenewalCycle ? (
+                  <>
+                    Для доступа к функциям ресертификации нужна оплата{' '}
+                    <strong>«Ресертификация»</strong>.
+                  </>
+                ) : (
+                  <>
+                    Для доступа к функциям сертификации нужна оплата{' '}
+                    <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
+                  </>
+                )}
               </p>
               <button className="text-brand hover:underline" onClick={scrollToBottomAndHighlight}>
                 Перейти к оплате
@@ -153,10 +168,8 @@ export function Dashboard() {
         )}
       </div>
 
-      {/* Tabs */}
-      {(isAdmin || registrationPaid) && <DashboardTabs user={user} />}
+      {(isAdmin || hasRequiredPayment) && <DashboardTabs user={user} />}
 
-      {/* Info + Progress */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <UserInfo />
 
@@ -168,10 +181,13 @@ export function Dashboard() {
             style={{ borderColor: 'var(--color-green-light)' }}
           >
             <p className="text-sm text-gray-600">
-              Прогресс сертификации станет доступен после оплаты регистрации
-              {isSupervisorLike
-                ? '.'
-                : ' и выбора цели сертификации (Инструктор / Куратор / Супервизор).'}
+              {isRenewalCycle
+                ? 'Прогресс ресертификации станет доступен после оплаты ресертификации.'
+                : `Прогресс сертификации станет доступен после оплаты регистрации${
+                    isSupervisorLike
+                      ? '.'
+                      : ' и выбора цели сертификации (Инструктор / Куратор / Супервизор).'
+                  }`}
             </p>
           </div>
         )}

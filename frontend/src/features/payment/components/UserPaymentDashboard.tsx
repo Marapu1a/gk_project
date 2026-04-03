@@ -1,10 +1,12 @@
+// src/features/payment/components/UserPaymentDashboard.tsx
 import { useEffect, useState } from 'react';
 import { useUserPayments } from '../hooks/useUserPayments';
 import { PaymentStatusToggle } from '../components/PaymentStatusToggle';
 import { getPaymentLink } from '@/utils/getPaymentLink';
 import type { PaymentItem } from '../api/getUserPayments';
+import { targetLevelLabels } from '@/utils/labels';
 
-const LABELS: Record<PaymentItem['type'], string> = {
+const LABELS: Record<Exclude<PaymentItem['type'], 'RENEWAL'>, string> = {
   DOCUMENT_REVIEW: 'Проверка документов',
   EXAM_ACCESS: 'Доступ к экзамену',
   REGISTRATION: 'Регистрация и супервизия',
@@ -22,25 +24,38 @@ const ORDERED_TYPES: PaymentItem['type'][] = [
   'DOCUMENT_REVIEW',
   'EXAM_ACCESS',
   'FULL_PACKAGE',
+  'RENEWAL',
 ];
 
 type Props = {
   activeGroupName: string;
-  targetLevelName?: string; // Русское имя цели: Инструктор | Куратор | Супервизор
+  targetLevel: PaymentItem['targetLevel'] | null;
+  cycleType?: 'CERTIFICATION' | 'RENEWAL' | null;
   openDefault?: boolean;
 };
 
-// маппим цель -> "исходная" группа, по которой формируются ссылки на оплату
-// (ключи специально в нижнем регистре, чтобы пройти нормализацию внутри getPaymentLink)
 const BILLING_GROUP_BY_TARGET: Record<'Инструктор' | 'Куратор' | 'Супервизор', string> = {
   Инструктор: 'соискатель',
   Куратор: 'инструктор',
   Супервизор: 'куратор',
 };
 
+function getPaymentLabel(payment: PaymentItem): string {
+  if (payment.type === 'RENEWAL') {
+    const levelLabel = payment.targetLevel
+      ? targetLevelLabels[payment.targetLevel] || payment.targetLevel
+      : null;
+
+    return levelLabel ? `Ресертификация — ${levelLabel}` : 'Ресертификация';
+  }
+
+  return LABELS[payment.type];
+}
+
 export function UserPaymentDashboard({
   activeGroupName,
-  targetLevelName,
+  targetLevel,
+  cycleType = null,
   openDefault = false,
 }: Props) {
   const { data: payments, isLoading } = useUserPayments();
@@ -55,21 +70,33 @@ export function UserPaymentDashboard({
 
   if (isLoading || !payments) return null;
 
-  // Исключаем оплату экзамена только по достигнутой группе
-  const isSupervisor = activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
-  const types = isSupervisor ? ORDERED_TYPES.filter((t) => t !== 'EXAM_ACCESS') : ORDERED_TYPES;
+  const targetLevelName = targetLevel ? targetLevelLabels[targetLevel] : undefined;
 
-  const ordered = types
-    .map((t) => payments.find((p) => p.type === t))
-    .filter(Boolean) as PaymentItem[];
-
-  // === КЛЮЧЕВОЕ: определяем "группу для оплаты"
-  // если выбрана цель — берём предыдущую ступень по цели (см. карту выше),
-  // иначе — текущую группу (в нижнем регистре, чтобы совпасть с PAYMENT_LINKS)
   const billingGroup =
     (targetLevelName &&
       BILLING_GROUP_BY_TARGET[targetLevelName as keyof typeof BILLING_GROUP_BY_TARGET]) ||
     (activeGroupName ? activeGroupName.toLowerCase().trim() : '');
+
+  let ordered: PaymentItem[] = [];
+
+  if (cycleType === 'RENEWAL') {
+    const renewal = payments.find((p) => p.type === 'RENEWAL' && p.targetLevel === targetLevel);
+
+    ordered = renewal ? [renewal] : [];
+  } else {
+    const isSupervisor =
+      activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
+
+    const types = isSupervisor
+      ? ORDERED_TYPES.filter((t) => t !== 'EXAM_ACCESS' && t !== 'RENEWAL')
+      : ORDERED_TYPES.filter((t) => t !== 'RENEWAL');
+
+    ordered = types
+      .map((type) => payments.find((p) => p.type === type))
+      .filter(Boolean) as PaymentItem[];
+  }
+
+  if (!ordered.length) return null;
 
   return (
     <section
@@ -77,7 +104,6 @@ export function UserPaymentDashboard({
       className="w-full rounded-2xl border header-shadow bg-white"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
-      {/* Заголовок-аккордеон + подсветка */}
       <button
         type="button"
         onClick={() => {
@@ -93,7 +119,11 @@ export function UserPaymentDashboard({
       >
         <h2 className="text-xl font-bold text-blue-dark">
           Мои оплаты{' '}
-          {targetLevelName ? (
+          {cycleType === 'RENEWAL' ? (
+            <span className="text-sm text-gray-600">
+              (ресертификация: <strong>{targetLevelName ?? '—'}</strong>)
+            </span>
+          ) : targetLevelName ? (
             <span className="text-sm text-gray-600">
               (оплата за уровень: <strong>{targetLevelName}</strong>)
             </span>
@@ -106,7 +136,6 @@ export function UserPaymentDashboard({
         <span className="text-sm">{open ? '▲' : '▼'}</span>
       </button>
 
-      {/* Плавное раскрытие */}
       <div
         id="payments-body"
         aria-hidden={!open}
@@ -119,7 +148,7 @@ export function UserPaymentDashboard({
         <div style={{ overflow: 'hidden' }}>
           <div className="px-6 py-5 space-y-4">
             {ordered.map((payment, idx) => {
-              const link = getPaymentLink(payment.type, billingGroup); // ← сюда подаём нормализованную "группу для оплаты"
+              const link = getPaymentLink(payment.type, billingGroup);
 
               return (
                 <div
@@ -130,13 +159,13 @@ export function UserPaymentDashboard({
                   style={{ borderColor: 'var(--color-green-light)' }}
                 >
                   <div className="flex flex-col gap-1">
-                    <div className="font-semibold">{LABELS[payment.type]}</div>
+                    <div className="font-semibold">{getPaymentLabel(payment)}</div>
 
                     <div className="text-sm text-gray-600">
                       Статус: <span className="font-medium">{STATUS_LABELS[payment.status]}</span>
                     </div>
 
-                    {link && (
+                    {link ? (
                       <a
                         href={link}
                         target="_blank"
@@ -145,7 +174,9 @@ export function UserPaymentDashboard({
                       >
                         Перейти к оплате
                       </a>
-                    )}
+                    ) : payment.type === 'RENEWAL' ? (
+                      <span className="text-sm text-gray-500">Ссылка на оплату скоро появится</span>
+                    ) : null}
                   </div>
 
                   <div className="mt-3 sm:mt-0">

@@ -5,8 +5,8 @@ export type CertificateDTO = {
   id: string;
   title: string;
   number: string;
-  issuedAt: string; // ISO
-  expiresAt: string; // ISO
+  issuedAt: string;
+  expiresAt: string;
   isRenewal: boolean;
   previousId: string | null;
   cycleId: string | null;
@@ -18,10 +18,10 @@ export type CertificateDTO = {
   isActiveNow: boolean;
   isExpired: boolean;
 
-  // from handler response (handy for UI/toasts/debug)
   closedCycleId?: string;
   spentCeuCount?: number;
   paymentsResetCount?: number;
+  renewalPaymentId?: string;
 };
 
 export type IssueCertificatePayload = {
@@ -29,8 +29,8 @@ export type IssueCertificatePayload = {
   title: string;
   number: string;
   issuedAt: string;
-  expiresAt: string; // ISO
-  uploadedFileId: string; // UploadedFile.id
+  expiresAt: string;
+  uploadedFileId: string;
 };
 
 export async function issueCertificate(payload: IssueCertificatePayload): Promise<CertificateDTO> {

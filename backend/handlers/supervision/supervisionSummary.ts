@@ -1,8 +1,11 @@
 // src/handlers/supervision/supervisionSummary.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { PracticeLevel, CycleStatus, TargetLevel } from '@prisma/client';
-import { supervisionRequirementsByGroup } from '../../utils/supervisionRequirements';
+import { PracticeLevel, CycleStatus, TargetLevel, CycleType } from '@prisma/client';
+import {
+  supervisionRequirementsByGroup,
+  renewalSupervisionRequirementsByGroup,
+} from '../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
 
 type SummaryTotals = {
@@ -74,7 +77,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
 
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId: user.userId, status: CycleStatus.ACTIVE },
-    select: { id: true, targetLevel: true },
+    select: { id: true, targetLevel: true, type: true },
   });
 
   if (!activeCycle) {
@@ -110,9 +113,16 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     });
   }
 
-  const isBasicSupervisor = current === 'Супервизор';
   const targetRu = RU_BY_LEVEL[activeCycle.targetLevel];
-  const reqSet = supervisionRequirementsByGroup[targetRu] ?? null;
+  const isRenewal = activeCycle.type === CycleType.RENEWAL;
+
+  const reqSet = isRenewal
+    ? renewalSupervisionRequirementsByGroup[targetRu] ?? null
+    : supervisionRequirementsByGroup[targetRu] ?? null;
+
+  const shouldShowMentor = isRenewal
+    ? activeCycle.targetLevel === TargetLevel.SUPERVISOR
+    : current === 'Супервизор';
 
   const practiceTypes = [
     PracticeLevel.PRACTICE,
@@ -154,7 +164,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
   let bonusPractice = 0;
   let bonusSourceCycleId: string | null = null;
 
-  if (activeCycle.targetLevel === TargetLevel.SUPERVISOR) {
+  if (!isRenewal && activeCycle.targetLevel === TargetLevel.SUPERVISOR) {
     const lastCompletedCurator = await prisma.certificationCycle.findFirst({
       where: {
         userId: user.userId,
@@ -244,7 +254,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
   };
 
   if (!reqSet) {
-    const mentor = isBasicSupervisor ? calcMentor(usable, pending) : null;
+    const mentor = shouldShowMentor ? calcMentor(usable, pending, 24) : null;
 
     return reply.send({
       required: null,
@@ -269,10 +279,15 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
       reqSet.supervision > 0
         ? Math.floor((Math.min(usable.supervision, reqSet.supervision) / reqSet.supervision) * 100)
         : 0,
-    supervisor: 0,
+    supervisor:
+      reqSet.supervisor > 0
+        ? Math.floor((Math.min(usable.supervisor, reqSet.supervisor) / reqSet.supervisor) * 100)
+        : 0,
   };
 
-  const mentor = isBasicSupervisor ? calcMentor(usable, pending) : null;
+  const mentor = shouldShowMentor && reqSet.supervisor > 0
+    ? calcMentor(usable, pending, reqSet.supervisor)
+    : null;
 
   return reply.send({
     required: reqSet,
@@ -345,9 +360,8 @@ function aggregate(rows: Array<{ type: PracticeLevel; value: number }>): Practic
   return s;
 }
 
-function calcMentor(usable: SummaryTotals, pending: SummaryTotals) {
+function calcMentor(usable: SummaryTotals, pending: SummaryTotals, requiredTotal: number) {
   const total = usable.supervisor;
-  const requiredTotal = 24;
-  const percent = Math.floor((total / requiredTotal) * 100);
+  const percent = requiredTotal > 0 ? Math.floor((Math.min(total, requiredTotal) / requiredTotal) * 100) : 0;
   return { total, required: requiredTotal, percent, pending: pending.supervisor };
 }

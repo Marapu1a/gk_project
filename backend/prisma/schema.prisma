@@ -61,6 +61,7 @@ enum PaymentType {
   DOCUMENT_REVIEW
   EXAM_ACCESS
   REGISTRATION
+  RENEWAL
   FULL_PACKAGE
 }
 
@@ -189,6 +190,7 @@ model Payment {
   user                  User             @relation(fields: [userId], references: [id])
 
   type                  PaymentType
+  targetLevel           TargetLevel?
   provider              PaymentProvider  @default(TOCHKA)
   status                PaymentStatus    @default(UNPAID)
 
@@ -211,6 +213,7 @@ model Payment {
 
   @@index([userId])
   @@index([status])
+  @@index([type, targetLevel])
 }
 
 model PaymentWebhookEvent {

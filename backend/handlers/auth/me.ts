@@ -1,6 +1,18 @@
 // src/handlers/auth/me.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { TargetLevel } from '@prisma/client';
+
+type RenewalEligibleLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
+
+function resolveRenewalEligibleLevel(activeGroupName: string | null | undefined): TargetLevel | null {
+  if (activeGroupName === 'Инструктор') return TargetLevel.INSTRUCTOR;
+  if (activeGroupName === 'Куратор') return TargetLevel.CURATOR;
+  if (activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор') {
+    return TargetLevel.SUPERVISOR;
+  }
+  return null;
+}
 
 export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
   const { user } = req;
@@ -44,7 +56,46 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     ? { id: groupList[0].id, name: groupList[0].name, rank: groupList[0].rank }
     : null;
 
-  // --- cycle debug payload (minimal) ---
+  const renewalCandidateLevel = resolveRenewalEligibleLevel(activeGroup?.name);
+
+  let renewalEligibleLevel: RenewalEligibleLevel = null;
+
+  if (renewalCandidateLevel) {
+    const supervisorBranch =
+      renewalCandidateLevel === TargetLevel.SUPERVISOR
+        ? ['Супервизор', 'Опытный Супервизор']
+        : null;
+
+    const activeCertificate = await prisma.certificate.findFirst({
+      where: {
+        userId: dbUser.id,
+        expiresAt: { gt: new Date() },
+        ...(supervisorBranch
+          ? {
+            group: {
+              name: { in: supervisorBranch },
+            },
+          }
+          : {
+            group: {
+              name:
+                renewalCandidateLevel === TargetLevel.INSTRUCTOR
+                  ? 'Инструктор'
+                  : renewalCandidateLevel === TargetLevel.CURATOR
+                    ? 'Куратор'
+                    : 'Супервизор',
+            },
+          }),
+      },
+      orderBy: { issuedAt: 'desc' },
+      select: { id: true },
+    });
+
+    if (activeCertificate) {
+      renewalEligibleLevel = renewalCandidateLevel;
+    }
+  }
+
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId: dbUser.id, status: 'ACTIVE' },
     select: { id: true, status: true, type: true, targetLevel: true, startedAt: true },
@@ -55,22 +106,23 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
   const isAdmin = dbUser.role === 'ADMIN';
   const allowDebug = debugRequested && (isDev || isAdmin);
 
-  const cycleStats = allowDebug && activeCycle
-    ? {
-      ceuRecords: await prisma.cEURecord.count({
-        where: { userId: dbUser.id, cycleId: activeCycle.id },
-      }),
-      supervisionRecords: await prisma.supervisionRecord.count({
-        where: { userId: dbUser.id, cycleId: activeCycle.id },
-      }),
-      ceuRecordsUnlinked: await prisma.cEURecord.count({
-        where: { userId: dbUser.id, cycleId: null },
-      }),
-      supervisionRecordsUnlinked: await prisma.supervisionRecord.count({
-        where: { userId: dbUser.id, cycleId: null },
-      }),
-    }
-    : null;
+  const cycleStats =
+    allowDebug && activeCycle
+      ? {
+        ceuRecords: await prisma.cEURecord.count({
+          where: { userId: dbUser.id, cycleId: activeCycle.id },
+        }),
+        supervisionRecords: await prisma.supervisionRecord.count({
+          where: { userId: dbUser.id, cycleId: activeCycle.id },
+        }),
+        ceuRecordsUnlinked: await prisma.cEURecord.count({
+          where: { userId: dbUser.id, cycleId: null },
+        }),
+        supervisionRecordsUnlinked: await prisma.supervisionRecord.count({
+          where: { userId: dbUser.id, cycleId: null },
+        }),
+      }
+      : null;
 
   return reply.send({
     id: dbUser.id,
@@ -88,6 +140,7 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     targetLockRank: dbUser.targetLockRank,
     groups: groupList.map(({ id, name }) => ({ id, name })),
     activeGroup,
+    renewalEligibleLevel,
 
     // temp: for testing cycles; can be removed later
     activeCycle,

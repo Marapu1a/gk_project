@@ -1,5 +1,5 @@
 // src/features/admin/components/AdminUserGroupsBlock.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { useUserGroupsById } from '@/features/groups/hooks/useUserGroupsById';
@@ -11,6 +11,26 @@ import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import { useUpdateTargetLevel } from '@/features/admin/hooks/useUpdateTargetLevel';
 
 import { targetLevelLabels } from '@/utils/labels';
+
+type TargetLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+
+const LEVEL_RANK_MAP: Record<TargetLevel, number> = {
+  INSTRUCTOR: 2,
+  CURATOR: 3,
+  SUPERVISOR: 4,
+};
+
+function resolveCurrentLevelByGroupName(groupName: string | null | undefined): TargetLevel | null {
+  if (groupName === 'Инструктор') return 'INSTRUCTOR';
+  if (groupName === 'Куратор') return 'CURATOR';
+  if (groupName === 'Супервизор' || groupName === 'Опытный Супервизор') return 'SUPERVISOR';
+  return null;
+}
+
+function isCertificateActive(expiresAt: string | null): boolean {
+  if (!expiresAt) return true;
+  return new Date(expiresAt).getTime() > Date.now();
+}
 
 export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
   const { data, isLoading, error } = useUserGroupsById(userId, true);
@@ -25,19 +45,21 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
   const { data: userDetails } = useUserDetails(userId);
   const updateTargetLevel = useUpdateTargetLevel(userId);
   const abandonCycle = useAbandonActiveCycle(userId);
+
   const [abandonReason, setAbandonReason] = useState('');
-
-  const currentTarget = userDetails?.targetLevel ?? null;
-  const [target, setTarget] = useState<string | null>(currentTarget);
-
-  useEffect(() => setTarget(userDetails?.targetLevel ?? null), [userDetails]);
-
+  const [target, setTarget] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    setTarget(userDetails?.targetLevel ?? null);
+  }, [userDetails?.targetLevel]);
+
   useEffect(() => {
     if (data) setSelected(data.currentGroupIds);
   }, [data]);
 
   const maxRank = currentUser?.role === 'ADMIN' ? Infinity : (currentUser?.activeGroup?.rank ?? 0);
+
   const toggle = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
@@ -48,7 +70,9 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
         cancel: { label: 'Отмена', onClick: () => resolve(false) },
       }),
     );
+
     if (!ok) return;
+
     try {
       await mutation.mutateAsync(selected);
     } catch (e: any) {
@@ -58,10 +82,13 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
 
   const saveTarget = async () => {
     if (!currentUser || currentUser.role !== 'ADMIN') return;
+
     try {
       await updateTargetLevel.mutateAsync(target as any);
-    } catch {
-      toast.error('Ошибка обновления уровня');
+    } catch (e: any) {
+      toast.error(
+        e?.response?.data?.message || e?.response?.data?.error || 'Ошибка обновления уровня',
+      );
     }
   };
 
@@ -77,8 +104,8 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     try {
       await abandonCycle.mutateAsync(reason);
       setAbandonReason('');
-    } catch {
-      toast.error('Ошибка отмены цикла');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || e?.response?.data?.error || 'Ошибка отмены цикла');
     }
   };
 
@@ -89,16 +116,32 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     .sort((a, b) => b.rank - a.rank)[0];
 
   const activeGroupName = activeGroup?.name ?? '—';
-  const currentRank = activeGroup?.rank ?? 0; // ← теперь правильно
+  const currentRank = activeGroup?.rank ?? 0;
+  const currentLevel = resolveCurrentLevelByGroupName(activeGroup?.name);
+  const hasActiveCertificate = (userDetails?.certificates ?? []).some((c) =>
+    isCertificateActive(c.expiresAt),
+  );
 
-  // уровни повышения строго по rank (DB → единственно верный источник истины)
-  const levelMap = { INSTRUCTOR: 2, CURATOR: 3, SUPERVISOR: 4 } as const;
+  const availableLevels = useMemo(() => {
+    const result: TargetLevel[] = [];
 
-  const availableLevels = Object.entries(levelMap)
-    .filter(([, rank]) => rank > currentRank) // только выше текущего
-    .map(([lvl]) => lvl);
+    for (const [level, rank] of Object.entries(LEVEL_RANK_MAP) as [TargetLevel, number][]) {
+      if (rank > currentRank) {
+        result.push(level);
+      }
+    }
 
-  const isSupervisorAlready = availableLevels.length === 0; // достиг потолка
+    if (hasActiveCertificate && currentLevel && !result.includes(currentLevel)) {
+      result.unshift(currentLevel);
+    }
+
+    return result;
+  }, [currentRank, currentLevel, hasActiveCertificate]);
+
+  const hasOnlyRenewalOption =
+    availableLevels.length === 1 && currentLevel !== null && availableLevels[0] === currentLevel;
+
+  const noAvailableTargetOptions = availableLevels.length === 0;
 
   return (
     <div
@@ -118,6 +161,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
       <div className="p-6 space-y-4">
         {isLoading && <p className="text-sm text-blue-dark">Загрузка…</p>}
         {error && <p className="text-error">Ошибка загрузки</p>}
+
         {data && (
           <>
             <div className="text-sm text-blue-dark">
@@ -145,6 +189,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
                   {data.allGroups.map((g) => {
                     const checked = selected.includes(g.id);
                     const disabled = g.rank > maxRank;
+
                     return (
                       <tr
                         key={g.id}
@@ -185,9 +230,14 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
                   <b>{targetLevelLabels[userDetails?.targetLevel ?? ''] ?? '— нет —'}</b>
                 </div>
 
-                {isSupervisorAlready ? (
+                <div className="text-sm text-blue-dark">
+                  Активный сертификат: <b>{hasActiveCertificate ? 'есть' : 'нет'}</b>
+                </div>
+
+                {noAvailableTargetOptions ? (
                   <p className="text-xs italic text-blue-dark">
-                    Пользователь уже на максимальном уровне — повышение недоступно.
+                    Для этого пользователя сейчас нет доступных целей: нет уровней выше текущего и
+                    нет активного сертификата для ресертификации.
                   </p>
                 ) : (
                   <>
@@ -205,6 +255,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
                       {availableLevels.map((lvl) => (
                         <option key={lvl} value={lvl}>
                           {targetLevelLabels[lvl]}
+                          {lvl === currentLevel && hasActiveCertificate ? ' (ресертификация)' : ''}
                         </option>
                       ))}
                     </select>
@@ -216,6 +267,13 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
                     >
                       {updateTargetLevel.isPending ? 'Сохраняем…' : 'Сохранить уровень'}
                     </button>
+
+                    {hasOnlyRenewalOption && (
+                      <p className="text-xs italic text-blue-dark">
+                        Для этого пользователя доступна ресертификация текущего уровня.
+                      </p>
+                    )}
+
                     {hasTarget && (
                       <div
                         className="mt-6 p-4 rounded-xl border space-y-3"

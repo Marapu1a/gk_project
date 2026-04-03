@@ -22,7 +22,7 @@ export type CurrentUser = {
   role: 'STUDENT' | 'REVIEWER' | 'ADMIN';
   fullName: string;
   phone: string | null;
-  birthDate: string | null; // ISO
+  birthDate: string | null;
   country: string | null;
   city: string | null;
   avatarUrl: string | null;
@@ -32,7 +32,8 @@ export type CurrentUser = {
   groups: { id: string; name: string }[];
   activeGroup: { id: string; name: string; rank: number } | null;
 
-  // temp: for testing cycles; can be removed later
+  renewalEligibleLevel?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
+
   activeCycle?: ActiveCycle | null;
   cycleStats?: CycleStats | null;
 };

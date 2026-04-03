@@ -32,12 +32,10 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
     return reply.code(404).send({ error: 'Платёж не найден' });
   }
 
-  // Не-админ не может менять чужие платежи
   if (user.role !== 'ADMIN' && dbPayment.userId !== user.userId) {
     return reply.code(403).send({ error: 'Нет доступа к этому платежу' });
   }
 
-  // Пользователь может только запрашивать проверку или отменять свой запрос
   if (user.role !== 'ADMIN') {
     const isAllowedUserTransition =
       (dbPayment.status === 'UNPAID' && status === 'PENDING') ||
@@ -64,7 +62,6 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
 
     let activated = 0;
 
-    // Если это FULL_PACKAGE -> PAID, активируем остальные оплаты
     if (status === 'PAID' && dbPayment.type === 'FULL_PACKAGE') {
       const res = await tx.payment.updateMany({
         where: {

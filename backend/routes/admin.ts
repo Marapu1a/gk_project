@@ -4,7 +4,6 @@ import { toggleUserRoleHandler } from '../handlers/admin/userRoleHandler';
 import { getUsersHandler } from '../handlers/admin/getUsersHandler';
 import { getUserFullDetailsHandler } from '../handlers/admin/getUserDetailsHandler';
 import { updateUserBasicInfoHandler } from '../handlers/admin/updateUserBasicInfo';
-import { updatePaymentHandler } from '../handlers/admin/updatePayment';
 import { getUserExportHandler } from '../handlers/admin/getUserExportHandler';
 import { updateUserPasswordAdminHandler } from '../handlers/admin/updateUserPasswordAdminHandler';
 import { getUsersExportXlsxHandler } from "../handlers/admin/getUsersExportXlsxHandler";
@@ -34,9 +33,6 @@ export async function usersRoutes(app: FastifyInstance) {
   // Supervision (admin-only)
   app.get('/admin/supervision/:userId/matrix', { preHandler: verifyToken }, getUserSupervisionMatrixAdminHandler);
   app.patch('/admin/supervision/:userId/matrix', { preHandler: verifyToken }, updateUserSupervisionMatrixAdminHandler);
-
-  // Payments
-  app.patch('/admin/payment/:id', { preHandler: verifyToken }, updatePaymentHandler);
 
   // CEU (admin-only)
   app.get('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, getUserCEUMatrixAdminHandler);

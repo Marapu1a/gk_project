@@ -123,7 +123,7 @@ function getDisplayTargetLabel(
 
 export function CertificationBlock({ user }: Props) {
   const setTarget = useSetTargetLevel(user.id);
-  const { data: certificates = [] } = useMyCertificates();
+  const { data: certificates = [], isLoading: certificatesLoading } = useMyCertificates();
 
   const activeGroupName = user.activeGroup?.name;
   const targetLevel = user.targetLevel ?? null;
@@ -181,8 +181,6 @@ export function CertificationBlock({ user }: Props) {
     }
   }, [selected, options, targetLevel]);
 
-  const selectedOption = options.find((option) => option.value === selected) ?? null;
-
   const progress = useQualificationProgress(activeGroupName, targetLevel) as {
     ceuReady?: boolean;
     supervisionReady?: boolean;
@@ -196,22 +194,14 @@ export function CertificationBlock({ user }: Props) {
   const supervisionSummaryQuery = useSupervisionSummary();
 
   const loading =
-    !!progress.loading || ceuSummaryQuery.isLoading || supervisionSummaryQuery.isLoading;
+    !!progress.loading ||
+    ceuSummaryQuery.isLoading ||
+    supervisionSummaryQuery.isLoading ||
+    certificatesLoading;
 
   const locked = isTargetLocked(user);
   const currentTargetLevel = user.targetLevel as ApiTargetLevel | null;
   const currentGoalMode = activeCycleType;
-
-  const noChange =
-    !selectedOption && currentTargetLevel === null && !targetLevel
-      ? true
-      : !!selectedOption &&
-        selectedOption.targetLevel === currentTargetLevel &&
-        selectedOption.goalMode === currentGoalMode;
-
-  const selectDisabled = locked || options.length === 0;
-
-  const saveDisabled = setTarget.isPending || locked || !selectedOption || noChange;
 
   const serverErr = (setTarget.error as any)?.response?.data?.error as string | undefined;
 
@@ -248,11 +238,22 @@ export function CertificationBlock({ user }: Props) {
     ? 'Подать заявку на экзамен'
     : 'Доступ к экзамену не оплачен';
 
-  const handleSave = () => {
-    if (saveDisabled || !selectedOption) return;
+  const selectDisabled = locked || options.length === 0 || setTarget.isPending;
 
-    const isRenewal = selectedOption.goalMode === 'RENEWAL';
-    const label = selectedOption.label;
+  const triggerGoalSelection = (option: GoalOption) => {
+    const isSameAsCurrent =
+      option.targetLevel === currentTargetLevel && option.goalMode === currentGoalMode;
+
+    if (isSameAsCurrent) {
+      return;
+    }
+
+    const previousSelected = selected;
+
+    setSelected(option.value);
+
+    const isRenewal = option.goalMode === 'RENEWAL';
+    const label = option.label;
 
     toast(
       isRenewal
@@ -263,13 +264,15 @@ export function CertificationBlock({ user }: Props) {
           label: 'Подтвердить',
           onClick: () =>
             setTarget.mutate({
-              targetLevel: selectedOption.targetLevel,
-              goalMode: selectedOption.goalMode,
+              targetLevel: option.targetLevel,
+              goalMode: option.goalMode,
             }),
         },
         cancel: {
           label: 'Отмена',
-          onClick: () => {},
+          onClick: () => {
+            setSelected(previousSelected);
+          },
         },
       },
     );
@@ -286,50 +289,51 @@ export function CertificationBlock({ user }: Props) {
   if (!targetLevel) {
     return (
       <section className="card-section flex flex-col gap-7">
-        <h2 className="text-center text-[26px] font-extrabold leading-none text-blue-dark">
+        <h2 className="text-center text-[26px] font-extrabold leading-[1.05] text-blue-dark">
           Сертификация и ресертификация
         </h2>
 
-        <div className="flex flex-col gap-4">
-          <div className="relative">
-            <select
-              className="h-11 w-full appearance-none rounded-button border-0 bg-[var(--color-blue-dark)] px-4 pr-11 text-center text-[18px] font-extrabold leading-none text-white outline-none"
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              disabled={selectDisabled}
-              title={
-                locked ? 'Сменить можно после повышения уровня или через администратора' : undefined
+        <div className="relative">
+          <select
+            className="h-11 w-full appearance-none rounded-button border-0 bg-[var(--color-blue-dark)] px-4 pr-11 text-center text-[18px] font-extrabold leading-none text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            value={selected}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (!value) {
+                setSelected('');
+                return;
               }
-            >
-              <option value="">Выбрать целевой уровень</option>
-              {options.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
 
-            <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-white">
-              <svg width="14" height="9" viewBox="0 0 14 9" fill="none" aria-hidden="true">
-                <path
-                  d="M1 1.5L7 7.5L13 1.5"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-          </div>
+              const option = options.find((item) => item.value === value);
+              if (!option) return;
 
-          <button
-            type="button"
-            className="btn btn-dark h-11 w-full rounded-button text-[18px] font-extrabold leading-none"
-            disabled={saveDisabled}
-            onClick={handleSave}
+              triggerGoalSelection(option);
+            }}
+            disabled={selectDisabled}
+            title={
+              locked ? 'Сменить можно после повышения уровня или через администратора' : undefined
+            }
           >
-            {setTarget.isPending ? 'Сохраняем...' : 'Выбрать целевой уровень'}
-          </button>
+            <option value="">Выбрать целевой уровень</option>
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-white">
+            <svg width="14" height="9" viewBox="0 0 14 9" fill="none" aria-hidden="true">
+              <path
+                d="M1 1.5L7 7.5L13 1.5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
         </div>
 
         <div className="space-y-5 text-center text-[15px] leading-[1.35] text-[#97A0BD]">
@@ -367,7 +371,7 @@ export function CertificationBlock({ user }: Props) {
 
   return (
     <section className="card-section flex flex-col gap-7">
-      <h2 className="text-center text-[26px] font-extrabold leading-none text-blue-dark">
+      <h2 className="text-center text-[26px] font-extrabold leading-[1.05] text-blue-dark">
         Целевой уровень сертификации
       </h2>
 
