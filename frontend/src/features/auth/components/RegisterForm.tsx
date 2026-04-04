@@ -1,4 +1,4 @@
-// src/features/auth/components/RegisterForm.tsx
+import { useState } from 'react';
 import { useForm, Controller, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -7,6 +7,7 @@ import {
   type RegisterDto,
 } from '../validation/registerSchema';
 import { registerUser } from '../api/register';
+import { acceptTransborderConsent } from '../api/consent';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import PhoneInput from 'react-phone-input-2';
@@ -112,8 +113,23 @@ function humanizeError(field: string, raw: string) {
   return raw || `Проверьте поле «${label}»`;
 }
 
+type ConsentState = {
+  PUBLIC_OFFER_ACCEPTED: boolean;
+  PD_PROCESSING_ACCEPTED: boolean;
+  TRANSBORDER_PD_TRANSFER: boolean;
+  EMAIL_MARKETING_ACCEPTED: boolean;
+};
+
+const INITIAL_CONSENTS: ConsentState = {
+  PUBLIC_OFFER_ACCEPTED: false,
+  PD_PROCESSING_ACCEPTED: false,
+  TRANSBORDER_PD_TRANSFER: false,
+  EMAIL_MARKETING_ACCEPTED: false,
+};
+
 export function RegisterForm() {
   const navigate = useNavigate();
+  const [consents, setConsents] = useState<ConsentState>(INITIAL_CONSENTS);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerInputSchema),
@@ -125,19 +141,53 @@ export function RegisterForm() {
   });
 
   const mutation = useMutation({
-    mutationFn: (dto: RegisterDto) => registerUser(dto),
-    onSuccess: (data) => {
+    mutationFn: async (dto: RegisterDto) => {
+      const data = await registerUser(dto);
+
       localStorage.setItem('token', data.token);
+
+      try {
+        await acceptTransborderConsent({
+          source: 'REGISTRATION_MODAL',
+          acceptedItems: {
+            PUBLIC_OFFER_ACCEPTED: consents.PUBLIC_OFFER_ACCEPTED,
+            PD_PROCESSING_ACCEPTED: consents.PD_PROCESSING_ACCEPTED,
+            TRANSBORDER_PD_TRANSFER: consents.TRANSBORDER_PD_TRANSFER,
+            EMAIL_MARKETING_ACCEPTED: consents.EMAIL_MARKETING_ACCEPTED,
+          },
+        });
+      } catch (error) {
+        localStorage.removeItem('token');
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
       toast.success('Регистрация успешна');
       navigate('/dashboard');
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Ошибка регистрации');
+      const backendMessage = error?.response?.data?.error;
+
+      toast.error(
+        backendMessage || 'Регистрация прошла, но не удалось зафиксировать обязательные согласия',
+      );
     },
   });
 
+  const requiredConsentsAccepted =
+    consents.PUBLIC_OFFER_ACCEPTED &&
+    consents.PD_PROCESSING_ACCEPTED &&
+    consents.TRANSBORDER_PD_TRANSFER;
+
   const onSubmit = form.handleSubmit(
     (raw) => {
+      if (!requiredConsentsAccepted) {
+        toast.error('Подтвердите обязательные условия и согласия');
+        return;
+      }
+
       const {
         lastName,
         firstName,
@@ -192,76 +242,71 @@ export function RegisterForm() {
       className="w-full max-w-md rounded-2xl border header-shadow bg-white"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
-      <form onSubmit={onSubmit} className="px-6 py-5 space-y-4">
+      <form onSubmit={onSubmit} className="space-y-4 px-6 py-5">
         <div
-          className="text-s font-medium text-blue-dark/70 px-3 py-2 rounded-xl"
+          className="text-s rounded-xl px-3 py-2 font-medium text-blue-dark/70"
           style={{ background: 'var(--color-blue-soft)' }}
         >
           После регистрации добавьте фото — так в реестре вы будете выглядеть живым человеком, а не
           пустой карточкой 🙂
         </div>
 
-        {/* Email */}
         <div>
-          <label className="block mb-1 text-sm text-blue-dark">
-            Email<span className="text-red-500 ml-1">*</span>
+          <label className="mb-1 block text-sm text-blue-dark">
+            Email<span className="ml-1 text-red-500">*</span>
           </label>
           <input type="email" className="input" disabled={disabled} {...form.register('email')} />
         </div>
 
-        {/* ФИО рус */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">
-              Фамилия (рус.)<span className="text-red-500 ml-1">*</span>
+            <label className="mb-1 block text-sm text-blue-dark">
+              Фамилия (рус.)<span className="ml-1 text-red-500">*</span>
             </label>
             <input className="input" disabled={disabled} {...form.register('lastName')} />
           </div>
 
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">
-              Имя (рус.)<span className="text-red-500 ml-1">*</span>
+            <label className="mb-1 block text-sm text-blue-dark">
+              Имя (рус.)<span className="ml-1 text-red-500">*</span>
             </label>
             <input className="input" disabled={disabled} {...form.register('firstName')} />
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block mb-1 text-sm text-blue-dark">Отчество (рус.)</label>
+            <label className="mb-1 block text-sm text-blue-dark">Отчество (рус.)</label>
             <input className="input" disabled={disabled} {...form.register('middleName')} />
           </div>
         </div>
 
-        {/* разделитель */}
         <div className="pt-2">
           <div
-            className="text-s font-medium text-blue-dark/70 px-3 py-2 rounded-xl"
+            className="text-s rounded-xl px-3 py-2 font-medium text-blue-dark/70"
             style={{ background: 'var(--color-blue-soft)' }}
           >
             ФИО латиницей — как в загранпаспорте
           </div>
         </div>
 
-        {/* ФИО лат */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">
-              Фамилия (лат.)<span className="text-red-500 ml-1">*</span>
+            <label className="mb-1 block text-sm text-blue-dark">
+              Фамилия (лат.)<span className="ml-1 text-red-500">*</span>
             </label>
             <input className="input" disabled={disabled} {...form.register('lastNameLatin')} />
           </div>
 
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">
-              Имя (лат.)<span className="text-red-500 ml-1">*</span>
+            <label className="mb-1 block text-sm text-blue-dark">
+              Имя (лат.)<span className="ml-1 text-red-500">*</span>
             </label>
             <input className="input" disabled={disabled} {...form.register('firstNameLatin')} />
           </div>
         </div>
 
-        {/* Телефон */}
         <div>
-          <label className="block mb-1 text-sm text-blue-dark">
-            Телефон<span className="text-red-500 ml-1">*</span>
+          <label className="mb-1 block text-sm text-blue-dark">
+            Телефон<span className="ml-1 text-red-500">*</span>
           </label>
           <Controller
             name="phone"
@@ -282,10 +327,9 @@ export function RegisterForm() {
           />
         </div>
 
-        {/* Дата рождения */}
         <div>
-          <label className="block mb-1 text-sm text-blue-dark">
-            Дата рождения<span className="text-red-500 ml-1">*</span>
+          <label className="mb-1 block text-sm text-blue-dark">
+            Дата рождения<span className="ml-1 text-red-500">*</span>
           </label>
           <input
             type="date"
@@ -295,7 +339,6 @@ export function RegisterForm() {
           />
         </div>
 
-        {/* Страна / город — КАК В РЕДАКТУРЕ */}
         <UserLocationFields
           countries={form.watch('countries')}
           cities={form.watch('cities')}
@@ -305,11 +348,10 @@ export function RegisterForm() {
           }}
         />
 
-        {/* Пароль */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">
-              Пароль<span className="text-red-500 ml-1">*</span>
+            <label className="mb-1 block text-sm text-blue-dark">
+              Пароль<span className="ml-1 text-red-500">*</span>
             </label>
             <input
               type="password"
@@ -320,8 +362,8 @@ export function RegisterForm() {
           </div>
 
           <div>
-            <label className="block mb-1 text-sm text-blue-dark">
-              Повторите пароль<span className="text-red-500 ml-1">*</span>
+            <label className="mb-1 block text-sm text-blue-dark">
+              Повторите пароль<span className="ml-1 text-red-500">*</span>
             </label>
             <input
               type="password"
@@ -332,11 +374,136 @@ export function RegisterForm() {
           </div>
         </div>
 
-        <Button type="submit" loading={mutation.isPending} disabled={disabled}>
+        <div
+          className="space-y-3 rounded-xl border p-4"
+          style={{ borderColor: 'var(--color-border-soft)' }}
+        >
+          <div className="text-sm font-medium text-blue-darker">
+            Подтверждение условий и согласий
+          </div>
+
+          <label className="flex items-start gap-3 text-sm leading-6 text-blue-dark">
+            <input
+              type="checkbox"
+              checked={consents.PUBLIC_OFFER_ACCEPTED}
+              onChange={(e) =>
+                setConsents((prev) => ({
+                  ...prev,
+                  PUBLIC_OFFER_ACCEPTED: e.target.checked,
+                }))
+              }
+              disabled={disabled}
+              className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-green-brand)]"
+            />
+            <span>
+              Я принимаю условия{' '}
+              <a
+                href="https://reestrpap.ru/oferta"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-blue-darker underline underline-offset-2"
+              >
+                Публичной оферты
+              </a>
+              <span className="ml-1 text-pink-accent">*</span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3 text-sm leading-6 text-blue-dark">
+            <input
+              type="checkbox"
+              checked={consents.PD_PROCESSING_ACCEPTED}
+              onChange={(e) =>
+                setConsents((prev) => ({
+                  ...prev,
+                  PD_PROCESSING_ACCEPTED: e.target.checked,
+                }))
+              }
+              disabled={disabled}
+              className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-green-brand)]"
+            />
+            <span>
+              Я ознакомлен(а) с{' '}
+              <a
+                href="https://reestrpap.ru/privacy-policy"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-blue-darker underline underline-offset-2"
+              >
+                Политикой обработки персональных данных
+              </a>{' '}
+              и даю{' '}
+              <a
+                href="https://reestrpap.ru/user-agreement"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-blue-darker underline underline-offset-2"
+              >
+                согласие
+              </a>{' '}
+              на обработку персональных данных
+              <span className="ml-1 text-pink-accent">*</span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3 text-sm leading-6 text-blue-dark">
+            <input
+              type="checkbox"
+              checked={consents.TRANSBORDER_PD_TRANSFER}
+              onChange={(e) =>
+                setConsents((prev) => ({
+                  ...prev,
+                  TRANSBORDER_PD_TRANSFER: e.target.checked,
+                }))
+              }
+              disabled={disabled}
+              className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-green-brand)]"
+            />
+            <span>
+              Я даю{' '}
+              <a
+                href="https://reestrpap.ru/soglasie_peredacha_dannyh"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-blue-darker underline underline-offset-2"
+              >
+                согласие на трансграничную передачу моих персональных данных
+              </a>{' '}
+              в IBAO в целях регистрации и прохождения международной сертификации.
+              <span className="ml-1 text-pink-accent">*</span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3 text-sm leading-6 text-blue-dark">
+            <input
+              type="checkbox"
+              checked={consents.EMAIL_MARKETING_ACCEPTED}
+              onChange={(e) =>
+                setConsents((prev) => ({
+                  ...prev,
+                  EMAIL_MARKETING_ACCEPTED: e.target.checked,
+                }))
+              }
+              disabled={disabled}
+              className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-green-brand)]"
+            />
+            <span>Я согласен получать письма информационной рассылки</span>
+          </label>
+
+          <p className="text-xs leading-5 text-blue-dark/70">
+            Поля, отмеченные звездочкой, обязательны для регистрации.
+          </p>
+        </div>
+
+        <Button
+          type="submit"
+          loading={mutation.isPending}
+          disabled={disabled || !requiredConsentsAccepted}
+        >
           Зарегистрироваться
         </Button>
 
-        <p className="text-sm mt-2">
+        <p className="mt-2 text-sm">
           Уже зарегистрированы?{' '}
           <Link to="/login" className="text-brand underline">
             Войти

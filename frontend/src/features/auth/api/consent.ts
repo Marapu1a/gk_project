@@ -1,23 +1,29 @@
 import { api } from '@/lib/axios';
 
 export type ConsentItemCode =
-  | 'PRIVACY_POLICY_ACK'
-  | 'TRANSBORDER_PD_TRANSFER';
+  | 'PUBLIC_OFFER_ACCEPTED'
+  | 'PD_PROCESSING_ACCEPTED'
+  | 'TRANSBORDER_PD_TRANSFER'
+  | 'EMAIL_MARKETING_ACCEPTED';
 
 export type ConsentSource = 'REGISTRATION_MODAL' | 'LEGACY_MODAL';
+
+export type ConsentDocumentLink = {
+  text: string;
+  href: string;
+};
 
 export type ConsentDocumentItem = {
   code: ConsentItemCode;
   label: string;
   required: boolean;
-  link?: string;
+  links?: ConsentDocumentLink[];
 };
 
 export type TransborderConsentDocument = {
   type: 'TRANSBORDER_PD_TRANSFER';
   version: string;
   title: string;
-  fullText: string;
   items: ConsentDocumentItem[];
 };
 

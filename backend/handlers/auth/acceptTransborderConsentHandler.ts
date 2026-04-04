@@ -1,5 +1,6 @@
 // src/handlers/auth/acceptTransborderConsentHandler.ts
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { sendEmail } from '../../lib/mailer';
 import {
@@ -17,6 +18,13 @@ type Body = {
   acceptedItems?: Record<string, boolean> | null;
   source?: 'REGISTRATION_MODAL' | 'LEGACY_MODAL';
 };
+
+const EMAIL_RETRY_ATTEMPTS = 3;
+const EMAIL_RETRY_DELAY_MS = 800;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function getClientIp(req: FastifyRequest): string | null {
   const xForwardedFor = req.headers['x-forwarded-for'];
@@ -55,9 +63,18 @@ function normalizeAcceptedItems(
   acceptedItems: Body['acceptedItems'],
 ): Record<ConsentItemCode, boolean> {
   const requiredCodes = getRequiredConsentItemCodes();
+  const validCodes = new Set<ConsentItemCode>(
+    TRANSBORDER_CONSENT_DOCUMENT.items.map((item) => item.code),
+  );
 
-  if (!acceptedItems || typeof acceptedItems !== 'object') {
+  if (!acceptedItems || typeof acceptedItems !== 'object' || Array.isArray(acceptedItems)) {
     throw new Error('Не переданы подтвержденные пункты согласия');
+  }
+
+  for (const key of Object.keys(acceptedItems)) {
+    if (!validCodes.has(key as ConsentItemCode)) {
+      throw new Error(`Передан неизвестный пункт согласия: ${key}`);
+    }
   }
 
   for (const code of requiredCodes) {
@@ -73,6 +90,39 @@ function normalizeAcceptedItems(
   }
 
   return normalized;
+}
+
+function isPrismaUniqueConstraintError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
+
+async function sendConsentEmailWithRetry(params: {
+  to: string;
+  fullName: string;
+}): Promise<void> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= EMAIL_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      await sendEmail({
+        to: params.to,
+        subject: buildTransborderConsentEmailSubject(),
+        html: buildTransborderConsentEmailHtml({
+          fullName: params.fullName,
+        }),
+      });
+
+      return;
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < EMAIL_RETRY_ATTEMPTS) {
+        await sleep(EMAIL_RETRY_DELAY_MS);
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 export async function acceptTransborderConsentHandler(
@@ -115,61 +165,108 @@ export async function acceptTransborderConsentHandler(
   const documentVersion = TRANSBORDER_CONSENT_DOCUMENT.version;
   const documentTextHash = getTransborderConsentTextHash();
 
-  const existingConsent = await prisma.userConsent.findFirst({
-    where: {
-      userId: dbUser.id,
-      documentType,
-      documentVersion,
-    },
-    select: {
-      id: true,
-      documentType: true,
-      documentVersion: true,
-      consentedAt: true,
-    },
-  });
+  let consent: {
+    id: string;
+    documentType: typeof documentType;
+    documentVersion: string;
+    documentTextHash: string;
+    consentedAt: Date;
+  };
+  let alreadyAccepted = false;
 
-  if (existingConsent) {
+  try {
+    consent = await prisma.userConsent.create({
+      data: {
+        userId: dbUser.id,
+        documentType,
+        documentVersion,
+        documentTextHash,
+        acceptedItems,
+        source,
+        emailAtMoment: dbUser.email,
+        ip: getClientIp(req),
+        userAgent: getUserAgent(req),
+        clientId: getClientId(req),
+        requestId: req.id,
+        emailStatus: 'PENDING',
+      },
+      select: {
+        id: true,
+        documentType: true,
+        documentVersion: true,
+        documentTextHash: true,
+        consentedAt: true,
+      },
+    });
+  } catch (error) {
+    if (!isPrismaUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    const existingConsent = await prisma.userConsent.findUnique({
+      where: {
+        userId_documentType_documentVersion: {
+          userId: dbUser.id,
+          documentType,
+          documentVersion,
+        },
+      },
+      select: {
+        id: true,
+        documentType: true,
+        documentVersion: true,
+        documentTextHash: true,
+        consentedAt: true,
+      },
+    });
+
+    if (!existingConsent) {
+      req.log.error(
+        {
+          userId: dbUser.id,
+          documentType,
+          documentVersion,
+          requestId: req.id,
+          error,
+        },
+        '[TRANSBORDER CONSENT] Unique conflict happened, but existing consent was not found',
+      );
+      throw error;
+    }
+
+    consent = existingConsent;
+    alreadyAccepted = true;
+  }
+
+  if (alreadyAccepted) {
+    if (consent.documentTextHash !== documentTextHash) {
+      req.log.error(
+        {
+          userId: dbUser.id,
+          consentId: consent.id,
+          documentType,
+          documentVersion,
+          storedHash: consent.documentTextHash,
+          actualHash: documentTextHash,
+        },
+        '[TRANSBORDER CONSENT] Existing consent hash does not match current document hash',
+      );
+    }
+
     return reply.send({
       success: true,
       alreadyAccepted: true,
-      consentId: existingConsent.id,
-      documentType: existingConsent.documentType,
-      documentVersion: existingConsent.documentVersion,
-      consentedAt: existingConsent.consentedAt,
+      consentId: consent.id,
+      documentType: consent.documentType,
+      documentVersion: consent.documentVersion,
+      consentedAt: consent.consentedAt,
     });
   }
 
-  const consent = await prisma.userConsent.create({
-    data: {
-      userId: dbUser.id,
-      documentType,
-      documentVersion,
-      documentTextHash,
-      acceptedItems,
-      source,
-      emailAtMoment: dbUser.email,
-      ip: getClientIp(req),
-      userAgent: getUserAgent(req),
-      clientId: getClientId(req),
-      requestId: req.id,
-      emailStatus: 'PENDING',
-    },
-    select: {
-      id: true,
-      documentType: true,
-      documentVersion: true,
-      consentedAt: true,
-    },
-  });
-
   try {
-    await sendEmail({
+    await sendConsentEmailWithRetry({
       to: dbUser.email,
-      subject: buildTransborderConsentEmailSubject(),
-      html: buildTransborderConsentEmailHtml({
-        fullName: dbUser.fullName,
-      }),
+      fullName: dbUser.fullName,
     });
 
     await prisma.userConsent.update({
@@ -181,7 +278,14 @@ export async function acceptTransborderConsentHandler(
       },
     });
   } catch (error) {
-    console.error('[TRANSBORDER CONSENT EMAIL ERROR]', error);
+    req.log.error(
+      {
+        userId: dbUser.id,
+        consentId: consent.id,
+        error,
+      },
+      '[TRANSBORDER CONSENT EMAIL ERROR]',
+    );
 
     await prisma.userConsent.update({
       where: { id: consent.id },

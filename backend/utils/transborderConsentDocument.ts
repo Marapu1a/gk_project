@@ -1,16 +1,22 @@
-// src/utils/transborderConsentDocument.ts
 import crypto from 'crypto';
 import type { ConsentDocumentType } from '@prisma/client';
 
 export type ConsentItemCode =
-  | 'PRIVACY_POLICY_ACK'
-  | 'TRANSBORDER_PD_TRANSFER';
+  | 'PUBLIC_OFFER_ACCEPTED'
+  | 'PD_PROCESSING_ACCEPTED'
+  | 'TRANSBORDER_PD_TRANSFER'
+  | 'EMAIL_MARKETING_ACCEPTED';
+
+export type ConsentDocumentLink = {
+  text: string;
+  href: string;
+};
 
 export type ConsentDocumentItem = {
   code: ConsentItemCode;
   label: string;
   required: boolean;
-  link?: string;
+  links?: ConsentDocumentLink[];
 };
 
 export type ConsentDocument = {
@@ -23,9 +29,17 @@ export type ConsentDocument = {
 
 export const TRANSBORDER_CONSENT_DOCUMENT: ConsentDocument = {
   type: 'TRANSBORDER_PD_TRANSFER',
-  version: 'v1',
-  title: 'Согласие на трансграничную передачу персональных данных',
-  fullText: `СОГЛАСИЕ
+  version: 'v2',
+  title: 'Согласия и подтверждения для регистрации и сертификации',
+  fullText: `Здравствуйте,
+
+Вы подтвердили согласие на трансграничную передачу персональных данных при работе с сайтом и участии в процедуре сертификации в Центре сертификации специалистов прикладного анализа поведения (reestrpap.ru).
+
+В соответствии с требованиями законодательства направляем вам текст данного согласия.
+
+---
+
+СОГЛАСИЕ
 НА ТРАНСГРАНИЧНУЮ ПЕРЕДАЧУ ПЕРСОНАЛЬНЫХ ДАННЫХ
 (электронная форма)
 
@@ -51,7 +65,7 @@ International Behavior Analysis Organization (IBAO)
 https://reestrpap.ru/privacy-policy
 и принимаю ее условия.
 
-Я даю согласие на трансграничную передачу моих персональных данных на условиях, указанных выше.
+Я даю согласие на передачу трансграничных данных на условиях, указанных выше.
 
 ---
 
@@ -61,17 +75,48 @@ https://reestrpap.ru/privacy-policy
 Команда ООО «ЦС ПАП»`,
   items: [
     {
-      code: 'PRIVACY_POLICY_ACK',
-      label:
-        'Я ознакомлен(а) с Политикой обработки персональных данных и принимаю ее условия',
+      code: 'PUBLIC_OFFER_ACCEPTED',
+      label: 'Я принимаю условия Публичной оферты',
       required: true,
-      link: 'https://reestrpap.ru/privacy-policy',
+      links: [
+        {
+          text: 'Публичной оферты',
+          href: 'https://reestrpap.ru/oferta',
+        },
+      ],
+    },
+    {
+      code: 'PD_PROCESSING_ACCEPTED',
+      label:
+        'Я ознакомлен(а) с Политикой обработки персональных данных и даю согласие на обработку персональных данных',
+      required: true,
+      links: [
+        {
+          text: 'Политикой обработки персональных данных',
+          href: 'https://reestrpap.ru/privacy-policy',
+        },
+        {
+          text: 'согласие',
+          href: 'https://reestrpap.ru/user-agreement',
+        },
+      ],
     },
     {
       code: 'TRANSBORDER_PD_TRANSFER',
       label:
-        'Я даю согласие на трансграничную передачу моих персональных данных',
+        'Я даю согласие на трансграничную передачу моих персональных данных в IBAO в целях регистрации и прохождения международной сертификации.',
       required: true,
+      links: [
+        {
+          text: 'согласие на трансграничную передачу моих персональных данных',
+          href: 'https://reestrpap.ru/soglasie_peredacha_dannyh',
+        },
+      ],
+    },
+    {
+      code: 'EMAIL_MARKETING_ACCEPTED',
+      label: 'Я согласен получать письма информационной рассылки',
+      required: false,
     },
   ],
 };

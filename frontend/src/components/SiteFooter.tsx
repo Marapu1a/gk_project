@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom';
-
 export default function SiteFooter() {
   return (
     <footer className="bg-[#070022] text-white">
@@ -43,6 +41,16 @@ export default function SiteFooter() {
                   className="hover:underline"
                 >
                   Согласие на обработку персональных данных
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://reestrpap.ru/soglasie_peredacha_dannyh"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:underline"
+                >
+                  Согласие на передачу данных
                 </a>
               </li>
             </ul>
