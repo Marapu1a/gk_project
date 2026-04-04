@@ -6,7 +6,7 @@ import UserSupervisionMatrix from './UserSupervisionMatrix';
 import PaymentsBlock from './PaymentsBlock';
 import DetailBlock from './DetailBlock';
 import ActiveCertificateBlock from './ActiveCertificateBlock';
-import AdminUserGroupsBlock from '@/features/groups/components/AdminUserGroupsBlock';
+import AdminUserGroupsBlock from '@/features/admin/components/AdminUserGroupsBlock';
 import { BackButton } from '@/components/BackButton';
 
 export default function UserDetails() {

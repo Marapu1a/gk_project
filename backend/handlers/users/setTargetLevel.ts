@@ -39,6 +39,35 @@ const ALLOWED_RENEWAL_TARGETS_BY_GROUP: Record<string, TargetLevel[]> = {
   'Опытный Супервизор': ['SUPERVISOR'],
 };
 
+const ERROR_MESSAGES = {
+  UNAUTHORIZED: 'Не авторизован',
+  INVALID_GOAL_MODE: 'Некорректный режим цели',
+  FORBIDDEN: 'У вас нет прав для этого действия',
+  INVALID_TARGET_LEVEL: 'Некорректный целевой уровень',
+  USER_NOT_FOUND: 'Пользователь не найден',
+  RENEWAL_NOT_AVAILABLE: 'Ресертификация недоступна: нет активного сертификата',
+  TARGET_ALREADY_SELECTED: 'Цель уже выбрана',
+  TARGET_GROUP_NOT_CONFIGURED: 'Ошибка настройки системы: не найдена группа для выбранного уровня',
+  TARGET_BELOW_ACTIVE: 'Нельзя выбрать уровень ниже текущего',
+  NO_TARGET_FOR_SUPERVISOR: 'Для вашей текущей группы новые цели недоступны',
+  RENEWAL_TARGET_NOT_ALLOWED: 'Этот уровень недоступен для ресертификации',
+  TARGET_NOT_ALLOWED_FOR_ACTIVE_GROUP: 'Этот уровень недоступен для вашей текущей группы',
+  TARGET_LOCKED: 'Цель уже зафиксирована и не может быть изменена',
+  TARGET_REQUIREMENTS_NOT_CONFIGURED:
+    'Ошибка настройки системы: требования для выбранного уровня не заданы',
+  TARGET_RATIO_NOT_CONFIGURED:
+    'Ошибка настройки системы: не удалось рассчитать соотношение часов',
+} as const;
+
+type ErrorCode = keyof typeof ERROR_MESSAGES;
+
+function sendError(reply: FastifyReply, code: number, error: ErrorCode) {
+  return reply.code(code).send({
+    error,
+    message: ERROR_MESSAGES[error],
+  });
+}
+
 function buildRequirementsSnapshot(targetLevel: TargetLevel, goalMode: GoalMode) {
   const ru = TARGET_RU_BY_LEVEL[targetLevel];
 
@@ -109,21 +138,26 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
   const { id } = req.params as { id: string };
   const { targetLevel, goalMode = 'CERTIFICATION' } = req.body as Body;
 
-  if (!user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
+  if (!user?.userId) {
+    return sendError(reply, 401, 'UNAUTHORIZED');
+  }
 
   if (!['CERTIFICATION', 'RENEWAL'].includes(goalMode)) {
-    return reply.code(400).send({ error: 'INVALID_GOAL_MODE' });
+    return sendError(reply, 400, 'INVALID_GOAL_MODE');
   }
 
   const isSelf = user.userId === id;
   const isAdmin = user.role === 'ADMIN';
-  if (!isSelf && !isAdmin) return reply.code(403).send({ error: 'FORBIDDEN' });
+
+  if (!isSelf && !isAdmin) {
+    return sendError(reply, 403, 'FORBIDDEN');
+  }
 
   if (
     targetLevel !== null &&
     ![TargetLevel.INSTRUCTOR, TargetLevel.CURATOR, TargetLevel.SUPERVISOR].includes(targetLevel)
   ) {
-    return reply.code(400).send({ error: 'INVALID_TARGET_LEVEL' });
+    return sendError(reply, 400, 'INVALID_TARGET_LEVEL');
   }
 
   const dbUser = await prisma.user.findUnique({
@@ -137,7 +171,10 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
       groups: { select: { group: { select: { name: true, rank: true } } } },
     },
   });
-  if (!dbUser) return reply.code(404).send({ error: 'USER_NOT_FOUND' });
+
+  if (!dbUser) {
+    return sendError(reply, 404, 'USER_NOT_FOUND');
+  }
 
   const groupsSorted = dbUser.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank);
   const activeRank = groupsSorted[0]?.rank ?? 0;
@@ -154,11 +191,11 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     });
 
     if (!activeCertificate) {
-      return reply.code(400).send({ error: 'RENEWAL_NOT_AVAILABLE' });
+      return sendError(reply, 400, 'RENEWAL_NOT_AVAILABLE');
     }
 
     if (dbUser.targetLevel !== null) {
-      return reply.code(400).send({ error: 'TARGET_ALREADY_SELECTED' });
+      return sendError(reply, 400, 'TARGET_ALREADY_SELECTED');
     }
   }
 
@@ -174,12 +211,12 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     const targetRank = rankByName.get(targetName);
 
     if (typeof targetRank !== 'number') {
-      return reply.code(500).send({ error: 'TARGET_GROUP_NOT_CONFIGURED' });
+      return sendError(reply, 500, 'TARGET_GROUP_NOT_CONFIGURED');
     }
 
     // цель не может быть ниже текущего ранга при первичной сертификации
     if (goalMode === 'CERTIFICATION' && targetRank < activeRank) {
-      return reply.code(400).send({ error: 'TARGET_BELOW_ACTIVE' });
+      return sendError(reply, 400, 'TARGET_BELOW_ACTIVE');
     }
 
     if (!isAdmin) {
@@ -190,14 +227,18 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
           activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
 
         if (noCertificationTargets) {
-          return reply.code(400).send({ error: 'NO_TARGET_FOR_SUPERVISOR' });
+          return sendError(reply, 400, 'NO_TARGET_FOR_SUPERVISOR');
         }
       }
 
       if (!allowedTargets.includes(targetLevel)) {
-        return reply.code(400).send({
-          error: goalMode === 'RENEWAL' ? 'RENEWAL_TARGET_NOT_ALLOWED' : 'TARGET_NOT_ALLOWED_FOR_ACTIVE_GROUP',
-        });
+        return sendError(
+          reply,
+          400,
+          goalMode === 'RENEWAL'
+            ? 'RENEWAL_TARGET_NOT_ALLOWED'
+            : 'TARGET_NOT_ALLOWED_FOR_ACTIVE_GROUP',
+        );
       }
     }
   }
@@ -232,7 +273,7 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
   // 1) Сброс на "нет цели"
   if (targetLevel === null) {
     if (lockedNow && !isAdmin) {
-      return reply.code(403).send({ error: 'TARGET_LOCKED' });
+      return sendError(reply, 403, 'TARGET_LOCKED');
     }
 
     const { updated, resetCount } = await prisma.$transaction(async (tx) => {
@@ -296,19 +337,22 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
 
   // 2) Установка/смена цели: запрещаем, если locked и не админ
   if (lockedNow && !isAdmin) {
-    return reply.code(403).send({ error: 'TARGET_LOCKED' });
+    return sendError(reply, 403, 'TARGET_LOCKED');
   }
 
   let requirementsSnapshot: ReturnType<typeof buildRequirementsSnapshot>;
+
   try {
     requirementsSnapshot = buildRequirementsSnapshot(targetLevel, goalMode);
   } catch (e: any) {
     if (e?.message === 'TARGET_REQUIREMENTS_NOT_CONFIGURED') {
-      return reply.code(500).send({ error: 'TARGET_REQUIREMENTS_NOT_CONFIGURED' });
+      return sendError(reply, 500, 'TARGET_REQUIREMENTS_NOT_CONFIGURED');
     }
+
     if (e?.message === 'TARGET_RATIO_NOT_CONFIGURED') {
-      return reply.code(500).send({ error: 'TARGET_RATIO_NOT_CONFIGURED' });
+      return sendError(reply, 500, 'TARGET_RATIO_NOT_CONFIGURED');
     }
+
     throw e;
   }
 

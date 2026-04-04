@@ -8,10 +8,15 @@ export function useAbandonActiveCycle(userId: string) {
   return useMutation({
     mutationFn: (reason: string) => abandonActiveCycle(userId, reason),
 
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Активный цикл отменён');
-      qc.invalidateQueries({ queryKey: ['admin', 'user', userId] });
-      qc.invalidateQueries({ queryKey: ['user-groups', userId] });
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+        qc.invalidateQueries({ queryKey: ['groups', 'user', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
+        qc.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
+      ]);
     },
 
     onError: (err: any) => {

@@ -9,9 +9,15 @@ export function useUpdateTargetLevel(userId: string) {
     mutationFn: (level: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null) =>
       updateTargetLevel(userId, level),
 
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Целевой уровень обновлён');
-      qc.invalidateQueries({ queryKey: ['admin', 'user', userId] });
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+        qc.invalidateQueries({ queryKey: ['groups', 'user', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
+        qc.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
+      ]);
     },
 
     onError: (err: any) => {

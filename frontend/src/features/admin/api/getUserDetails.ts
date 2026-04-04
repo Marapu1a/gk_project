@@ -15,8 +15,31 @@ export async function getUserDetails(id: string) {
     isEmailConfirmed: boolean;
     role: 'ADMIN' | 'REVIEWER' | 'STUDENT';
     createdAt: string;
+
     targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
     targetLockRank: number | null;
+
+    activeCycle: {
+      id: string;
+      type: 'CERTIFICATION' | 'RENEWAL';
+      status: 'ACTIVE' | 'COMPLETED' | 'ABANDONED';
+      targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+      startedAt: string;
+      endedAt: string | null;
+    } | null;
+
+    latestCertificate: {
+      id: string;
+      number: string;
+      title: string;
+      issuedAt: string;
+      expiresAt: string | null;
+      isRenewal: boolean;
+      comment: string | null;
+      file: { fileId: string; name: string } | null;
+      group: { id: string; name: string };
+      confirmedBy: { email: string; fullName: string } | null;
+    } | null;
 
     groups: { id: string; name: string; rank: number }[];
 
@@ -36,6 +59,7 @@ export async function getUserDetails(id: string) {
     payments: {
       id: string;
       type: string;
+      targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
       status: string;
       comment: string | null;
       createdAt: string;
@@ -81,6 +105,12 @@ export async function getUserDetails(id: string) {
       type: string;
       comment: string | null;
       createdAt: string;
+      certificate: {
+        title: string;
+        number: string;
+        issuedAt: string;
+        expiresAt: string | null;
+      } | null;
     }[];
 
     documentReviewRequests: {

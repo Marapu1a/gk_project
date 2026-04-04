@@ -31,11 +31,24 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
       role: true,
       createdAt: true,
 
-      // 🔥 Добавлено
       targetLevel: true,
       targetLockRank: true,
 
       groups: { select: { group: { select: { id: true, name: true, rank: true } } } },
+
+      cycles: {
+        where: { status: 'ACTIVE' },
+        orderBy: { startedAt: 'desc' },
+        take: 1,
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          targetLevel: true,
+          startedAt: true,
+          endedAt: true,
+        },
+      },
 
       certificates: {
         select: {
@@ -56,6 +69,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
         select: {
           id: true,
           type: true,
+          targetLevel: true,
           status: true,
           comment: true,
           createdAt: true,
@@ -98,7 +112,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
               rejectedReason: true,
               reviewer: { select: { email: true, fullName: true } },
             },
-            orderBy: [{ reviewedAt: 'desc' }, { id: 'desc' }], // стабильнее в UI
+            orderBy: [{ reviewedAt: 'desc' }, { id: 'desc' }],
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -136,18 +150,27 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
 
   if (!user) return reply.code(404).send({ error: 'Пользователь не найден' });
 
-  // Преобразуем группы и нормализуем типы часов в supervisionRecords
   const groups = user.groups.map((g) => g.group);
+
   const supervisionRecords = user.supervisionRecords.map((r) => ({
     ...r,
     hours: r.hours.map((h) => ({ ...h, type: normalizeLevel(h.type) })),
   }));
 
+  const activeCycle = user.cycles[0] ?? null;
+
+  const latestCertificate =
+    user.certificates
+      .slice()
+      .sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime())[0] ?? null;
+
   return reply.send({
     ...user,
     groups,
     supervisionRecords,
-    targetLevel: user.targetLevel,        // 👈 теперь UI увидит
-    targetLockRank: user.targetLockRank,  // 👈 пригодится для историй-логики
+    activeCycle,
+    latestCertificate,
+    targetLevel: user.targetLevel,
+    targetLockRank: user.targetLockRank,
   });
 }

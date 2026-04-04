@@ -3,7 +3,7 @@ import { getUserDetails } from '../api/getUserDetails';
 
 export function useUserDetails(id: string) {
   return useQuery({
-    queryKey: ['admin', 'user', id],
+    queryKey: ['admin', 'user', 'details', id],
     queryFn: () => getUserDetails(id),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
