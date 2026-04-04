@@ -241,44 +241,25 @@ export async function issueCertificateHandler(
         },
       });
 
-      const existingRenewalPayment = await tx.payment.findFirst({
+      await tx.payment.deleteMany({
         where: {
           userId: user.id,
           type: PaymentType.RENEWAL,
+        },
+      });
+
+      const createdRenewal = await tx.payment.create({
+        data: {
+          userId: user.id,
+          type: PaymentType.RENEWAL,
           targetLevel: renewalTargetLevel,
+          status: PaymentStatus.UNPAID,
+          comment: 'Создано после выдачи сертификата',
         },
         select: { id: true },
       });
 
-      let renewalPaymentId: string;
-
-      if (existingRenewalPayment) {
-        const updatedRenewal = await tx.payment.update({
-          where: { id: existingRenewalPayment.id },
-          data: {
-            status: PaymentStatus.UNPAID,
-            confirmedAt: null,
-            comment: 'Создано/обновлено после выдачи сертификата',
-            targetLevel: renewalTargetLevel,
-          },
-          select: { id: true },
-        });
-
-        renewalPaymentId = updatedRenewal.id;
-      } else {
-        const createdRenewal = await tx.payment.create({
-          data: {
-            userId: user.id,
-            type: PaymentType.RENEWAL,
-            targetLevel: renewalTargetLevel,
-            status: PaymentStatus.UNPAID,
-            comment: 'Создано после выдачи сертификата',
-          },
-          select: { id: true },
-        });
-
-        renewalPaymentId = createdRenewal.id;
-      }
+      const renewalPaymentId = createdRenewal.id;
 
       await tx.notification.create({
         data: {

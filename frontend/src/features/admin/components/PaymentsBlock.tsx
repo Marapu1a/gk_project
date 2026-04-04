@@ -19,6 +19,7 @@ type Payment = {
 type Props = {
   payments: Payment[];
   userId: string;
+  activeGroupName?: string | null;
 };
 
 const TYPE_ORDER: Record<string, number> = {
@@ -35,7 +36,7 @@ const TARGET_LEVEL_ORDER: Record<NonNullable<Payment['targetLevel']>, number> = 
   SUPERVISOR: 2,
 };
 
-export default function PaymentsBlock({ payments, userId }: Props) {
+export default function PaymentsBlock({ payments, userId, activeGroupName }: Props) {
   const mutate = useUpdatePaymentStatus(userId);
   const qc = useQueryClient();
 
@@ -78,7 +79,15 @@ export default function PaymentsBlock({ payments, userId }: Props) {
     if (payment.type === 'RENEWAL') {
       if (payment.targetLevel === 'INSTRUCTOR') return 'Ресертификация — Инструктор';
       if (payment.targetLevel === 'CURATOR') return 'Ресертификация — Куратор';
-      if (payment.targetLevel === 'SUPERVISOR') return 'Ресертификация — Супервизор';
+
+      if (payment.targetLevel === 'SUPERVISOR') {
+        if (activeGroupName === 'Опытный Супервизор') {
+          return 'Ресертификация — Опытный супервизор';
+        }
+
+        return 'Ресертификация — Супервизор';
+      }
+
       return 'Ресертификация';
     }
 

@@ -38,6 +38,52 @@ function resolveCurrentLevel(activeGroupName?: string | null): Level | null {
   return null;
 }
 
+function getDisplayedCurrentLevelName(user: CurrentUser): string {
+  const activeGroupName = user.activeGroup?.name;
+
+  if (activeGroupName === 'Опытный Супервизор') {
+    return 'Опытный супервизор';
+  }
+
+  if (activeGroupName === 'Супервизор' && user.activeCycle?.type === 'RENEWAL') {
+    return 'Супервизор';
+  }
+
+  if (user.targetLevel) {
+    return RU_BY_LEVEL[user.targetLevel as Level];
+  }
+
+  if (
+    activeGroupName === 'Инструктор' ||
+    activeGroupName === 'Куратор' ||
+    activeGroupName === 'Супервизор'
+  ) {
+    return activeGroupName;
+  }
+
+  return 'не выбран';
+}
+
+function getRenewalOptionLabel(
+  level: Level,
+  user: CurrentUser,
+  canRenewCurrentLevel: boolean,
+  currentLevel: Level | null,
+) {
+  const activeGroupName = user.activeGroup?.name;
+  const isCurrentRenewalOption = canRenewCurrentLevel && currentLevel === level;
+
+  if (!isCurrentRenewalOption) {
+    return RU_BY_LEVEL[level];
+  }
+
+  if (level === 'SUPERVISOR' && activeGroupName === 'Опытный Супервизор') {
+    return 'Опытный супервизор (ресертификация)';
+  }
+
+  return `${RU_BY_LEVEL[level]} (ресертификация)`;
+}
+
 type Props = {
   user: CurrentUser;
   isAdmin: boolean;
@@ -62,6 +108,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
   const canRenewCurrentLevel = !!currentLevel && renewalEligibleLevel === currentLevel;
 
   const isRenewalCycle = user.activeCycle?.type === 'RENEWAL';
+  const displayedCurrentLevelName = getDisplayedCurrentLevelName(user);
 
   const availableLevels: Level[] = useMemo(() => {
     const levelsAbove = LEVELS.filter((lvl) => levelIndex(lvl) > activeIdx);
@@ -82,7 +129,6 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
   const locked = isTargetLocked(user) && !isAdmin;
 
   const targetLevel = user.targetLevel as ApiTargetLevel | null;
-  const targetLevelName = targetLevel ? RU_BY_LEVEL[targetLevel as Level] : undefined;
 
   const noChange =
     (selected === '' && targetLevel === null) || (selected !== '' && targetLevel === selected);
@@ -125,9 +171,18 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
     const nextTarget = selected === '' ? null : (selected as ApiTargetLevel);
 
     if (nextTarget) {
-      const label = RU_BY_LEVEL[nextTarget as Level];
       const isRenewalChoice = canRenewCurrentLevel && currentLevel === nextTarget;
       const goalMode: GoalMode = isRenewalChoice ? 'RENEWAL' : 'CERTIFICATION';
+
+      let label = RU_BY_LEVEL[nextTarget as Level];
+
+      if (
+        isRenewalChoice &&
+        nextTarget === 'SUPERVISOR' &&
+        activeGroupName === 'Опытный Супервизор'
+      ) {
+        label = 'Опытный супервизор';
+      }
 
       toast(
         isRenewalChoice
@@ -157,7 +212,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
         <strong>
           {isRenewalCycle ? 'Текущая цель: ресертификация уровня' : 'Текущий уровень сертификации'}:
         </strong>{' '}
-        {targetLevelName ?? 'не выбран'}
+        {displayedCurrentLevelName}
         {locked && (
           <span className="ml-2 inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">
             цель зафиксирована
@@ -185,8 +240,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
             <option value="">— Выберите уровень сертификации —</option>
             {availableLevels.map((lvl) => (
               <option key={lvl} value={lvl}>
-                {RU_BY_LEVEL[lvl]}
-                {canRenewCurrentLevel && currentLevel === lvl ? ' (ресертификация)' : ''}
+                {getRenewalOptionLabel(lvl, user, canRenewCurrentLevel, currentLevel)}
               </option>
             ))}
           </select>

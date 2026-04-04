@@ -40,8 +40,28 @@ const BILLING_GROUP_BY_TARGET: Record<'Инструктор' | 'Куратор' 
   Супервизор: 'куратор',
 };
 
-function getPaymentLabel(payment: PaymentItem): string {
+function getDisplayTargetLevelName(
+  targetLevel: PaymentItem['targetLevel'] | null,
+  activeGroupName: string,
+  cycleType?: 'CERTIFICATION' | 'RENEWAL' | null,
+): string | undefined {
+  if (
+    cycleType === 'RENEWAL' &&
+    targetLevel === 'SUPERVISOR' &&
+    activeGroupName === 'Опытный Супервизор'
+  ) {
+    return 'Опытный супервизор';
+  }
+
+  return targetLevel ? targetLevelLabels[targetLevel] : undefined;
+}
+
+function getPaymentLabel(payment: PaymentItem, activeGroupName: string): string {
   if (payment.type === 'RENEWAL') {
+    if (payment.targetLevel === 'SUPERVISOR' && activeGroupName === 'Опытный Супервизор') {
+      return 'Ресертификация — Опытный супервизор';
+    }
+
     const levelLabel = payment.targetLevel
       ? targetLevelLabels[payment.targetLevel] || payment.targetLevel
       : null;
@@ -70,7 +90,7 @@ export function UserPaymentDashboard({
 
   if (isLoading || !payments) return null;
 
-  const targetLevelName = targetLevel ? targetLevelLabels[targetLevel] : undefined;
+  const targetLevelName = getDisplayTargetLevelName(targetLevel, activeGroupName, cycleType);
 
   const billingGroup =
     (targetLevelName &&
@@ -159,7 +179,7 @@ export function UserPaymentDashboard({
                   style={{ borderColor: 'var(--color-green-light)' }}
                 >
                   <div className="flex flex-col gap-1">
-                    <div className="font-semibold">{getPaymentLabel(payment)}</div>
+                    <div className="font-semibold">{getPaymentLabel(payment, activeGroupName)}</div>
 
                     <div className="text-sm text-gray-600">
                       Статус: <span className="font-medium">{STATUS_LABELS[payment.status]}</span>

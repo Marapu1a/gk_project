@@ -177,8 +177,8 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
       return reply.code(500).send({ error: 'TARGET_GROUP_NOT_CONFIGURED' });
     }
 
-    // цель не может быть ниже текущего ранга
-    if (targetRank < activeRank) {
+    // цель не может быть ниже текущего ранга при первичной сертификации
+    if (goalMode === 'CERTIFICATION' && targetRank < activeRank) {
       return reply.code(400).send({ error: 'TARGET_BELOW_ACTIVE' });
     }
 

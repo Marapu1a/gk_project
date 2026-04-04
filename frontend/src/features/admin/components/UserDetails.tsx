@@ -24,7 +24,6 @@ export default function UserDetails() {
       className="rounded-2xl border header-shadow bg-white overflow-hidden max-w-5xl mx-auto"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
-      {/* Header */}
       <div
         className="px-6 py-4 border-b flex items-center justify-between"
         style={{ borderColor: 'var(--color-green-light)' }}
@@ -33,7 +32,6 @@ export default function UserDetails() {
         <BackButton />
       </div>
 
-      {/* Body */}
       <div className="p-6 space-y-6">
         <UserBasicBlock
           userId={data.id}
@@ -46,9 +44,7 @@ export default function UserDetails() {
           city={data.city}
           role={data.role}
           createdAt={data.createdAt}
-          groupName={
-            data.groups.length > 0 ? data.groups.sort((a, b) => b.rank - a.rank)[0].name : null
-          }
+          groupName={activeGroup}
         />
 
         <AdminUserGroupsBlock userId={data.id} />
@@ -65,7 +61,7 @@ export default function UserDetails() {
           isSupervisor={activeGroup === 'Супервизор' || activeGroup === 'Опытный Супервизор'}
         />
 
-        <PaymentsBlock payments={data.payments} userId={data.id} />
+        <PaymentsBlock payments={data.payments} userId={data.id} activeGroupName={activeGroup} />
 
         <DetailBlock title="Загруженные файлы" items={data.uploadedFiles} userId={data.id} />
       </div>
