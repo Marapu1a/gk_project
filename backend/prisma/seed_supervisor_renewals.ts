@@ -1,5 +1,12 @@
 // prisma/seed_supervisor_renewals.ts
-import { PrismaClient, CycleStatus, CycleType, PaymentStatus, PaymentType, TargetLevel } from '@prisma/client';
+import {
+  PrismaClient,
+  CycleStatus,
+  CycleType,
+  PaymentStatus,
+  PaymentType,
+  TargetLevel,
+} from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -56,9 +63,7 @@ async function processUser(userId: string): Promise<ProcessResult> {
     return { kind: 'skipped', email: `unknown:${userId}`, reason: 'USER_NOT_FOUND' };
   }
 
-  const groupsSorted = [...user.groups]
-    .map((x) => x.group)
-    .sort((a, b) => b.rank - a.rank);
+  const groupsSorted = [...user.groups].map((x) => x.group).sort((a, b) => b.rank - a.rank);
 
   const activeGroup = groupsSorted[0] ?? null;
   const activeGroupName = activeGroup?.name ?? null;
@@ -76,22 +81,24 @@ async function processUser(userId: string): Promise<ProcessResult> {
     return { kind: 'skipped', email: user.email, reason: 'NO_CERTIFICATE' };
   }
 
-  const existingRenewalCycle = await prisma.certificationCycle.findFirst({
+  const existingActiveCycle = await prisma.certificationCycle.findFirst({
     where: {
       userId: user.id,
-      type: CycleType.RENEWAL,
+      status: CycleStatus.ACTIVE,
     },
     select: {
       id: true,
       status: true,
+      type: true,
+      targetLevel: true,
     },
   });
 
-  if (existingRenewalCycle) {
+  if (existingActiveCycle) {
     return {
       kind: 'skipped',
       email: user.email,
-      reason: `RENEWAL_CYCLE_ALREADY_EXISTS:${existingRenewalCycle.id}:${existingRenewalCycle.status}`,
+      reason: `ACTIVE_CYCLE_ALREADY_EXISTS:${existingActiveCycle.id}:${existingActiveCycle.type}:${existingActiveCycle.targetLevel}`,
     };
   }
 
@@ -271,7 +278,7 @@ async function main() {
             `supervision=${res.supervisionUpdated}`,
             `renewalDeleted=${res.deletedRenewalPayments}`,
             `renewalCreated=${res.createdRenewalPaymentId}`,
-          ].join(' | ')
+          ].join(' | '),
         );
       }
     } catch (error) {
@@ -298,7 +305,7 @@ async function main() {
       ceuUpdated: 0,
       supervisionUpdated: 0,
       deletedRenewalPayments: 0,
-    }
+    },
   );
 
   console.log('\n[seed_supervisor_renewals] summary');
