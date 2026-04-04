@@ -22,6 +22,10 @@ type Body = {
 const EMAIL_RETRY_ATTEMPTS = 3;
 const EMAIL_RETRY_DELAY_MS = 800;
 
+const LEGACY_CONSENT_KEY_ALIASES: Partial<Record<string, ConsentItemCode>> = {
+  PRIVACY_POLICY_ACK: 'PD_PROCESSING_ACCEPTED',
+};
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -61,6 +65,7 @@ function getClientId(req: FastifyRequest): string | null {
 
 function normalizeAcceptedItems(
   acceptedItems: Body['acceptedItems'],
+  req?: FastifyRequest,
 ): Record<ConsentItemCode, boolean> {
   const requiredCodes = getRequiredConsentItemCodes();
   const validCodes = new Set<ConsentItemCode>(
@@ -71,14 +76,27 @@ function normalizeAcceptedItems(
     throw new Error('Не переданы подтвержденные пункты согласия');
   }
 
-  for (const key of Object.keys(acceptedItems)) {
-    if (!validCodes.has(key as ConsentItemCode)) {
-      throw new Error(`Передан неизвестный пункт согласия: ${key}`);
+  const remappedAcceptedItems: Partial<Record<ConsentItemCode, boolean>> = {};
+
+  for (const [rawKey, rawValue] of Object.entries(acceptedItems)) {
+    const normalizedKey = LEGACY_CONSENT_KEY_ALIASES[rawKey] ?? rawKey;
+
+    if (!validCodes.has(normalizedKey as ConsentItemCode)) {
+      req?.log.warn(
+        {
+          rawKey,
+          normalizedKey,
+        },
+        '[TRANSBORDER CONSENT] Unknown consent key ignored',
+      );
+      continue;
     }
+
+    remappedAcceptedItems[normalizedKey as ConsentItemCode] = rawValue === true;
   }
 
   for (const code of requiredCodes) {
-    if (acceptedItems[code] !== true) {
+    if (remappedAcceptedItems[code] !== true) {
       throw new Error('Не все обязательные пункты согласия подтверждены');
     }
   }
@@ -86,7 +104,7 @@ function normalizeAcceptedItems(
   const normalized = {} as Record<ConsentItemCode, boolean>;
 
   for (const item of TRANSBORDER_CONSENT_DOCUMENT.items) {
-    normalized[item.code] = acceptedItems[item.code] === true;
+    normalized[item.code] = remappedAcceptedItems[item.code] === true;
   }
 
   return normalized;
@@ -145,7 +163,7 @@ export async function acceptTransborderConsentHandler(
   let acceptedItems: Record<ConsentItemCode, boolean>;
 
   try {
-    acceptedItems = normalizeAcceptedItems(body.acceptedItems);
+    acceptedItems = normalizeAcceptedItems(body.acceptedItems, req);
   } catch (error) {
     return reply.code(400).send({
       error: error instanceof Error ? error.message : 'Некорректные данные согласия',
