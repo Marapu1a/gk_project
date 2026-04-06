@@ -1,6 +1,9 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import ExcelJS from "exceljs";
-import { PaymentType } from "@prisma/client";
+import {
+  PaymentType,
+  ConsentDocumentType,
+} from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 
 function paymentStatusRu(status: string): string {
@@ -25,6 +28,18 @@ function dateOnly(d: Date | string | null | undefined): string {
   return s;
 }
 
+function dateTimeValue(d: Date | string | null | undefined): string {
+  if (!d) return "";
+  if (d instanceof Date) return d.toISOString().replace("T", " ").slice(0, 19);
+
+  const s = String(d);
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    return s.replace("T", " ").slice(0, 19);
+  }
+
+  return s;
+}
+
 function targetLevelRu(v: string | null | undefined): string {
   if (!v) return "";
   switch (v) {
@@ -37,6 +52,24 @@ function targetLevelRu(v: string | null | undefined): string {
     default:
       return String(v);
   }
+}
+
+function consentSourceRu(v: string | null | undefined): string {
+  if (!v) return "";
+  switch (v) {
+    case "REGISTRATION_MODAL":
+      return "Регистрация";
+    case "LEGACY_MODAL":
+      return "Legacy modal";
+    default:
+      return String(v);
+  }
+}
+
+function yesNo(v: boolean | null | undefined): string {
+  if (v === true) return "Да";
+  if (v === false) return "Нет";
+  return "";
 }
 
 function currentGroupByMaxRank(
@@ -59,6 +92,75 @@ function emptyPaySlots(): Record<PaymentType, PaySlot> {
     RENEWAL: { status: "", confirmedAt: "" },
     FULL_PACKAGE: { status: "", confirmedAt: "" },
   };
+}
+
+const CONSENT_CODES = {
+  PUBLIC_OFFER_ACCEPTED: "PUBLIC_OFFER_ACCEPTED",
+  PD_PROCESSING_ACCEPTED: "PD_PROCESSING_ACCEPTED",
+  USER_AGREEMENT_ACCEPTED: "USER_AGREEMENT_ACCEPTED",
+  TRANSBORDER_PD_TRANSFER_ACCEPTED: "TRANSBORDER_PD_TRANSFER_ACCEPTED",
+  INFO_MAILING_ACCEPTED: "INFO_MAILING_ACCEPTED",
+} as const;
+
+function extractAcceptedItems(raw: unknown): Set<string> {
+  const result = new Set<string>();
+
+  const walk = (value: unknown) => {
+    if (!value) return;
+
+    if (typeof value === "string") {
+      result.add(value);
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (typeof item === "string") {
+          result.add(item);
+          continue;
+        }
+
+        if (item && typeof item === "object") {
+          const obj = item as Record<string, unknown>;
+
+          if (typeof obj.code === "string") {
+            const accepted =
+              obj.accepted === undefined ? true : Boolean(obj.accepted);
+
+            if (accepted) result.add(obj.code);
+          }
+
+          if (Array.isArray(obj.items)) {
+            walk(obj.items);
+          }
+        }
+      }
+      return;
+    }
+
+    if (typeof value === "object") {
+      const obj = value as Record<string, unknown>;
+
+      for (const [key, val] of Object.entries(obj)) {
+        if (typeof val === "boolean") {
+          if (val) result.add(key);
+          continue;
+        }
+
+        if (key === "items" && Array.isArray(val)) {
+          walk(val);
+          continue;
+        }
+
+        if (val && typeof val === "object") {
+          walk(val);
+        }
+      }
+    }
+  };
+
+  walk(raw);
+  return result;
 }
 
 export async function getUsersExportXlsxHandler(
@@ -93,6 +195,22 @@ export async function getUsersExportXlsxHandler(
         select: { type: true, status: true, confirmedAt: true, createdAt: true },
         orderBy: { createdAt: "desc" },
       },
+
+      consents: {
+        where: {
+          documentType: ConsentDocumentType.TRANSBORDER_PD_TRANSFER,
+        },
+        select: {
+          documentVersion: true,
+          acceptedItems: true,
+          source: true,
+          consentedAt: true,
+          emailStatus: true,
+          emailSentAt: true,
+        },
+        orderBy: { consentedAt: "desc" },
+        take: 1,
+      },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -112,6 +230,20 @@ export async function getUsersExportXlsxHandler(
     { header: "Телефон", key: "phone", width: 18 },
     { header: "Текущая группа", key: "currentGroup", width: 22 },
     { header: "Целевая группа", key: "targetGroup", width: 18 },
+
+    { header: "Согласие на трансграничную передачу — принято", key: "consentAccepted", width: 24 },
+    { header: "Согласие — версия документа", key: "consentVersion", width: 22 },
+    { header: "Согласие — дата и время", key: "consentedAt", width: 22 },
+    { header: "Согласие — источник", key: "consentSource", width: 18 },
+
+    { header: "Чекбокс — публичная оферта", key: "cbPublicOffer", width: 22 },
+    { header: "Чекбокс — политика ПД", key: "cbPdProcessing", width: 22 },
+    { header: "Чекбокс — пользовательское соглашение", key: "cbUserAgreement", width: 28 },
+    { header: "Чекбокс — трансграничная передача ПД", key: "cbTransborder", width: 30 },
+    { header: "Чекбокс — инфо-рассылка", key: "cbInfoMailing", width: 22 },
+
+    { header: "Письмо по согласию — статус", key: "consentEmailStatus", width: 22 },
+    { header: "Письмо по согласию — отправлено", key: "consentEmailSentAt", width: 24 },
 
     { header: "Название сертификата", key: "certTitle", width: 28 },
     { header: "Номер сертификата", key: "certNumber", width: 18 },
@@ -143,6 +275,8 @@ export async function getUsersExportXlsxHandler(
 
   for (const u of users) {
     const cert = u.certificates?.[0];
+    const consent = u.consents?.[0] ?? null;
+    const acceptedItems = extractAcceptedItems(consent?.acceptedItems);
 
     const slots = emptyPaySlots();
     for (const p of u.payments) {
@@ -167,6 +301,30 @@ export async function getUsersExportXlsxHandler(
       phone: u.phone ?? "",
       currentGroup: currentGroupByMaxRank(u.groups),
       targetGroup: targetLevelRu(u.targetLevel),
+
+      consentAccepted: yesNo(Boolean(consent)),
+      consentVersion: consent?.documentVersion ?? "",
+      consentedAt: dateTimeValue(consent?.consentedAt),
+      consentSource: consentSourceRu(consent?.source),
+
+      cbPublicOffer: yesNo(
+        acceptedItems.has(CONSENT_CODES.PUBLIC_OFFER_ACCEPTED)
+      ),
+      cbPdProcessing: yesNo(
+        acceptedItems.has(CONSENT_CODES.PD_PROCESSING_ACCEPTED)
+      ),
+      cbUserAgreement: yesNo(
+        acceptedItems.has(CONSENT_CODES.USER_AGREEMENT_ACCEPTED)
+      ),
+      cbTransborder: yesNo(
+        acceptedItems.has(CONSENT_CODES.TRANSBORDER_PD_TRANSFER_ACCEPTED)
+      ),
+      cbInfoMailing: yesNo(
+        acceptedItems.has(CONSENT_CODES.INFO_MAILING_ACCEPTED)
+      ),
+
+      consentEmailStatus: consent?.emailStatus ?? "",
+      consentEmailSentAt: dateTimeValue(consent?.emailSentAt),
 
       certTitle: cert?.title ?? "",
       certNumber: cert?.number ?? "",
