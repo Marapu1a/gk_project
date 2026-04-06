@@ -23,9 +23,7 @@ function dateOnly(d: Date | string | null | undefined): string {
   if (!d) return "";
   if (d instanceof Date) return d.toISOString().slice(0, 10);
 
-  // если вдруг строка — постараемся привести к YYYY-MM-DD без падений
   const s = String(d);
-  // ISO-like: 2026-02-01T...
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
 
   return s;
@@ -62,6 +60,7 @@ function emptyPaySlots(): Record<PaymentType, PaySlot> {
     REGISTRATION: { status: "", confirmedAt: "" },
     DOCUMENT_REVIEW: { status: "", confirmedAt: "" },
     EXAM_ACCESS: { status: "", confirmedAt: "" },
+    RENEWAL: { status: "", confirmedAt: "" },
     FULL_PACKAGE: { status: "", confirmedAt: "" },
   };
 }
@@ -70,7 +69,7 @@ async function main() {
   const users = await prisma.user.findMany({
     select: {
       createdAt: true,
-      lastActiveAt: true, // <-- ДОБАВИЛИ
+      lastActiveAt: true,
 
       fullName: true,
       fullNameLatin: true,
@@ -84,12 +83,12 @@ async function main() {
       certificates: {
         select: { title: true, number: true, issuedAt: true, expiresAt: true },
         orderBy: { issuedAt: "desc" },
-        take: 1, // последний сертификат
+        take: 1,
       },
 
       payments: {
         select: { type: true, status: true, confirmedAt: true, createdAt: true },
-        orderBy: { createdAt: "desc" }, // самый свежий платеж каждого типа
+        orderBy: { createdAt: "desc" },
       },
     },
     orderBy: { createdAt: "asc" },
@@ -116,7 +115,6 @@ async function main() {
     { header: "Дата выдачи сертификата", key: "certIssuedAt", width: 20 },
     { header: "Дата окончания сертификата", key: "certExpiresAt", width: 22 },
 
-    // Платежи
     { header: "Регистрация — статус", key: "payRegStatus", width: 20 },
     { header: "Регистрация — дата подтверждения", key: "payRegConfirmedAt", width: 26 },
 
@@ -126,15 +124,16 @@ async function main() {
     { header: "Доступ к экзамену — статус", key: "payExamStatus", width: 24 },
     { header: "Доступ к экзамену — дата подтверждения", key: "payExamConfirmedAt", width: 30 },
 
+    { header: "Ресертификация — статус", key: "payRenewalStatus", width: 24 },
+    { header: "Ресертификация — дата подтверждения", key: "payRenewalConfirmedAt", width: 30 },
+
     { header: "Полный пакет — статус", key: "payFullStatus", width: 22 },
     { header: "Полный пакет — дата подтверждения", key: "payFullConfirmedAt", width: 30 },
   ];
 
-  // Шапка
   ws.getRow(1).font = { bold: true };
   ws.views = [{ state: "frozen", ySplit: 1 }];
 
-  // Автофильтр по всей шапке
   ws.autoFilter = {
     from: { row: 1, column: 1 },
     to: { row: 1, column: ws.columns.length },
@@ -145,7 +144,7 @@ async function main() {
 
     const slots = emptyPaySlots();
     for (const p of u.payments) {
-      if (slots[p.type].status) continue; // уже заполнено (desc)
+      if (slots[p.type].status) continue;
 
       const rawStatus = String(p.status);
       slots[p.type] = {
@@ -180,6 +179,9 @@ async function main() {
 
       payExamStatus: slots.EXAM_ACCESS.status,
       payExamConfirmedAt: slots.EXAM_ACCESS.confirmedAt,
+
+      payRenewalStatus: slots.RENEWAL.status,
+      payRenewalConfirmedAt: slots.RENEWAL.confirmedAt,
 
       payFullStatus: slots.FULL_PACKAGE.status,
       payFullConfirmedAt: slots.FULL_PACKAGE.confirmedAt,

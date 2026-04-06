@@ -56,6 +56,7 @@ function emptyPaySlots(): Record<PaymentType, PaySlot> {
     REGISTRATION: { status: "", confirmedAt: "" },
     DOCUMENT_REVIEW: { status: "", confirmedAt: "" },
     EXAM_ACCESS: { status: "", confirmedAt: "" },
+    RENEWAL: { status: "", confirmedAt: "" },
     FULL_PACKAGE: { status: "", confirmedAt: "" },
   };
 }
@@ -126,6 +127,9 @@ export async function getUsersExportXlsxHandler(
     { header: "Доступ к экзамену — статус", key: "payExamStatus", width: 24 },
     { header: "Доступ к экзамену — дата подтверждения", key: "payExamConfirmedAt", width: 30 },
 
+    { header: "Ресертификация — статус", key: "payRenewalStatus", width: 24 },
+    { header: "Ресертификация — дата подтверждения", key: "payRenewalConfirmedAt", width: 30 },
+
     { header: "Полный пакет — статус", key: "payFullStatus", width: 22 },
     { header: "Полный пакет — дата подтверждения", key: "payFullConfirmedAt", width: 30 },
   ];
@@ -177,6 +181,9 @@ export async function getUsersExportXlsxHandler(
 
       payExamStatus: slots.EXAM_ACCESS.status,
       payExamConfirmedAt: slots.EXAM_ACCESS.confirmedAt,
+
+      payRenewalStatus: slots.RENEWAL.status,
+      payRenewalConfirmedAt: slots.RENEWAL.confirmedAt,
 
       payFullStatus: slots.FULL_PACKAGE.status,
       payFullConfirmedAt: slots.FULL_PACKAGE.confirmedAt,
