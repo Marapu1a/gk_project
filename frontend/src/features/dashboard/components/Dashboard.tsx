@@ -87,7 +87,13 @@ export function Dashboard() {
       (!user.targetLevel || p.targetLevel === user.targetLevel),
   );
 
-  const hasRequiredPayment = isRenewalCycle ? renewalPaid : registrationPaid;
+  // const hasRequiredPayment = isRenewalCycle ? renewalPaid : registrationPaid;
+
+  // 🚨 TEMP: отключили проверку оплаты для РЕСЕРТИФИКАЦИИ
+  // Причина: пользователи должны свободно набирать CEU/часы без оплаты
+  // ВАЖНО: оплату проверять позже на этапе ВЫДАЧИ СЕРТИФИКАТА
+  // TODO: вернуть проверку renewalPaid после финализации бизнес-логики
+  const hasRequiredPayment = isRenewalCycle ? true : registrationPaid;
 
   const isSupervisorLike =
     user.activeGroup?.name === 'Супервизор' || user.activeGroup?.name === 'Опытный Супервизор';
@@ -178,14 +184,24 @@ export function Dashboard() {
               className="rounded-2xl border header-shadow bg-white p-6"
               style={{ borderColor: 'var(--color-green-light)' }}
             >
-              <p className="text-sm text-gray-600">
-                {isRenewalCycle
-                  ? 'Прогресс ресертификации станет доступен после оплаты ресертификации.'
-                  : `Прогресс сертификации станет доступен после оплаты регистрации${
-                      isSupervisorLike
-                        ? '.'
-                        : ' и выбора цели сертификации (Инструктор / Куратор / Супервизор).'
-                    }`}
+              <p className="text-sm text-gray-600 space-y-3">
+                <span className="block font-medium text-blue-dark">
+                  Сертификация на уровень Инструктора, Куратора или Супервизора
+                </span>
+                <span className="block">
+                  Если вы хотите начать сертификацию, выберите желаемый уровень (цель) сертификации
+                  и внесите оплату. После этого вы сможете подтверждать часы практики и CEU-баллы, а
+                  также загружать документы.
+                </span>
+
+                <span className="mt-4 block font-medium text-blue-dark">
+                  Продление сертификата (ресертификация)
+                </span>
+                <span className="block">
+                  Если у вас уже есть действующий сертификат и вы хотите пройти ресертификацию, вы
+                  можете сразу добавлять CEU-баллы и часы практики. Оплата потребуется позже — после
+                  сбора всех необходимых требований, перед выдачей нового сертификата.
+                </span>
               </p>
             </div>
           )}
