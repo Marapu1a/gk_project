@@ -22,6 +22,8 @@ type Props = {
   activeGroupName?: string | null;
 };
 
+const PAYMENT_NOTIFICATIONS_ENABLED = false;
+
 const TYPE_ORDER: Record<string, number> = {
   FULL_PACKAGE: 0,
   REGISTRATION: 1,
@@ -153,6 +155,21 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
     return 'text-gray-700';
   };
 
+  const sendPaymentNotification = async (params: { message: string; link?: string }) => {
+    if (!PAYMENT_NOTIFICATIONS_ENABLED) return;
+
+    try {
+      await postNotification({
+        userId,
+        type: 'PAYMENT',
+        message: params.message,
+        link: params.link,
+      });
+    } catch {
+      //
+    }
+  };
+
   const confirmPay = async (id: string, type: string) => {
     const ok = await confirmToast(
       type === 'FULL_PACKAGE' ? 'Подтвердить пакетную оплату?' : 'Подтвердить оплату?',
@@ -162,16 +179,10 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
     try {
       await mutate.mutateAsync({ id, status: 'PAID' });
 
-      try {
-        await postNotification({
-          userId,
-          type: 'PAYMENT',
-          message: type === 'FULL_PACKAGE' ? 'Пакетная оплата подтверждена' : 'Оплата подтверждена',
-          link: '/dashboard',
-        });
-      } catch {
-        //
-      }
+      await sendPaymentNotification({
+        message: type === 'FULL_PACKAGE' ? 'Пакетная оплата подтверждена' : 'Оплата подтверждена',
+        link: '/dashboard',
+      });
 
       await invalidate();
       toast.success(
@@ -198,20 +209,14 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
     try {
       await mutate.mutateAsync({ id: cancelId, status: 'UNPAID', comment: cancelComment });
 
-      try {
-        await postNotification({
-          userId,
-          type: 'PAYMENT',
-          message: cancelComment.trim()
-            ? `${
-                type === 'FULL_PACKAGE' ? 'Пакетная оплата' : 'Оплата'
-              } отменена администратором: ${cancelComment.trim()}`
-            : `${type === 'FULL_PACKAGE' ? 'Пакетная оплата' : 'Оплата'} отменена администратором`,
-          link: '/dashboard',
-        });
-      } catch {
-        //
-      }
+      await sendPaymentNotification({
+        message: cancelComment.trim()
+          ? `${
+              type === 'FULL_PACKAGE' ? 'Пакетная оплата' : 'Оплата'
+            } отменена администратором: ${cancelComment.trim()}`
+          : `${type === 'FULL_PACKAGE' ? 'Пакетная оплата' : 'Оплата'} отменена администратором`,
+        link: '/dashboard',
+      });
 
       await invalidate();
       toast.success(type === 'FULL_PACKAGE' ? 'Пакетная оплата отменена' : 'Оплата отменена');
