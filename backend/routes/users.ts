@@ -10,8 +10,8 @@ import { setTargetLevelHandler } from '../handlers/users/setTargetLevel';
 import { abandonActiveCycleHandler } from '../handlers/users/abandonActiveCycle';
 
 export async function moderatorsRoutes(app: FastifyInstance) {
-  app.get('/moderators', getModeratorsHandler);
-  app.get('/moderators/user-by-email', getUserByEmailHandler);
+  app.get('/moderators', { preHandler: [verifyToken] }, getModeratorsHandler);
+  app.get('/moderators/user-by-email', { preHandler: [verifyToken] }, getUserByEmailHandler);
 
   app.patch('/users/:id/avatar-url', { preHandler: [verifyToken] }, setAvatarUrlHandler);
   app.patch('/users/:userId/bio', { preHandler: [verifyToken] }, setUserBioHandler);

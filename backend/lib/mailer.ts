@@ -1,15 +1,17 @@
 import nodemailer from 'nodemailer';
 
+const smtpDebugEnabled = process.env.SMTP_DEBUG === '1';
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT),
-  secure: Boolean(Number(process.env.SMTP_SECURE)), // 0 → false, 1 → true
+  secure: Boolean(Number(process.env.SMTP_SECURE)),
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-  logger: true,            // <-- логирует в stdout всё, что делает
-  debug: true,             // <-- подробный отладочный вывод
+  logger: smtpDebugEnabled,
+  debug: smtpDebugEnabled,
 });
 
 export async function sendEmail({
@@ -24,7 +26,7 @@ export async function sendEmail({
   try {
     await transporter.sendMail({
       from: {
-        name: 'ЦС ПАП',
+        name: 'Р¦РЎ РџРђРџ',
         address: process.env.SMTP_USER || 'noreply@reestrpap.ru',
       },
       to,
@@ -32,8 +34,7 @@ export async function sendEmail({
       html,
     });
   } catch (error) {
-    console.error('❌ [EMAIL ERROR]:', error instanceof Error ? error.message : error);
-    console.error('❌ [EMAIL FULL]:', error);
-    throw new Error('Не удалось отправить письмо');
+    console.error('вќЊ [EMAIL ERROR]:', error instanceof Error ? error.message : error);
+    throw new Error('РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ РїРёСЃСЊРјРѕ');
   }
 }
