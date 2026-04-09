@@ -58,7 +58,7 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
   const modal = (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center px-4">
       <div
-        className="w-full max-w-md rounded-2xl border bg-white header-shadow overflow-hidden"
+        className="w-full max-w-2xl rounded-2xl border bg-white header-shadow overflow-hidden"
         style={{ borderColor: 'var(--color-green-light)' }}
       >
         {/* Header */}
