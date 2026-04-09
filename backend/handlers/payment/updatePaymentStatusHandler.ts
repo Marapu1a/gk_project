@@ -1,6 +1,7 @@
 // handlers/payment/updatePaymentStatusHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { PaymentType } from '@prisma/client';
 import { updatePaymentSchema } from '../../schemas/updatePaymentSchema';
 
 type AuthUser = {
@@ -61,12 +62,19 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
     });
 
     let activated = 0;
+    let synced = 0;
+
+    const bundledTypes: PaymentType[] = [
+      PaymentType.DOCUMENT_REVIEW,
+      PaymentType.EXAM_ACCESS,
+      PaymentType.REGISTRATION,
+    ];
 
     if (status === 'PAID' && dbPayment.type === 'FULL_PACKAGE') {
       const res = await tx.payment.updateMany({
         where: {
           userId: dbPayment.userId,
-          type: { in: ['DOCUMENT_REVIEW', 'EXAM_ACCESS', 'REGISTRATION'] },
+          type: { in: bundledTypes },
           status: { not: 'PAID' },
         },
         data: {
@@ -79,11 +87,35 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
       activated = res.count;
     }
 
-    return { updated, activated };
+    if (
+      dbPayment.type === 'FULL_PACKAGE' &&
+      (status === 'PENDING' || status === 'UNPAID')
+    ) {
+      const res = await tx.payment.updateMany({
+        where: {
+          userId: dbPayment.userId,
+          type: { in: bundledTypes },
+          status: { not: 'PAID' },
+        },
+        data: {
+          status,
+          confirmedAt: null,
+          comment:
+            status === 'PENDING'
+              ? 'Ожидает подтверждения вместе с пакетной оплатой'
+              : 'Сброшено после отмены пакетной оплаты',
+        },
+      });
+
+      synced = res.count;
+    }
+
+    return { updated, activated, synced };
   });
 
   return reply.send({
     payment: result.updated,
     activatedCount: result.activated,
+    syncedCount: result.synced,
   });
 }

@@ -231,7 +231,6 @@ export async function issueCertificateHandler(
       const paymentsReset = await tx.payment.updateMany({
         where: {
           userId: user.id,
-          type: { not: PaymentType.DOCUMENT_REVIEW },
           status: { in: [PaymentStatus.PAID, PaymentStatus.PENDING, PaymentStatus.UNPAID] },
         },
         data: {
