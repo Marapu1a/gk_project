@@ -6,7 +6,10 @@ import { setTargetLevelHandler } from '../users/setTargetLevel';
 
 export async function updateTargetLevelHandler(req: FastifyRequest, reply: FastifyReply) {
   const { id } = req.params as { id: string };
-  const { targetLevel } = req.body as { targetLevel: TargetLevel | null };
+  const { targetLevel, goalMode } = req.body as {
+    targetLevel: TargetLevel | null;
+    goalMode?: 'CERTIFICATION' | 'RENEWAL';
+  };
 
   if (req.user.role !== 'ADMIN') {
     return reply.code(403).send({ error: 'Недостаточно прав' });
@@ -32,7 +35,7 @@ export async function updateTargetLevelHandler(req: FastifyRequest, reply: Fasti
   // setTargetLevelHandler создаст ACTIVE cycle и поставит lock.
   // Эта ручка выступает как "админский помощник" и НЕ делает прямых апдейтов поля.
   (req as any).params = { id };
-  (req as any).body = { targetLevel };
+  (req as any).body = { targetLevel, goalMode };
 
   return setTargetLevelHandler(req as any, reply as any);
 }

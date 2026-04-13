@@ -164,8 +164,14 @@ export function Dashboard() {
                     </>
                   )}
                 </p>
-                <button className="text-brand hover:underline" onClick={scrollToBottomAndHighlight}>
+                <button
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-[#1F5FAF] underline underline-offset-4 transition hover:text-[#174A89] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F5FAF]/30"
+                  onClick={scrollToBottomAndHighlight}
+                >
                   Перейти к оплате
+                  <span aria-hidden="true" className="text-[0.9em]">
+                    ↗
+                  </span>
                 </button>
               </div>
             </div>

@@ -36,6 +36,10 @@ export function PaymentModal({ payment, billingGroup, onClose }: PaymentModalPro
   if (!payment) return null;
 
   const paymentLink = getPaymentLink(payment.type, billingGroup);
+  const title =
+    payment.type === 'DOCUMENT_REVIEW' && billingGroup === 'куратор'
+      ? 'Подача заявки на сертификацию, экспертиза документов на уровень Супервизор ПАП'
+      : TITLE_BY_TYPE[payment.type];
 
   const isPending = payment.status === 'PENDING';
   const isPaid = payment.status === 'PAID';
@@ -74,7 +78,7 @@ export function PaymentModal({ payment, billingGroup, onClose }: PaymentModalPro
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h3 className="text-[22px] font-semibold text-[#1F305E]">
-              {TITLE_BY_TYPE[payment.type]}
+              {title}
             </h3>
 
             <p className="mt-2 text-[15px] leading-6 text-[#1F305E]/80">

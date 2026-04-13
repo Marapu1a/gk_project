@@ -66,14 +66,14 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
   const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
 
   const billingGroup = resolveBillingGroup(targetLevelName, activeGroupName);
+  const isSupervisorTarget = targetLevelName === 'Супервизор';
 
   const preparedPayments = useMemo(() => {
     if (!payments) return [];
 
-    const isSupervisor =
-      activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
-
-    const visibleTypes = isSupervisor ? ORDER.filter((type) => type !== 'EXAM_ACCESS') : ORDER;
+    const visibleTypes = isSupervisorTarget
+      ? ORDER.filter((type) => type !== 'REGISTRATION')
+      : ORDER;
 
     const fullPackage = payments.find((p) => p.type === 'FULL_PACKAGE');
     const isPackagePending = fullPackage?.status === 'PENDING';
@@ -110,7 +110,7 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
       uiDisabled: boolean;
       disabledReason?: string;
     })[];
-  }, [payments, activeGroupName]);
+  }, [payments, isSupervisorTarget]);
 
   if (isLoading || !payments?.length) {
     return null;
@@ -152,7 +152,7 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
               key={payment.id}
               title={
                 payment.type === 'DOCUMENT_REVIEW' && targetLevelName === 'Супервизор'
-                  ? 'Подача заявки на сертификацию и экспертиза документов'
+                  ? 'Подача заявки на сертификацию, экспертиза документов на уровень Супервизор ПАП'
                   : LABELS[payment.type]
               }
               status={payment.status}

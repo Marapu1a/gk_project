@@ -119,9 +119,13 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
 
   const saveTarget = async () => {
     if (!currentUser || currentUser.role !== 'ADMIN') return;
+    if (!selectedAction) return;
 
     try {
-      await updateTargetLevel.mutateAsync(target as any);
+      await updateTargetLevel.mutateAsync({
+        targetLevel: selectedAction.level,
+        goalMode: selectedAction.mode,
+      });
       toast.success('Цель обновлена');
     } catch (e: any) {
       toast.error(
@@ -416,7 +420,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
                 <button
                   className="btn btn-brand"
                   onClick={saveTarget}
-                  disabled={updateTargetLevel.isPending || !target}
+                  disabled={updateTargetLevel.isPending || !selectedAction}
                 >
                   {updateTargetLevel.isPending ? 'Сохраняем…' : 'Сохранить цель'}
                 </button>

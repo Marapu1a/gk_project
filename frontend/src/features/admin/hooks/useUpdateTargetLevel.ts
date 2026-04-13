@@ -2,15 +2,18 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateTargetLevel } from '../api/updateTargetLevel';
 import { toast } from 'sonner';
 
+type TargetLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
+type GoalMode = 'CERTIFICATION' | 'RENEWAL';
+
 export function useUpdateTargetLevel(userId: string) {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: (level: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null) =>
-      updateTargetLevel(userId, level),
+    mutationFn: (payload: { targetLevel: TargetLevel; goalMode?: GoalMode }) =>
+      updateTargetLevel(userId, payload),
 
     onSuccess: async () => {
-      toast.success('Целевой уровень обновлён');
+      toast.success('Р¦РµР»РµРІРѕР№ СѓСЂРѕРІРµРЅСЊ РѕР±РЅРѕРІР»С‘РЅ');
 
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
@@ -21,7 +24,7 @@ export function useUpdateTargetLevel(userId: string) {
     },
 
     onError: (err: any) => {
-      toast.error(err?.response?.data?.error || 'Ошибка обновления targetLevel');
+      toast.error(err?.response?.data?.error || 'РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ targetLevel');
     },
   });
 }

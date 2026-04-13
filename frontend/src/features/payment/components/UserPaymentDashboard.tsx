@@ -55,13 +55,16 @@ function getDisplayTargetLevelName(
   return targetLevel ? targetLevelLabels[targetLevel] : undefined;
 }
 
-function getPaymentLabel(payment: PaymentItem, targetLevel: PaymentItem['targetLevel'] | null): string {
+function getPaymentLabel(
+  payment: PaymentItem,
+  targetLevel: PaymentItem['targetLevel'] | null,
+): string {
   if (payment.type === 'RENEWAL') {
     return 'Ресертификация';
   }
 
   if (payment.type === 'DOCUMENT_REVIEW' && targetLevel === 'SUPERVISOR') {
-    return 'Подача заявки на сертификацию и экспертиза документов';
+    return 'Подача заявки на сертификацию, экспертиза документов на уровень Супервизор ПАП';
   }
 
   return LABELS[payment.type];
@@ -98,11 +101,10 @@ export function UserPaymentDashboard({
     const renewal = payments.find((p) => p.type === 'RENEWAL' && p.targetLevel === targetLevel);
     ordered = renewal ? [renewal] : [];
   } else {
-    const isSupervisor =
-      activeGroupName === 'Супервизор' || activeGroupName === 'Опытный супервизор';
+    const isSupervisorTarget = targetLevel === 'SUPERVISOR';
 
-    const types = isSupervisor
-      ? ORDERED_TYPES.filter((t) => t !== 'EXAM_ACCESS' && t !== 'RENEWAL')
+    const types = isSupervisorTarget
+      ? ORDERED_TYPES.filter((t) => t !== 'REGISTRATION' && t !== 'RENEWAL')
       : ORDERED_TYPES.filter((t) => t !== 'RENEWAL');
 
     ordered = types
@@ -186,9 +188,12 @@ export function UserPaymentDashboard({
                         href={link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-2 inline-flex text-sm leading-6 text-brand hover:underline"
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium leading-6 text-[#1F5FAF] underline underline-offset-4 transition hover:text-[#174A89] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F5FAF]/30"
                       >
                         Перейти к оплате
+                        <span aria-hidden="true" className="text-[0.9em]">
+                          ↗
+                        </span>
                       </a>
                     ) : null}
                   </div>
