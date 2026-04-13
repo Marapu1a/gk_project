@@ -26,7 +26,7 @@ export async function sendEmail({
   try {
     await transporter.sendMail({
       from: {
-        name: 'Р¦РЎ РџРђРџ',
+        name: 'ЦС ПАП',
         address: process.env.SMTP_USER || 'noreply@reestrpap.ru',
       },
       to,
@@ -34,7 +34,7 @@ export async function sendEmail({
       html,
     });
   } catch (error) {
-    console.error('вќЊ [EMAIL ERROR]:', error instanceof Error ? error.message : error);
-    throw new Error('РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ РїРёСЃСЊРјРѕ');
+    console.error('✉ [EMAIL ERROR]:', error instanceof Error ? error.message : error);
+    throw new Error('Не удалось отправить письмо');
   }
 }

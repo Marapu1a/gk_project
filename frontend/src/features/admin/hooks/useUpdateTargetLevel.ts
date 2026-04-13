@@ -13,7 +13,7 @@ export function useUpdateTargetLevel(userId: string) {
       updateTargetLevel(userId, payload),
 
     onSuccess: async () => {
-      toast.success('Р¦РµР»РµРІРѕР№ СѓСЂРѕРІРµРЅСЊ РѕР±РЅРѕРІР»С‘РЅ');
+      toast.success('Целевой уровень обновлён');
 
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
@@ -24,7 +24,7 @@ export function useUpdateTargetLevel(userId: string) {
     },
 
     onError: (err: any) => {
-      toast.error(err?.response?.data?.error || 'РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ targetLevel');
+      toast.error(err?.response?.data?.error || 'Ошибка обновления targetLevel');
     },
   });
 }
