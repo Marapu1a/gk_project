@@ -36,18 +36,17 @@ export const recordStatusLabels: Record<string, string> = {
 
 // Типы платежей
 export const paymentTypeLabels: Record<string, string> = {
-  DOCUMENT_REVIEW: 'Проверка документов',
-  EXAM_ACCESS: 'Доступ к экзамену',
-  FULL_PACKAGE: 'Полный пакет',
-  REGISTRATION: 'Регистрация',
+  DOCUMENT_REVIEW: 'Экспертиза документов',
+  EXAM_ACCESS: 'Экзамен',
+  FULL_PACKAGE: 'Сертификация - пакет со скидкой 10%',
+  REGISTRATION: 'Подача заявки на сертификацию и учет часов практики',
   RENEWAL: 'Ресертификация',
 };
 
 // Если нужен красивый вывод с уровнем
 export function getPaymentTypeLabel(type: string, targetLevel?: string | null): string {
   if (type === 'RENEWAL') {
-    const level = targetLevel ? targetLevelLabels[targetLevel] || targetLevel : null;
-    return level ? `Ресертификация — ${level}` : 'Ресертификация';
+    return 'Ресертификация';
   }
 
   return paymentTypeLabels[type] || type;

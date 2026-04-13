@@ -12,10 +12,11 @@ type PaymentModalProps = {
 };
 
 const TITLE_BY_TYPE: Record<PaymentItem['type'], string> = {
-  FULL_PACKAGE: 'Полный пакет услуг',
-  REGISTRATION: 'Регистрация и супервизия',
-  DOCUMENT_REVIEW: 'Проверка документов',
-  EXAM_ACCESS: 'Доступ к экзамену',
+  FULL_PACKAGE: 'Сертификация - пакет со скидкой 10%',
+  REGISTRATION: 'Подача заявки на сертификацию и учет часов практики',
+  DOCUMENT_REVIEW: 'Экспертиза документов',
+  EXAM_ACCESS: 'Экзамен',
+  RENEWAL: 'Ресертификация',
 };
 
 export function PaymentModal({ payment, billingGroup, onClose }: PaymentModalProps) {

@@ -1,4 +1,3 @@
-// src/features/payment/components/UserPaymentDashboard.tsx
 import { useEffect, useState } from 'react';
 import { useUserPayments } from '../hooks/useUserPayments';
 import { PaymentStatusToggle } from '../components/PaymentStatusToggle';
@@ -7,10 +6,10 @@ import type { PaymentItem } from '../api/getUserPayments';
 import { targetLevelLabels } from '@/utils/labels';
 
 const LABELS: Record<Exclude<PaymentItem['type'], 'RENEWAL'>, string> = {
-  DOCUMENT_REVIEW: 'Проверка документов',
-  EXAM_ACCESS: 'Доступ к экзамену',
-  REGISTRATION: 'Регистрация и супервизия',
-  FULL_PACKAGE: 'Полный пакет со скидкой',
+  DOCUMENT_REVIEW: 'Экспертиза документов',
+  EXAM_ACCESS: 'Экзамен',
+  REGISTRATION: 'Подача заявки на сертификацию и учет часов практики',
+  FULL_PACKAGE: 'Сертификация - пакет со скидкой 10%',
 };
 
 const STATUS_LABELS: Record<PaymentItem['status'], string> = {
@@ -48,7 +47,7 @@ function getDisplayTargetLevelName(
   if (
     cycleType === 'RENEWAL' &&
     targetLevel === 'SUPERVISOR' &&
-    activeGroupName === 'Опытный Супервизор'
+    activeGroupName === 'Опытный супервизор'
   ) {
     return 'Опытный супервизор';
   }
@@ -56,17 +55,13 @@ function getDisplayTargetLevelName(
   return targetLevel ? targetLevelLabels[targetLevel] : undefined;
 }
 
-function getPaymentLabel(payment: PaymentItem, activeGroupName: string): string {
+function getPaymentLabel(payment: PaymentItem, targetLevel: PaymentItem['targetLevel'] | null): string {
   if (payment.type === 'RENEWAL') {
-    if (payment.targetLevel === 'SUPERVISOR' && activeGroupName === 'Опытный Супервизор') {
-      return 'Ресертификация — Опытный супервизор';
-    }
+    return 'Ресертификация';
+  }
 
-    const levelLabel = payment.targetLevel
-      ? targetLevelLabels[payment.targetLevel] || payment.targetLevel
-      : null;
-
-    return levelLabel ? `Ресертификация — ${levelLabel}` : 'Ресертификация';
+  if (payment.type === 'DOCUMENT_REVIEW' && targetLevel === 'SUPERVISOR') {
+    return 'Подача заявки на сертификацию и экспертиза документов';
   }
 
   return LABELS[payment.type];
@@ -101,11 +96,10 @@ export function UserPaymentDashboard({
 
   if (cycleType === 'RENEWAL') {
     const renewal = payments.find((p) => p.type === 'RENEWAL' && p.targetLevel === targetLevel);
-
     ordered = renewal ? [renewal] : [];
   } else {
     const isSupervisor =
-      activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
+      activeGroupName === 'Супервизор' || activeGroupName === 'Опытный супервизор';
 
     const types = isSupervisor
       ? ORDERED_TYPES.filter((t) => t !== 'EXAM_ACCESS' && t !== 'RENEWAL')
@@ -132,28 +126,28 @@ export function UserPaymentDashboard({
         }}
         aria-expanded={open}
         aria-controls="payments-body"
-        className={`w-full flex items-center justify-between px-6 py-4 border-b text-left ${
+        className={`w-full flex items-start justify-between gap-4 px-6 py-4 border-b text-left ${
           highlight ? 'animate-pulse ring-2 ring-offset-2 ring-lime-400' : ''
         }`}
         style={{ borderColor: 'var(--color-green-light)' }}
       >
-        <h2 className="text-xl font-bold text-blue-dark">
+        <h2 className="text-xl font-bold leading-snug text-blue-dark">
           Мои оплаты{' '}
           {cycleType === 'RENEWAL' ? (
-            <span className="text-sm text-gray-600">
+            <span className="text-sm font-medium text-gray-600">
               (ресертификация: <strong>{targetLevelName ?? '—'}</strong>)
             </span>
           ) : targetLevelName ? (
-            <span className="text-sm text-gray-600">
+            <span className="text-sm font-medium text-gray-600">
               (оплата за уровень: <strong>{targetLevelName}</strong>)
             </span>
           ) : activeGroupName ? (
-            <span className="text-sm text-gray-600">
+            <span className="text-sm font-medium text-gray-600">
               (по текущему уровню: <strong>{activeGroupName}</strong>)
             </span>
           ) : null}
         </h2>
-        <span className="text-sm">{open ? '▲' : '▼'}</span>
+        <span className="pt-1 text-sm shrink-0">{open ? '▲' : '▼'}</span>
       </button>
 
       <div
@@ -166,22 +160,24 @@ export function UserPaymentDashboard({
         }}
       >
         <div style={{ overflow: 'hidden' }}>
-          <div className="px-6 py-5 space-y-4">
+          <div className="px-6 py-5">
             {ordered.map((payment, idx) => {
               const link = getPaymentLink(payment.type, billingGroup);
 
               return (
                 <div
                   key={payment.id}
-                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 ${
+                  className={`grid gap-x-6 gap-y-4 py-5 ${
                     idx === 0 ? '' : 'border-t'
-                  }`}
+                  } sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start`}
                   style={{ borderColor: 'var(--color-green-light)' }}
                 >
-                  <div className="flex flex-col gap-1">
-                    <div className="font-semibold">{getPaymentLabel(payment, activeGroupName)}</div>
+                  <div className="min-w-0 pr-0 sm:pr-2">
+                    <div className="max-w-[38rem] text-[1.06rem] font-semibold leading-[1.4] text-blue-dark break-words">
+                      {getPaymentLabel(payment, targetLevel)}
+                    </div>
 
-                    <div className="text-sm text-gray-600">
+                    <div className="mt-2 text-sm leading-6 text-gray-600">
                       Статус: <span className="font-medium">{STATUS_LABELS[payment.status]}</span>
                     </div>
 
@@ -190,16 +186,14 @@ export function UserPaymentDashboard({
                         href={link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-brand hover:underline"
+                        className="mt-2 inline-flex text-sm leading-6 text-brand hover:underline"
                       >
                         Перейти к оплате
                       </a>
-                    ) : payment.type === 'RENEWAL' ? (
-                      <span className="text-sm text-gray-500">Ссылка на оплату скоро появится</span>
                     ) : null}
                   </div>
 
-                  <div className="mt-3 sm:mt-0">
+                  <div className="sm:pt-1 sm:pl-2 flex items-start justify-start sm:justify-end">
                     <PaymentStatusToggle payment={payment} isAdmin={false} />
                   </div>
                 </div>

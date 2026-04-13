@@ -6,10 +6,11 @@ import { PaymentModal } from './PaymentModal';
 import { PaymentStatusIcon } from './PaymentStatusIcon';
 
 const LABELS: Record<PaymentItem['type'], string> = {
-  FULL_PACKAGE: 'Полный пакет услуг',
-  REGISTRATION: 'Регистрация и супервизия',
-  DOCUMENT_REVIEW: 'Проверка документов',
-  EXAM_ACCESS: 'Доступ к экзамену',
+  FULL_PACKAGE: 'Сертификация - пакет со скидкой 10%',
+  REGISTRATION: 'Подача заявки на сертификацию и учет часов практики',
+  DOCUMENT_REVIEW: 'Экспертиза документов',
+  EXAM_ACCESS: 'Экзамен',
+  RENEWAL: 'Ресертификация',
 };
 
 const ORDER: PaymentItem['type'][] = [
@@ -129,7 +130,7 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
     visibleNonPackagePayments.every((payment) => payment.status === 'PAID');
 
   if (isFullPackagePaid) {
-    return <PaymentSummary subtitle="Полный пакет услуг оплачен" />;
+    return <PaymentSummary subtitle="Сертификация - пакет со скидкой 10% оплачена" />;
   }
 
   if (areAllSeparatePaid) {
@@ -149,7 +150,11 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
           {preparedPayments.map((payment) => (
             <PaymentCard
               key={payment.id}
-              title={LABELS[payment.type]}
+              title={
+                payment.type === 'DOCUMENT_REVIEW' && targetLevelName === 'Супервизор'
+                  ? 'Подача заявки на сертификацию и экспертиза документов'
+                  : LABELS[payment.type]
+              }
               status={payment.status}
               isFullPackage={payment.type === 'FULL_PACKAGE'}
               disabled={payment.uiDisabled}

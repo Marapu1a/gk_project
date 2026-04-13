@@ -13,6 +13,8 @@ const PAYMENT_LINKS: Record<string, Partial<Record<PaymentTypeExtended, string>>
       'https://reestrpap.ru/product/ekzamen-na-uroven-instruktor-pap-ibt',
     FULL_PACKAGE:
       'https://reestrpap.ru/product/stoimost-so-skidkoy-10-pri-edinovremennoy-oplate-vseh-treh-platezhey-instruktor',
+    RENEWAL:
+      'https://reestrpap.ru/product/resertifikatsiya-uroven-instruktor-pap-ibt',
   },
   инструктор: {
     REGISTRATION:
@@ -23,6 +25,8 @@ const PAYMENT_LINKS: Record<string, Partial<Record<PaymentTypeExtended, string>>
       'https://reestrpap.ru/product/ekzamen-na-uroven-kurator-pap',
     FULL_PACKAGE:
       'https://reestrpap.ru/product/stoimost-so-skidkoy-10-pri-edinovremennoy-oplate-vseh-treh-platezhey-kurator',
+    RENEWAL:
+      'https://reestrpap.ru/product/resertifikatsiya-uroven-kurator-pap',
   },
   куратор: {
     DOCUMENT_REVIEW:
@@ -31,16 +35,21 @@ const PAYMENT_LINKS: Record<string, Partial<Record<PaymentTypeExtended, string>>
       'https://reestrpap.ru/product/ekzamen-na-uroven-supervizor-pap-iba',
     FULL_PACKAGE:
       'https://reestrpap.ru/product/stoimost-so-skidkoy-10-pri-edinovremennoy-oplate-vseh-treh-platezhey-supervizor',
+    RENEWAL:
+      'https://reestrpap.ru/product/recertification-na-uroven-supervizor-pap-iba-2',
+  },
+  супервизор: {
+    RENEWAL:
+      'https://reestrpap.ru/product/recertification-na-uroven-supervizor-pap-iba-2',
+  },
+  'опытный супервизор': {
+    RENEWAL:
+      'https://reestrpap.ru/product/recertification-na-uroven-supervizor-pap-iba-2',
   },
 };
 
 export function getPaymentLink(type: PaymentItem['type'], billingGroup?: string): string | null {
   if (!billingGroup) return null;
-
-  // для ресертификации ссылка пока не заведена
-  if (type === 'RENEWAL') {
-    return null;
-  }
 
   const normalizedGroup = billingGroup.toLowerCase().trim();
   const url = PAYMENT_LINKS[normalizedGroup]?.[type];

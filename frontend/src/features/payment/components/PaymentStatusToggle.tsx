@@ -32,7 +32,7 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
       queryClient.invalidateQueries({ queryKey: ['userPayments', payment.userId] }),
       queryClient.invalidateQueries({ queryKey: ['admin', 'user', payment.userId] }),
       queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'details', payment.userId] }),
-      queryClient.invalidateQueries({ queryKey: ['me'] }), // у юзера дашборд часто рядом
+      queryClient.invalidateQueries({ queryKey: ['me'] }),
     ]);
   };
 
@@ -70,7 +70,7 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
         const msg =
           nextStatus === 'PAID'
             ? `Оплата для ${userEmail} подтверждена`
-            : `Оплата снята на перепроверку администратором`;
+            : 'Оплата снята на перепроверку администратором';
 
         try {
           await postNotification({
@@ -137,7 +137,7 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
     <button
       type="button"
       onClick={handleClick}
-      className="btn btn-brand"
+      className="btn btn-brand w-full sm:w-auto sm:min-w-[132px] min-h-[52px] px-4 py-3 text-center leading-tight whitespace-normal shrink-0"
       disabled={mutation.isPending}
     >
       {isAdmin
