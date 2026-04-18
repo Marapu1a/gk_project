@@ -187,7 +187,7 @@ export function UserPaymentDashboard({
                   style={{ borderColor: 'var(--color-green-light)' }}
                 >
                   <div className="min-w-0 pr-0 sm:pr-2">
-                    <div className="max-w-[38rem] text-[1.06rem] font-semibold leading-[1.4] text-blue-dark break-words">
+                    <div className="max-w-152 text-[1.06rem] font-semibold leading-[1.4] text-blue-dark wrap-break-word">
                       {getPaymentLabel(payment, targetLevel)}
                     </div>
 

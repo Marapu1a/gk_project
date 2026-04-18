@@ -118,6 +118,7 @@ model User {
   isEmailConfirmed         Boolean  @default(false)
   role                     Role     @default(STUDENT)
   bio                      String?
+  isProfileVisible         Boolean  @default(true)
 
   certificates             Certificate[]
   ceuRecords               CEURecord[]

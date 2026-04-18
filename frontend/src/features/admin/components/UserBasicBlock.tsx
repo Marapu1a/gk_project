@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useUpdateUserInfo } from '@/features/admin/hooks/useUpdateUserInfo';
 import { useToggleUserRole } from '@/features/admin/hooks/useToggleUserRole';
+import { useUpdateUserVisibility } from '@/features/admin/hooks/useUpdateUserVisibility';
 import { UserLocationFields } from '@/features/user/components/UserLocationFields';
 import { UpdateUserPasswordModal } from './UpdateUserPasswordModal';
 import PhoneInput from 'react-phone-input-2';
@@ -20,6 +21,7 @@ type Props = {
   role: 'ADMIN' | 'REVIEWER' | 'STUDENT';
   createdAt: string;
   groupName: string | null;
+  isProfileVisible: boolean;
 };
 
 const roleMap = { ADMIN: 'Администратор', REVIEWER: 'Проверяющий', STUDENT: 'Соискатель' } as const;
@@ -95,6 +97,7 @@ export default function UserBasicBlock(props: Props) {
     role,
     createdAt,
     groupName,
+    isProfileVisible,
   } = props;
 
   const namesRu = splitFullName(fullName);
@@ -109,6 +112,7 @@ export default function UserBasicBlock(props: Props) {
   const [displayFullNameLatin, setDisplayFullNameLatin] = useState<string | null>(
     fullNameLatin ?? null,
   );
+  const [profileVisible, setProfileVisible] = useState(isProfileVisible);
 
   // форма
   const [form, setForm] = useState({
@@ -129,6 +133,7 @@ export default function UserBasicBlock(props: Props) {
 
   const mutation = useUpdateUserInfo(userId);
   const toggleRole = useToggleUserRole();
+  const updateVisibility = useUpdateUserVisibility(userId);
 
   // синхронизация, если сверху приехали новые данные (переключение юзера без размонтирования)
   useEffect(() => {
@@ -150,7 +155,8 @@ export default function UserBasicBlock(props: Props) {
 
     setDisplayFullName(fullName);
     setDisplayFullNameLatin(fullNameLatin ?? null);
-  }, [fullName, fullNameLatin, phone, birthDate, country, city]);
+    setProfileVisible(isProfileVisible);
+  }, [fullName, fullNameLatin, phone, birthDate, country, city, isProfileVisible]);
 
   const onToggleRole = async () => {
     const toAdmin = role !== 'ADMIN';
@@ -183,6 +189,18 @@ export default function UserBasicBlock(props: Props) {
       avatarUrl: '',
     });
     setEdit(false);
+  };
+
+  const onToggleProfileVisibility = async (nextValue: boolean) => {
+    setProfileVisible(nextValue);
+
+    try {
+      await updateVisibility.mutateAsync(nextValue);
+      toast.success(nextValue ? 'Профиль показан в реестре' : 'Профиль скрыт из реестра');
+    } catch (e: any) {
+      setProfileVisible(!nextValue);
+      toast.error(e?.response?.data?.error || 'Не удалось обновить видимость в реестре');
+    }
   };
 
   const onSave = async () => {
@@ -274,6 +292,25 @@ export default function UserBasicBlock(props: Props) {
           >
             {role === 'ADMIN' ? 'Снять администратора' : 'Сделать админом'}
           </button>
+        </div>
+
+        <div
+          className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
+          style={{ borderColor: 'var(--color-green-light)' }}
+        >
+          <div className="text-sm text-blue-dark">
+            <span className="font-medium">Реестр:</span> {profileVisible ? 'Виден' : 'Скрыт'}
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-blue-dark">
+            <input
+              type="checkbox"
+              checked={profileVisible}
+              disabled={updateVisibility.isPending}
+              onChange={(e) => onToggleProfileVisibility(e.target.checked)}
+            />
+            Показывать в реестре
+          </label>
         </div>
 
         {/* Основной контент */}

@@ -74,9 +74,6 @@ export function RegistryProfile({ userId }: Props) {
         <div className="text-sm text-gray-600 mt-2">
           {[p.country, p.city].filter(Boolean).join(', ') || '—'}
         </div>
-        <div className="text-xs text-gray-500">
-          Регистрация: {fmt(p.createdAt)} · {since(p.createdAt)} назад
-        </div>
       </div>
 
       {/* О себе */}

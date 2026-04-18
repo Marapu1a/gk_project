@@ -27,6 +27,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
       country: true,
       city: true,
       avatarUrl: true,
+      isProfileVisible: true,
       isEmailConfirmed: true,
       role: true,
       createdAt: true,

@@ -45,6 +45,7 @@ export async function getRegistryList({
   // базовый фильтр: админы в публичный реестр не попадают
   const where: any = {
     role: { not: 'ADMIN' },
+    isProfileVisible: true,
   };
   if (country) where.country = country;
   if (city) where.city = city;

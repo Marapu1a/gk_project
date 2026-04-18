@@ -45,6 +45,7 @@ export default function UserDetails() {
           role={data.role}
           createdAt={data.createdAt}
           groupName={activeGroup}
+          isProfileVisible={data.isProfileVisible}
         />
 
         <AdminUserGroupsBlock userId={data.id} />

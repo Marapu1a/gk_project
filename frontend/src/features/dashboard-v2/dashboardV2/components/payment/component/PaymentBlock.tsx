@@ -155,7 +155,7 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
       <section className="card-section px-5 py-5">
         <h2 className="mb-5 text-center text-[18px] font-semibold text-[#1F305E]">Оплата</h2>
 
-        <div className="mb-5 rounded-[16px] bg-[#DDE8EB] px-5 py-3 text-center text-[16px] font-semibold text-[#1F305E]">
+        <div className="mb-5 rounded-2xl bg-[#DDE8EB] px-5 py-3 text-center text-[16px] font-semibold text-[#1F305E]">
           {targetLevelName}
         </div>
 

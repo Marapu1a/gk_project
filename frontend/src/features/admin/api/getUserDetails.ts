@@ -12,6 +12,7 @@ export async function getUserDetails(id: string) {
     country: string | null;
     city: string | null;
     avatarUrl: string | null;
+    isProfileVisible: boolean;
     isEmailConfirmed: boolean;
     role: 'ADMIN' | 'REVIEWER' | 'STUDENT';
     createdAt: string;
