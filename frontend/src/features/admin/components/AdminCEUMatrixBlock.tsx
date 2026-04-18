@@ -23,7 +23,7 @@ type Props = {
   isSupervisor: boolean;
 };
 
-export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
+export default function AdminCEUMatrixBlock({ userId }: Props) {
   const { data, isLoading, error } = useUserCEUMatrix(userId);
   const mutation = useUpdateUserCEUMatrix(userId);
 
@@ -34,7 +34,7 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
   if (error || !data) return <p className="text-error">Ошибка загрузки CEU-баллов</p>;
 
   const startEdit = (category: CEUCategory, status: CEUStatus, current: number) => {
-    if (isSupervisor) return;
+    if (status !== 'CONFIRMED') return;
     setEditing({ category, status });
     setValue(String(current));
   };
@@ -66,32 +66,9 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
     }
   };
 
-  // 🔥 защищаемся от отсутствия строки SUPERVISION
-  const shouldHideSupervisionRow = () => {
-    const row = data.matrix.SUPERVISION;
-    if (!row) return true; // нет строки — просто прячем
-
-    const { CONFIRMED = 0, SPENT = 0, REJECTED = 0 } = row as Partial<Record<CEUStatus, number>>;
-
-    return CONFIRMED === 0 && SPENT === 0 && REJECTED === 0;
-  };
-
-  const hideSupervision = shouldHideSupervisionRow();
-
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-blue-dark">
-        CEU-баллы {isSupervisor ? '(редактирование запрещено)' : '(редактирование разрешено)'}
-      </h2>
-
-      {isSupervisor && (
-        <div className="card p-4" style={{ border: '1px solid var(--color-green-light)' }}>
-          <p className="text-sm">
-            Супервизоры баллы не набирают. Ниже показаны ранее набранные баллы — редактирование
-            отключено.
-          </p>
-        </div>
-      )}
+      <h2 className="text-xl font-semibold text-blue-dark">CEU-баллы</h2>
 
       <div
         className="overflow-x-auto rounded-2xl border header-shadow"
@@ -111,10 +88,6 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
 
           <tbody>
             {Object.entries(categoryLabels).map(([cat, catLabel]) => {
-              if (cat === 'SUPERVISION' && hideSupervision) {
-                return null;
-              }
-
               const row = data.matrix[cat as CEUCategory] as
                 | Partial<Record<CEUStatus, number>>
                 | undefined;
@@ -131,6 +104,7 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
                     const status = st as CEUStatus;
                     const isEditing = editing?.category === cat && editing?.status === status;
                     const current = row?.[status] ?? 0;
+                    const isEditable = status === 'CONFIRMED';
 
                     return (
                       <td key={st} className="py-2 px-3">
@@ -158,18 +132,22 @@ export default function AdminCEUMatrixBlock({ userId, isSupervisor }: Props) {
                               Отмена
                             </button>
                           </div>
-                        ) : isSupervisor ? (
-                          <span>{current}</span>
-                        ) : (
+                        ) : isEditable ? (
                           <button
                             className="btn btn-ghost"
                             onClick={() =>
                               startEdit(cat as CEUCategory, status as CEUStatus, current)
                             }
                             disabled={mutation.isPending}
+                            style={{
+                              fontWeight: 600,
+                              borderBottom: '1px dashed var(--color-blue-dark)',
+                            }}
                           >
                             {current}
                           </button>
+                        ) : (
+                          <span>{current}</span>
                         )}
                       </td>
                     );

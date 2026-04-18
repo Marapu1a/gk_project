@@ -95,6 +95,18 @@ export function UserPaymentDashboard({
       BILLING_GROUP_BY_TARGET[targetLevelName as keyof typeof BILLING_GROUP_BY_TARGET]) ||
     (activeGroupName ? activeGroupName.toLowerCase().trim() : '');
 
+  const getRelatedPayments = (payment: PaymentItem): PaymentItem[] => {
+    const isSupervisorCombined =
+      cycleType !== 'RENEWAL' && targetLevel === 'SUPERVISOR' && payment.type === 'DOCUMENT_REVIEW';
+
+    if (!isSupervisorCombined) {
+      return [payment];
+    }
+
+    const registration = payments.find((p) => p.type === 'REGISTRATION');
+    return registration ? [payment, registration] : [payment];
+  };
+
   let ordered: PaymentItem[] = [];
 
   if (cycleType === 'RENEWAL') {
@@ -199,7 +211,11 @@ export function UserPaymentDashboard({
                   </div>
 
                   <div className="sm:pt-1 sm:pl-2 flex items-start justify-start sm:justify-end">
-                    <PaymentStatusToggle payment={payment} isAdmin={false} />
+                    <PaymentStatusToggle
+                      payment={payment}
+                      isAdmin={false}
+                      relatedPayments={getRelatedPayments(payment)}
+                    />
                   </div>
                 </div>
               );

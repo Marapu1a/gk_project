@@ -15,14 +15,17 @@ const PAYMENT_STATUS = {
 type Props = {
   payment: PaymentItem & { userEmail?: string; user?: { email?: string } };
   isAdmin: boolean;
+  relatedPayments?: PaymentItem[];
 };
 
-export function PaymentStatusToggle({ payment, isAdmin }: Props) {
+export function PaymentStatusToggle({ payment, isAdmin, relatedPayments = [] }: Props) {
   const mutation = useUpdatePaymentStatus(payment.userId);
   const queryClient = useQueryClient();
 
   const userEmail = payment.userEmail ?? payment.user?.email ?? '—';
   const adminUserLink = `/admin/users/${payment.userId}`;
+
+  const paymentsToUpdate = relatedPayments.length ? relatedPayments : [payment];
 
   const invalidateAllPayments = async () => {
     await Promise.all([
@@ -64,7 +67,9 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
     if (!(await confirmToast(question))) return;
 
     try {
-      await mutation.mutateAsync({ id: payment.id, status: nextStatus });
+      await Promise.all(
+        paymentsToUpdate.map((item) => mutation.mutateAsync({ id: item.id, status: nextStatus })),
+      );
 
       if (isAdmin) {
         const msg =
@@ -123,13 +128,19 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
     }
   };
 
+  const effectiveStatus = paymentsToUpdate.some((p) => p.status === PAYMENT_STATUS.PAID)
+    ? PAYMENT_STATUS.PAID
+    : paymentsToUpdate.some((p) => p.status === PAYMENT_STATUS.PENDING)
+      ? PAYMENT_STATUS.PENDING
+      : PAYMENT_STATUS.UNPAID;
+
   const showForUser =
     !isAdmin &&
-    (payment.status === PAYMENT_STATUS.UNPAID || payment.status === PAYMENT_STATUS.PENDING);
+    (effectiveStatus === PAYMENT_STATUS.UNPAID || effectiveStatus === PAYMENT_STATUS.PENDING);
 
   const showForAdmin =
     isAdmin &&
-    (payment.status === PAYMENT_STATUS.PENDING || payment.status === PAYMENT_STATUS.PAID);
+    (effectiveStatus === PAYMENT_STATUS.PENDING || effectiveStatus === PAYMENT_STATUS.PAID);
 
   if (!showForUser && !showForAdmin) return null;
 
@@ -141,10 +152,10 @@ export function PaymentStatusToggle({ payment, isAdmin }: Props) {
       disabled={mutation.isPending}
     >
       {isAdmin
-        ? payment.status === PAYMENT_STATUS.PAID
+        ? effectiveStatus === PAYMENT_STATUS.PAID
           ? 'Снять оплату'
           : 'Подтвердить оплату'
-        : payment.status === PAYMENT_STATUS.UNPAID
+        : effectiveStatus === PAYMENT_STATUS.UNPAID
           ? 'Я оплатил(а)'
           : 'Отменить'}
     </button>

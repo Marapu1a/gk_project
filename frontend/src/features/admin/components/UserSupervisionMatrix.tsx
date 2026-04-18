@@ -44,7 +44,9 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
   };
 
   const startEdit = (level: SupervisionLevel, status: SupervisionStatus, current: number) => {
+    if (status !== 'CONFIRMED') return;
     if (isReadonlyLevel(level)) return;
+
     setEditing({ level, status });
     setValue(String(current));
   };
@@ -56,11 +58,13 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
 
   const saveEdit = async () => {
     if (!editing) return;
+
     const next = parseFloat(value.replace(',', '.'));
     if (Number.isNaN(next) || next < 0) {
       toast.error('Введите корректное число');
       return;
     }
+
     try {
       await mutation.mutateAsync({
         level: editing.level,
@@ -105,7 +109,7 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
                 {(Object.keys(STATUS_LABELS) as SupervisionStatus[]).map((st) => {
                   const current = data.matrix[lvl][st];
                   const isEditing = editing?.level === lvl && editing?.status === st;
-                  const readonly = isReadonlyLevel(lvl);
+                  const isEditable = st === 'CONFIRMED' && !isReadonlyLevel(lvl);
 
                   return (
                     <td key={st} className="py-2 px-3">
@@ -125,20 +129,28 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
                           >
                             Сохранить
                           </button>
-                          <button className="btn" onClick={cancelEdit}>
+                          <button
+                            className="btn"
+                            onClick={cancelEdit}
+                            disabled={mutation.isPending}
+                          >
                             Отмена
                           </button>
                         </div>
-                      ) : readonly ? (
-                        <span>{current}</span>
-                      ) : (
+                      ) : isEditable ? (
                         <button
                           className="btn btn-ghost"
                           onClick={() => startEdit(lvl, st, current)}
                           disabled={mutation.isPending}
+                          style={{
+                            fontWeight: 600,
+                            borderBottom: '1px dashed var(--color-blue-dark)',
+                          }}
                         >
                           {current}
                         </button>
+                      ) : (
+                        <span>{current}</span>
                       )}
                     </td>
                   );

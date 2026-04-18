@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+// src/features/dashboard-v2/dashboardV2/components/payment-block/PaymentModal.tsx
+import { useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 
 import { getPaymentLink } from '@/utils/getPaymentLink';
@@ -7,7 +8,9 @@ import { useSubmitPaymentMark } from '@/features/payment/hooks/useSubmitPaymentM
 
 type PaymentModalProps = {
   payment: PaymentItem | null;
+  payments: PaymentItem[];
   billingGroup: string;
+  targetLevelName?: string;
   onClose: () => void;
 };
 
@@ -19,7 +22,29 @@ const TITLE_BY_TYPE: Record<PaymentItem['type'], string> = {
   RENEWAL: 'Ресертификация',
 };
 
-export function PaymentModal({ payment, billingGroup, onClose }: PaymentModalProps) {
+function getLinkedPayments(
+  payment: PaymentItem,
+  payments: PaymentItem[],
+  targetLevelName?: string,
+) {
+  const isSupervisorCombined =
+    targetLevelName === 'Супервизор' && payment.type === 'DOCUMENT_REVIEW';
+
+  if (!isSupervisorCombined) {
+    return [payment];
+  }
+
+  const registration = payments.find((p) => p.type === 'REGISTRATION');
+  return registration ? [payment, registration] : [payment];
+}
+
+export function PaymentModal({
+  payment,
+  payments,
+  billingGroup,
+  targetLevelName,
+  onClose,
+}: PaymentModalProps) {
   const mutation = useSubmitPaymentMark();
 
   useEffect(() => {
@@ -33,6 +58,11 @@ export function PaymentModal({ payment, billingGroup, onClose }: PaymentModalPro
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [payment, onClose]);
 
+  const relatedPayments = useMemo(() => {
+    if (!payment) return [];
+    return getLinkedPayments(payment, payments, targetLevelName);
+  }, [payment, payments, targetLevelName]);
+
   if (!payment) return null;
 
   const paymentLink = getPaymentLink(payment.type, billingGroup);
@@ -41,12 +71,12 @@ export function PaymentModal({ payment, billingGroup, onClose }: PaymentModalPro
       ? 'Подача заявки на сертификацию, экспертиза документов на уровень Супервизор ПАП'
       : TITLE_BY_TYPE[payment.type];
 
-  const isPending = payment.status === 'PENDING';
-  const isPaid = payment.status === 'PAID';
+  const isPending = relatedPayments.some((p) => p.status === 'PENDING');
+  const isPaid = relatedPayments.some((p) => p.status === 'PAID');
 
   const handleTogglePending = async () => {
     try {
-      const result = await mutation.mutateAsync({ payment });
+      const result = await mutation.mutateAsync({ payments: relatedPayments });
 
       if (result.hasNotificationErrors) {
         toast.info('Статус обновлён, но часть уведомлений админам не ушла.');
@@ -77,9 +107,7 @@ export function PaymentModal({ payment, billingGroup, onClose }: PaymentModalPro
       <div className="relative z-10 w-full max-w-[520px] rounded-[28px] bg-white p-6 shadow-strong">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-[22px] font-semibold text-[#1F305E]">
-              {title}
-            </h3>
+            <h3 className="text-[22px] font-semibold text-[#1F305E]">{title}</h3>
 
             <p className="mt-2 text-[15px] leading-6 text-[#1F305E]/80">
               Перейдите по ссылке для оплаты. После оплаты нажмите кнопку ниже, чтобы отправить

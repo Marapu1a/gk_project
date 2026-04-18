@@ -8,26 +8,31 @@ import { userPaymentsQueryKey } from './useUserPayments';
 import { userPaymentsByIdQueryKey } from './useUserPaymentsById';
 
 type SubmitPaymentMarkInput = {
-  payment: PaymentItem;
+  payments: PaymentItem[];
 };
 
 export function useSubmitPaymentMark() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ payment }: SubmitPaymentMarkInput) => {
-      const nextStatus = payment.status === 'PENDING' ? 'UNPAID' : 'PENDING';
+    mutationFn: async ({ payments }: SubmitPaymentMarkInput) => {
+      if (!payments.length) {
+        throw new Error('Нет платежей для обновления');
+      }
 
-      await updatePaymentStatus(payment.id, nextStatus);
+      const primaryPayment = payments[0];
+      const nextStatus = primaryPayment.status === 'PENDING' ? 'UNPAID' : 'PENDING';
 
-      const userEmail = payment.user?.email ?? 'Пользователь';
-      const adminUserLink = `/admin/users/${payment.userId}`;
+      await Promise.all(payments.map((payment) => updatePaymentStatus(payment.id, nextStatus)));
+
+      const userEmail = primaryPayment.user?.email ?? 'Пользователь';
+      const adminUserLink = `/admin/users/${primaryPayment.userId}`;
 
       const moderators = await getModerators();
       const admins = (moderators as any[])
         .filter((m) => String(m?.role).toUpperCase() === 'ADMIN')
         .filter((m, i, arr) => arr.findIndex((x) => x?.id === m?.id) === i)
-        .filter((m) => m?.id !== payment.userId);
+        .filter((m) => m?.id !== primaryPayment.userId);
 
       const message =
         nextStatus === 'PENDING'
@@ -48,7 +53,7 @@ export function useSubmitPaymentMark() {
       return {
         nextStatus,
         hasNotificationErrors: results.some((r) => r.status === 'rejected'),
-        userId: payment.userId,
+        userId: primaryPayment.userId,
       };
     },
     onSuccess: async ({ userId }) => {

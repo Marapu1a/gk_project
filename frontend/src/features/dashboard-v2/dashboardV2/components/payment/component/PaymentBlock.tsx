@@ -1,3 +1,4 @@
+// src/features/dashboard-v2/dashboardV2/components/payment-block/PaymentBlock.tsx
 import { useMemo, useState } from 'react';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import type { PaymentItem } from '@/features/payment/api/getUserPayments';
@@ -41,9 +42,7 @@ function PaymentSummary({ subtitle }: { subtitle: string }) {
   return (
     <section className="card-section flex min-h-[330px] flex-col items-center px-5 py-5">
       <h2 className="mb-8 text-center text-[18px] font-semibold text-[#1F305E]">Оплата</h2>
-
       <p className="mb-10 text-center text-[14px] text-[#8D96B5]">{subtitle}</p>
-
       <div className="flex flex-1 items-center justify-center">
         <PaymentStatusIcon className="h-24 w-24" />
       </div>
@@ -120,14 +119,28 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
     return <PaymentEmptyState />;
   }
 
-  const visibleNonPackagePayments = preparedPayments.filter((p) => p.type !== 'FULL_PACKAGE');
   const fullPackagePayment = preparedPayments.find((p) => p.type === 'FULL_PACKAGE');
-
   const isFullPackagePaid = fullPackagePayment?.status === 'PAID';
 
-  const areAllSeparatePaid =
-    visibleNonPackagePayments.length > 0 &&
-    visibleNonPackagePayments.every((payment) => payment.status === 'PAID');
+  const visibleNonPackagePayments = preparedPayments.filter((p) => p.type !== 'FULL_PACKAGE');
+
+  const areAllSeparatePaid = isSupervisorTarget
+    ? (() => {
+        const documentReview = payments.find((p) => p.type === 'DOCUMENT_REVIEW');
+        const registration = payments.find((p) => p.type === 'REGISTRATION');
+        const exam = payments.find((p) => p.type === 'EXAM_ACCESS');
+
+        return Boolean(
+          documentReview &&
+            registration &&
+            exam &&
+            documentReview.status === 'PAID' &&
+            registration.status === 'PAID' &&
+            exam.status === 'PAID',
+        );
+      })()
+    : visibleNonPackagePayments.length > 0 &&
+      visibleNonPackagePayments.every((payment) => payment.status === 'PAID');
 
   if (isFullPackagePaid) {
     return <PaymentSummary subtitle="Сертификация - пакет со скидкой 10% оплачена" />;
@@ -167,7 +180,9 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
 
       <PaymentModal
         payment={selectedPayment}
+        payments={payments}
         billingGroup={billingGroup}
+        targetLevelName={targetLevelName}
         onClose={() => setSelectedPayment(null)}
       />
     </>

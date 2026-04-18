@@ -12,7 +12,6 @@ import { BackButton } from '@/components/BackButton';
 import { Button } from '@/components/Button';
 import { documentTypeLabels } from '@/utils/documentTypeLabels';
 import { postNotification } from '@/features/notifications/api/notifications';
-import { PaymentStatusToggle } from '@/features/payment/components/PaymentStatusToggle';
 import { useUserPaymentsById } from '@/features/payment/hooks/useUserPaymentsById';
 
 const paymentStatusText: Record<string, string> = {
@@ -83,7 +82,6 @@ export function AdminDocumentReviewDetails() {
       className="rounded-2xl border header-shadow bg-white overflow-hidden max-w-4xl mx-auto"
       style={{ borderColor: 'var(--color-green-light)' }}
     >
-      {/* Header */}
       <div
         className="px-6 py-4 border-b flex items-center justify-between"
         style={{ borderColor: 'var(--color-green-light)' }}
@@ -92,9 +90,7 @@ export function AdminDocumentReviewDetails() {
         <BackButton />
       </div>
 
-      {/* Body */}
       <div className="p-6 space-y-8">
-        {/* Info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <p>Email: {request.user?.email}</p>
           <p>
@@ -103,21 +99,17 @@ export function AdminDocumentReviewDetails() {
               {documentReviewStatusLabels[request.status] || request.status}
             </span>
           </p>
-          <div className="space-y-1">
-            <p>
-              <span className="font-medium">Оплата:</span>{' '}
-              {documentPayment ? (
-                paymentStatusText[documentPayment.status] || documentPayment.status
-              ) : (
-                <span className="text-gray-600">Нет информации</span>
-              )}
-            </p>
-            {documentPayment && <PaymentStatusToggle payment={documentPayment} isAdmin={true} />}
-          </div>
+          <p>
+            <span className="font-medium">Оплата:</span>{' '}
+            {documentPayment ? (
+              paymentStatusText[documentPayment.status] || documentPayment.status
+            ) : (
+              <span className="text-gray-600">Нет информации</span>
+            )}
+          </p>
           <p>Комментарий: {request.comment || '—'}</p>
         </div>
 
-        {/* Files */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-blue-dark">Файлы</h2>
           {request.documents.length === 0 ? (
@@ -168,7 +160,6 @@ export function AdminDocumentReviewDetails() {
           )}
         </div>
 
-        {/* Status change */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-blue-dark">Изменить статус</h2>
           <select
