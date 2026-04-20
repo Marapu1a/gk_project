@@ -68,6 +68,7 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
         where: { id: existingConfirmed.id },
         data: {
           status: 'UNCONFIRMED',
+          submittedAt: new Date(),
           comment: trimmedComment,
           reviewedAt: null,
           reviewerEmail: null,

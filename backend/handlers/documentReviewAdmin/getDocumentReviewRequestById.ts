@@ -12,7 +12,29 @@ export async function getDocumentReviewRequestById(req: FastifyRequest, reply: F
   const request = await prisma.documentReviewRequest.findUnique({
     where: { id },
     include: {
-      user: { select: { id: true, email: true, fullName: true } },
+      user: {
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          groups: {
+            select: {
+              group: {
+                select: { name: true, rank: true },
+              },
+            },
+          },
+          cycles: {
+            where: { status: 'ACTIVE' },
+            orderBy: { startedAt: 'desc' },
+            take: 1,
+            select: {
+              type: true,
+              targetLevel: true,
+            },
+          },
+        },
+      },
       documents: true,
     },
   });

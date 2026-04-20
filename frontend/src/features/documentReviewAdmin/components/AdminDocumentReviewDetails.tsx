@@ -34,6 +34,14 @@ export function AdminDocumentReviewDetails() {
 
   const { data: payments } = useUserPaymentsById(request?.user?.id);
   const documentPayment = payments?.find((p) => p.type === 'DOCUMENT_REVIEW');
+  const activeCycle = request?.user?.cycles?.[0] ?? null;
+  const activeGroup =
+    request?.user?.groups
+      ?.map((item: any) => item.group)
+      ?.sort((a: any, b: any) => b.rank - a.rank)?.[0] ?? null;
+  const canConfirmWithoutPayment =
+    activeCycle?.type === 'RENEWAL' &&
+    (activeGroup?.name === 'Супервизор' || activeGroup?.name === 'Опытный Супервизор');
 
   if (isLoading) return <p className="p-6">Загрузка...</p>;
   if (error) return <p className="p-6 text-error">Ошибка загрузки</p>;
@@ -45,7 +53,7 @@ export function AdminDocumentReviewDetails() {
       return;
     }
 
-    if (newStatus === 'CONFIRMED' && documentPayment?.status !== 'PAID') {
+    if (newStatus === 'CONFIRMED' && documentPayment?.status !== 'PAID' && !canConfirmWithoutPayment) {
       toast.error('Нельзя подтвердить заявку без оплаты.');
       return;
     }
@@ -107,6 +115,11 @@ export function AdminDocumentReviewDetails() {
               <span className="text-gray-600">Нет информации</span>
             )}
           </p>
+          {canConfirmWithoutPayment && (
+            <p className="text-sm text-blue-dark">
+              Подтверждение без оплаты разрешено для ресертификации супервизора.
+            </p>
+          )}
           <p>Комментарий: {request.comment || '—'}</p>
         </div>
 
