@@ -36,6 +36,21 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
   if (isLoading) return <p className="text-blue-dark">Загрузка часов…</p>;
   if (error || !data) return <p className="text-error">Ошибка загрузки часов</p>;
 
+  const displayMatrix: Record<SupervisionLevel, Record<SupervisionStatus, number>> = {
+    PRACTICE: {
+      CONFIRMED: data.summary.usable.practice,
+      UNCONFIRMED: data.summary.pending.practice,
+    },
+    SUPERVISION: {
+      CONFIRMED: data.summary.usable.supervision,
+      UNCONFIRMED: data.summary.pending.supervision,
+    },
+    SUPERVISOR: {
+      CONFIRMED: data.summary.usable.supervisor,
+      UNCONFIRMED: data.summary.pending.supervisor,
+    },
+  };
+
   const isReadonlyLevel = (level: SupervisionLevel) => {
     if (level === 'SUPERVISION') return true;
     if (level === 'PRACTICE' && isSupervisor) return true;
@@ -107,7 +122,8 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
                 <td className="py-2 px-3 font-medium">{LEVEL_LABELS[lvl]}</td>
 
                 {(Object.keys(STATUS_LABELS) as SupervisionStatus[]).map((st) => {
-                  const current = data.matrix[lvl][st];
+                  const current = displayMatrix[lvl][st];
+                  const rawCurrent = data.matrix[lvl][st];
                   const isEditing = editing?.level === lvl && editing?.status === st;
                   const isEditable = st === 'CONFIRMED' && !isReadonlyLevel(lvl);
 
@@ -140,7 +156,7 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
                       ) : isEditable ? (
                         <button
                           className="btn btn-ghost"
-                          onClick={() => startEdit(lvl, st, current)}
+                          onClick={() => startEdit(lvl, st, rawCurrent)}
                           disabled={mutation.isPending}
                           style={{
                             fontWeight: 600,

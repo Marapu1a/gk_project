@@ -22,31 +22,6 @@ export function RegistryProfile({ userId }: Props) {
 
   const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('ru-RU') : '—');
 
-  function since(d: string) {
-    const now = new Date();
-    const start = new Date(d);
-    let years = now.getFullYear() - start.getFullYear();
-    let months = now.getMonth() - start.getMonth();
-    let days = now.getDate() - start.getDate();
-    if (days < 0) months -= 1;
-    if (months < 0) {
-      years -= 1;
-      months += 12;
-    }
-    const parts: string[] = [];
-    if (years > 0) parts.push(`${years} ${decl(years, ['год', 'года', 'лет'])}`);
-    if (months > 0) parts.push(`${months} ${decl(months, ['месяц', 'месяца', 'месяцев'])}`);
-    if (!parts.length) parts.push('меньше месяца');
-    return parts.join(' ');
-  }
-  function decl(n: number, forms: [string, string, string]) {
-    const n10 = n % 10,
-      n100 = n % 100;
-    if (n10 === 1 && n100 !== 11) return forms[0];
-    if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return forms[1];
-    return forms[2];
-  }
-
   return (
     <div
       className="rounded-2xl border bg-white p-6 space-y-6 header-shadow"

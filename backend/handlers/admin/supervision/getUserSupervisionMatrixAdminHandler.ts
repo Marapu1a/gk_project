@@ -3,6 +3,7 @@ import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../../lib/prisma';
 import { PracticeLevel, RecordStatus, CycleStatus, TargetLevel } from '@prisma/client';
 import { supervisionRequirementsByGroup, calcAutoSupervisionHours } from '../../../utils/supervisionRequirements';
+import { getCycleSupervisionTotals } from '../../../utils/getCycleSupervisionTotals';
 
 type Level = 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR';
 const STATUSES: RecordStatus[] = ['CONFIRMED', 'UNCONFIRMED'];
@@ -20,19 +21,6 @@ interface Route extends RouteGenericInterface {
 }
 
 type SupervisionSummary = { practice: number; supervision: number; supervisor: number };
-
-// =============== core rules ===============
-function getPracticeRange(current: string, targetRu: RequirementsGroupKey | null) {
-  if (!targetRu) return null;
-
-  const max = supervisionRequirementsByGroup[targetRu]?.practice ?? null;
-  if (!max) return null;
-
-  let min = 0;
-  if (current === 'Куратор' && targetRu === 'Супервизор') min = 500;
-
-  return { min, max };
-}
 
 export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<Route>, reply: FastifyReply) {
   if (req.user.role !== 'ADMIN') return reply.code(403).send({ error: 'Только администратор' });
@@ -110,59 +98,69 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
     });
   }
 
-  // ===== apply min/max rules =====
-  const range = getPracticeRange(current, targetRu);
-  if (!range) {
-    return reply.send({
-      user: short(user),
-      cycle: { id: activeCycle.id, targetLevel: activeCycle.targetLevel, status: CycleStatus.ACTIVE },
-      matrix,
-      summary: {
-        required: null,
-        percent: null,
-        usable: usableRaw,
-        pending: pendingRaw,
-        mentor: isBasicSupervisor ? mentor(usableRaw, pendingRaw) : null,
+  let bonusPractice = 0;
+  let bonusSourceCycleId: string | null = null;
+
+  if (activeCycle.targetLevel === TargetLevel.SUPERVISOR) {
+    const lastCompletedCurator = await prisma.certificationCycle.findFirst({
+      where: {
+        userId,
+        status: CycleStatus.COMPLETED,
+        targetLevel: TargetLevel.CURATOR,
       },
+      orderBy: { endedAt: 'desc' },
+      select: { id: true },
     });
+
+    if (lastCompletedCurator) {
+      const bonusAgg = await prisma.supervisionHour.aggregate({
+        where: {
+          status: 'CONFIRMED',
+          type: {
+            in: [PracticeLevel.PRACTICE, PracticeLevel.IMPLEMENTING, PracticeLevel.PROGRAMMING],
+          },
+          record: { cycleId: lastCompletedCurator.id },
+        },
+        _sum: { value: true },
+      });
+
+      bonusPractice = bonusAgg._sum.value ?? 0;
+      bonusSourceCycleId = lastCompletedCurator.id;
+    }
   }
 
-  const { min, max } = range;
-
-  const practiceConfirmed = Math.max(min, Math.min(usableRaw.practice, max));
-  const practicePending = Math.max(
-    0,
-    Math.min(usableRaw.practice + pendingRaw.practice, max) - practiceConfirmed
-  );
-
-  // === auto supervision ===
-  const autoConfirmed = calcAutoSupervisionHours({ groupName: targetRu, practiceHours: practiceConfirmed });
-  const autoPending = Math.max(
-    0,
-    calcAutoSupervisionHours({ groupName: targetRu, practiceHours: practiceConfirmed + practicePending }) -
-    autoConfirmed
+  const cycleTotals = await getCycleSupervisionTotals(
+    activeCycle.id,
+    activeCycle.targetLevel,
+    bonusPractice,
   );
 
   const usable: SupervisionSummary = {
-    practice: practiceConfirmed,
-    supervision: autoConfirmed,
+    practice: cycleTotals.practiceConfirmed,
+    supervision: cycleTotals.supervisionConfirmed,
     supervisor: usableRaw.supervisor,
   };
   const pending: SupervisionSummary = {
-    practice: practicePending,
-    supervision: autoPending,
+    practice: cycleTotals.practicePending,
+    supervision: cycleTotals.supervisionPending,
     supervisor: pendingRaw.supervisor,
   };
 
   const percent = {
-    practice: pct(practiceConfirmed, min, max),
-    supervision: required.supervision > 0 ? Math.floor((autoConfirmed / required.supervision) * 100) : 0,
+    practice:
+      required.practice > 0
+        ? Math.floor((Math.min(usable.practice, required.practice) / required.practice) * 100)
+        : 0,
+    supervision:
+      required.supervision > 0
+        ? Math.floor((Math.min(usable.supervision, required.supervision) / required.supervision) * 100)
+        : 0,
     supervisor: 0,
   };
 
   // для админ-матрицы показываем авто-часы в SUPERVISION-ячейке
-  matrix.SUPERVISION.CONFIRMED = autoConfirmed;
-  matrix.SUPERVISION.UNCONFIRMED = autoPending;
+  matrix.SUPERVISION.CONFIRMED = usable.supervision;
+  matrix.SUPERVISION.UNCONFIRMED = pending.supervision;
 
   return reply.send({
     user: short(user),
@@ -173,6 +171,7 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
       percent,
       usable,
       pending,
+      bonus: bonusPractice > 0 ? { practice: bonusPractice, fromCycleId: bonusSourceCycleId } : null,
       mentor: isBasicSupervisor ? mentor(usableRaw, pendingRaw) : null,
     },
   });
@@ -180,7 +179,14 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
 
 // ================= helpers ===================
 function normalize(type: PracticeLevel | string): Level | null {
-  if (type === PracticeLevel.INSTRUCTOR || type === PracticeLevel.PRACTICE) return 'PRACTICE';
+  if (
+    type === PracticeLevel.INSTRUCTOR ||
+    type === PracticeLevel.PRACTICE ||
+    type === PracticeLevel.IMPLEMENTING ||
+    type === PracticeLevel.PROGRAMMING
+  ) {
+    return 'PRACTICE';
+  }
   if (type === PracticeLevel.SUPERVISOR) return 'SUPERVISOR';
   // SUPERVISION/ CURATOR etc. руками не вводим и не агрегируем как "ручные"
   return null;
@@ -196,10 +202,6 @@ function matrixEmpty(): Record<Level, Record<RecordStatus, number>> {
 
 function emptySummary(): SupervisionSummary {
   return { practice: 0, supervision: 0, supervisor: 0 };
-}
-
-function pct(v: number, min: number, max: number) {
-  return max > min ? Math.floor(((v - min) / (max - min)) * 100) : 0;
 }
 
 function mentor(u: SupervisionSummary, p: SupervisionSummary) {

@@ -2,6 +2,7 @@ import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import { ProfileCard } from './info/profile-card/component/ProfileCard';
 import { PaymentBlock } from './payment/component/PaymentBlock';
 import { CertificationBlock } from './certification-block/component/CertificationBlock';
+import { HoursOverviewBlock } from './hours-overview/component/HoursOverviewBlock';
 
 const TARGET_LEVEL_LABELS = {
   INSTRUCTOR: 'Инструктор',
@@ -33,26 +34,30 @@ export function DashboardV2() {
 
   return (
     <div className="container-fixed p-6">
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3 items-start">
-        <div className="min-w-0">
-          <ProfileCard
-            user={{
-              id: user.id,
-              fullName: user.fullName,
-              avatarUrl: user.avatarUrl,
-              groupName: activeGroupName,
-              targetLevelName,
-            }}
-          />
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3 items-start">
+          <div className="min-w-0">
+            <ProfileCard
+              user={{
+                id: user.id,
+                fullName: user.fullName,
+                avatarUrl: user.avatarUrl,
+                groupName: activeGroupName,
+                targetLevelName,
+              }}
+            />
+          </div>
+
+          <div className="min-w-0">
+            <PaymentBlock activeGroupName={activeGroupName} targetLevelName={targetLevelName} />
+          </div>
+
+          <div className="min-w-0">
+            <CertificationBlock user={user} />
+          </div>
         </div>
 
-        <div className="min-w-0">
-          <PaymentBlock activeGroupName={activeGroupName} targetLevelName={targetLevelName} />
-        </div>
-
-        <div className="min-w-0">
-          <CertificationBlock user={user} />
-        </div>
+        <HoursOverviewBlock />
       </div>
     </div>
   );
