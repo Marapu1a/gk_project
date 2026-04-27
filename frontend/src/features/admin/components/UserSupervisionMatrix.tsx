@@ -51,6 +51,21 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
     },
   };
 
+  const requiredByLevel: Partial<Record<SupervisionLevel, number | null>> = {
+    PRACTICE: data.summary.required?.practice ?? null,
+    SUPERVISION: data.summary.required?.supervision ?? null,
+    SUPERVISOR: data.summary.mentor?.required ?? null,
+  };
+
+  const formatDisplayValue = (level: SupervisionLevel, status: SupervisionStatus, value: number) => {
+    if (status !== 'CONFIRMED') return String(value);
+
+    const required = requiredByLevel[level];
+    if (required == null || required <= 0) return String(value);
+
+    return `${value} / ${required}`;
+  };
+
   const isReadonlyLevel = (level: SupervisionLevel) => {
     if (level === 'SUPERVISION') return true;
     if (level === 'PRACTICE' && isSupervisor) return true;
@@ -163,10 +178,10 @@ export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
                             borderBottom: '1px dashed var(--color-blue-dark)',
                           }}
                         >
-                          {current}
+                          {formatDisplayValue(lvl, st, current)}
                         </button>
                       ) : (
-                        <span>{current}</span>
+                        <span>{formatDisplayValue(lvl, st, current)}</span>
                       )}
                     </td>
                   );
