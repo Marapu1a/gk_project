@@ -16,7 +16,7 @@ const hourTypeEnum = z.enum([
 ]);
 
 export const createSupervisionSchema = z.object({
-  supervisorEmail: z.string().email(),
+  supervisorEmail: z.string().trim().email(),
   fileId: z.string().optional(),
 
   entries: z

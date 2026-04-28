@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { postNotification } from '@/features/notifications/api/notifications';
 import { usePatchExamAppStatus } from '../hooks/usePatchExamAppStatus';
 import { toast } from 'sonner';
 
@@ -48,24 +47,9 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
                 ? `Заявка на экзамен отклонена: ${comment.trim()}`
                 : 'Заявка на экзамен сброшена, можно подать заново';
 
-          let notifFailed = false;
-          try {
-            await postNotification({
-              userId: app.userId,
-              type: 'EXAM',
-              message,
-              link: '/dashboard',
-            });
-          } catch {
-            notifFailed = true;
-          } finally {
-            queryClient.invalidateQueries({ queryKey: ['exam-apps'] });
-            onClose();
-            toast.success(message);
-            if (notifFailed) {
-              toast.info('Статус изменён, но уведомление отправить не удалось.');
-            }
-          }
+          queryClient.invalidateQueries({ queryKey: ['exam-apps'] });
+          onClose();
+          toast.success(message);
         },
         onError: (err: any) => {
           const msg = err?.response?.data?.error || 'Не удалось изменить статус';

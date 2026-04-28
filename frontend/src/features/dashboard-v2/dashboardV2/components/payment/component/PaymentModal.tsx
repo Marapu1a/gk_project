@@ -78,10 +78,6 @@ export function PaymentModal({
     try {
       const result = await mutation.mutateAsync({ payments: relatedPayments });
 
-      if (result.hasNotificationErrors) {
-        toast.info('Статус обновлён, но часть уведомлений админам не ушла.');
-      }
-
       toast.success(
         result.nextStatus === 'PENDING'
           ? 'Отметка отправлена на подтверждение'

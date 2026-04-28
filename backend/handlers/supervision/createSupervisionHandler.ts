@@ -2,7 +2,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { createSupervisionSchema } from '../../schemas/supervision';
-import { RecordStatus, PracticeLevel, CycleStatus } from '@prisma/client';
+import { RecordStatus, PracticeLevel, CycleStatus, NotificationType } from '@prisma/client';
+import { createNotification } from '../../utils/notifications';
 
 export async function createSupervisionHandler(req: FastifyRequest, reply: FastifyReply) {
   const userId = req.user?.userId;
@@ -13,7 +14,8 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     return reply.code(400).send({ error: 'Неверные данные', details: parsed.error.flatten() });
   }
 
-  const { fileId, entries, supervisorEmail } = parsed.data;
+  const { fileId, entries } = parsed.data;
+  const supervisorEmail = parsed.data.supervisorEmail.trim();
 
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId, status: CycleStatus.ACTIVE },
@@ -23,9 +25,10 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
   }
 
-  const reviewer = await prisma.user.findUnique({
-    where: { email: supervisorEmail },
+  const reviewer = await prisma.user.findFirst({
+    where: { email: { equals: supervisorEmail, mode: 'insensitive' } },
     include: { groups: { include: { group: true } } },
+    orderBy: [{ email: 'asc' }, { id: 'asc' }],
   });
   if (!reviewer) {
     return reply.code(400).send({ error: 'Супервизор с таким email не найден' });
@@ -131,6 +134,17 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     },
     include: { hours: true },
   });
+
+  try {
+    await createNotification({
+      userId: reviewer.id,
+      type: NotificationType.SUPERVISION,
+      message: `Новая заявка на ${isAuthorSimpleSupervisor ? 'менторство' : 'супервизию'} от ${currentUser.email}`,
+      link: '/review/supervision',
+    });
+  } catch (err) {
+    req.log.error(err, 'SUPERVISION_CREATE notification failed');
+  }
 
   return reply.code(201).send({ success: true, record });
 }

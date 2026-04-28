@@ -3,13 +3,15 @@ import { prisma } from '../../lib/prisma';
 
 export async function getUserByEmailHandler(req: FastifyRequest, reply: FastifyReply) {
   const { email } = req.query as { email?: string };
+  const normalizedEmail = email?.trim();
 
-  if (!email) {
+  if (!normalizedEmail) {
     return reply.code(400).send({ error: 'Email обязателен' });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email },
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    orderBy: [{ email: 'asc' }, { id: 'asc' }],
     select: {
       id: true,
       email: true,

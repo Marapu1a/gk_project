@@ -1,5 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { NotificationType } from '@prisma/client';
+import { notifyAdmins } from '../../utils/notifications';
 
 export async function createDocReviewReq(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -54,6 +56,24 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
 
   const trimmedComment = comment?.trim() || null;
 
+  const currentUser = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: { email: true },
+  });
+
+  const notifyDocumentReviewAdmins = async () => {
+    try {
+      await notifyAdmins({
+        type: NotificationType.DOCUMENT,
+        message: `Новая заявка на проверку документов от ${currentUser?.email ?? 'пользователя'}`,
+        link: '/admin/document-review',
+        excludeUserId: user.userId,
+      });
+    } catch (err) {
+      req.log.error(err, 'DOCUMENT_REVIEW_CREATE notification failed');
+    }
+  };
+
   // 4) Если есть подтверждённая заявка — дополняем её и возвращаем в статус UNCONFIRMED
   if (existingConfirmed) {
     const updatedReq = await prisma.$transaction(async (tx) => {
@@ -76,6 +96,8 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
       });
     });
 
+    await notifyDocumentReviewAdmins();
+
     return reply.code(200).send(updatedReq);
   }
 
@@ -91,6 +113,8 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
     where: { id: { in: fileIds }, userId: user.userId },
     data: { requestId: reqNew.id },
   });
+
+  await notifyDocumentReviewAdmins();
 
   return reply.code(201).send(reqNew);
 }

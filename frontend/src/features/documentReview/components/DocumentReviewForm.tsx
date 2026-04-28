@@ -4,8 +4,6 @@ import { useCreateDocReviewReq } from '../hooks/useCreateDocReviewReq';
 import { Button } from '@/components/Button';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
-import { getModerators } from '@/features/notifications/api/moderators';
-import { postNotification } from '@/features/notifications/api/notifications';
 import { MultiFileUpload, type UploadedFile } from '@/utils/MultiFileUpload';
 import { toast } from 'sonner';
 
@@ -49,30 +47,6 @@ export function DocumentReviewForm({ lastAdminComment }: Props) {
 
     try {
       await createRequest.mutateAsync({ fileIds, comment });
-
-      // notify only ADMINS (фронтовая фильтрация)
-      try {
-        const moderators = await getModerators();
-        const admins = moderators
-          .filter((m: any) => String(m.role).toUpperCase() === 'ADMIN')
-          .filter((m: any, i: number, a: any[]) => a.findIndex((x) => x.id === m.id) === i) // dedupe
-          .filter((m: any) => m.id !== user?.id); // не шлём себе
-
-        if (admins.length) {
-          await Promise.allSettled(
-            admins.map((m: any) =>
-              postNotification({
-                userId: m.id,
-                type: 'DOCUMENT',
-                message: `Новая заявка на проверку документов от ${user?.email ?? 'пользователя'}`,
-                link: '/admin/document-review',
-              }),
-            ),
-          );
-        }
-      } catch {
-        toast.info('Заявка отправлена, но не все уведомления ушли.');
-      }
 
       invalidateAdminUser();
       toast.success('Заявка отправлена');

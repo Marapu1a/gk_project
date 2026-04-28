@@ -8,10 +8,12 @@ import { setUserBioHandler } from '../handlers/users/setBio';
 import { deleteUserHandler } from '../handlers/users/deleteUser';
 import { setTargetLevelHandler } from '../handlers/users/setTargetLevel';
 import { abandonActiveCycleHandler } from '../handlers/users/abandonActiveCycle';
+import { getReviewerSuggestionsHandler } from '../handlers/users/getReviewerSuggestionsHandler';
 
 export async function moderatorsRoutes(app: FastifyInstance) {
   app.get('/moderators', { preHandler: [verifyToken] }, getModeratorsHandler);
   app.get('/moderators/user-by-email', { preHandler: [verifyToken] }, getUserByEmailHandler);
+  app.get('/users/reviewers', { preHandler: [verifyToken] }, getReviewerSuggestionsHandler);
 
   app.patch('/users/:id/avatar-url', { preHandler: [verifyToken] }, setAvatarUrlHandler);
   app.patch('/users/:userId/bio', { preHandler: [verifyToken] }, setUserBioHandler);

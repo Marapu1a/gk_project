@@ -1,5 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { NotificationType } from '@prisma/client';
+import { createNotification } from '../../utils/notifications';
 
 export async function updateDocumentReviewRequestStatus(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -27,6 +29,20 @@ export async function updateDocumentReviewRequestStatus(req: FastifyRequest, rep
       reviewedAt: new Date(),
     },
   });
+
+  try {
+    await createNotification({
+      userId: updated.userId,
+      type: NotificationType.DOCUMENT,
+      message:
+        status === 'REJECTED'
+          ? 'Ваша заявка на проверку документов отклонена'
+          : 'Ваша заявка на проверку документов подтверждена',
+      link: '/document-review',
+    });
+  } catch (err) {
+    req.log.error(err, 'DOCUMENT_REVIEW_STATUS notification failed');
+  }
 
   return reply.send(updated);
 }

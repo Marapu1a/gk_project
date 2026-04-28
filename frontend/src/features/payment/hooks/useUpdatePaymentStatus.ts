@@ -8,14 +8,15 @@ type UpdatePaymentStatusInput = {
   id: string;
   status: PaymentStatus;
   comment?: string;
+  notify?: boolean;
 };
 
 export function useUpdatePaymentStatus(userId: string) {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, status, comment }: UpdatePaymentStatusInput) =>
-      updatePaymentStatus(id, status, comment),
+    mutationFn: ({ id, status, comment, notify }: UpdatePaymentStatusInput) =>
+      updatePaymentStatus(id, status, comment, notify),
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: userPaymentsQueryKey }),

@@ -4,8 +4,6 @@ import { CheckCircle, XCircle } from 'lucide-react';
 
 import { useMyExamApp } from '@/features/exam/hooks/useMyExamApp';
 import { usePatchExamAppStatus } from '@/features/exam/hooks/usePatchExamAppStatus';
-import { getModerators } from '@/features/notifications/api/moderators';
-import { postNotification } from '@/features/notifications/api/notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import { examStatusLabels } from '@/utils/labels';
 import type { TargetLevel } from '@/features/user/api/setTargetLevel';
@@ -203,31 +201,7 @@ function ExamSection({ isEligible, examPaid }: { isEligible: boolean; examPaid: 
       { userId: app.userId, status: 'PENDING' },
       {
         onSuccess: async () => {
-          try {
-            const moderators = await getModerators();
-            const email = app.user?.email || 'без email';
-
-            // ⚠️ Только чистые ADMIN по основному полю role
-            const admins = (moderators || []).filter((u: any) => u?.role === 'ADMIN');
-
-            if (admins.length === 0) {
-              console.warn('Нет получателей-админов для уведомления EXAM');
-              return;
-            }
-
-            await Promise.all(
-              admins.map((m: any) =>
-                postNotification({
-                  userId: m.id,
-                  type: 'EXAM',
-                  message: `Новая заявка на экзамен от ${email}`,
-                  link: '/exam-applications',
-                }),
-              ),
-            );
-          } finally {
-            queryClient.invalidateQueries({ queryKey: ['exam-apps'] });
-          }
+          queryClient.invalidateQueries({ queryKey: ['exam-apps'] });
         },
       },
     );

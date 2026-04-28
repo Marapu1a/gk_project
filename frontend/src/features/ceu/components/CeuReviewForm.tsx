@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { postNotification } from '@/features/notifications/api/notifications';
 import { useUpdateCEUEntry } from '../hooks/useUpdateCeuEntry';
 import type { CEUReviewResponse } from '../hooks/useCeuRecordsByEmail';
 import { toast } from 'sonner';
@@ -26,25 +25,11 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
           const message =
             status === 'CONFIRMED'
               ? 'Ваши CEU-баллы подтверждены'
-              : status === 'REJECTED'
-                ? `Ваши CEU-баллы отклонены: ${rejectedReason}`
-                : 'Статус CEU-баллов изменён';
+                : status === 'REJECTED'
+                  ? `Ваши CEU-баллы отклонены: ${rejectedReason}`
+                  : 'Статус CEU-баллов изменён';
 
-          let notifFailed = false;
-          try {
-            await postNotification({
-              userId: data.user.id,
-              type: 'CEU',
-              message,
-              link: '/history',
-            });
-          } catch {
-            notifFailed = true;
-          } finally {
-            toast.success(message);
-            if (notifFailed)
-              toast.info('Статус обновлён, но уведомление пользователю не отправилось.');
-          }
+          toast.success(message);
         },
         onError: (err: any) => {
           const msg = err?.response?.data?.error || 'Не удалось обновить статус';

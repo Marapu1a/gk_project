@@ -5,6 +5,7 @@ export async function updatePaymentStatus(
   id: string,
   status: PaymentStatus,
   comment?: string,
+  notify = true,
 ) {
-  await api.patch(`/payment/${id}`, { status, comment });
+  await api.patch(`/payment/${id}`, { status, comment, notify });
 }

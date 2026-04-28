@@ -98,7 +98,10 @@ export async function issueCertificateHandler(
   if (iss > now) return reply.code(422).send({ error: 'issuedAt не может быть в будущем' });
   if (exp <= iss) return reply.code(422).send({ error: 'expiresAt должен быть позже issuedAt' });
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+    orderBy: [{ email: 'asc' }, { id: 'asc' }],
+  });
   if (!user) return reply.code(404).send({ error: 'Пользователь не найден' });
 
   const file = await prisma.uploadedFile.findUnique({ where: { id: uploadedFileId } });

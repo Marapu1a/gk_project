@@ -15,9 +15,12 @@ export async function forgotPasswordHandler(req: FastifyRequest, reply: FastifyR
     return reply.code(400).send({ error: 'Некорректные данные', details: parsed.error.flatten() });
   }
 
-  const { email } = parsed.data;
+  const email = parsed.data.email.trim();
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+    orderBy: [{ email: 'asc' }, { id: 'asc' }],
+  });
   if (!user) return reply.code(200).send({ success: true });
 
   const secret = process.env.RESET_PASSWORD_SECRET;
@@ -28,7 +31,7 @@ export async function forgotPasswordHandler(req: FastifyRequest, reply: FastifyR
 
   try {
     await sendEmail({
-      to: email,
+      to: user.email,
       subject: 'Сброс пароля',
       html: `Для сброса пароля перейдите по <a href="${resetLink}">этой ссылке</a>.`,
     });

@@ -7,13 +7,11 @@ import { fetchCurrentUser } from '@/features/auth/api/me';
 import { supervisionRequestSchema } from '../validation/supervisionRequestSchema';
 import type { SupervisionRequestFormData } from '../validation/supervisionRequestSchema';
 import { useSubmitSupervisionRequest } from '../hooks/useSubmitSupervisionRequest';
-import { getUserByEmail } from '@/features/notifications/api/getUserByEmail';
-import { postNotification } from '@/features/notifications/api/notifications';
 import { BackButton } from '@/components/BackButton';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useUsers } from '@/features/admin/hooks/useUsers';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
+import { useReviewerSuggestions } from '../hooks/useReviewerSuggestions';
 
 // нормализация/токенизация как в AdminIssueCertificateForm / UsersTable
 const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
@@ -72,8 +70,6 @@ export function SupervisionRequestForm() {
       isExperiencedSupervisor: isExp,
     };
   }, [user]);
-
-  const userEmail = user?.email ?? 'без email';
 
   const form = useForm<SupervisionRequestFormData>({
     resolver: zodResolver(supervisionRequestSchema),
@@ -137,36 +133,20 @@ export function SupervisionRequestForm() {
   }, [supervisorEmailInput]);
 
   // ВАЖНО: режим фильтра по типу часов
-  const { data: usersData, isLoading: isUsersLoading } = useUsers({
+  const { data: usersData, isLoading: isUsersLoading } = useReviewerSuggestions({
     search,
-    page: 1,
-    perPage: 20,
     supervision: isMentor ? 'mentor' : 'practice',
+    limit: 20,
   });
 
-  const allUsers = usersData?.users ?? [];
-
-  // только подходящие ревьюеры
-  const eligibleReviewers = useMemo(() => {
-    return allUsers.filter((u: any) => {
-      const groupNames = ((u.groups as { name: string }[] | undefined) ?? []).map((g) => g.name);
-      const isExperienced = groupNames.includes('Опытный Супервизор');
-      const isSupervisor = groupNames.includes('Супервизор') || isExperienced;
-      const isAdmin = u.role === 'ADMIN';
-
-      if (isMentor) {
-        return isExperienced || isAdmin;
-      }
-      return isSupervisor || isAdmin;
-    });
-  }, [allUsers, isMentor]);
+  const reviewerSuggestions = usersData?.users ?? [];
 
   // фильтр по строке поиска
   const matchedUsers = useMemo(() => {
     const tokens = tokenize(supervisorEmailInput);
     if (tokens.length === 0) return [];
 
-    return eligibleReviewers.filter((u: any) => {
+    return reviewerSuggestions.filter((u: any) => {
       const hayParts = [
         u.fullName,
         u.email,
@@ -175,7 +155,7 @@ export function SupervisionRequestForm() {
       const hay = norm(hayParts.filter(Boolean).join(' '));
       return tokens.every((t) => hay.includes(t));
     });
-  }, [eligibleReviewers, supervisorEmailInput]);
+  }, [reviewerSuggestions, supervisorEmailInput]);
 
   // первичная инициализация
   useEffect(() => {
@@ -219,20 +199,7 @@ export function SupervisionRequestForm() {
     }
 
     try {
-      const supervisor = await getUserByEmail(data.supervisorEmail);
-      if (!supervisor?.id) {
-        toast.error('Супервизор не найден');
-        return;
-      }
-
       await mutation.mutateAsync(data);
-
-      await postNotification({
-        userId: supervisor.id,
-        type: 'SUPERVISION',
-        message: `Новая заявка на ${isMentor ? 'менторство' : 'супервизию'} от ${userEmail}`,
-        link: '/review/supervision',
-      });
 
       queryClient.invalidateQueries({ queryKey: ['supervision', 'summary'] });
       queryClient.invalidateQueries({ queryKey: ['supervision', 'unconfirmed'] });

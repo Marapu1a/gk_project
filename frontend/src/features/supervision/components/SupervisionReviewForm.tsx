@@ -2,7 +2,6 @@
 import { useState, useMemo } from 'react';
 import { useAssignedHours } from '../hooks/useAssignedHours';
 import { useUpdateHourStatus } from '../hooks/useUpdateHourStatus';
-import { postNotification } from '@/features/notifications/api/notifications';
 import { toast } from 'sonner';
 import type { AssignedHourItem } from '../api/getAssignedHours';
 
@@ -18,14 +17,6 @@ const typeLabel: Record<'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR', string> = {
   PRACTICE: 'Практика',
   SUPERVISION: 'Супервизия',
   SUPERVISOR: 'Менторство',
-};
-
-// более точный текст для уведомлений
-const notifLabel = (t: HourType) => {
-  const nt = normalizeType(t);
-  if (nt === 'SUPERVISOR') return 'менторские часы';
-  if (nt === 'PRACTICE') return 'часы практики';
-  return 'часы супервизии';
 };
 
 export function SupervisionReviewForm() {
@@ -45,15 +36,9 @@ export function SupervisionReviewForm() {
     [data],
   );
 
-  const handleConfirm = async (id: string, type: HourType, userId: string, userEmail: string) => {
+  const handleConfirm = async (id: string, userEmail: string) => {
     try {
       await mutation.mutateAsync({ id, status: 'CONFIRMED' });
-      await postNotification({
-        userId,
-        type: 'SUPERVISION',
-        message: `Ваши ${notifLabel(type)} подтверждены (${userEmail})`,
-        link: '/history',
-      });
       toast.success(`Подтверждено: ${userEmail}`);
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Ошибка подтверждения');
@@ -62,9 +47,7 @@ export function SupervisionReviewForm() {
 
   const handleReject = async (
     id: string,
-    type: HourType,
     reason: string,
-    userId: string,
     userEmail: string,
   ) => {
     const trimmed = (reason ?? '').trim();
@@ -72,12 +55,6 @@ export function SupervisionReviewForm() {
 
     try {
       await mutation.mutateAsync({ id, status: 'REJECTED', rejectedReason: trimmed });
-      await postNotification({
-        userId,
-        type: 'SUPERVISION',
-        message: `Ваши ${notifLabel(type)} отклонены (${userEmail}). Причина: ${trimmed}`,
-        link: '/history',
-      });
       toast.success(`Отклонено: ${userEmail}`);
       setRejectedReasonMap((m) => ({ ...m, [id]: '' }));
     } catch (err: any) {
@@ -157,8 +134,6 @@ export function SupervisionReviewForm() {
                         onClick={() =>
                           handleConfirm(
                             hour.id,
-                            hour.type,
-                            hour.record.user.id,
                             hour.record.user.email,
                           )
                         }
@@ -171,9 +146,7 @@ export function SupervisionReviewForm() {
                         onClick={() =>
                           handleReject(
                             hour.id,
-                            hour.type,
                             rejectedReasonMap[hour.id],
-                            hour.record.user.id,
                             hour.record.user.email,
                           )
                         }

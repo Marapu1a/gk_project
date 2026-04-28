@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { PracticeLevel, CycleStatus } from '@prisma/client';
+import { PracticeLevel, CycleStatus, NotificationType } from '@prisma/client';
+import { createNotification } from '../../utils/notifications';
 
 interface UpdateSupervisionHourRoute extends RouteGenericInterface {
   Params: { id: string };
@@ -8,6 +9,27 @@ interface UpdateSupervisionHourRoute extends RouteGenericInterface {
     status: 'CONFIRMED' | 'REJECTED';
     rejectedReason?: string;
   };
+}
+
+function normalizeNotificationType(type: PracticeLevel): 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR' {
+  if (
+    type === PracticeLevel.INSTRUCTOR ||
+    type === PracticeLevel.PRACTICE ||
+    type === PracticeLevel.IMPLEMENTING ||
+    type === PracticeLevel.PROGRAMMING
+  ) {
+    return 'PRACTICE';
+  }
+  if (type === PracticeLevel.CURATOR) return 'SUPERVISION';
+  if (type === PracticeLevel.SUPERVISOR) return 'SUPERVISOR';
+  return 'SUPERVISION';
+}
+
+function notificationLabel(type: PracticeLevel) {
+  const normalized = normalizeNotificationType(type);
+  if (normalized === 'SUPERVISOR') return 'менторские часы';
+  if (normalized === 'PRACTICE') return 'часы практики';
+  return 'часы супервизии';
 }
 
 export async function updateSupervisionHourHandler(
@@ -37,7 +59,7 @@ export async function updateSupervisionHourHandler(
       status: true,
       reviewerId: true,
       type: true,
-      record: { select: { userId: true, cycleId: true } },
+      record: { select: { userId: true, cycleId: true, user: { select: { email: true } } } },
     },
   });
 
@@ -127,6 +149,23 @@ export async function updateSupervisionHourHandler(
       reviewerId: actorId,
     },
   });
+
+  try {
+    const label = notificationLabel(existing.type);
+    const message =
+      desiredStatus === 'CONFIRMED'
+        ? `Ваши ${label} подтверждены (${existing.record.user.email})`
+        : `Ваши ${label} отклонены (${existing.record.user.email}). Причина: ${rejectedReason}`;
+
+    await createNotification({
+      userId: recordOwnerId,
+      type: NotificationType.SUPERVISION,
+      message,
+      link: '/history',
+    });
+  } catch (err) {
+    req.log.error(err, 'SUPERVISION_REVIEW notification failed');
+  }
 
   return reply.send({ success: true, updated });
 }

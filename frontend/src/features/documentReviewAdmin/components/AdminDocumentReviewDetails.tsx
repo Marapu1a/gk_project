@@ -11,7 +11,6 @@ import {
 import { BackButton } from '@/components/BackButton';
 import { Button } from '@/components/Button';
 import { documentTypeLabels } from '@/utils/documentTypeLabels';
-import { postNotification } from '@/features/notifications/api/notifications';
 import { useUserPaymentsById } from '@/features/payment/hooks/useUserPaymentsById';
 
 const paymentStatusText: Record<string, string> = {
@@ -63,16 +62,6 @@ export function AdminDocumentReviewDetails() {
         id: request.id,
         status: newStatus,
         comment: newStatus === 'REJECTED' ? rejectComment : undefined,
-      });
-
-      await postNotification({
-        userId: request.user.id,
-        type: 'DOCUMENT',
-        message:
-          newStatus === 'REJECTED'
-            ? 'Ваша заявка на проверку документов отклонена'
-            : 'Ваша заявка на проверку документов подтверждена',
-        link: '/document-review',
       });
 
       await queryClient.invalidateQueries({ queryKey: ['userPayments', request.user.id] });

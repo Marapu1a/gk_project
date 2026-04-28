@@ -1,8 +1,6 @@
 // src/features/payment/components/PaymentStatusToggle.tsx
 import { useUpdatePaymentStatus } from '../hooks/useUpdatePaymentStatus';
 import { useQueryClient } from '@tanstack/react-query';
-import { getModerators } from '@/features/notifications/api/moderators';
-import { postNotification } from '@/features/notifications/api/notifications';
 import type { PaymentItem } from '../api/getUserPayments';
 import { toast } from 'sonner';
 
@@ -23,7 +21,6 @@ export function PaymentStatusToggle({ payment, isAdmin, relatedPayments = [] }: 
   const queryClient = useQueryClient();
 
   const userEmail = payment.userEmail ?? payment.user?.email ?? '—';
-  const adminUserLink = `/admin/users/${payment.userId}`;
 
   const paymentsToUpdate = relatedPayments.length ? relatedPayments : [payment];
 
@@ -68,7 +65,9 @@ export function PaymentStatusToggle({ payment, isAdmin, relatedPayments = [] }: 
 
     try {
       await Promise.all(
-        paymentsToUpdate.map((item) => mutation.mutateAsync({ id: item.id, status: nextStatus })),
+        paymentsToUpdate.map((item, index) =>
+          mutation.mutateAsync({ id: item.id, status: nextStatus, notify: index === 0 }),
+        ),
       );
 
       if (isAdmin) {
@@ -77,45 +76,8 @@ export function PaymentStatusToggle({ payment, isAdmin, relatedPayments = [] }: 
             ? `Оплата для ${userEmail} подтверждена`
             : 'Оплата снята на перепроверку администратором';
 
-        try {
-          await postNotification({
-            userId: payment.userId,
-            type: 'PAYMENT',
-            message: msg,
-            link: '/dashboard',
-          });
-        } catch {
-          toast.info('Статус обновлён, но уведомление пользователю не доставлено.');
-        }
-
         toast.success(msg);
       } else {
-        const moderators = await getModerators();
-        const admins = (moderators as any[])
-          .filter((m) => String(m?.role).toUpperCase() === 'ADMIN')
-          .filter((m, i, a) => a.findIndex((x) => x?.id === m?.id) === i)
-          .filter((m) => m?.id !== payment.userId);
-
-        const msg =
-          nextStatus === 'PENDING'
-            ? `Новая отметка об оплате от ${userEmail}`
-            : `Пользователь ${userEmail} отменил отметку об оплате`;
-
-        const results = await Promise.allSettled(
-          admins.map((m) =>
-            postNotification({
-              userId: m.id,
-              type: 'PAYMENT',
-              message: msg,
-              link: adminUserLink,
-            }),
-          ),
-        );
-
-        if (results.some((r) => r.status === 'rejected')) {
-          toast.info('Статус обновлён, но часть уведомлений админам не ушла.');
-        }
-
         toast.success(
           nextStatus === 'PENDING' ? 'Отметка отправлена на подтверждение' : 'Отметка отменена',
         );

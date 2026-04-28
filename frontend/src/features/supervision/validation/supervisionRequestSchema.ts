@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 export const supervisionRequestSchema = z.object({
-  supervisorEmail: z.string().email({ message: 'Неверный формат email' }),
+  supervisorEmail: z.string().trim().email({ message: 'Неверный формат email' }),
   entries: z.array(
     z.object({
       // позволяем и SUPERVISOR — UI решает, кому его показывать

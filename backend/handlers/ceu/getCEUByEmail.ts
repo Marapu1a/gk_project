@@ -24,7 +24,8 @@ export async function getCEUByEmailHandler(
   reply: FastifyReply
 ) {
   const { user } = req;
-  const { email, fromDate, toDate } = req.query;
+  const { fromDate, toDate } = req.query;
+  const email = req.query.email?.trim();
 
   // ✅ CEU смотрит только ADMIN (как и ревью)
   if (!user?.userId || user.role !== 'ADMIN') {
@@ -40,8 +41,9 @@ export async function getCEUByEmailHandler(
   const to = parseISODateOr400(reply, toDate, 'toDate');
   if (to === (null as any)) return;
 
-  const targetUser = await prisma.user.findUnique({
-    where: { email },
+  const targetUser = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+    orderBy: [{ email: 'asc' }, { id: 'asc' }],
     select: { id: true, fullName: true, email: true },
   });
 

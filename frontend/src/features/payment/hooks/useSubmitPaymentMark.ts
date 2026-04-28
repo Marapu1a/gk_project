@@ -1,7 +1,5 @@
 // src/features/payment/hooks/useSubmitPaymentMark.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getModerators } from '@/features/notifications/api/moderators';
-import { postNotification } from '@/features/notifications/api/notifications';
 import type { PaymentItem } from '../api/getUserPayments';
 import { updatePaymentStatus } from '../api/updatePaymentStatus';
 import { userPaymentsQueryKey } from './useUserPayments';
@@ -23,36 +21,14 @@ export function useSubmitPaymentMark() {
       const primaryPayment = payments[0];
       const nextStatus = primaryPayment.status === 'PENDING' ? 'UNPAID' : 'PENDING';
 
-      await Promise.all(payments.map((payment) => updatePaymentStatus(payment.id, nextStatus)));
-
-      const userEmail = primaryPayment.user?.email ?? 'Пользователь';
-      const adminUserLink = `/admin/users/${primaryPayment.userId}`;
-
-      const moderators = await getModerators();
-      const admins = (moderators as any[])
-        .filter((m) => String(m?.role).toUpperCase() === 'ADMIN')
-        .filter((m, i, arr) => arr.findIndex((x) => x?.id === m?.id) === i)
-        .filter((m) => m?.id !== primaryPayment.userId);
-
-      const message =
-        nextStatus === 'PENDING'
-          ? `Новая отметка об оплате от ${userEmail}`
-          : `Пользователь ${userEmail} отменил отметку об оплате`;
-
-      const results = await Promise.allSettled(
-        admins.map((admin) =>
-          postNotification({
-            userId: admin.id,
-            type: 'PAYMENT',
-            message,
-            link: adminUserLink,
-          }),
+      await Promise.all(
+        payments.map((payment, index) =>
+          updatePaymentStatus(payment.id, nextStatus, undefined, index === 0),
         ),
       );
 
       return {
         nextStatus,
-        hasNotificationErrors: results.some((r) => r.status === 'rejected'),
         userId: primaryPayment.userId,
       };
     },

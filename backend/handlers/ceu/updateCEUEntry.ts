@@ -1,6 +1,8 @@
 // handlers/ceu/updateCEUEntryHandler.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { NotificationType } from '@prisma/client';
+import { createNotification } from '../../utils/notifications';
 
 interface UpdateCEUEntryRoute extends RouteGenericInterface {
   Params: { id: string };
@@ -75,6 +77,20 @@ export async function updateCEUEntryHandler(
 
   if (res.count === 0) {
     return reply.code(400).send({ error: 'Статус SPENT необратим' });
+  }
+
+  try {
+    await createNotification({
+      userId: entry.record.userId,
+      type: NotificationType.CEU,
+      message:
+        status === 'CONFIRMED'
+          ? 'Ваши CEU-баллы подтверждены'
+          : `Ваши CEU-баллы отклонены: ${reason}`,
+      link: '/history',
+    });
+  } catch (err) {
+    req.log.error(err, 'CEU_REVIEW notification failed');
   }
 
   return reply.send({ success: true, updated: { id, status } });

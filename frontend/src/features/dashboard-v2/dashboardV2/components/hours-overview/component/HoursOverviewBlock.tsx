@@ -64,7 +64,11 @@ function TotalCircle({
   );
 }
 
-export function HoursOverviewBlock() {
+type HoursOverviewBlockProps = {
+  showActions?: boolean;
+};
+
+export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockProps) {
   const navigate = useNavigate();
   const { data: summary, isLoading, isError } = useSupervisionSummary();
 
@@ -153,23 +157,25 @@ export function HoursOverviewBlock() {
               <HelpBadge title="Распределите подтипы часов супервизии, чтобы увидеть разбивку по наблюдению и формату работы." />
             </div>
 
-            <div className="flex shrink-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => navigate('/history')}
-                className="btn h-[40px] min-w-[132px] rounded-[14px] border border-[var(--color-blue-dark)] px-5 text-[16px] font-semibold text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
-              >
-                История
-              </button>
+            {showActions ? (
+              <div className="flex shrink-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/history')}
+                  className="btn h-[40px] min-w-[132px] rounded-[14px] border border-[var(--color-blue-dark)] px-5 text-[16px] font-semibold text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
+                >
+                  История
+                </button>
 
-              <button
-                type="button"
-                onClick={() => navigate('/supervision/create')}
-                className="btn btn-dark h-[40px] min-w-[132px] rounded-[14px] px-5 text-[16px] font-semibold"
-              >
-                Добавить
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/supervision/hours')}
+                  className="btn btn-dark h-[40px] min-w-[132px] rounded-[14px] px-5 text-[16px] font-semibold"
+                >
+                  Добавить
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="grid gap-3 lg:grid-cols-[146px_minmax(0,1fr)]">

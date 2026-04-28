@@ -1,13 +1,31 @@
 // handlers/payment/updatePaymentStatusHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { PaymentType } from '@prisma/client';
+import { NotificationType, PaymentType } from '@prisma/client';
 import { updatePaymentSchema } from '../../schemas/updatePaymentSchema';
+import { createNotification, notifyAdmins } from '../../utils/notifications';
 
 type AuthUser = {
   userId: string;
   role: 'STUDENT' | 'REVIEWER' | 'ADMIN';
 };
+
+function paymentTypeLabel(type: PaymentType) {
+  switch (type) {
+    case PaymentType.FULL_PACKAGE:
+      return 'Пакетная оплата';
+    case PaymentType.REGISTRATION:
+      return 'Регистрация';
+    case PaymentType.DOCUMENT_REVIEW:
+      return 'Проверка документов';
+    case PaymentType.EXAM_ACCESS:
+      return 'Доступ к экзамену';
+    case PaymentType.RENEWAL:
+      return 'Ресертификация';
+    default:
+      return 'Оплата';
+  }
+}
 
 export async function updatePaymentStatusHandler(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as AuthUser | undefined;
@@ -25,7 +43,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
     });
   }
 
-  const { status, comment } = parsed.data;
+  const { status, comment, notify = true } = parsed.data;
 
   const dbPayment = await prisma.payment.findUnique({ where: { id } });
 
@@ -112,6 +130,41 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
 
     return { updated, activated, synced };
   });
+
+  if (notify) {
+    try {
+      if (user.role !== 'ADMIN' && (status === 'PENDING' || status === 'UNPAID')) {
+        const actor = await prisma.user.findUnique({
+          where: { id: user.userId },
+          select: { email: true },
+        });
+
+        await notifyAdmins({
+          type: NotificationType.PAYMENT,
+          message:
+            status === 'PENDING'
+              ? `Новая отметка об оплате от ${actor?.email ?? 'пользователя'}`
+              : `Пользователь ${actor?.email ?? 'пользователь'} отменил отметку об оплате`,
+          link: `/admin/users/${dbPayment.userId}`,
+          excludeUserId: dbPayment.userId,
+        });
+      }
+
+      if (user.role === 'ADMIN' && status === 'PAID' && dbPayment.status !== 'PAID') {
+        await createNotification({
+          userId: dbPayment.userId,
+          type: NotificationType.PAYMENT,
+          message:
+            dbPayment.type === PaymentType.FULL_PACKAGE
+              ? 'Пакетная оплата подтверждена'
+              : `Оплата подтверждена: ${paymentTypeLabel(dbPayment.type)}`,
+          link: '/dashboard',
+        });
+      }
+    } catch (err) {
+      req.log.error(err, 'PAYMENT_STATUS notification failed');
+    }
+  }
 
   return reply.send({
     payment: result.updated,

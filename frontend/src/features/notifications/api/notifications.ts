@@ -15,15 +15,6 @@ export async function getNotifications(): Promise<Notification[]> {
   return res.data;
 }
 
-export async function postNotification(data: {
-  userId: string;
-  type: Notification['type'];
-  message: string;
-  link?: string;
-}): Promise<void> {
-  await api.post('/notifications', data);
-}
-
 export async function deleteNotification(id: string): Promise<void> {
   await api.delete(`/notifications/${id}`);
 }

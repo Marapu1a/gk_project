@@ -11,9 +11,13 @@ export async function loginHandler(req: FastifyRequest, reply: FastifyReply) {
   }
 
   const { email, password } = parsed.data;
+  const normalizedEmail = email.trim();
   const INVALID_MSG = { error: 'Неверный email или пароль' };
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    orderBy: [{ email: 'asc' }, { id: 'asc' }],
+  });
   if (!user) return reply.code(401).send(INVALID_MSG);
 
   const valid = await bcrypt.compare(password, user.password);
