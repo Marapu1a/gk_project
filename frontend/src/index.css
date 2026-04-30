@@ -272,6 +272,33 @@ select {
   box-shadow: 0 0 0 2px var(--color-green-brand);
 }
 
+.input-design {
+  width: 100%;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.875rem;
+  font-family: var(--font-sans);
+  color: var(--color-blue-dark);
+  background-color: var(--color-white);
+  border: 1px solid #B8C4D8;
+  border-radius: 10px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.input-design:focus {
+  outline: none;
+  border-color: var(--color-blue-dark);
+  box-shadow: 0 0 0 2px rgba(31, 48, 94, 0.12);
+}
+
+.input-design:disabled {
+  color: #7F8AA3;
+  background-color: #F5F7FA;
+  cursor: not-allowed;
+}
+
 .text-error {
   margin-top: 0.25rem;
   font-size: 0.875rem;

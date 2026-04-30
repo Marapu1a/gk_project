@@ -56,9 +56,11 @@ export async function updateSupervisionHourHandler(
   const existing = await prisma.supervisionHour.findUnique({
     where: { id },
     select: {
+      id: true,
       status: true,
       reviewerId: true,
       type: true,
+      recordId: true,
       record: { select: { userId: true, cycleId: true, user: { select: { email: true } } } },
     },
   });
@@ -131,27 +133,46 @@ export async function updateSupervisionHourHandler(
     return reply.code(403).send({ error: 'Доступ запрещён' });
   }
 
-  if (existing.status === desiredStatus) {
-    return reply.send({ success: true, updated: { id, status: existing.status } });
-  }
-
   const isFinal = existing.status === 'CONFIRMED' || existing.status === 'REJECTED';
   if (isFinal && !isAdmin) {
     return reply.code(400).send({ error: 'Статус уже установлен и не может быть изменён' });
   }
 
-  const updated = await prisma.supervisionHour.update({
-    where: { id },
+  const reviewableHours = await prisma.supervisionHour.findMany({
+    where: {
+      recordId: existing.recordId,
+      ...(isAdmin ? {} : { reviewerId: existing.reviewerId }),
+    },
+    select: { id: true, status: true, type: true, value: true },
+  });
+
+  const finalHour = reviewableHours.find((hour) => hour.status === 'CONFIRMED' || hour.status === 'REJECTED');
+  if (finalHour && !isAdmin) {
+    return reply.code(400).send({ error: 'Статус уже установлен и не может быть изменён' });
+  }
+
+  const reviewedAt = new Date();
+
+  await prisma.supervisionHour.updateMany({
+    where: {
+      id: { in: reviewableHours.map((hour) => hour.id) },
+    },
     data: {
       status: desiredStatus,
-      reviewedAt: new Date(),
+      reviewedAt,
       rejectedReason: desiredStatus === 'REJECTED' ? rejectedReason : null,
       reviewerId: actorId,
     },
   });
 
+  const updatedHours = await prisma.supervisionHour.findMany({
+    where: { recordId: existing.recordId },
+    orderBy: { id: 'asc' },
+  });
+
   try {
-    const label = notificationLabel(existing.type);
+    const uniqueKinds = new Set(reviewableHours.map((hour) => normalizeNotificationType(hour.type)));
+    const label = uniqueKinds.size === 1 ? notificationLabel(existing.type) : 'часы практики';
     const message =
       desiredStatus === 'CONFIRMED'
         ? `Ваши ${label} подтверждены (${existing.record.user.email})`
@@ -167,5 +188,16 @@ export async function updateSupervisionHourHandler(
     req.log.error(err, 'SUPERVISION_REVIEW notification failed');
   }
 
-  return reply.send({ success: true, updated });
+  return reply.send({
+    success: true,
+    updated: {
+      id,
+      recordId: existing.recordId,
+      status: desiredStatus,
+      reviewedAt,
+      rejectedReason: desiredStatus === 'REJECTED' ? rejectedReason : null,
+      reviewerId: actorId,
+      hours: updatedHours,
+    },
+  });
 }

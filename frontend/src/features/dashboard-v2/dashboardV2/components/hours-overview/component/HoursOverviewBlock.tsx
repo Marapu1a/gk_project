@@ -14,7 +14,7 @@ function getProgressPercent(current: number, required: number) {
 function HelpBadge({ title }: { title: string }) {
   return (
     <span
-      className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full text-[11px] font-bold text-white"
+      className="inline-flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full text-[11px] font-bold text-white"
       style={{ backgroundColor: '#A7B1C7' }}
       title={title}
       aria-label={title}
@@ -161,7 +161,7 @@ export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockPro
               <div className="flex shrink-0 items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => navigate('/history')}
+                  onClick={() => navigate('/supervision/hours?panel=history')}
                   className="btn h-[40px] min-w-[132px] rounded-[14px] border border-[var(--color-blue-dark)] px-5 text-[16px] font-semibold text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
                 >
                   История

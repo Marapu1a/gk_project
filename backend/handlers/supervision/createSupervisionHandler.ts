@@ -14,8 +14,30 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     return reply.code(400).send({ error: 'Неверные данные', details: parsed.error.flatten() });
   }
 
-  const { fileId, entries } = parsed.data;
+  const {
+    fileId,
+    entries,
+    periodStartedAt,
+    periodEndedAt,
+    treatmentSetting,
+    description,
+    ethicsAccepted,
+    draftDistribution,
+  } = parsed.data;
   const supervisorEmail = parsed.data.supervisorEmail.trim();
+
+  if (periodStartedAt && periodEndedAt && periodEndedAt < periodStartedAt) {
+    return reply.code(400).send({ error: 'Дата окончания не может быть раньше даты начала' });
+  }
+
+  const now = new Date();
+  if (periodStartedAt && periodStartedAt > now) {
+    return reply.code(400).send({ error: 'Дата начала не может быть в будущем' });
+  }
+
+  if (periodEndedAt && periodEndedAt > now) {
+    return reply.code(400).send({ error: 'Дата окончания не может быть в будущем' });
+  }
 
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId, status: CycleStatus.ACTIVE },
@@ -123,6 +145,15 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
       userId,
       cycleId: activeCycle.id,
       fileId,
+      periodStartedAt,
+      periodEndedAt,
+      treatmentSetting,
+      description,
+      ethicsAcceptedAt: ethicsAccepted ? new Date() : undefined,
+      draftDirectIndividual: draftDistribution?.directIndividual,
+      draftDirectGroup: draftDistribution?.directGroup,
+      draftNonObservingIndividual: draftDistribution?.nonObservingIndividual,
+      draftNonObservingGroup: draftDistribution?.nonObservingGroup,
       hours: {
         create: normalized.map(({ type, value }) => ({
           type,

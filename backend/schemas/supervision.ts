@@ -15,9 +15,22 @@ const hourTypeEnum = z.enum([
   'PROGRAMMING',  // новый подтип практики
 ]);
 
+const draftDistributionSchema = z.object({
+  directIndividual: z.coerce.number().finite().min(0),
+  directGroup: z.coerce.number().finite().min(0),
+  nonObservingIndividual: z.coerce.number().finite().min(0),
+  nonObservingGroup: z.coerce.number().finite().min(0),
+});
+
 export const createSupervisionSchema = z.object({
   supervisorEmail: z.string().trim().email(),
   fileId: z.string().optional(),
+  periodStartedAt: z.coerce.date().optional(),
+  periodEndedAt: z.coerce.date().optional(),
+  treatmentSetting: z.string().trim().max(120).optional(),
+  description: z.string().trim().max(5000).optional(),
+  ethicsAccepted: z.boolean().optional(),
+  draftDistribution: draftDistributionSchema.optional(),
 
   entries: z
     .array(

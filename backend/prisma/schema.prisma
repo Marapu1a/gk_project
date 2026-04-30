@@ -125,6 +125,8 @@ model User {
   supervisionRecords       SupervisionRecord[]
   groups                   UserGroup[]
   uploadedFiles            UploadedFile[]
+  uploadedSupervisorContracts SupervisionContract[] @relation("UploadedSupervisorContracts")
+  supervisorContracts      SupervisionContract[] @relation("SupervisorContracts")
 
   reviewedCEUEntries       CEUEntry[]        @relation("ReviewedCEUEntry")
   reviewedSupervisionHours SupervisionHour[] @relation("ReviewedSupervisionHour")
@@ -218,6 +220,31 @@ model SupervisionDistribution {
 
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
+}
+
+model SupervisionContract {
+  id              String       @id @default(cuid())
+
+  userId          String
+  user            User         @relation("UploadedSupervisorContracts", fields: [userId], references: [id])
+
+  supervisorId    String?
+  supervisor      User?        @relation("SupervisorContracts", fields: [supervisorId], references: [id])
+
+  supervisorInput String
+  supervisorEmail String?
+  supervisorName  String?
+
+  fileId          String       @unique
+  file            UploadedFile @relation(fields: [fileId], references: [id])
+
+  status          RecordStatus @default(UNCONFIRMED)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([supervisorId])
+  @@index([status])
 }
 
 model CustomCity {
@@ -388,6 +415,17 @@ model SupervisionRecord {
   fileId     String?
   createdAt  DateTime @default(now())
 
+  periodStartedAt DateTime?
+  periodEndedAt   DateTime?
+  treatmentSetting String?
+  description      String?
+  ethicsAcceptedAt DateTime?
+
+  draftDirectIndividual       Float?
+  draftDirectGroup            Float?
+  draftNonObservingIndividual Float?
+  draftNonObservingGroup      Float?
+
   hours      SupervisionHour[]
 
   cycleId    String?
@@ -453,6 +491,7 @@ model UploadedFile {
   fileId      String   @unique
   name        String
   certificate Certificate?
+  supervisionContract SupervisionContract?
   mimeType    String
   type        String?
   comment     String?

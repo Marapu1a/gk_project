@@ -9,7 +9,9 @@ export type PracticeLevel =
   | 'SUPERVISION'
   | 'SUPERVISOR'
   | 'INSTRUCTOR'
-  | 'CURATOR';
+  | 'CURATOR'
+  | 'IMPLEMENTING'
+  | 'PROGRAMMING';
 
 export type AssignedHourItem = {
   id: string;

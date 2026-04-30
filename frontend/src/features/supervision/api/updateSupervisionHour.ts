@@ -14,7 +14,7 @@ export interface UpdateSupervisionHourResponse {
   updated: {
     id: string;
     recordId: string;
-    type?: 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR' | 'INSTRUCTOR' | 'CURATOR'; // для единообразия
+    type?: 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR' | 'INSTRUCTOR' | 'CURATOR' | 'IMPLEMENTING' | 'PROGRAMMING'; // для единообразия
     value?: number;
     status: HourStatus;
     reviewedAt: string | null;

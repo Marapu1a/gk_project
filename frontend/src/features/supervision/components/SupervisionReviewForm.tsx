@@ -7,16 +7,25 @@ import type { AssignedHourItem } from '../api/getAssignedHours';
 
 type HourType = AssignedHourItem['type'];
 
-const normalizeType = (t: HourType): 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR' => {
-  if (t === 'INSTRUCTOR') return 'PRACTICE';
-  if (t === 'CURATOR') return 'SUPERVISION';
+const normalizeType = (t: HourType): 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR' | 'IMPLEMENTING' | 'PROGRAMMING' => {
+  if (t === 'INSTRUCTOR' || t === 'PRACTICE') return 'PRACTICE';
+  if (t === 'CURATOR' || t === 'SUPERVISION') return 'SUPERVISION';
   return t;
 };
 
-const typeLabel: Record<'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR', string> = {
+const typeLabel: Record<'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR' | 'IMPLEMENTING' | 'PROGRAMMING', string> = {
   PRACTICE: 'Практика',
   SUPERVISION: 'Супервизия',
   SUPERVISOR: 'Менторство',
+  IMPLEMENTING: 'Полевая практика',
+  PROGRAMMING: 'Работа с информацией',
+};
+
+type ReviewRecord = {
+  recordId: string;
+  user: AssignedHourItem['record']['user'];
+  hours: AssignedHourItem[];
+  total: number;
 };
 
 export function SupervisionReviewForm() {
@@ -31,10 +40,32 @@ export function SupervisionReviewForm() {
   const mutation = useUpdateHourStatus();
   const [rejectedReasonMap, setRejectedReasonMap] = useState<Record<string, string>>({});
 
-  const hours: AssignedHourItem[] = useMemo(
-    () => (data ? data.pages.flatMap((p) => p.hours) : []),
-    [data],
-  );
+  const records: ReviewRecord[] = useMemo(() => {
+    const hours = data ? data.pages.flatMap((p) => p.hours) : [];
+    const byRecord = new Map<string, ReviewRecord>();
+
+    for (const hour of hours) {
+      const recordId = hour.record.id;
+      const existing = byRecord.get(recordId);
+
+      if (existing) {
+        existing.hours.push(hour);
+        existing.total += hour.value;
+      } else {
+        byRecord.set(recordId, {
+          recordId,
+          user: hour.record.user,
+          hours: [hour],
+          total: hour.value,
+        });
+      }
+    }
+
+    return Array.from(byRecord.values()).map((record) => ({
+      ...record,
+      total: Math.round(record.total * 100) / 100,
+    }));
+  }, [data]);
 
   const handleConfirm = async (id: string, userEmail: string) => {
     try {
@@ -65,7 +96,7 @@ export function SupervisionReviewForm() {
   if (queryStatus === 'pending') {
     return <div className="text-sm text-blue-dark">Загрузка…</div>;
   }
-  if (!hours.length) {
+  if (!records.length) {
     return (
       <div
         className="rounded-2xl border header-shadow bg-white p-6 text-sm text-gray-600"
@@ -83,7 +114,7 @@ export function SupervisionReviewForm() {
     >
       <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
         <h3 className="text-lg font-semibold text-blue-dark">Супервизия — заявки на проверку</h3>
-        <p className="text-sm text-gray-500">Всего: {hours.length}</p>
+        <p className="text-sm text-gray-500">Всего: {records.length}</p>
       </div>
 
       <div className="p-6 overflow-x-auto">
@@ -99,29 +130,40 @@ export function SupervisionReviewForm() {
             </tr>
           </thead>
           <tbody>
-            {hours.map((hour) => {
-              const t = normalizeType(hour.type);
+            {records.map((record) => {
+              const actionHourId = record.hours[0]?.id;
               return (
                 <tr
-                  key={hour.id}
+                  key={record.recordId}
                   className="border-t"
                   style={{ borderColor: 'var(--color-green-light)' }}
                 >
-                  <td className="p-2">{hour.record.user.fullName}</td>
-                  <td className="p-2">{hour.record.user.email}</td>
-                  <td className="p-2 text-center">{typeLabel[t]}</td>
-                  <td className="p-2 text-center">{hour.value}</td>
+                  <td className="p-2">{record.user.fullName}</td>
+                  <td className="p-2">{record.user.email}</td>
+                  <td className="p-2 text-center">
+                    <div className="space-y-1">
+                      {record.hours.map((hour) => {
+                        const t = normalizeType(hour.type);
+                        return (
+                          <div key={hour.id}>
+                            {typeLabel[t]}: <strong>{hour.value}</strong>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </td>
+                  <td className="p-2 text-center font-semibold">{record.total}</td>
                   <td className="p-2">
                     <div className="flex justify-center">
                       <input
                         type="text"
                         placeholder="Причина отклонения"
                         className="input w-44"
-                        value={rejectedReasonMap[hour.id] ?? ''}
+                        value={rejectedReasonMap[record.recordId] ?? ''}
                         onChange={(e) =>
                           setRejectedReasonMap((prev) => ({
                             ...prev,
-                            [hour.id]: e.target.value,
+                            [record.recordId]: e.target.value,
                           }))
                         }
                         disabled={mutation.isPending}
@@ -132,26 +174,28 @@ export function SupervisionReviewForm() {
                     <div className="flex justify-center gap-2">
                       <button
                         onClick={() =>
+                          actionHourId &&
                           handleConfirm(
-                            hour.id,
-                            hour.record.user.email,
+                            actionHourId,
+                            record.user.email,
                           )
                         }
                         className="btn btn-brand"
-                        disabled={mutation.isPending}
+                        disabled={mutation.isPending || !actionHourId}
                       >
                         Подтвердить
                       </button>
                       <button
                         onClick={() =>
+                          actionHourId &&
                           handleReject(
-                            hour.id,
-                            rejectedReasonMap[hour.id],
-                            hour.record.user.email,
+                            actionHourId,
+                            rejectedReasonMap[record.recordId],
+                            record.user.email,
                           )
                         }
                         className="btn btn-danger"
-                        disabled={mutation.isPending}
+                        disabled={mutation.isPending || !actionHourId}
                       >
                         Отклонить
                       </button>

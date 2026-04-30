@@ -1,9 +1,29 @@
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { HoursOverviewBlock } from '@/features/dashboard-v2/dashboardV2/components/hours-overview/component/HoursOverviewBlock';
+import { SupervisionHoursRequestForm } from '@/features/supervision/components/SupervisionHoursRequestForm';
+import { SupervisionContractBlock } from '@/features/supervision/components/SupervisionContractBlock';
+import { SupervisionRecordHistoryBlock } from '@/features/supervision/components/SupervisionRecordHistoryBlock';
 
 function SupervisionHoursContent() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const panel = searchParams.get('panel');
+  const isHistoryEntry = panel === 'history';
+
+  useEffect(() => {
+    if (!isHistoryEntry) return;
+
+    const timeout = window.setTimeout(() => {
+      document.getElementById('supervision-history')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [isHistoryEntry]);
 
   return (
     <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
@@ -24,6 +44,10 @@ function SupervisionHoursContent() {
       </header>
 
       <HoursOverviewBlock showActions={false} />
+
+      <SupervisionHoursRequestForm defaultOpen={!isHistoryEntry} />
+      <SupervisionContractBlock defaultOpen={false} />
+      <SupervisionRecordHistoryBlock />
     </div>
   );
 }

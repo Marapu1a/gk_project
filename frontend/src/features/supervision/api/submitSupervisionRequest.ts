@@ -20,6 +20,12 @@ export async function submitSupervisionRequest(
 ): Promise<SubmitSupervisionRequestResponse> {
   const payload = {
     supervisorEmail: data.supervisorEmail,
+    periodStartedAt: data.periodStartedAt || undefined,
+    periodEndedAt: data.periodEndedAt || undefined,
+    treatmentSetting: data.treatmentSetting || undefined,
+    description: data.description || undefined,
+    ethicsAccepted: data.ethicsAccepted,
+    draftDistribution: data.draftDistribution,
     entries: data.entries.map((e) => ({
       ...e,
       type: normalizeType(e.type),
