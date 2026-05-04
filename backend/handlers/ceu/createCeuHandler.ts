@@ -12,7 +12,7 @@ export async function createCeuHandler(req: FastifyRequest, reply: FastifyReply)
     return reply.code(400).send({ error: 'Неверные данные', details: parsed.error.flatten() });
   }
 
-  const { eventName, eventDate, fileId, entries } = parsed.data;
+  const { eventName, eventDate, fileId, activityType, entries } = parsed.data;
 
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId: user.userId, status: CycleStatus.ACTIVE },
@@ -30,6 +30,7 @@ export async function createCeuHandler(req: FastifyRequest, reply: FastifyReply)
       eventName,
       eventDate: new Date(eventDate),
       fileId,
+      activityType,
       entries: {
         create: entries.map((entry) => ({
           category: entry.category,

@@ -28,6 +28,13 @@ enum CEUCategory {
   GENERAL
 }
 
+enum CEUActivityType {
+  TRAINING_ATTENDANCE
+  PRESENTATION
+  PUBLICATION
+  TEACHING
+}
+
 enum PracticeLevel {
   INSTRUCTOR
   CURATOR
@@ -382,6 +389,7 @@ model CEURecord {
   fileId     String?
   eventName  String
   eventDate  DateTime
+  activityType CEUActivityType?
   createdAt  DateTime @default(now())
 
   entries    CEUEntry[]

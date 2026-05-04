@@ -130,7 +130,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     PracticeLevel.PROGRAMMING,
   ];
 
-  const [confirmed, unconfirmed, rawDistribution] = await Promise.all([
+  const [confirmed, unconfirmed, rawDistribution, distributionRecords] = await Promise.all([
     prisma.supervisionHour.findMany({
       where: {
         status: 'CONFIRMED',
@@ -154,6 +154,21 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
         directGroup: true,
         nonObservingIndividual: true,
         nonObservingGroup: true,
+      },
+    }),
+    prisma.supervisionRecord.findMany({
+      where: {
+        cycleId: activeCycle.id,
+        hours: {
+          some: {},
+          every: { status: 'CONFIRMED' },
+        },
+      },
+      select: {
+        draftDirectIndividual: true,
+        draftDirectGroup: true,
+        draftNonObservingIndividual: true,
+        draftNonObservingGroup: true,
       },
     }),
   ]);
@@ -223,14 +238,38 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     programming: pendingAgg.programming,
   };
 
-  const distribution: Distribution | null = rawDistribution
-    ? {
-      directIndividual: rawDistribution.directIndividual,
-      directGroup: rawDistribution.directGroup,
-      nonObservingIndividual: rawDistribution.nonObservingIndividual,
-      nonObservingGroup: rawDistribution.nonObservingGroup,
-    }
-    : null;
+  const recordDistribution = distributionRecords.reduce<Distribution>(
+    (acc, record) => ({
+      directIndividual: acc.directIndividual + (record.draftDirectIndividual ?? 0),
+      directGroup: acc.directGroup + (record.draftDirectGroup ?? 0),
+      nonObservingIndividual:
+        acc.nonObservingIndividual + (record.draftNonObservingIndividual ?? 0),
+      nonObservingGroup: acc.nonObservingGroup + (record.draftNonObservingGroup ?? 0),
+    }),
+    {
+      directIndividual: 0,
+      directGroup: 0,
+      nonObservingIndividual: 0,
+      nonObservingGroup: 0,
+    },
+  );
+
+  const hasRecordDistribution =
+    recordDistribution.directIndividual > 0 ||
+    recordDistribution.directGroup > 0 ||
+    recordDistribution.nonObservingIndividual > 0 ||
+    recordDistribution.nonObservingGroup > 0;
+
+  const distribution: Distribution | null = hasRecordDistribution
+    ? roundDistribution(recordDistribution)
+    : rawDistribution
+      ? {
+          directIndividual: rawDistribution.directIndividual,
+          directGroup: rawDistribution.directGroup,
+          nonObservingIndividual: rawDistribution.nonObservingIndividual,
+          nonObservingGroup: rawDistribution.nonObservingGroup,
+        }
+      : null;
 
   const directIndividual = distribution?.directIndividual ?? 0;
   const directGroup = distribution?.directGroup ?? 0;
@@ -358,6 +397,19 @@ function aggregate(rows: Array<{ type: PracticeLevel; value: number }>): Practic
   }
 
   return s;
+}
+
+function roundDistribution(distribution: Distribution): Distribution {
+  return {
+    directIndividual: round2(distribution.directIndividual),
+    directGroup: round2(distribution.directGroup),
+    nonObservingIndividual: round2(distribution.nonObservingIndividual),
+    nonObservingGroup: round2(distribution.nonObservingGroup),
+  };
+}
+
+function round2(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 function calcMentor(usable: SummaryTotals, pending: SummaryTotals, requiredTotal: number) {

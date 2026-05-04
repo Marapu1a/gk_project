@@ -4,6 +4,9 @@ export const createCeuSchema = z.object({
   eventName: z.string().min(1),
   eventDate: z.string(), // ISO date
   fileId: z.string().optional(),
+  activityType: z
+    .enum(['TRAINING_ATTENDANCE', 'PRESENTATION', 'PUBLICATION', 'TEACHING'])
+    .optional(),
   entries: z
     .array(
       z.object({

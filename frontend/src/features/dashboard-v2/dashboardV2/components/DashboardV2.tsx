@@ -3,6 +3,7 @@ import { ProfileCard } from './info/profile-card/component/ProfileCard';
 import { PaymentBlock } from './payment/component/PaymentBlock';
 import { CertificationBlock } from './certification-block/component/CertificationBlock';
 import { HoursOverviewBlock } from './hours-overview/component/HoursOverviewBlock';
+import { CeuOverviewBlock } from './ceu-overview/component/CeuOverviewBlock';
 
 const TARGET_LEVEL_LABELS = {
   INSTRUCTOR: 'Инструктор',
@@ -58,6 +59,8 @@ export function DashboardV2() {
         </div>
 
         <HoursOverviewBlock />
+
+        <CeuOverviewBlock level={user.targetLevel} />
       </div>
     </div>
   );

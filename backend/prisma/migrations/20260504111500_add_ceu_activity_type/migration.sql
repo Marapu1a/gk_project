@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "CEUActivityType" AS ENUM ('TRAINING_ATTENDANCE', 'PRESENTATION', 'PUBLICATION', 'TEACHING');
+
+-- AlterTable
+ALTER TABLE "CEURecord" ADD COLUMN "activityType" "CEUActivityType";

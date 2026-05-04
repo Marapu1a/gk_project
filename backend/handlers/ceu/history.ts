@@ -22,9 +22,26 @@ export async function ceuHistoryHandler(req: FastifyRequest, reply: FastifyReply
       value: true,
       status: true,
       rejectedReason: true,
-      record: { select: { eventDate: true, eventName: true } },
+      record: {
+        select: {
+          eventDate: true,
+          eventName: true,
+          activityType: true,
+          fileId: true,
+          user: { select: { fullName: true, email: true } },
+        },
+      },
     },
   });
+
+  const fileIds = entries.map((e) => e.record.fileId).filter(Boolean) as string[];
+  const files = fileIds.length
+    ? await prisma.uploadedFile.findMany({
+        where: { fileId: { in: fileIds } },
+        select: { id: true, fileId: true, name: true, mimeType: true },
+      })
+    : [];
+  const fileByStorageId = new Map(files.map((file) => [file.fileId, file]));
 
   return reply.send(
     entries.map((e) => ({
@@ -34,6 +51,9 @@ export async function ceuHistoryHandler(req: FastifyRequest, reply: FastifyReply
       status: e.status,
       eventDate: e.record.eventDate,
       eventName: e.record.eventName,
+      activityType: e.record.activityType,
+      file: e.record.fileId ? fileByStorageId.get(e.record.fileId) ?? null : null,
+      user: e.record.user,
       rejectedReason: e.rejectedReason,
     }))
   );

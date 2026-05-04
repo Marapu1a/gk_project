@@ -4,3 +4,4 @@ dist/
 .prisma/
 .codex-runtime/
 local_reports/
+frontend/public/uploads/

@@ -9,6 +9,17 @@ export interface CeuHistoryItem {
   rejectedReason: string;
   eventDate: string;
   eventName: string;
+  activityType: 'TRAINING_ATTENDANCE' | 'PRESENTATION' | 'PUBLICATION' | 'TEACHING' | null;
+  file: {
+    id: string;
+    fileId: string;
+    name: string;
+    mimeType: string;
+  } | null;
+  user: {
+    fullName: string | null;
+    email: string;
+  };
 }
 
 export async function getCeuHistory(): Promise<CeuHistoryItem[]> {

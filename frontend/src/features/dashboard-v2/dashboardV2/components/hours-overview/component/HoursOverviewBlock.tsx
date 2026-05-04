@@ -117,7 +117,11 @@ export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockPro
     <section className="card-section overflow-hidden px-5 py-5">
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.45fr)]">
         <div className="min-w-0">
-          <div className="mb-3 flex items-center gap-2">
+          <div
+            className={`mb-3 flex gap-2 ${
+              showActions ? 'min-h-[40px] items-start' : 'items-center'
+            }`}
+          >
             <h3 className="text-[18px] font-extrabold text-[#1F305E]">Часы практики</h3>
             <HelpBadge title="Подтвержденные часы практики в текущем активном цикле." />
           </div>
@@ -239,7 +243,6 @@ export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockPro
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </section>

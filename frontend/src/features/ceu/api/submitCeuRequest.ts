@@ -12,6 +12,7 @@ export async function submitCeuRequest(data: CeuRequestFormData): Promise<Submit
     eventName: data.eventName,
     eventDate: data.eventDate,
     fileId: data.fileId,
+    activityType: data.activityType,
     entries: data.entries,
   });
 

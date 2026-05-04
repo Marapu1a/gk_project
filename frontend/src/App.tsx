@@ -26,6 +26,7 @@ import RegistryPage from './pages/RegistryPage';
 import RegistryProfilePage from '@/pages/RegistryProfilePage';
 import DashboardPageV2 from './pages/DashboardPageV2';
 import SupervisionHoursPage from './pages/SupervisionHoursPage';
+import CeuPointsPage from './pages/CeuPointsPage';
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const router = createBrowserRouter([
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'dashboard-v2', element: <DashboardPageV2 /> },
+      { path: 'ceu/points', element: <CeuPointsPage /> },
       { path: 'ceu/create', element: <CeuRequestPage /> },
       { path: 'supervision/hours', element: <SupervisionHoursPage /> },
       { path: 'supervision/create', element: <SupervisionRequestPage /> },

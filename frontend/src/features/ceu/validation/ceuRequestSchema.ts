@@ -17,6 +17,9 @@ export const ceuRequestSchema = z.object({
     ),
 
   fileId: z.string().nonempty('Файл обязателен'),
+  activityType: z
+    .enum(['TRAINING_ATTENDANCE', 'PRESENTATION', 'PUBLICATION', 'TEACHING'])
+    .optional(),
 
   entries: z
     .array(
