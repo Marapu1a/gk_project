@@ -17,8 +17,8 @@ export function ProfileAvatar({ userId, avatarUrl, fullName }: Props) {
       <AvatarDisplay
         src={avatarUrl}
         alt={fullName?.trim() || 'Аватар пользователя'}
-        w="w-42"
-        h="h-42"
+        w="w-[152px]"
+        h="h-[152px]"
         editable
         onClick={() => setIsOpen(true)}
       />

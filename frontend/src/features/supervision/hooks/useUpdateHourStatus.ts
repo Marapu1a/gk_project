@@ -15,6 +15,8 @@ export function useUpdateHourStatus() {
       // ревью-инбокс
       await qc.invalidateQueries({ queryKey: ['review', 'supervision'] });
       await qc.invalidateQueries({ queryKey: ['supervision', 'assigned'] });
+      await qc.invalidateQueries({ queryKey: ['supervision', 'reviewerCandidates'] });
+      await qc.invalidateQueries({ queryKey: ['supervision', 'reviewerCandidateDetails'] });
 
       // история и список
       await qc.invalidateQueries({ queryKey: ['supervision', 'history'] });

@@ -23,7 +23,9 @@ const ORDER: PaymentItem['type'][] = [
 
 type Props = {
   activeGroupName: string;
+  targetLevel: PaymentItem['targetLevel'] | null;
   targetLevelName?: string;
+  cycleType?: 'CERTIFICATION' | 'RENEWAL' | null;
 };
 
 function resolveBillingGroup(targetLevelName?: string, activeGroupName?: string): string {
@@ -40,9 +42,9 @@ function resolveBillingGroup(targetLevelName?: string, activeGroupName?: string)
 
 function PaymentSummary({ subtitle }: { subtitle: string }) {
   return (
-    <section className="card-section flex min-h-[330px] flex-col items-center px-5 py-5">
-      <h2 className="mb-8 text-center text-[18px] font-semibold text-[#1F305E]">Оплата</h2>
-      <p className="mb-10 text-center text-[14px] text-[#8D96B5]">{subtitle}</p>
+    <section className="card-section flex h-full min-h-[340px] w-full flex-col items-center px-5 py-6 shadow-soft">
+      <h2 className="dashboard-v2-title mb-6 text-center">Оплата</h2>
+      <p className="mb-8 text-center text-[14px] text-[#8D96B5]">{subtitle}</p>
       <div className="flex flex-1 items-center justify-center">
         <PaymentStatusIcon className="h-24 w-24" />
       </div>
@@ -52,7 +54,7 @@ function PaymentSummary({ subtitle }: { subtitle: string }) {
 
 function PaymentEmptyState() {
   return (
-    <section className="card-section flex min-h-[330px] items-center justify-center px-6 py-6">
+    <section className="card-section flex h-full min-h-[340px] w-full items-center justify-center px-6 py-6 shadow-soft">
       <p className="max-w-[260px] text-center text-[14px] leading-[1.35] text-[#8D96B5]">
         Выберите целевой уровень сертификации, чтобы продолжить
       </p>
@@ -60,15 +62,26 @@ function PaymentEmptyState() {
   );
 }
 
-export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
+export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cycleType }: Props) {
   const { data: payments, isLoading } = useUserPayments();
   const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
 
   const billingGroup = resolveBillingGroup(targetLevelName, activeGroupName);
-  const isSupervisorTarget = targetLevelName === 'Супервизор';
+  const isRenewalCycle = cycleType === 'RENEWAL';
+  const isSupervisorTarget = targetLevel === 'SUPERVISOR';
 
   const preparedPayments = useMemo(() => {
     if (!payments) return [];
+
+    if (isRenewalCycle) {
+      return payments
+        .filter((payment) => payment.type === 'RENEWAL' && payment.targetLevel === targetLevel)
+        .map((payment) => ({
+          ...payment,
+          uiDisabled: false,
+          disabledReason: undefined,
+        }));
+    }
 
     const visibleTypes = isSupervisorTarget
       ? ORDER.filter((type) => type !== 'REGISTRATION')
@@ -76,10 +89,6 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
 
     const fullPackage = payments.find((p) => p.type === 'FULL_PACKAGE');
     const isPackagePending = fullPackage?.status === 'PENDING';
-
-    const packageDisabled = payments.some(
-      (payment) => payment.type !== 'FULL_PACKAGE' && payment.status === 'PAID',
-    );
 
     return visibleTypes
       .map((type) => {
@@ -90,10 +99,7 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
         let disabledReason: string | undefined;
 
         if (payment.type === 'FULL_PACKAGE') {
-          uiDisabled = packageDisabled;
-          if (packageDisabled) {
-            disabledReason = 'Пакет недоступен';
-          }
+          uiDisabled = false;
         } else if (isPackagePending && payment.status === 'UNPAID') {
           uiDisabled = true;
           disabledReason = 'Ждём подтверждения пакетной оплаты';
@@ -109,7 +115,7 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
       uiDisabled: boolean;
       disabledReason?: string;
     })[];
-  }, [payments, isSupervisorTarget]);
+  }, [payments, isRenewalCycle, isSupervisorTarget, targetLevel]);
 
   if (isLoading || !payments?.length) {
     return null;
@@ -124,48 +130,52 @@ export function PaymentBlock({ activeGroupName, targetLevelName }: Props) {
 
   const visibleNonPackagePayments = preparedPayments.filter((p) => p.type !== 'FULL_PACKAGE');
 
-  const areAllSeparatePaid = isSupervisorTarget
-    ? (() => {
-        const documentReview = payments.find((p) => p.type === 'DOCUMENT_REVIEW');
-        const registration = payments.find((p) => p.type === 'REGISTRATION');
-        const exam = payments.find((p) => p.type === 'EXAM_ACCESS');
+  const areAllSeparatePaid = isRenewalCycle
+    ? preparedPayments.length > 0 && preparedPayments.every((payment) => payment.status === 'PAID')
+    : isSupervisorTarget
+      ? (() => {
+          const documentReview = payments.find((p) => p.type === 'DOCUMENT_REVIEW');
+          const registration = payments.find((p) => p.type === 'REGISTRATION');
+          const exam = payments.find((p) => p.type === 'EXAM_ACCESS');
 
-        return Boolean(
-          documentReview &&
-            registration &&
-            exam &&
-            documentReview.status === 'PAID' &&
-            registration.status === 'PAID' &&
-            exam.status === 'PAID',
-        );
-      })()
-    : visibleNonPackagePayments.length > 0 &&
-      visibleNonPackagePayments.every((payment) => payment.status === 'PAID');
+          return Boolean(
+            documentReview &&
+              registration &&
+              exam &&
+              documentReview.status === 'PAID' &&
+              registration.status === 'PAID' &&
+              exam.status === 'PAID',
+          );
+        })()
+      : visibleNonPackagePayments.length > 0 &&
+        visibleNonPackagePayments.every((payment) => payment.status === 'PAID');
 
   if (isFullPackagePaid) {
     return <PaymentSummary subtitle="Сертификация - пакет со скидкой 10% оплачена" />;
   }
 
   if (areAllSeparatePaid) {
-    return <PaymentSummary subtitle="Все услуги оплачены" />;
+    return (
+      <PaymentSummary subtitle={isRenewalCycle ? 'Ресертификация оплачена' : 'Все услуги оплачены'} />
+    );
   }
 
   return (
     <>
-      <section className="card-section px-5 py-5">
-        <h2 className="mb-5 text-center text-[18px] font-semibold text-[#1F305E]">Оплата</h2>
+      <section className="card-section flex h-full min-h-[340px] w-full flex-col overflow-hidden px-5 py-6 shadow-soft">
+        <h2 className="dashboard-v2-title mb-5 text-center">Оплата</h2>
 
-        <div className="mb-5 rounded-2xl bg-[#DDE8EB] px-5 py-3 text-center text-[16px] font-semibold text-[#1F305E]">
+        <div className="mb-5 flex h-[42px] items-center justify-center rounded-[14px] bg-[#E5EFF1] px-5 text-center text-[16px] font-medium text-[#1F305E]">
           {targetLevelName}
         </div>
 
-        <div className="space-y-4">
+        <div className="-mx-1 flex flex-1 flex-col justify-center gap-3">
           {preparedPayments.map((payment) => (
             <PaymentCard
               key={payment.id}
               title={
-                payment.type === 'DOCUMENT_REVIEW' && targetLevelName === 'Супервизор'
-                  ? 'Подача заявки на сертификацию, экспертиза документов на уровень Супервизор ПАП'
+                payment.type === 'DOCUMENT_REVIEW' && targetLevel === 'SUPERVISOR'
+                  ? 'Подача заявки на сертификацию, экспертиза документов'
                   : LABELS[payment.type]
               }
               status={payment.status}

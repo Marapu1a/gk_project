@@ -5,6 +5,9 @@ import { supervisionSummaryHandler } from '../handlers/supervision/supervisionSu
 import { supervisionHistoryHandler } from '../handlers/supervision/history';
 import { supervisionHistoryRecordsHandler } from '../handlers/supervision/historyRecords';
 import { getAssignedHoursHandler } from '../handlers/supervision/getAssignedHoursHandler';
+import { getReviewerCandidatesHandler } from '../handlers/supervision/getReviewerCandidatesHandler';
+import { getReviewerCandidateDetailsHandler } from '../handlers/supervision/getReviewerCandidateDetailsHandler';
+import { updateReviewerCandidateRelationHandler } from '../handlers/supervision/updateReviewerCandidateRelationHandler';
 import { updateSupervisionHourHandler } from '../handlers/supervision/updateSupervisionHour';
 import { upsertSupervisionDistributionHandler } from '../handlers/supervision/upsertSupervisionDistributionHandler';
 import { createSupervisionContractHandler } from '../handlers/supervision/createSupervisionContractHandler';
@@ -22,6 +25,9 @@ export async function supervisionRoutes(app: FastifyInstance) {
   app.get('/supervision/contracts', { preHandler: [verifyToken] }, listSupervisionContractsHandler);
   app.post('/supervision/contracts', { preHandler: [verifyToken] }, createSupervisionContractHandler);
   app.delete('/supervision/contracts/:id', { preHandler: [verifyToken] }, deleteSupervisionContractHandler);
+  app.get('/supervision/reviewer/candidates', { preHandler: [verifyToken] }, getReviewerCandidatesHandler);
+  app.patch('/supervision/reviewer/candidates/:id', { preHandler: [verifyToken] }, updateReviewerCandidateRelationHandler);
+  app.get('/supervision/reviewer/candidates/:userId', { preHandler: [verifyToken] }, getReviewerCandidateDetailsHandler);
   app.get('/supervision/review', { preHandler: [verifyToken] }, getAssignedHoursHandler);
   app.patch('/supervision/:id', { preHandler: [verifyToken] }, updateSupervisionHourHandler);
   app.put('/supervision/distribution', { preHandler: [verifyToken] }, upsertSupervisionDistributionHandler);

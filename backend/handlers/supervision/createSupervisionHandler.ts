@@ -2,7 +2,13 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { createSupervisionSchema } from '../../schemas/supervision';
-import { RecordStatus, PracticeLevel, CycleStatus, NotificationType } from '@prisma/client';
+import {
+  RecordStatus,
+  PracticeLevel,
+  CycleStatus,
+  NotificationType,
+  ReviewerCandidateKind,
+} from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
 
 export async function createSupervisionHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -140,30 +146,56 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     }
   }
 
-  const record = await prisma.supervisionRecord.create({
-    data: {
-      userId,
-      cycleId: activeCycle.id,
-      fileId,
-      periodStartedAt,
-      periodEndedAt,
-      treatmentSetting,
-      description,
-      ethicsAcceptedAt: ethicsAccepted ? new Date() : undefined,
-      draftDirectIndividual: draftDistribution?.directIndividual,
-      draftDirectGroup: draftDistribution?.directGroup,
-      draftNonObservingIndividual: draftDistribution?.nonObservingIndividual,
-      draftNonObservingGroup: draftDistribution?.nonObservingGroup,
-      hours: {
-        create: normalized.map(({ type, value }) => ({
-          type,
-          value,
-          status: RecordStatus.UNCONFIRMED,
-          reviewerId: reviewer.id,
-        })),
+  const relationKind = isAuthorSimpleSupervisor
+    ? ReviewerCandidateKind.MENTORSHIP
+    : ReviewerCandidateKind.SUPERVISION;
+
+  const record = await prisma.$transaction(async (tx) => {
+    const createdRecord = await tx.supervisionRecord.create({
+      data: {
+        userId,
+        cycleId: activeCycle.id,
+        fileId,
+        periodStartedAt,
+        periodEndedAt,
+        treatmentSetting,
+        description,
+        ethicsAcceptedAt: ethicsAccepted ? new Date() : undefined,
+        draftDirectIndividual: draftDistribution?.directIndividual,
+        draftDirectGroup: draftDistribution?.directGroup,
+        draftNonObservingIndividual: draftDistribution?.nonObservingIndividual,
+        draftNonObservingGroup: draftDistribution?.nonObservingGroup,
+        hours: {
+          create: normalized.map(({ type, value }) => ({
+            type,
+            value,
+            status: RecordStatus.UNCONFIRMED,
+            reviewerId: reviewer.id,
+          })),
+        },
       },
-    },
-    include: { hours: true },
+      include: { hours: true },
+    });
+
+    await tx.reviewerCandidateRelation.upsert({
+      where: {
+        reviewerId_candidateId_cycleId_kind: {
+          reviewerId: reviewer.id,
+          candidateId: userId,
+          cycleId: activeCycle.id,
+          kind: relationKind,
+        },
+      },
+      create: {
+        reviewerId: reviewer.id,
+        candidateId: userId,
+        cycleId: activeCycle.id,
+        kind: relationKind,
+      },
+      update: {},
+    });
+
+    return createdRecord;
   });
 
   try {

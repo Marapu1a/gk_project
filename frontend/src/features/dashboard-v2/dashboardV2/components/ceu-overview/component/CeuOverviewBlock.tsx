@@ -24,13 +24,10 @@ function formatNumber(value: number | null | undefined) {
 function HelpBadge({ title }: { title: string }) {
   return (
     <span
-      className="inline-flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full text-[11px] font-bold text-white"
-      style={{ backgroundColor: '#A7B1C7' }}
+      className="dashboard-v2-help"
       title={title}
       aria-label={title}
-    >
-      ?
-    </span>
+    />
   );
 }
 
@@ -46,7 +43,7 @@ function CeuMetricCard({
   const isEmpty = value <= 0 && required <= 0;
 
   return (
-    <div className="flex min-h-[80px] items-center justify-between gap-4 rounded-[10px] bg-[#E7F1F4] px-5 py-4">
+    <div className="flex min-h-[80px] items-center justify-between gap-4 rounded-[10px] bg-[#E5EFF1] px-5 py-4">
       <span className="min-w-0 text-[16px] font-extrabold leading-[1.2] text-[#1F305E]">
         {label}
       </span>
@@ -89,7 +86,7 @@ export function CeuOverviewBlock({ level = null, showActions = true }: CeuOvervi
     <section className="card-section overflow-hidden px-5 py-5 shadow-soft">
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-[18px] font-extrabold text-[#1F305E]">CEU-Баллы</h3>
+          <h3 className="dashboard-v2-title">CEU-Баллы</h3>
           <HelpBadge title="Подтвержденные CEU-баллы в текущем активном цикле." />
         </div>
 
@@ -98,7 +95,7 @@ export function CeuOverviewBlock({ level = null, showActions = true }: CeuOvervi
             <button
               type="button"
               onClick={() => navigate('/ceu/points?panel=history')}
-              className="btn h-[50px] min-w-[144px] rounded-[10px] border-2 border-[var(--color-blue-dark)] px-6 text-[16px] font-extrabold text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
+              className="btn dashboard-v2-action dashboard-v2-action-secondary"
             >
               История
             </button>
@@ -106,7 +103,7 @@ export function CeuOverviewBlock({ level = null, showActions = true }: CeuOvervi
             <button
               type="button"
               onClick={() => navigate('/ceu/points?panel=add')}
-              className="btn btn-dark h-[50px] min-w-[144px] rounded-[10px] px-6 text-[16px] font-extrabold"
+              className="btn dashboard-v2-action dashboard-v2-action-primary"
             >
               Добавить
             </button>

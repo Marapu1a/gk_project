@@ -54,24 +54,24 @@ export function ProfileCard({ user }: ProfileCardProps) {
 
   return (
     <>
-      <section className="card-section max-w-[420px] px-5 py-5" style={{ borderRadius: '32px' }}>
-        <h2 className="mb-5 text-center text-[18px] font-semibold text-blue-dark">Информация</h2>
+      <section className="card-section h-full min-h-[340px] w-full px-5 py-6 shadow-soft">
+        <h2 className="dashboard-v2-title mb-4 text-center">Информация</h2>
 
-        <div className="flex items-start gap-5">
+        <div className="flex items-start gap-4">
           <ProfileAvatar userId={user.id} avatarUrl={user.avatarUrl} fullName={user.fullName} />
 
           <div className="flex min-w-0 flex-1 flex-col pt-1">
             <div className="min-w-0 leading-tight text-blue-dark">
-              <p className="break-words text-[20px] font-semibold">{lastName}</p>
-              <p className="break-words text-[18px]">{firstName}</p>
-              <p className="break-words text-[18px]">{middleName}</p>
+              <p className="break-words text-[18px] font-extrabold">{lastName}</p>
+              <p className="break-words text-[16px]">{firstName}</p>
+              <p className="break-words text-[16px]">{middleName}</p>
             </div>
 
             <div className="mt-2">
               <button
                 type="button"
                 onClick={() => navigate('/history')}
-                className="btn h-[40px] w-full rounded-full border border-[var(--color-blue-dark)] text-[18px] text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
+                className="btn h-[34px] w-full cursor-pointer rounded-full border border-[var(--color-blue-dark)] text-[15px] text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
               >
                 История
               </button>
@@ -82,7 +82,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
                 type="button"
                 onClick={logout}
                 aria-label="Выйти"
-                className="icon-button icon-button-danger h-[48px] w-[48px]"
+                className="icon-button icon-button-danger h-[42px] w-[42px]"
               >
                 <LogoutIcon className="h-full w-full" />
               </button>
@@ -91,7 +91,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
                 type="button"
                 onClick={() => navigate('/profile')}
                 aria-label="Редактировать профиль"
-                className="icon-button icon-button-primary h-[48px] w-[48px]"
+                className="icon-button icon-button-primary h-[42px] w-[42px]"
               >
                 <EditIcon className="h-full w-full" />
               </button>
@@ -100,7 +100,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
                 type="button"
                 onClick={() => setOpenNotif(true)}
                 aria-label="Уведомления"
-                className="icon-button icon-button-primary relative h-[48px] w-[48px]"
+                className="icon-button icon-button-primary relative h-[42px] w-[42px]"
               >
                 <BellIcon className="h-full w-full" />
 
@@ -115,25 +115,25 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
 
         <div
-          className="mt-5 px-4 py-2 text-center text-[18px] font-semibold text-blue-dark"
+          className="mt-4 h-[38px] px-4 py-2 text-center text-[16px] font-semibold text-blue-dark"
           style={{
             backgroundColor: 'var(--color-blue-soft)',
-            borderRadius: 'var(--radius-button)',
+            borderRadius: '10px',
           }}
         >
           {activeGroupName}
         </div>
 
-        <div className="mt-4 text-center text-[16px]" style={{ color: '#8D96B5' }}>
+        <div className="mt-4 text-center text-[14px]" style={{ color: '#8D96B5' }}>
           Срок действия сертификата:{' '}
           <span className="font-semibold text-pink-accent">{expiresAt ?? '—'}</span>
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-4 text-[14px]">
+        <div className="mt-4 flex items-center justify-between gap-3 text-[13px]">
           <button
             type="button"
             onClick={() => navigate('/my-certificate')}
-            className="btn btn-dark min-w-0 flex-1 rounded-[16px] px-4 py-4"
+            className="btn btn-dark h-[44px] min-w-0 flex-1 cursor-pointer rounded-[12px] px-3 font-extrabold"
           >
             Мои сертификаты
           </button>
@@ -141,7 +141,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
           <button
             type="button"
             onClick={() => navigate('/document-review')}
-            className="btn btn-dark min-w-0 flex-1 rounded-[16px] px-4 py-4"
+            className="btn btn-dark h-[44px] min-w-0 flex-1 cursor-pointer rounded-[12px] px-3 font-extrabold"
           >
             Мои документы
           </button>

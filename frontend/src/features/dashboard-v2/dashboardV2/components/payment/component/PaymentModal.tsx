@@ -68,7 +68,7 @@ export function PaymentModal({
   const paymentLink = getPaymentLink(payment.type, billingGroup);
   const title =
     payment.type === 'DOCUMENT_REVIEW' && billingGroup === 'куратор'
-      ? 'Подача заявки на сертификацию, экспертиза документов на уровень Супервизор ПАП'
+      ? 'Подача заявки на сертификацию, экспертиза документов'
       : TITLE_BY_TYPE[payment.type];
 
   const isPending = relatedPayments.some((p) => p.status === 'PENDING');
@@ -114,7 +114,7 @@ export function PaymentModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(31,48,94,0.14)] text-[#1F305E] transition hover:bg-[rgba(31,48,94,0.05)]"
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[rgba(31,48,94,0.14)] text-[#1F305E] transition hover:bg-[rgba(31,48,94,0.05)]"
             aria-label="Закрыть"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -134,7 +134,7 @@ export function PaymentModal({
               href={paymentLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex w-full items-center justify-center rounded-full bg-[#1F305E] px-6 py-4 text-[16px] font-semibold text-white transition hover:opacity-90"
+              className="flex w-full cursor-pointer items-center justify-center rounded-full bg-[#1F305E] px-6 py-4 text-[16px] font-semibold text-white transition hover:opacity-90"
             >
               Перейти к оплате
             </a>
@@ -149,7 +149,7 @@ export function PaymentModal({
               type="button"
               onClick={handleTogglePending}
               disabled={mutation.isPending}
-              className="w-full rounded-full border border-[#1F305E] px-6 py-4 text-[16px] font-semibold text-[#1F305E] transition hover:bg-[rgba(31,48,94,0.05)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full cursor-pointer rounded-full border border-[#1F305E] px-6 py-4 text-[16px] font-semibold text-[#1F305E] transition hover:bg-[rgba(31,48,94,0.05)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isPending ? 'Отменить отметку' : 'Я оплатил(а)'}
             </button>

@@ -288,14 +288,14 @@ export function CertificationBlock({ user }: Props) {
 
   if (!targetLevel) {
     return (
-      <section className="card-section flex flex-col gap-7">
-        <h2 className="text-center text-[26px] font-extrabold leading-[1.05] text-blue-dark">
+      <section className="card-section flex h-full min-h-[340px] w-full flex-col px-5 py-6 shadow-soft">
+        <h2 className="dashboard-v2-title mb-5 text-center">
           Сертификация и ресертификация
         </h2>
 
-        <div className="relative">
+        <div className="relative mb-5">
           <select
-            className="h-11 w-full appearance-none rounded-button border-0 bg-[var(--color-blue-dark)] px-4 pr-11 text-center text-[18px] font-extrabold leading-none text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-[32px] w-full appearance-none rounded-[8px] border-0 bg-[var(--color-blue-dark)] px-4 pr-10 text-center text-[14px] font-extrabold leading-none text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
             value={selected}
             onChange={(e) => {
               const value = e.target.value;
@@ -336,7 +336,7 @@ export function CertificationBlock({ user }: Props) {
           </div>
         </div>
 
-        <div className="space-y-5 text-center text-[15px] leading-[1.35] text-[#97A0BD]">
+        <div className="mb-5 space-y-4 text-center text-[13px] leading-[1.35] text-[#97A0BD]">
           <p>
             Поменять выбор будет нельзя,
             <br />
@@ -362,7 +362,7 @@ export function CertificationBlock({ user }: Props) {
           <p className="text-center text-sm text-[var(--color-green-dark)]">Цель обновлена</p>
         )}
 
-        <div className="flex h-11 items-center justify-center rounded-button bg-[#B8C0D1] px-5 text-[18px] font-extrabold leading-none text-white">
+        <div className="mt-auto flex h-[42px] items-center justify-center rounded-[8px] bg-[#B8C0D1] px-5 text-[14px] font-extrabold leading-none text-white">
           Не выбрано
         </div>
       </section>
@@ -370,22 +370,22 @@ export function CertificationBlock({ user }: Props) {
   }
 
   return (
-    <section className="card-section flex flex-col gap-7">
-      <h2 className="text-center text-[26px] font-extrabold leading-[1.05] text-blue-dark">
+    <section className="card-section flex h-full min-h-[340px] w-full flex-col px-5 py-6 shadow-soft">
+      <h2 className="dashboard-v2-title mb-5 text-center">
         Целевой уровень сертификации
       </h2>
 
-      <div className="flex h-11 items-center justify-center rounded-button bg-[var(--color-blue-soft)] px-5 text-center text-[18px] font-extrabold leading-none text-blue-dark">
+      <div className="mb-6 flex h-[32px] items-center justify-center rounded-[8px] bg-[var(--color-blue-soft)] px-5 text-center text-[14px] font-extrabold leading-none text-blue-dark">
         {targetLevelName}
       </div>
 
-      <p className="text-center text-[15px] leading-[1.35] text-[#97A0BD]">
+      <p className="mb-5 text-center text-[13px] leading-[1.35] text-[#97A0BD]">
         Выполните условия
         <br />
         целевого уровня сертификации
       </p>
 
-      <ul className="space-y-4">
+      <ul className="space-y-3">
         <StatusRow
           ok={!!progress.ceuReady}
           label="CEU-Баллы"
@@ -407,7 +407,7 @@ export function CertificationBlock({ user }: Props) {
 
       <button
         type="button"
-        className={`btn h-11 w-full rounded-button text-[18px] font-extrabold leading-none ${
+        className={`btn mt-auto h-[42px] w-full rounded-[8px] text-[14px] font-extrabold leading-none ${
           progress.isEligible && progress.examPaid ? 'btn-dark' : ''
         }`}
         style={
@@ -428,19 +428,19 @@ export function CertificationBlock({ user }: Props) {
 
 function StatusRow({ ok, label, value }: { ok: boolean; label: string; value: string }) {
   return (
-    <li className="flex items-center gap-2 text-[15px] leading-none">
+    <li className="flex min-w-0 items-center gap-2 text-[13px] leading-none">
       {ok ? (
         <CheckCircle
-          size={18}
+          size={16}
           strokeWidth={2.4}
           className="shrink-0 text-[var(--color-green-brand)]"
         />
       ) : (
-        <XCircle size={18} strokeWidth={2.4} className="shrink-0 text-[var(--color-pink-danger)]" />
+        <XCircle size={16} strokeWidth={2.4} className="shrink-0 text-[var(--color-pink-danger)]" />
       )}
 
       <span className="font-extrabold text-blue-dark">{label}:</span>
-      <span className="text-[#97A0BD]">{value}</span>
+      <span className="min-w-0 truncate text-[#97A0BD]">{value}</span>
     </li>
   );
 }

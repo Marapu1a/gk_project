@@ -14,24 +14,57 @@ function getProgressPercent(current: number, required: number) {
 function HelpBadge({ title }: { title: string }) {
   return (
     <span
-      className="inline-flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full text-[11px] font-bold text-white"
-      style={{ backgroundColor: '#A7B1C7' }}
+      className="dashboard-v2-help"
       title={title}
       aria-label={title}
-    >
-      ?
-    </span>
+    />
   );
 }
 
 function MetricCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-[14px] bg-[#E7F1F4] px-3 py-2.5">
+    <div className="rounded-[14px] bg-[#E5EFF1] px-3 py-2.5">
       <div className="mb-1.5 flex items-start justify-between gap-2">
         <span className="text-[14px] leading-[1.2] text-[#1F305E]">{label}</span>
         {hint ? <HelpBadge title={hint} /> : null}
       </div>
       <div className="text-[18px] font-extrabold leading-none text-[#1F305E]">{value}</div>
+    </div>
+  );
+}
+
+function MetricSegment({
+  label,
+  value,
+  side,
+}: {
+  label: string;
+  value: string;
+  side: 'left' | 'right';
+}) {
+  return (
+    <div
+      className={`bg-[#F0F0F0] px-3 py-2.5 ${
+        side === 'left' ? 'rounded-l-[14px]' : 'rounded-r-[14px] border-l border-white'
+      }`}
+    >
+      <div className="mb-1.5 text-[13px] leading-[1.2] text-[#1F305E]">{label}</div>
+      <div className="text-[18px] font-extrabold leading-none text-[#1F305E]">{value}</div>
+    </div>
+  );
+}
+
+function MetricSegmentPair({
+  leftValue,
+  rightValue,
+}: {
+  leftValue: string;
+  rightValue: string;
+}) {
+  return (
+    <div className="grid grid-cols-2">
+      <MetricSegment label="Индивидуально" value={leftValue} side="left" />
+      <MetricSegment label="В группе" value={rightValue} side="right" />
     </div>
   );
 }
@@ -48,7 +81,7 @@ function TotalCircle({
   const normalizedProgress = Math.max(0, Math.min(100, progress));
 
   return (
-    <div className="flex h-full min-h-[138px] flex-col items-center justify-center rounded-[16px] bg-[#E7F1F4] px-5 py-4">
+    <div className="flex h-full min-h-[138px] flex-col items-center justify-center rounded-[16px] bg-[#E5EFF1] px-5 py-4">
       <span className="mb-4 text-[14px] text-[#1F305E]">{label}</span>
       <div
         className="relative flex h-[86px] w-[86px] items-center justify-center rounded-full"
@@ -56,7 +89,7 @@ function TotalCircle({
           background: `conic-gradient(#D8DFEA ${normalizedProgress}%, #FFFFFF ${normalizedProgress}% 100%)`,
         }}
       >
-        <div className="absolute inset-[4px] rounded-full bg-[#E7F1F4]" />
+        <div className="absolute inset-[4px] rounded-full bg-[#E5EFF1]" />
         <div className="absolute inset-[8px] rounded-full border-[3px] border-[#D6DDEA] bg-white" />
         <span className="relative z-10 text-[18px] font-extrabold text-[#26396E]">{value}</span>
       </div>
@@ -122,7 +155,7 @@ export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockPro
               showActions ? 'min-h-[40px] items-start' : 'items-center'
             }`}
           >
-            <h3 className="text-[18px] font-extrabold text-[#1F305E]">Часы практики</h3>
+            <h3 className="dashboard-v2-title">Часы практики</h3>
             <HelpBadge title="Подтвержденные часы практики в текущем активном цикле." />
           </div>
 
@@ -157,7 +190,7 @@ export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockPro
         >
           <div className="mb-3 flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
-              <h3 className="text-[18px] font-extrabold text-[#1F305E]">Часы супервизии</h3>
+              <h3 className="dashboard-v2-title">Часы супервизии</h3>
               <HelpBadge title="Распределите подтипы часов супервизии, чтобы увидеть разбивку по наблюдению и формату работы." />
             </div>
 
@@ -166,7 +199,7 @@ export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockPro
                 <button
                   type="button"
                   onClick={() => navigate('/supervision/hours?panel=history')}
-                  className="btn h-[40px] min-w-[132px] rounded-[14px] border border-[var(--color-blue-dark)] px-5 text-[16px] font-semibold text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
+                  className="btn dashboard-v2-action dashboard-v2-action-secondary"
                 >
                   История
                 </button>
@@ -174,7 +207,7 @@ export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockPro
                 <button
                   type="button"
                   onClick={() => navigate('/supervision/hours')}
-                  className="btn btn-dark h-[40px] min-w-[132px] rounded-[14px] px-5 text-[16px] font-semibold"
+                  className="btn dashboard-v2-action dashboard-v2-action-primary"
                 >
                   Добавить
                 </button>
@@ -209,37 +242,23 @@ export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockPro
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <MetricCard
-                    label="Индивидуально"
-                    value={formatNumber(
-                      hasDistribution ? summary.supervisionBreakdown.directIndividual : null,
-                    )}
-                  />
+                <MetricSegmentPair
+                  leftValue={formatNumber(
+                    hasDistribution ? summary.supervisionBreakdown.directIndividual : null,
+                  )}
+                  rightValue={formatNumber(
+                    hasDistribution ? summary.supervisionBreakdown.directGroup : null,
+                  )}
+                />
 
-                  <MetricCard
-                    label="В группе"
-                    value={formatNumber(
-                      hasDistribution ? summary.supervisionBreakdown.directGroup : null,
-                    )}
-                  />
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <MetricCard
-                    label="Индивидуально"
-                    value={formatNumber(
-                      hasDistribution ? summary.supervisionBreakdown.nonObservingIndividual : null,
-                    )}
-                  />
-
-                  <MetricCard
-                    label="В группе"
-                    value={formatNumber(
-                      hasDistribution ? summary.supervisionBreakdown.nonObservingGroup : null,
-                    )}
-                  />
-                </div>
+                <MetricSegmentPair
+                  leftValue={formatNumber(
+                    hasDistribution ? summary.supervisionBreakdown.nonObservingIndividual : null,
+                  )}
+                  rightValue={formatNumber(
+                    hasDistribution ? summary.supervisionBreakdown.nonObservingGroup : null,
+                  )}
+                />
               </div>
             </div>
           </div>

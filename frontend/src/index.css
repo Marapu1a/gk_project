@@ -9,7 +9,7 @@
   --color-green-dark: #88B824;
   --color-green-darker: #75AD14;
 
-  --color-blue-soft: #CEE1E5;
+  --color-blue-soft: #E5EFF1;
   --color-blue-dark: #1F305E;
   --color-blue-darker: #070022;
 
@@ -369,6 +369,67 @@ select {
 
 .shadow-strong {
   box-shadow: 0 12px 24px 0 var(--color-shadow-strong);
+}
+
+/* ==========================================================================
+   Dashboard v2: общие элементы
+   ========================================================================== */
+
+/* Заголовки внутри карточек дашборда v2: часы, CEU, кандидаты, верхний ряд. */
+.dashboard-v2-title {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-blue-dark);
+}
+
+/* Интерактивный знак вопроса для подсказок в карточках дашборда v2. */
+.dashboard-v2-help {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 0;
+  background-color: transparent;
+  background-image: url('/dashboard-v2/button_question.svg');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+/* Верхние action-кнопки карточек v2: одинаковая высота, радиус и типографика. */
+.dashboard-v2-action {
+  min-width: 132px;
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dashboard-v2-action-secondary {
+  border: 1px solid var(--color-blue-dark);
+  color: var(--color-blue-dark);
+}
+
+.dashboard-v2-action-secondary:hover {
+  background-color: rgba(31, 48, 94, 0.04);
+}
+
+.dashboard-v2-action-secondary:active {
+  background-color: rgba(31, 48, 94, 0.08);
+}
+
+.dashboard-v2-action-primary {
+  background-color: var(--color-blue-dark);
+  color: var(--color-white);
+}
+
+.dashboard-v2-action-primary:hover {
+  background-color: var(--color-blue-darker);
 }
 
 /* ==========================================================================

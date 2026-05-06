@@ -21,6 +21,17 @@ enum RecordStatus {
   SPENT
 }
 
+enum ReviewerCandidateKind {
+  SUPERVISION
+  MENTORSHIP
+}
+
+enum ReviewerCandidateStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 enum CEUCategory {
   ETHICS
   CULTURAL_DIVERSITY
@@ -134,6 +145,8 @@ model User {
   uploadedFiles            UploadedFile[]
   uploadedSupervisorContracts SupervisionContract[] @relation("UploadedSupervisorContracts")
   supervisorContracts      SupervisionContract[] @relation("SupervisorContracts")
+  reviewerCandidateRelations ReviewerCandidateRelation[] @relation("ReviewerCandidateReviewer")
+  candidateReviewerRelations ReviewerCandidateRelation[] @relation("ReviewerCandidateCandidate")
 
   reviewedCEUEntries       CEUEntry[]        @relation("ReviewedCEUEntry")
   reviewedSupervisionHours SupervisionHour[] @relation("ReviewedSupervisionHour")
@@ -207,6 +220,7 @@ model CertificationCycle {
 
   // certificate knows the cycle (1 cycle -> 0..1 certificate)
   certificate     Certificate?
+  reviewerCandidateRelations ReviewerCandidateRelation[]
 
   requirementsSnapshot Json?
   modifiersSnapshot Json?
@@ -252,6 +266,29 @@ model SupervisionContract {
   @@index([userId])
   @@index([supervisorId])
   @@index([status])
+}
+
+model ReviewerCandidateRelation {
+  id          String                  @id @default(cuid())
+
+  reviewerId  String
+  reviewer    User                    @relation("ReviewerCandidateReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  candidateId String
+  candidate   User                    @relation("ReviewerCandidateCandidate", fields: [candidateId], references: [id], onDelete: Cascade)
+
+  cycleId     String
+  cycle       CertificationCycle      @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  kind        ReviewerCandidateKind
+  status      ReviewerCandidateStatus @default(PENDING)
+
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@unique([reviewerId, candidateId, cycleId, kind])
+  @@index([reviewerId, kind, status])
+  @@index([candidateId, cycleId])
 }
 
 model CustomCity {

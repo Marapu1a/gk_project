@@ -27,6 +27,8 @@ import RegistryProfilePage from '@/pages/RegistryProfilePage';
 import DashboardPageV2 from './pages/DashboardPageV2';
 import SupervisionHoursPage from './pages/SupervisionHoursPage';
 import CeuPointsPage from './pages/CeuPointsPage';
+import ReviewerCandidatesPage from './pages/ReviewerCandidatesPage';
+import ReviewerCandidateDetailsPage from './pages/ReviewerCandidateDetailsPage';
 
 const queryClient = new QueryClient();
 
@@ -41,6 +43,8 @@ const router = createBrowserRouter([
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'dashboard-v2', element: <DashboardPageV2 /> },
+      { path: 'reviewer/candidates/:kind', element: <ReviewerCandidatesPage /> },
+      { path: 'reviewer/candidates/:kind/:userId', element: <ReviewerCandidateDetailsPage /> },
       { path: 'ceu/points', element: <CeuPointsPage /> },
       { path: 'ceu/create', element: <CeuRequestPage /> },
       { path: 'supervision/hours', element: <SupervisionHoursPage /> },
