@@ -66,6 +66,7 @@ export function DashboardV2() {
             <ProfileCard
               user={{
                 id: user.id,
+                email: user.email,
                 fullName: user.fullName,
                 avatarUrl: user.avatarUrl,
                 groupName: activeGroupName,

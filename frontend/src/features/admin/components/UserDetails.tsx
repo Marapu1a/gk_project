@@ -8,6 +8,7 @@ import DetailBlock from './DetailBlock';
 import ActiveCertificateBlock from './ActiveCertificateBlock';
 import AdminUserGroupsBlock from '@/features/admin/components/AdminUserGroupsBlock';
 import { BackButton } from '@/components/BackButton';
+import AdminExamApplicationBlock from './AdminExamApplicationBlock';
 
 export default function UserDetails() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +52,12 @@ export default function UserDetails() {
         <AdminUserGroupsBlock userId={data.id} />
 
         <ActiveCertificateBlock userId={data.id} certificates={data.certificates} />
+
+        <AdminExamApplicationBlock
+          userId={data.id}
+          activeCycle={data.activeCycle}
+          examApplication={data.activeCycleExamApplication}
+        />
 
         <AdminCEUMatrixBlock
           userId={data.id}

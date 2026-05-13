@@ -4,6 +4,7 @@ import type { ExamApp, ExamStatus } from './getMyExamApp';
 export async function patchExamAppStatus(userId: string, status: ExamStatus, opts?: {
   comment?: string;
   notify?: boolean;
+  manual?: boolean;
 }) {
   const res = await api.patch(`/exam-applications/${userId}/status`, {
     status,

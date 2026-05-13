@@ -154,7 +154,7 @@ model User {
 
   documentReviewRequests   DocumentReviewRequest[]
 
-  examApplication          ExamApplication?
+  examApplications         ExamApplication[]
   payments                 Payment[]
   notifications            Notification[]
   consents                 UserConsent[]
@@ -221,6 +221,7 @@ model CertificationCycle {
   // certificate knows the cycle (1 cycle -> 0..1 certificate)
   certificate     Certificate?
   reviewerCandidateRelations ReviewerCandidateRelation[]
+  examApplications ExamApplication[]
 
   requirementsSnapshot Json?
   modifiersSnapshot Json?
@@ -380,11 +381,17 @@ model Notification {
 
 model ExamApplication {
   id        String     @id @default(cuid())
-  userId    String     @unique
+  userId    String
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycleId   String?
+  cycle     CertificationCycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
   status    ExamStatus @default(NOT_SUBMITTED)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+
+  @@unique([userId, cycleId])
+  @@index([userId])
+  @@index([cycleId])
 }
 
 model Certificate {

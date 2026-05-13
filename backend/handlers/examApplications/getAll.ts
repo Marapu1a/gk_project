@@ -16,9 +16,19 @@ export async function getAllExamAppsHandler(req: FastifyRequest, reply: FastifyR
     select: {
       id: true,
       userId: true,
+      cycleId: true,
       status: true,
       createdAt: true,
       updatedAt: true,
+      cycle: {
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          targetLevel: true,
+          startedAt: true,
+        },
+      },
       user: { select: { email: true, fullName: true, role: true } },
     },
   });

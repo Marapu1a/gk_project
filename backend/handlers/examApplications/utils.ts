@@ -2,11 +2,32 @@ import { prisma } from '../../lib/prisma';
 
 export type ExamStatus = 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
+async function getActiveCycle(userId: string) {
+  return prisma.certificationCycle.findFirst({
+    where: { userId, status: 'ACTIVE' },
+    orderBy: { startedAt: 'desc' },
+    select: { id: true },
+  });
+}
+
 export async function getOrCreateExamApp(userId: string) {
-  return prisma.examApplication.upsert({
-    where: { userId }, // UNIQUE
-    update: {},
-    create: { userId, status: 'NOT_SUBMITTED' as ExamStatus },
+  const activeCycle = await getActiveCycle(userId);
+
+  const existing = await prisma.examApplication.findFirst({
+    where: {
+      userId,
+      cycleId: activeCycle?.id ?? null,
+    },
+  });
+
+  if (existing) return existing;
+
+  return prisma.examApplication.create({
+    data: {
+      userId,
+      cycleId: activeCycle?.id ?? null,
+      status: 'NOT_SUBMITTED' as ExamStatus,
+    },
   });
 }
 
@@ -16,8 +37,9 @@ export function assertStatusTransition(params: {
   targetUserId: string;
   current: ExamStatus;
   next: ExamStatus;
+  manual?: boolean;
 }) {
-  const { actorRole, actorUserId, targetUserId, current, next } = params;
+  const { actorRole, actorUserId, targetUserId, current, next, manual } = params;
 
   // Пользователь (не админ) — только отправка/переотправка
   if (actorRole !== 'ADMIN') {
@@ -29,6 +51,10 @@ export function assertStatusTransition(params: {
     if (!allowedUser) throw new Error('INVALID_TRANSITION');
     return;
   }
+
+  // Ручник в админке деталей пользователя: админ может выставить любой статус
+  // заявки активного цикла без пляски с переходами.
+  if (manual) return;
 
   // ADMIN:
   // PENDING -> APPROVED | REJECTED

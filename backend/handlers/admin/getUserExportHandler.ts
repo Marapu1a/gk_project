@@ -144,8 +144,16 @@ export async function getUserExportHandler(req: FastifyRequest, reply: FastifyRe
       },
 
       // экзамен
-      examApplication: {
-        select: { id: true, status: true, createdAt: true, updatedAt: true },
+      examApplications: {
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          cycleId: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          cycle: { select: { type: true, status: true, targetLevel: true, startedAt: true } },
+        },
       },
 
       // уведомления

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useLogout } from '@/features/dashboard/hooks/useLogout';
 import { useMyCertificates } from '@/features/certificate/hooks/useMyCertificates';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
@@ -12,6 +13,7 @@ import { LogoutIcon } from '../icons/LogoutIcon';
 
 type DashboardUser = {
   id: string;
+  email: string;
   fullName: string;
   avatarUrl: string | null;
   groupName?: string;
@@ -52,6 +54,15 @@ export function ProfileCard({ user }: ProfileCardProps) {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+  const copyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(user.email);
+      toast.success('Email скопирован');
+    } catch {
+      toast.error('Не удалось скопировать email');
+    }
+  };
+
   return (
     <>
       <section className="card-section h-full min-h-[340px] w-full px-5 py-6 shadow-soft">
@@ -65,6 +76,21 @@ export function ProfileCard({ user }: ProfileCardProps) {
               <p className="break-words text-[18px] font-extrabold">{lastName}</p>
               <p className="break-words text-[16px]">{firstName}</p>
               <p className="break-words text-[16px]">{middleName}</p>
+            </div>
+
+            <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[#1F305E]">
+              <span className="truncate text-[12px] font-medium" title={user.email}>
+                {user.email}
+              </span>
+              <button
+                type="button"
+                onClick={copyEmail}
+                className="inline-flex h-[18px] w-[18px] shrink-0 cursor-pointer items-center justify-center"
+                title="Скопировать email"
+                aria-label="Скопировать email"
+              >
+                <img src="/dashboard-v2/icon_copy.svg" alt="" className="h-[14px] w-[14px]" />
+              </button>
             </div>
 
             <div className="mt-2">

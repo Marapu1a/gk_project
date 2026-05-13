@@ -146,6 +146,26 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
           documents: { select: { fileId: true, name: true } },
         },
       },
+
+      examApplications: {
+        select: {
+          id: true,
+          cycleId: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          cycle: {
+            select: {
+              id: true,
+              type: true,
+              status: true,
+              targetLevel: true,
+              startedAt: true,
+            },
+          },
+        },
+        orderBy: { updatedAt: 'desc' },
+      },
     },
   });
 
@@ -159,6 +179,10 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
   }));
 
   const activeCycle = user.cycles[0] ?? null;
+  const activeCycleExamApplication =
+    user.examApplications.find((app) => app.cycleId && app.cycleId === activeCycle?.id) ??
+    user.examApplications.find((app) => !app.cycleId) ??
+    null;
 
   const latestCertificate =
     user.certificates
@@ -170,6 +194,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
     groups,
     supervisionRecords,
     activeCycle,
+    activeCycleExamApplication,
     latestCertificate,
     targetLevel: user.targetLevel,
     targetLockRank: user.targetLockRank,

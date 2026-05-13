@@ -29,6 +29,21 @@ export async function getUserDetails(id: string) {
       endedAt: string | null;
     } | null;
 
+    activeCycleExamApplication: {
+      id: string;
+      cycleId: string | null;
+      status: 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+      createdAt: string;
+      updatedAt: string;
+      cycle: {
+        id: string;
+        type: 'CERTIFICATION' | 'RENEWAL';
+        status: 'ACTIVE' | 'COMPLETED' | 'ABANDONED';
+        targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+        startedAt: string;
+      } | null;
+    } | null;
+
     latestCertificate: {
       id: string;
       number: string;

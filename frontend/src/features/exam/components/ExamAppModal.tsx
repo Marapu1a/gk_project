@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { usePatchExamAppStatus } from '../hooks/usePatchExamAppStatus';
 import { toast } from 'sonner';
 
@@ -26,7 +25,6 @@ const statusLabel: Record<ExamStatus, string> = {
 
 export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
   const [comment, setComment] = useState('');
-  const queryClient = useQueryClient();
   const mutate = usePatchExamAppStatus();
 
   const doChange = (next: ExamStatus) => {
@@ -47,7 +45,6 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
                 ? `Заявка на экзамен отклонена: ${comment.trim()}`
                 : 'Заявка на экзамен сброшена, можно подать заново';
 
-          queryClient.invalidateQueries({ queryKey: ['exam-apps'] });
           onClose();
           toast.success(message);
         },

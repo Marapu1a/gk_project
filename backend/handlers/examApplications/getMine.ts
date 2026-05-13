@@ -17,6 +17,7 @@ export async function getMyExamAppHandler(req: FastifyRequest, reply: FastifyRep
   return reply.send({
     id: app.id,
     userId: app.userId,
+    cycleId: app.cycleId,
     status: app.status,
     createdAt: app.createdAt,
     updatedAt: app.updatedAt,
