@@ -26,14 +26,18 @@ export type TransborderConsentInfo = {
 export type CurrentUser = {
   id: string;
   email: string;
+  registrationNumber: string | null;
   role: 'STUDENT' | 'REVIEWER' | 'ADMIN';
   fullName: string;
+  fullNameLatin: string | null;
   phone: string | null;
   birthDate: string | null;
   country: string | null;
   city: string | null;
   avatarUrl: string | null;
   bio: string | null;
+  ibaoId: string | null;
+  archivedAt?: string | null;
   targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
   targetLockRank: number | null;
   groups: { id: string; name: string }[];

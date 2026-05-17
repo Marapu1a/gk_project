@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { BackButton } from '@/components/BackButton';
 import { Link } from 'react-router-dom';
 import { useUserTypeahead } from '../hooks/useUserTypeahead';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 export function GroupAssignmentForm() {
   // emailOrName: поле ввода — может быть email или ФИО
@@ -31,6 +32,7 @@ export function GroupAssignmentForm() {
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000,
   });
+  const { confirm } = useConfirm();
 
   useEffect(() => {
     if (data) setSelectedGroupIds(data.currentGroupIds);
@@ -74,17 +76,12 @@ export function GroupAssignmentForm() {
     );
   };
 
-  const confirmToast = (message: string) =>
-    new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      });
-    });
-
   const handleSave = async () => {
     if (!data?.user.id) return;
-    const ok = await confirmToast('Сохранить изменения групп пользователя?');
+    const ok = await confirm({
+      message: 'Сохранить изменения групп пользователя?',
+      confirmLabel: 'Сохранить',
+    });
     if (!ok) return;
 
     try {

@@ -80,7 +80,7 @@ export function QualificationStatusBlock({
               {supervisionReady ? (
                 <CheckCircle className="text-green-600" size={18} />
               ) : (
-                <XCircle className="text-red-600" size={18} />
+                <XCircle className="text-[#FF5364]" size={18} />
               )}
               Часы менторства: {supervisionReady ? 'достаточно' : 'недостаточно'}
             </li>
@@ -89,7 +89,7 @@ export function QualificationStatusBlock({
               {documentsReady ? (
                 <CheckCircle className="text-green-600" size={18} />
               ) : (
-                <XCircle className="text-red-600" size={18} />
+                <XCircle className="text-[#FF5364]" size={18} />
               )}
               Документы: {documentsReady ? 'подтверждены' : 'не подтверждены'}
             </li>
@@ -120,7 +120,7 @@ export function QualificationStatusBlock({
             <strong>Целевая группа:</strong> {targetGroup}
           </p>
         ) : (
-          <p className="text-xs text-red-700">
+          <p className="text-xs text-[#FF5364]">
             <strong>Уровень сертификации не выбран.</strong> Выберите уровень (Инструктор / Куратор
             / Супервизор), чтобы система могла считать ваш прогресс.
           </p>
@@ -131,7 +131,7 @@ export function QualificationStatusBlock({
             {ceuReady ? (
               <CheckCircle className="text-green-600" size={18} />
             ) : (
-              <XCircle className="text-red-600" size={18} />
+              <XCircle className="text-[#FF5364]" size={18} />
             )}
             CEU-баллы: {ceuReady ? 'достаточно' : 'недостаточно'}
           </li>
@@ -140,7 +140,7 @@ export function QualificationStatusBlock({
             {supervisionReady ? (
               <CheckCircle className="text-green-600" size={18} />
             ) : (
-              <XCircle className="text-red-600" size={18} />
+              <XCircle className="text-[#FF5364]" size={18} />
             )}
             Часы супервизии: {supervisionReady ? 'достаточно' : 'недостаточно'}
           </li>
@@ -149,7 +149,7 @@ export function QualificationStatusBlock({
             {documentsReady ? (
               <CheckCircle className="text-green-600" size={18} />
             ) : (
-              <XCircle className="text-red-600" size={18} />
+              <XCircle className="text-[#FF5364]" size={18} />
             )}
             Документы: {documentsReady ? 'подтверждены' : 'не подтверждены'}
           </li>
@@ -160,7 +160,7 @@ export function QualificationStatusBlock({
           {isEligible ? (
             <span className="text-green-700 font-semibold">допуск получен</span>
           ) : (
-            <span className="text-red-700 font-semibold">допуска нет</span>
+            <span className="text-[#FF5364] font-semibold">допуска нет</span>
           )}
         </p>
 
@@ -168,7 +168,7 @@ export function QualificationStatusBlock({
 
         {!isEligible && normalizedReasons.length > 0 && (
           <div>
-            <p className="font-semibold text-red-700">Причины недопуска:</p>
+            <p className="font-semibold text-[#FF5364]">Причины недопуска:</p>
             <ul className="list-disc pl-5 text-sm">
               {normalizedReasons.map((reason, idx) => (
                 <li key={idx}>{reason}</li>

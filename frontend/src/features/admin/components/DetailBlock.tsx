@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDeleteFile } from '../hooks/useDeleteFile';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 type Item = {
   id: string; // id UploadedFile
@@ -18,6 +19,7 @@ type DetailBlockProps = {
 export default function DetailBlock({ title, items, userId }: DetailBlockProps) {
   const isFilesBlock = title === 'Загруженные файлы';
   const deleteFile = useDeleteFile(userId);
+  const { confirm } = useConfirm();
 
   // локальное состояние для мгновенного обновления UI
   const [localItems, setLocalItems] = useState<Item[]>(items);
@@ -30,15 +32,6 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
     return (raw || 'misc').toUpperCase();
   };
 
-  async function confirm(message: string) {
-    return await new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Удалить', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      });
-    });
-  }
-
   const handleDelete = async (uploadedFileId: string, category?: string, type?: string | null) => {
     const isCert =
       String(category || '').toUpperCase() === 'CERTIFICATE' ||
@@ -50,7 +43,11 @@ export default function DetailBlock({ title, items, userId }: DetailBlockProps) 
       return;
     }
 
-    const ok = await confirm('Удалить файл безвозвратно?');
+    const ok = await confirm({
+      message: 'Удалить файл безвозвратно?',
+      confirmLabel: 'Удалить',
+      variant: 'danger',
+    });
     if (!ok) return;
 
     try {

@@ -8,6 +8,7 @@ import {
   useCreateSupervisionContract,
   useSupervisionContracts,
 } from '../hooks/useSupervisionContracts';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 const MAX_SIZE_MB = 10;
 
@@ -36,6 +37,7 @@ export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?
   const { data: contracts = [], isLoading } = useSupervisionContracts();
   const createContract = useCreateSupervisionContract();
   const deleteContract = useDeleteSupervisionContract();
+  const { confirm } = useConfirm();
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setSearch(supervisorInput.trim()), 250);
@@ -79,15 +81,6 @@ export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?
     setSelectedFile(file);
   };
 
-  const confirmToast = (message: string) =>
-    new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-        duration: 8000,
-      });
-    });
-
   const handleUpload = async () => {
     const trimmedSupervisor = supervisorInput.trim();
 
@@ -101,7 +94,10 @@ export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?
       return;
     }
 
-    const confirmed = await confirmToast('Загрузить контракт с выбранным супервизором?');
+    const confirmed = await confirm({
+      message: 'Загрузить контракт с выбранным супервизором?',
+      confirmLabel: 'Загрузить',
+    });
     if (!confirmed) return;
 
     setUploading(true);
@@ -124,7 +120,11 @@ export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?
   };
 
   const handleDelete = async (id: string) => {
-    const confirmed = await confirmToast('Удалить загруженный контракт?');
+    const confirmed = await confirm({
+      message: 'Удалить загруженный контракт?',
+      confirmLabel: 'Удалить',
+      variant: 'danger',
+    });
     if (!confirmed) return;
 
     try {

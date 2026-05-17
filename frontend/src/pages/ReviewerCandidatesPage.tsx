@@ -51,7 +51,7 @@ function ReviewerCandidatesContent() {
         {isLoading ? (
           <p className="text-[14px] text-[#6B7894]">Загрузка кандидатов...</p>
         ) : isError || !data ? (
-          <p className="text-[14px] text-[#FF5365]">Не удалось загрузить кандидатов</p>
+          <p className="text-[14px] text-[#FF5364]">Не удалось загрузить кандидатов</p>
         ) : !canView ? (
           <p className="text-[14px] text-[#6B7894]">У вас нет доступа к этому списку.</p>
         ) : (

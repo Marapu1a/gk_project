@@ -15,6 +15,7 @@ import { Button } from '@/components/Button';
 import { FileUpload } from '@/utils/FileUpload';
 import { toast } from 'sonner';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 export function CeuRequestForm() {
   const {
@@ -42,18 +43,18 @@ export function CeuRequestForm() {
   const queryClient = useQueryClient();
   const { data: me } = useCurrentUser();
   const { fields, append, remove } = useFieldArray({ control, name: 'entries' });
-
-  // нормальный confirm через тост, возвращает Promise<boolean>
-  const confirmToast = (message: string) =>
-    new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      });
-    });
+  const { confirm } = useConfirm();
 
   const confirmRemove = async (index: number) => {
-    if (await confirmToast('Удалить строку CEU?')) remove(index);
+    if (
+      await confirm({
+        message: 'Удалить строку CEU?',
+        confirmLabel: 'Удалить',
+        variant: 'danger',
+      })
+    ) {
+      remove(index);
+    }
   };
 
   const onSubmit = handleSubmit(async (data) => {

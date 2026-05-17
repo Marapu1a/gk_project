@@ -231,7 +231,7 @@ function SupervisionRecordDetailsModal({
             </div>
 
             {record.rejectedReason ? (
-              <div className="mt-3 rounded-[10px] bg-[#FFF0F2] px-4 py-3 text-[14px] text-[#FF5365]">
+              <div className="mt-3 rounded-[10px] bg-[#FFFFFF] px-4 py-3 text-[14px] text-[#FF5364]">
                 {record.rejectedReason}
               </div>
             ) : null}

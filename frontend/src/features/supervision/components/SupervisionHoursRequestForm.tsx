@@ -361,7 +361,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
             </div>
 
             {practiceRuleError ? (
-              <p className="mt-2 text-[13px] font-semibold text-[#FF5365]">{practiceRuleError}</p>
+              <p className="mt-2 text-[13px] font-semibold text-[#FF5364]">{practiceRuleError}</p>
             ) : null}
 
             <div className="mt-4">
@@ -428,7 +428,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
 
             {distributionRuleError ? (
               <div className="mt-3 rounded-[10px] bg-white px-4 py-3 text-[13px] text-[#1F305E] shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
-                <p className="mb-2 font-extrabold text-[#FF5365]">
+                <p className="mb-2 font-extrabold text-[#FF5364]">
                   Ошибка возможных пропорций часов
                 </p>
                 <p>{distributionRuleError}</p>

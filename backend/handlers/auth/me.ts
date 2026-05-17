@@ -29,12 +29,15 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
       role: true,
       fullName: true,
       fullNameLatin: true,
+      registrationNumber: true,
       phone: true,
       birthDate: true,
       country: true,
       city: true,
       avatarUrl: true,
       bio: true,
+      ibaoId: true,
+      archivedAt: true,
       targetLevel: true,
       targetLockRank: true,
       groups: {
@@ -47,6 +50,11 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
 
   if (!dbUser) {
     return reply.code(404).send({ error: 'Пользователь не найден' });
+  }
+  if (dbUser.archivedAt) {
+    return reply.code(403).send({
+      error: 'Аккаунт удалён, для восстановления свяжитесь с нами',
+    });
   }
 
   // === CONSENT CHECK ===
@@ -150,12 +158,14 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     role: dbUser.role,
     fullName: dbUser.fullName,
     fullNameLatin: dbUser.fullNameLatin,
+    registrationNumber: dbUser.registrationNumber,
     phone: dbUser.phone,
     birthDate: dbUser.birthDate,
     country: dbUser.country,
     city: dbUser.city,
     avatarUrl: dbUser.avatarUrl,
     bio: dbUser.bio,
+    ibaoId: dbUser.ibaoId,
     targetLevel: dbUser.targetLevel,
     targetLockRank: dbUser.targetLockRank,
     groups: groupList.map(({ id, name }) => ({ id, name })),

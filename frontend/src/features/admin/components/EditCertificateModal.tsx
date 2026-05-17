@@ -5,6 +5,7 @@ import { useUpdateCertificate } from '@/features/admin/hooks/useUpdateCertificat
 import { useDeleteCertificate } from '@/features/certificate/hooks/useDeleteCertificate';
 import { FileUpload } from '@/utils/FileUpload';
 import { updateFile } from '@/features/files/api/updateFile';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 type EditableCertificate = {
   id: string;
@@ -37,6 +38,7 @@ function toDateInput(value: string | null) {
 export function EditCertificateModal({ userId, certificate, onClose, onUpdated }: Props) {
   const updateMutation = useUpdateCertificate(userId);
   const deleteMutation = useDeleteCertificate(userId);
+  const { confirm } = useConfirm();
 
   const [title, setTitle] = useState(certificate.title ?? '');
   const [number, setNumber] = useState(certificate.number ?? '');
@@ -48,17 +50,12 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
 
   const isBusy = updateMutation.isPending || deleteMutation.isPending;
 
-  async function confirm(message: string) {
-    return await new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      });
-    });
-  }
-
   async function handleDeleteCertificate() {
-    const ok = await confirm('Отозвать сертификат и удалить файл?');
+    const ok = await confirm({
+      message: 'Отозвать сертификат и удалить файл?',
+      confirmLabel: 'Отозвать',
+      variant: 'danger',
+    });
     if (!ok) return;
 
     try {

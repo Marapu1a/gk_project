@@ -54,7 +54,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   }
 
   const reviewer = await prisma.user.findFirst({
-    where: { email: { equals: supervisorEmail, mode: 'insensitive' } },
+    where: { email: { equals: supervisorEmail, mode: 'insensitive' }, archivedAt: null },
     include: { groups: { include: { group: true } } },
     orderBy: [{ email: 'asc' }, { id: 'asc' }],
   });
@@ -72,6 +72,9 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   });
   if (!currentUser) {
     return reply.code(400).send({ error: 'Пользователь не найден' });
+  }
+  if (currentUser.archivedAt) {
+    return reply.code(403).send({ error: 'Аккаунт архивирован' });
   }
 
   const userGroups = currentUser.groups.map((g) => g.group.name);

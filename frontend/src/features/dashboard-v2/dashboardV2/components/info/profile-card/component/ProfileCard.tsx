@@ -14,6 +14,7 @@ import { LogoutIcon } from '../icons/LogoutIcon';
 type DashboardUser = {
   id: string;
   email: string;
+  registrationNumber: string | null;
   fullName: string;
   avatarUrl: string | null;
   groupName?: string;
@@ -131,7 +132,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
                 <BellIcon className="h-full w-full" />
 
                 {unreadCount > 0 && (
-                  <span className="badge badge-pink absolute -right-[4px] -top-[4px]">
+                  <span className="badge badge-danger absolute -right-[4px] -top-[4px]">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
@@ -151,8 +152,13 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
 
         <div className="mt-4 text-center text-[14px]" style={{ color: '#8D96B5' }}>
+          Регистрационный номер:{' '}
+          <span className="font-semibold text-blue-dark">{user.registrationNumber ?? '-'}</span>
+        </div>
+
+        <div className="mt-2 text-center text-[14px]" style={{ color: '#8D96B5' }}>
           Срок действия сертификата:{' '}
-          <span className="font-semibold text-pink-accent">{expiresAt ?? '—'}</span>
+          <span className="font-semibold text-[var(--color-danger)]">{expiresAt ?? '-'}</span>
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3 text-[13px]">

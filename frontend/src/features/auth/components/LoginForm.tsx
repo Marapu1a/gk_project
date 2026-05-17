@@ -11,6 +11,25 @@ import type { LoginDto } from '../validation/loginSchema';
 import { loginUser } from '../api/login';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 
+const ARCHIVED_ACCOUNT_MESSAGE = 'Аккаунт удалён, для восстановления свяжитесь с нами';
+const CONTACTS_URL = 'https://reestrpap.ru/contacts';
+
+function ArchivedAccountError() {
+  return (
+    <span>
+      Аккаунт удалён, для восстановления{' '}
+      <a
+        href={CONTACTS_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="cursor-pointer underline underline-offset-2"
+      >
+        свяжитесь с нами
+      </a>
+    </span>
+  );
+}
+
 export function LoginForm() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -56,7 +75,7 @@ export function LoginForm() {
     onError: (error: any) => {
       const message = error?.response?.data?.error || 'Ошибка входа';
       form.setError('root.serverError', { message });
-      toast.error(message);
+      toast.error(message === ARCHIVED_ACCOUNT_MESSAGE ? <ArchivedAccountError /> : message);
     },
   });
 
@@ -78,7 +97,11 @@ export function LoginForm() {
             className="text-error text-sm border rounded-md p-3"
             style={{ borderColor: 'var(--color-green-light)' }}
           >
-            {form.formState.errors.root.serverError.message}
+            {form.formState.errors.root.serverError.message === ARCHIVED_ACCOUNT_MESSAGE ? (
+              <ArchivedAccountError />
+            ) : (
+              form.formState.errors.root.serverError.message
+            )}
           </div>
         )}
 

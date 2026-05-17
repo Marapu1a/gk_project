@@ -41,11 +41,18 @@ export async function createSupervisionContractHandler(req: FastifyRequest, repl
       where: { id: supervisorId },
       select: { id: true, email: true, fullName: true },
     });
+    if (supervisor) {
+      const activeSupervisor = await prisma.user.findFirst({
+        where: { id: supervisor.id, archivedAt: null },
+        select: { id: true, email: true, fullName: true },
+      });
+      supervisor = activeSupervisor;
+    }
   }
 
   if (!supervisor && supervisorInput.includes('@')) {
     supervisor = await prisma.user.findFirst({
-      where: { email: { equals: supervisorInput.trim(), mode: 'insensitive' } },
+      where: { email: { equals: supervisorInput.trim(), mode: 'insensitive' }, archivedAt: null },
       select: { id: true, email: true, fullName: true },
       orderBy: [{ email: 'asc' }, { id: 'asc' }],
     });
@@ -72,4 +79,3 @@ export async function createSupervisionContractHandler(req: FastifyRequest, repl
 
   return reply.code(201).send({ success: true, contract });
 }
-

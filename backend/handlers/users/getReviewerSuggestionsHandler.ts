@@ -61,6 +61,7 @@ export async function getReviewerSuggestionsHandler(req: FastifyRequest, reply: 
   const users = await prisma.user.findMany({
     where: {
       AND: [
+        { archivedAt: null },
         eligibleByRoleOrGroup,
         {
           AND: tokens.map((tok) => ({

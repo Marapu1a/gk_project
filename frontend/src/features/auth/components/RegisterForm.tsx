@@ -253,7 +253,7 @@ export function RegisterForm() {
 
         <div>
           <label className="mb-1 block text-sm text-blue-dark">
-            Email<span className="ml-1 text-red-500">*</span>
+            Email<span className="ml-1 text-[#FF5364]">*</span>
           </label>
           <input type="email" className="input" disabled={disabled} {...form.register('email')} />
         </div>
@@ -261,14 +261,14 @@ export function RegisterForm() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm text-blue-dark">
-              Фамилия (рус.)<span className="ml-1 text-red-500">*</span>
+              Фамилия (рус.)<span className="ml-1 text-[#FF5364]">*</span>
             </label>
             <input className="input" disabled={disabled} {...form.register('lastName')} />
           </div>
 
           <div>
             <label className="mb-1 block text-sm text-blue-dark">
-              Имя (рус.)<span className="ml-1 text-red-500">*</span>
+              Имя (рус.)<span className="ml-1 text-[#FF5364]">*</span>
             </label>
             <input className="input" disabled={disabled} {...form.register('firstName')} />
           </div>
@@ -291,14 +291,14 @@ export function RegisterForm() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm text-blue-dark">
-              Фамилия (лат.)<span className="ml-1 text-red-500">*</span>
+              Фамилия (лат.)<span className="ml-1 text-[#FF5364]">*</span>
             </label>
             <input className="input" disabled={disabled} {...form.register('lastNameLatin')} />
           </div>
 
           <div>
             <label className="mb-1 block text-sm text-blue-dark">
-              Имя (лат.)<span className="ml-1 text-red-500">*</span>
+              Имя (лат.)<span className="ml-1 text-[#FF5364]">*</span>
             </label>
             <input className="input" disabled={disabled} {...form.register('firstNameLatin')} />
           </div>
@@ -306,7 +306,7 @@ export function RegisterForm() {
 
         <div>
           <label className="mb-1 block text-sm text-blue-dark">
-            Телефон<span className="ml-1 text-red-500">*</span>
+            Телефон<span className="ml-1 text-[#FF5364]">*</span>
           </label>
           <Controller
             name="phone"
@@ -329,7 +329,7 @@ export function RegisterForm() {
 
         <div>
           <label className="mb-1 block text-sm text-blue-dark">
-            Дата рождения<span className="ml-1 text-red-500">*</span>
+            Дата рождения<span className="ml-1 text-[#FF5364]">*</span>
           </label>
           <input
             type="date"
@@ -351,7 +351,7 @@ export function RegisterForm() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm text-blue-dark">
-              Пароль<span className="ml-1 text-red-500">*</span>
+              Пароль<span className="ml-1 text-[#FF5364]">*</span>
             </label>
             <input
               type="password"
@@ -363,7 +363,7 @@ export function RegisterForm() {
 
           <div>
             <label className="mb-1 block text-sm text-blue-dark">
-              Повторите пароль<span className="ml-1 text-red-500">*</span>
+              Повторите пароль<span className="ml-1 text-[#FF5364]">*</span>
             </label>
             <input
               type="password"
@@ -405,7 +405,7 @@ export function RegisterForm() {
               >
                 Публичной оферты
               </a>
-              <span className="ml-1 text-pink-accent">*</span>
+              <span className="ml-1 text-[var(--color-danger)]">*</span>
             </span>
           </label>
 
@@ -442,7 +442,7 @@ export function RegisterForm() {
                 согласие
               </a>{' '}
               на обработку персональных данных
-              <span className="ml-1 text-pink-accent">*</span>
+              <span className="ml-1 text-[var(--color-danger)]">*</span>
             </span>
           </label>
 
@@ -470,7 +470,7 @@ export function RegisterForm() {
                 согласие на трансграничную передачу моих персональных данных
               </a>{' '}
               в IBAO в целях регистрации и прохождения международной сертификации.
-              <span className="ml-1 text-pink-accent">*</span>
+              <span className="ml-1 text-[var(--color-danger)]">*</span>
             </span>
           </label>
 

@@ -1,7 +1,6 @@
 // src/features/dashboard-v2/dashboardV2/components/certification-block/component/CertificationBlock.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
 
 import type { CurrentUser } from '@/features/auth/api/me';
 import { isTargetLocked } from '@/features/auth/api/me';
@@ -11,6 +10,7 @@ import { useCeuSummary } from '@/features/ceu/hooks/useCeuSummary';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
 import { useSetTargetLevel } from '@/features/user/hooks/useSetTargetLevel';
 import type { TargetLevel as ApiTargetLevel, GoalMode } from '@/features/user/api/setTargetLevel';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 type Props = {
   user: CurrentUser;
@@ -124,6 +124,7 @@ function getDisplayTargetLabel(
 export function CertificationBlock({ user }: Props) {
   const setTarget = useSetTargetLevel(user.id);
   const { data: certificates = [], isLoading: certificatesLoading } = useMyCertificates();
+  const { confirm } = useConfirm();
 
   const activeGroupName = user.activeGroup?.name;
   const targetLevel = user.targetLevel ?? null;
@@ -240,7 +241,7 @@ export function CertificationBlock({ user }: Props) {
 
   const selectDisabled = locked || options.length === 0 || setTarget.isPending;
 
-  const triggerGoalSelection = (option: GoalOption) => {
+  const triggerGoalSelection = async (option: GoalOption) => {
     const isSameAsCurrent =
       option.targetLevel === currentTargetLevel && option.goalMode === currentGoalMode;
 
@@ -255,27 +256,25 @@ export function CertificationBlock({ user }: Props) {
     const isRenewal = option.goalMode === 'RENEWAL';
     const label = option.label;
 
-    toast(
-      isRenewal
-        ? `Вы собираетесь выбрать: «${label}». После выбора изменить его нельзя, пока не будет завершён текущий цикл.`
-        : `Вы собираетесь выбрать уровень: «${label}». После выбора изменить его нельзя, пока вы не подтвердите установленную квалификацию.`,
-      {
-        action: {
-          label: 'Подтвердить',
-          onClick: () =>
-            setTarget.mutate({
-              targetLevel: option.targetLevel,
-              goalMode: option.goalMode,
-            }),
-        },
-        cancel: {
-          label: 'Отмена',
-          onClick: () => {
-            setSelected(previousSelected);
-          },
-        },
-      },
-    );
+    const ok = await confirm({
+      message: isRenewal
+        ? `Вы собираетесь выбрать: «${label}».`
+        : `Вы собираетесь выбрать уровень: «${label}».`,
+      description: isRenewal
+        ? 'После выбора изменить его нельзя, пока не будет завершён текущий цикл.'
+        : 'После выбора изменить его нельзя, пока вы не подтвердите установленную квалификацию.',
+      confirmLabel: 'Подтвердить',
+    });
+
+    if (!ok) {
+      setSelected(previousSelected);
+      return;
+    }
+
+    setTarget.mutate({
+      targetLevel: option.targetLevel,
+      goalMode: option.goalMode,
+    });
   };
 
   if (loading) {
@@ -355,7 +354,7 @@ export function CertificationBlock({ user }: Props) {
         </div>
 
         {errorMessage && (
-          <p className="text-center text-sm text-[var(--color-pink-danger)]">{errorMessage}</p>
+          <p className="text-center text-sm text-[var(--color-danger)]">{errorMessage}</p>
         )}
 
         {setTarget.isSuccess && !errorMessage && (
@@ -436,7 +435,7 @@ function StatusRow({ ok, label, value }: { ok: boolean; label: string; value: st
           className="shrink-0 text-[var(--color-green-brand)]"
         />
       ) : (
-        <XCircle size={16} strokeWidth={2.4} className="shrink-0 text-[var(--color-pink-danger)]" />
+        <XCircle size={16} strokeWidth={2.4} className="shrink-0 text-[var(--color-danger)]" />
       )}
 
       <span className="font-extrabold text-blue-dark">{label}:</span>

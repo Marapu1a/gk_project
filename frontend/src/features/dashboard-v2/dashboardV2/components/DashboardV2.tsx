@@ -67,6 +67,7 @@ export function DashboardV2() {
               user={{
                 id: user.id,
                 email: user.email,
+                registrationNumber: user.registrationNumber,
                 fullName: user.fullName,
                 avatarUrl: user.avatarUrl,
                 groupName: activeGroupName,

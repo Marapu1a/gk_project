@@ -41,6 +41,7 @@ export async function notifyAdmins({
   const admins = await prisma.user.findMany({
     where: {
       role: 'ADMIN',
+      archivedAt: null,
       ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
     },
     select: { id: true },

@@ -2,6 +2,7 @@
 import { Toaster } from 'sonner';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ConfirmProvider } from '@/components/confirm/ConfirmProvider';
 import MainLayout from './layouts/MainLayout';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
@@ -29,6 +30,7 @@ import SupervisionHoursPage from './pages/SupervisionHoursPage';
 import CeuPointsPage from './pages/CeuPointsPage';
 import ReviewerCandidatesPage from './pages/ReviewerCandidatesPage';
 import ReviewerCandidateDetailsPage from './pages/ReviewerCandidateDetailsPage';
+import ProfileEditPage from './pages/ProfileEditPage';
 
 const queryClient = new QueryClient();
 
@@ -43,6 +45,7 @@ const router = createBrowserRouter([
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'dashboard-v2', element: <DashboardPageV2 /> },
+      { path: 'profile', element: <ProfileEditPage /> },
       { path: 'reviewer/candidates/:kind', element: <ReviewerCandidatesPage /> },
       { path: 'reviewer/candidates/:kind/:userId', element: <ReviewerCandidateDetailsPage /> },
       { path: 'ceu/points', element: <CeuPointsPage /> },
@@ -70,8 +73,10 @@ const router = createBrowserRouter([
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <Toaster richColors position="top-center" toastOptions={{ duration: 3500 }} />
+      <ConfirmProvider>
+        <RouterProvider router={router} />
+        <Toaster richColors position="top-center" toastOptions={{ duration: 3500 }} />
+      </ConfirmProvider>
     </QueryClientProvider>
   );
 }

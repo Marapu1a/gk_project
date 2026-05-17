@@ -25,7 +25,7 @@ export function DocumentReviewTable({ files, onDelete, onTypeChange, disabled }:
               className="w-16 h-16 object-cover rounded border"
             />
           ) : file.mimeType === 'application/pdf' ? (
-            <div className="w-16 h-16 flex items-center justify-center border rounded bg-red-100 text-red-600 font-bold">
+            <div className="w-16 h-16 flex items-center justify-center border rounded bg-[#FF5364] text-white font-bold">
               PDF
             </div>
           ) : (
@@ -52,7 +52,7 @@ export function DocumentReviewTable({ files, onDelete, onTypeChange, disabled }:
           <button
             type="button"
             onClick={() => onDelete(file.id)}
-            className="p-1 text-red-500 hover:text-red-700 transition"
+            className="p-1 text-[#FF5364] hover:text-[#FF5364] transition"
             title="Удалить файл"
             disabled={disabled}
           >

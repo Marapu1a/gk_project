@@ -129,7 +129,7 @@ export function AdminDocumentReviewList() {
 
                     <td className="p-2">
                       {req.status === 'REJECTED' && req.comment ? (
-                        <span className="text-red-600">{req.comment}</span>
+                        <span className="text-[#FF5364]">{req.comment}</span>
                       ) : (
                         '—'
                       )}

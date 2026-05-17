@@ -5,6 +5,7 @@ import { prisma } from '../../lib/prisma';
 import { signJwt } from '../../utils/jwt';
 import { registerSchema } from '../../schemas/auth';
 import { PaymentType, PaymentStatus, NotificationType } from '@prisma/client';
+import { getNextRegistrationNumber } from '../../utils/registrationNumber';
 
 /** Канон: lower + убрать точки до @ (для всех доменов), без изменения хранимого email */
 function canonicalSimple(emailInput: string): string {
@@ -51,12 +52,15 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
   if (!studentGroup) return reply.code(500).send({ error: 'Группа "Соискатель" не найдена' });
 
   const user = await prisma.$transaction(async (tx) => {
+    const registrationNumber = await getNextRegistrationNumber(tx as any);
+
     const user = await tx.user.create({
       data: {
         email,
         password: hashedPassword,
         fullName,
         fullNameLatin: fullNameLatin?.trim() || null,
+        registrationNumber,
         phone,
         birthDate: birthDate ? new Date(birthDate) : null,
         country: country || null,
@@ -114,6 +118,7 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
       role: user.role,
       fullName: user.fullName,
       fullNameLatin: (user as any).fullNameLatin ?? null,
+      registrationNumber: user.registrationNumber,
     },
   });
 }

@@ -129,7 +129,7 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                           {statusMap[entry.status] || entry.status}
                         </td>
                         <td className="p-2 text-center">{entry.reviewer?.email || '—'}</td>
-                        <td className="p-2 text-center text-red-500">
+                        <td className="p-2 text-center text-[#FF5364]">
                           {entry.rejectedReason || '—'}
                         </td>
                         <td className="p-2 text-center">

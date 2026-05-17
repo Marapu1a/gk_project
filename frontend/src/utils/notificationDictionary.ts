@@ -7,7 +7,8 @@ export type NotificationType =
   | 'DOCUMENT'
   | 'EXAM'
   | 'PAYMENT'
-  | 'NEW_USER';
+  | 'NEW_USER'
+  | 'USER';
 
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   CEU: 'CEU',
@@ -17,14 +18,18 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   SUPERVISION: 'Супервизия',
   MENTORSHIP: 'Менторство',
   NEW_USER: 'Новый пользователь',
+  USER: 'Пользователь',
 };
 
-export const NOTIFICATION_TYPE_COLORS: Record<NotificationType, string> = {
-  CEU: 'bg-green-600',
-  EXAM: 'bg-blue-600',
-  PAYMENT: 'bg-gray-700',
-  DOCUMENT: 'bg-orange-600',
-  SUPERVISION: 'bg-purple-600',
-  MENTORSHIP: 'bg-indigo-600',
-  NEW_USER: 'bg-emerald-600',
+export type NotificationTone = 'dark' | 'soft' | 'danger';
+
+export const NOTIFICATION_TYPE_TONES: Record<NotificationType, NotificationTone> = {
+  PAYMENT: 'dark',
+  CEU: 'soft',
+  DOCUMENT: 'soft',
+  SUPERVISION: 'soft',
+  MENTORSHIP: 'soft',
+  NEW_USER: 'soft',
+  USER: 'danger',
+  EXAM: 'soft',
 };

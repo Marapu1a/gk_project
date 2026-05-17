@@ -156,6 +156,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
           <Meta label="Имя" value={user.fullName || '—'} />
           <Meta label="Имя (латиницей)" value={(user as any).fullNameLatin || '—'} />
           <Meta label="Email" value={user.email} />
+          <Meta label="Регистрационный номер ЦСПАП" value={user.registrationNumber || '—'} />
           <Meta label="Телефон" value={user.phone || '—'} />
           <Meta label="Дата рождения" value={fmt(user.birthDate)} />
           <Meta label="Город" value={arrToStr(strToArr(user.city)) || '—'} />
@@ -291,7 +292,7 @@ function Field({
     <div>
       <label className="block text-sm mb-1 text-blue-dark">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-[#FF5364] ml-1">*</span>}
       </label>
       {children}
     </div>

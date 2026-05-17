@@ -5,6 +5,7 @@ export async function getUserDetails(id: string) {
   return response.data as {
     id: string;
     email: string;
+    registrationNumber: string | null;
     fullName: string;
     fullNameLatin: string | null;
     phone: string | null;
@@ -12,10 +13,16 @@ export async function getUserDetails(id: string) {
     country: string | null;
     city: string | null;
     avatarUrl: string | null;
+    ibaoId: string | null;
     isProfileVisible: boolean;
     isEmailConfirmed: boolean;
     role: 'ADMIN' | 'REVIEWER' | 'STUDENT';
     createdAt: string;
+    archivedAt: string | null;
+    archivedById: string | null;
+    archiveReason: string | null;
+    archiveRequestedAt: string | null;
+    archiveRequestReason: string | null;
 
     targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
     targetLockRank: number | null;

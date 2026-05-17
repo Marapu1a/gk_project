@@ -182,7 +182,7 @@ export function FileUpload({
 
       {helperText && !file && !uploading && <p className="text-xs text-gray-500">{helperText}</p>}
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-[#FF5364]">{error}</p>}
 
       {file && (
         <div className="flex items-center gap-4 p-2 border rounded bg-gray-100">
@@ -199,7 +199,7 @@ export function FileUpload({
               </div>
             )
           ) : file.mimeType === 'application/pdf' ? (
-            <div className="w-16 h-16 flex items-center justify-center border rounded bg-red-100 text-red-600 font-bold">
+            <div className="w-16 h-16 flex items-center justify-center border rounded bg-[#FF5364] text-white font-bold">
               PDF
             </div>
           ) : (
@@ -223,7 +223,7 @@ export function FileUpload({
           <button
             type="button"
             onClick={handleDelete}
-            className="text-red-500 hover:text-red-700 text-lg font-bold"
+            className="text-[#FF5364] hover:text-[#FF5364] text-lg font-bold"
             title="Удалить"
             disabled={disabled || uploading}
           >

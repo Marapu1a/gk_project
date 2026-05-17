@@ -12,7 +12,7 @@ export default function CertificateIssuePage() {
 
   if (isLoading) return <p>Загрузка…</p>;
   if (!me || me.role !== 'ADMIN')
-    return <p className="text-red-600">403: Доступ только для админов</p>;
+    return <p className="text-[#FF5364]">403: Доступ только для админов</p>;
 
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto">

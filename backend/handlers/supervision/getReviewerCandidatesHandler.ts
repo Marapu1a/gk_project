@@ -86,6 +86,7 @@ async function buildCandidates(params: {
       reviewerId,
       kind: prismaKind(kind),
       cycle: { status: CycleStatus.ACTIVE },
+      candidate: { archivedAt: null },
     },
     select: {
       id: true,

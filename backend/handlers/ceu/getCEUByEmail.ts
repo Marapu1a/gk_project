@@ -42,7 +42,7 @@ export async function getCEUByEmailHandler(
   if (to === (null as any)) return;
 
   const targetUser = await prisma.user.findFirst({
-    where: { email: { equals: email, mode: 'insensitive' } },
+    where: { email: { equals: email, mode: 'insensitive' }, archivedAt: null },
     orderBy: [{ email: 'asc' }, { id: 'asc' }],
     select: { id: true, fullName: true, email: true },
   });

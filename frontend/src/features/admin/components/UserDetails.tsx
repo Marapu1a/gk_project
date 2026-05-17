@@ -36,6 +36,7 @@ export default function UserDetails() {
       <div className="p-6 space-y-6">
         <UserBasicBlock
           userId={data.id}
+          registrationNumber={data.registrationNumber}
           fullName={data.fullName}
           fullNameLatin={data.fullNameLatin}
           email={data.email}
@@ -47,6 +48,9 @@ export default function UserDetails() {
           createdAt={data.createdAt}
           groupName={activeGroup}
           isProfileVisible={data.isProfileVisible}
+          archivedAt={data.archivedAt}
+          archiveRequestedAt={data.archiveRequestedAt}
+          archiveRequestReason={data.archiveRequestReason}
         />
 
         <AdminUserGroupsBlock userId={data.id} />

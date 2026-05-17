@@ -3,6 +3,7 @@ import { useUpdatePaymentStatus } from '../hooks/useUpdatePaymentStatus';
 import { useQueryClient } from '@tanstack/react-query';
 import type { PaymentItem } from '../api/getUserPayments';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 const PAYMENT_STATUS = {
   UNPAID: 'UNPAID',
@@ -19,6 +20,7 @@ type Props = {
 export function PaymentStatusToggle({ payment, isAdmin, relatedPayments = [] }: Props) {
   const mutation = useUpdatePaymentStatus(payment.userId);
   const queryClient = useQueryClient();
+  const { confirm } = useConfirm();
 
   const userEmail = payment.userEmail ?? payment.user?.email ?? '—';
 
@@ -35,14 +37,6 @@ export function PaymentStatusToggle({ payment, isAdmin, relatedPayments = [] }: 
       queryClient.invalidateQueries({ queryKey: ['me'] }),
     ]);
   };
-
-  const confirmToast = (message: string) =>
-    new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      });
-    });
 
   const handleClick = async () => {
     const nextStatus = isAdmin
@@ -61,7 +55,15 @@ export function PaymentStatusToggle({ payment, isAdmin, relatedPayments = [] }: 
         ? 'Отправить отметку «Я оплатил(а)»? Администраторам придёт уведомление.'
         : 'Отменить вашу отметку об оплате?';
 
-    if (!(await confirmToast(question))) return;
+    if (
+      !(await confirm({
+        message: question,
+        confirmLabel: nextStatus === 'UNPAID' ? 'Отменить' : 'Подтвердить',
+        variant: nextStatus === 'UNPAID' ? 'danger' : 'primary',
+      }))
+    ) {
+      return;
+    }
 
     try {
       await Promise.all(

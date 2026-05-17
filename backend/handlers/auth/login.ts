@@ -19,6 +19,11 @@ export async function loginHandler(req: FastifyRequest, reply: FastifyReply) {
     orderBy: [{ email: 'asc' }, { id: 'asc' }],
   });
   if (!user) return reply.code(401).send(INVALID_MSG);
+  if (user.archivedAt) {
+    return reply.code(403).send({
+      error: 'Аккаунт удалён, для восстановления свяжитесь с нами',
+    });
+  }
 
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return reply.code(401).send(INVALID_MSG);

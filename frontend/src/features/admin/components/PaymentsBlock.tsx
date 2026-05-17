@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { paymentStatusLabels, paymentTypeLabels } from '@/utils/labels';
 import { useUpdatePaymentStatus } from '@/features/payment/hooks/useUpdatePaymentStatus';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 type Payment = {
   id: string;
@@ -38,6 +39,7 @@ const TARGET_LEVEL_ORDER: Record<NonNullable<Payment['targetLevel']>, number> = 
 export default function PaymentsBlock({ payments, userId, activeGroupName }: Props) {
   const mutate = useUpdatePaymentStatus(userId);
   const qc = useQueryClient();
+  const { confirm } = useConfirm();
 
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [cancelComment, setCancelComment] = useState('');
@@ -54,14 +56,6 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
       qc.invalidateQueries({ queryKey: ['me'] }),
     ]);
   };
-
-  const confirmToast = (message: string) =>
-    new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      });
-    });
 
   const fullPackage = payments.find((p) => p.type === 'FULL_PACKAGE');
   const isFullPackagePending = fullPackage?.status === 'PENDING';
@@ -153,9 +147,10 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
   };
 
   const confirmPay = async (id: string, type: string) => {
-    const ok = await confirmToast(
-      type === 'FULL_PACKAGE' ? 'Подтвердить пакетную оплату?' : 'Подтвердить оплату?',
-    );
+    const ok = await confirm({
+      message: type === 'FULL_PACKAGE' ? 'Подтвердить пакетную оплату?' : 'Подтвердить оплату?',
+      confirmLabel: 'Подтвердить',
+    });
     if (!ok) return;
 
     try {
@@ -178,9 +173,11 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
   const submitCancel = async (type: string) => {
     if (!cancelId) return;
 
-    const ok = await confirmToast(
-      type === 'FULL_PACKAGE' ? 'Отменить пакетную оплату?' : 'Отменить оплату?',
-    );
+    const ok = await confirm({
+      message: type === 'FULL_PACKAGE' ? 'Отменить пакетную оплату?' : 'Отменить оплату?',
+      confirmLabel: 'Отменить',
+      variant: 'danger',
+    });
     if (!ok) return;
 
     try {

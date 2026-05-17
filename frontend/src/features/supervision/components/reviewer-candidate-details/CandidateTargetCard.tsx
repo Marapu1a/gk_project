@@ -69,7 +69,7 @@ function StatusRow({ ok, label, value }: { ok: boolean; label: string; value: st
         <XCircle
           size={22}
           strokeWidth={2.4}
-          className="shrink-0 text-[var(--color-pink-danger)]"
+          className="shrink-0 text-[var(--color-danger)]"
         />
       )}
 

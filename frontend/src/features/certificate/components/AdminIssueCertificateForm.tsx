@@ -6,6 +6,7 @@ import { FileUpload } from '@/utils/FileUpload';
 import { updateFile } from '@/features/files/api/updateFile';
 import { toast } from 'sonner';
 import { useUsers } from '@/features/admin/hooks/useUsers';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 // нормализуем под сравнение (как в UsersTable)
 const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
@@ -34,6 +35,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
   const [resetKey, setResetKey] = useState(0);
 
   const mutation = useIssueCertificate();
+  const { confirm } = useConfirm();
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -66,14 +68,6 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       return tokens.every((t) => hay.includes(t));
     });
   }, [allUsers, userSearchInput]);
-
-  const confirmToast = (message: string) =>
-    new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      });
-    });
 
   function toISOStartOfDay(dateStr: string) {
     if (!dateStr) return '';
@@ -112,7 +106,10 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
     e.preventDefault();
     if (!canSubmit || mutation.isPending) return;
 
-    const ok = await confirmToast('Выдать сертификат этому пользователю?');
+    const ok = await confirm({
+      message: 'Выдать сертификат этому пользователю?',
+      confirmLabel: 'Выдать',
+    });
     if (!ok) return;
 
     try {

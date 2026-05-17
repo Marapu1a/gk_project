@@ -11,7 +11,7 @@ export function StatusPill({ children, tone = 'blue' }: StatusPillProps) {
     tone === 'green'
       ? 'var(--color-green-brand)'
       : tone === 'red'
-        ? '#ef4444'
+        ? '#FF5364'
         : 'var(--color-blue-dark)';
 
   return (

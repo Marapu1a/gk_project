@@ -4,13 +4,16 @@ import { toast } from 'sonner';
 import { useUpdateUserInfo } from '@/features/admin/hooks/useUpdateUserInfo';
 import { useToggleUserRole } from '@/features/admin/hooks/useToggleUserRole';
 import { useUpdateUserVisibility } from '@/features/admin/hooks/useUpdateUserVisibility';
+import { useArchiveUser, useRestoreUser } from '@/features/admin/hooks/useArchiveUser';
 import { UserLocationFields } from '@/features/user/components/UserLocationFields';
 import { UpdateUserPasswordModal } from './UpdateUserPasswordModal';
 import PhoneInput from 'react-phone-input-2';
 import { isValidPhoneNumber } from 'libphonenumber-js';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 type Props = {
   userId: string;
+  registrationNumber?: string | null;
   fullName: string;
   fullNameLatin: string | null;
   email: string;
@@ -22,6 +25,9 @@ type Props = {
   createdAt: string;
   groupName: string | null;
   isProfileVisible: boolean;
+  archivedAt?: string | null;
+  archiveRequestedAt?: string | null;
+  archiveRequestReason?: string | null;
 };
 
 const roleMap = { ADMIN: 'Администратор', REVIEWER: 'Проверяющий', STUDENT: 'Соискатель' } as const;
@@ -87,6 +93,7 @@ const normalizePhone = (raw: string) => {
 export default function UserBasicBlock(props: Props) {
   const {
     userId,
+    registrationNumber,
     fullName,
     fullNameLatin,
     email,
@@ -98,6 +105,9 @@ export default function UserBasicBlock(props: Props) {
     createdAt,
     groupName,
     isProfileVisible,
+    archivedAt,
+    archiveRequestedAt,
+    archiveRequestReason,
   } = props;
 
   const namesRu = splitFullName(fullName);
@@ -134,6 +144,9 @@ export default function UserBasicBlock(props: Props) {
   const mutation = useUpdateUserInfo(userId);
   const toggleRole = useToggleUserRole();
   const updateVisibility = useUpdateUserVisibility(userId);
+  const archiveUser = useArchiveUser();
+  const restoreUser = useRestoreUser();
+  const { confirm } = useConfirm();
 
   // синхронизация, если сверху приехали новые данные (переключение юзера без размонтирования)
   useEffect(() => {
@@ -160,10 +173,12 @@ export default function UserBasicBlock(props: Props) {
 
   const onToggleRole = async () => {
     const toAdmin = role !== 'ADMIN';
-    if (
-      !confirm(toAdmin ? `Сделать ${email} администратором?` : `Снять администратора с ${email}?`)
-    )
-      return;
+    const ok = await confirm({
+      message: toAdmin ? `Сделать ${email} администратором?` : `Снять администратора с ${email}?`,
+      confirmLabel: 'Да',
+      variant: toAdmin ? 'primary' : 'danger',
+    });
+    if (!ok) return;
     try {
       await toggleRole.mutateAsync(userId);
       toast.success(toAdmin ? 'Права администратора выданы' : 'Права администратора сняты');
@@ -200,6 +215,35 @@ export default function UserBasicBlock(props: Props) {
     } catch (e: any) {
       setProfileVisible(!nextValue);
       toast.error(e?.response?.data?.error || 'Не удалось обновить видимость в реестре');
+    }
+  };
+
+  const onArchive = async () => {
+    const ok = await confirm({
+      message: `Архивировать пользователя ${email}?`,
+      confirmLabel: 'Архивировать',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await archiveUser.mutateAsync({ userId, reason: archiveRequestReason ?? undefined });
+      toast.success('Пользователь отправлен в архив');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Не удалось архивировать пользователя');
+    }
+  };
+
+  const onRestore = async () => {
+    const ok = await confirm({
+      message: `Восстановить пользователя ${email} из архива?`,
+      confirmLabel: 'Восстановить',
+    });
+    if (!ok) return;
+    try {
+      await restoreUser.mutateAsync(userId);
+      toast.success('Пользователь восстановлен');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Не удалось восстановить пользователя');
     }
   };
 
@@ -313,12 +357,59 @@ export default function UserBasicBlock(props: Props) {
           </label>
         </div>
 
+        {(archiveRequestedAt || archivedAt) && (
+          <div
+            className="flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
+            style={{ borderColor: 'var(--color-green-light)' }}
+          >
+            <div className="text-sm text-blue-dark">
+              {archivedAt ? (
+                <>
+                  <span className="font-medium">Архив:</span> пользователь архивирован{' '}
+                  {fmt(archivedAt)}
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-[var(--color-danger)]">
+                    Запрос на удаление:
+                  </span>{' '}
+                  {fmt(archiveRequestedAt ?? null)}
+                  {archiveRequestReason ? (
+                    <span className="ml-2 text-[#8D96B5]">{archiveRequestReason}</span>
+                  ) : null}
+                </>
+              )}
+            </div>
+
+            {archivedAt ? (
+              <button
+                type="button"
+                className="btn btn-dark rounded-full px-5 py-2 text-sm"
+                onClick={onRestore}
+                disabled={restoreUser.isPending}
+              >
+                Восстановить
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-danger rounded-full px-5 py-2 text-sm"
+                onClick={onArchive}
+                disabled={archiveUser.isPending}
+              >
+                Архивировать
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Основной контент */}
         {!edit ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <Meta label="Имя" value={displayFullName || '—'} />
             <Meta label="Имя (латиницей)" value={displayFullNameLatin || '—'} />
             <Meta label="Email" value={email} />
+            <Meta label="N ЦСПАП" value={registrationNumber || '—'} />
             <Meta label="Телефон" value={phone || '—'} />
             <Meta label="Дата рождения" value={fmt(birthDate)} />
             <Meta label="Город" value={city || '—'} />

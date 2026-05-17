@@ -131,7 +131,7 @@ export function AdminDocumentReviewDetails() {
                       className="w-20 h-20 object-cover rounded border"
                     />
                   ) : doc.mimeType === 'application/pdf' ? (
-                    <div className="w-20 h-20 flex items-center justify-center border rounded bg-red-100 text-red-600 font-bold">
+                    <div className="w-20 h-20 flex items-center justify-center border rounded bg-[#FF5364] text-white font-bold">
                       PDF
                     </div>
                   ) : (

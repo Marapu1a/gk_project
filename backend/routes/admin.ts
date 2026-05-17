@@ -8,6 +8,7 @@ import { getUserExportHandler } from '../handlers/admin/getUserExportHandler';
 import { updateUserPasswordAdminHandler } from '../handlers/admin/updateUserPasswordAdminHandler';
 import { getUsersExportXlsxHandler } from "../handlers/admin/getUsersExportXlsxHandler";
 import { updateUserVisibilityHandler } from '../handlers/admin/updateUserVisibility';
+import { archiveUserHandler, restoreUserHandler } from '../handlers/admin/archiveUserHandler';
 
 // CEU god-mode
 import { getUserCEUMatrixAdminHandler } from '../handlers/admin/ceu/getUserCEUMatrixAdminHandler';
@@ -29,6 +30,8 @@ export async function usersRoutes(app: FastifyInstance) {
   app.get('/admin/users', { preHandler: verifyToken }, getUsersHandler);
   app.patch('/admin/users/:id', { preHandler: verifyToken }, updateUserBasicInfoHandler);
   app.patch('/admin/users/:id/visibility', { preHandler: verifyToken }, updateUserVisibilityHandler);
+  app.patch('/admin/users/:id/archive', { preHandler: verifyToken }, archiveUserHandler);
+  app.patch('/admin/users/:id/restore', { preHandler: verifyToken }, restoreUserHandler);
 
   // Добавлен новый маршрут для таргет-левела
   app.patch('/admin/users/:id/target-level', { preHandler: verifyToken }, updateTargetLevelHandler);

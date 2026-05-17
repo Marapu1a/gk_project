@@ -104,7 +104,7 @@ export function TransborderConsentModal({ open, source, onAccepted, onLogout }: 
 
                   <span className="text-sm leading-6 text-blue-dark">
                     {renderConsentItemText(item)}
-                    {item.required ? <span className="ml-1 text-pink-accent">*</span> : null}
+                    {item.required ? <span className="ml-1 text-[var(--color-danger)]">*</span> : null}
                   </span>
                 </label>
               ))}

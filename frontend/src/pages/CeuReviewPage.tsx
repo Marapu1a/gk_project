@@ -111,7 +111,7 @@ function downloadCsv(rows: AdminCeuHistoryRow[]) {
 
 function statusClass(status: AdminCeuStatus) {
   if (status === 'CONFIRMED') return 'bg-green-100 text-green-700';
-  if (status === 'REJECTED') return 'bg-red-100 text-red-700';
+  if (status === 'REJECTED') return 'bg-[#FF5364] text-white';
   if (status === 'SPENT') return 'bg-gray-100 text-gray-600';
   return 'bg-yellow-100 text-yellow-700';
 }
@@ -339,7 +339,7 @@ export default function CeuReviewPage() {
         {isLoading ? (
           <div className="p-6 text-gray-600">Загрузка истории...</div>
         ) : error ? (
-          <div className="p-6 text-red-600">Не удалось загрузить историю CEU.</div>
+          <div className="p-6 text-[#FF5364]">Не удалось загрузить историю CEU.</div>
         ) : rows.length === 0 ? (
           <div className="p-6 text-gray-600">За выбранный период записей не найдено.</div>
         ) : (

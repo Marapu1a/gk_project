@@ -11,6 +11,7 @@ export type UpdateMePayload = Partial<{
   city: string;
   avatarUrl: string;
   bio: string;
+  ibaoId: string;
 }>;
 
 export async function updateMe(payload: UpdateMePayload): Promise<CurrentUser> {

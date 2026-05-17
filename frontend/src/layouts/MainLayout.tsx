@@ -4,10 +4,10 @@ import SiteFooter from '../components/SiteFooter';
 
 export default function MainLayout() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[#F0F0F0]">
       <SiteHeader />
 
-      <main className="container-fixed mx-auto py-8 flex-1">
+      <main className="container-fixed mx-auto w-full flex-1 py-8">
         <Outlet />
       </main>
 

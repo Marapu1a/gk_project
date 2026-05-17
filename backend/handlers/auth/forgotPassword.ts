@@ -18,7 +18,7 @@ export async function forgotPasswordHandler(req: FastifyRequest, reply: FastifyR
   const email = parsed.data.email.trim();
 
   const user = await prisma.user.findFirst({
-    where: { email: { equals: email, mode: 'insensitive' } },
+    where: { email: { equals: email, mode: 'insensitive' }, archivedAt: null },
     orderBy: [{ email: 'asc' }, { id: 'asc' }],
   });
   if (!user) return reply.code(200).send({ success: true });

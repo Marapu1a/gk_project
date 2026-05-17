@@ -5,6 +5,7 @@ export async function getModeratorsHandler(req: FastifyRequest, reply: FastifyRe
   const reviewers = await prisma.user.findMany({
     where: {
       role: { in: ['ADMIN', 'REVIEWER'] },
+      archivedAt: null,
     },
     select: {
       id: true,

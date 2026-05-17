@@ -71,7 +71,7 @@ export function MyCertificatesBlock() {
             <span className="text-gray-500">Выдан:</span>{' '}
             {new Date(active.issuedAt).toLocaleDateString('ru-RU')}
           </div>
-          <div className={active.isExpired ? 'text-red-600' : ''}>
+          <div className={active.isExpired ? 'text-[#FF5364]' : ''}>
             <span className="text-gray-500">Действует до:</span>{' '}
             {new Date(active.expiresAt).toLocaleDateString('ru-RU')}
           </div>

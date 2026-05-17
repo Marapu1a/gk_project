@@ -12,6 +12,7 @@ type Q = {
   // 'practice'  — получатели часов практики
   // 'mentor'    — получатели менторских часов
   supervision?: string;
+  archived?: 'active' | 'only' | 'with';
 };
 
 function toInt(v: Q['page'], def: number) {
@@ -38,7 +39,7 @@ function detectRole(tok: string): 'ADMIN' | 'REVIEWER' | 'STUDENT' | null {
 }
 
 export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) {
-  const { role, group, search, page, perPage, supervision } = req.query as Q;
+  const { role, group, search, page, perPage, supervision, archived = 'active' } = req.query as Q;
   const actorRole = (req as any).user?.role ?? (req as any).user?.role;
 
   if (!actorRole) {
@@ -54,6 +55,11 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
   const skip = (pageNum - 1) * take;
 
   let where: any = {};
+  if (archived === 'only') {
+    where.archivedAt = { not: null };
+  } else if (archived !== 'with') {
+    where.archivedAt = null;
+  }
 
   // 1) фильтр по роли — БЕЗ форсированного "только ADMIN" для не-админов.
   // Если явно передали role — применяем (и админ, и не-админ могут этим пользоваться),
@@ -76,11 +82,18 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
 
     for (const tok of tokens) {
       const r = detectRole(tok);
+      const digits = tok.replace(/\D/g, '');
       const OR: any[] = [
         { fullName: { contains: tok, mode: 'insensitive' } },
         { email: { contains: tok, mode: 'insensitive' } },
         { groups: { some: { group: { name: { contains: tok, mode: 'insensitive' } } } } },
       ];
+      if (digits) {
+        OR.push(
+          { phone: { contains: digits, mode: 'insensitive' } },
+          { registrationNumber: { contains: digits, mode: 'insensitive' } },
+        );
+      }
       // только админ может искать по тексту «админ/ревьюер/соискатель» и этим менять фильтр по роли
       if (actorRole === 'ADMIN' && r) OR.push({ role: r });
       AND.push({ OR });
@@ -144,8 +157,14 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
         email: true,
         fullName: true,
         fullNameLatin: true,
+        registrationNumber: true,
+        phone: true,
         role: true,
         createdAt: true,
+        lastActiveAt: true,
+        archivedAt: true,
+        archiveRequestedAt: true,
+        archiveRequestReason: true,
         avatarUrl: true,
         groups: { select: { group: { select: { id: true, name: true } } } },
       },
@@ -161,8 +180,14 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
       email: u.email,
       fullName: u.fullName,
       fullNameLatin: u.fullNameLatin,
+      registrationNumber: u.registrationNumber,
+      phone: u.phone,
       role: u.role,
       createdAt: u.createdAt,
+      lastActiveAt: u.lastActiveAt,
+      archivedAt: u.archivedAt,
+      archiveRequestedAt: u.archiveRequestedAt,
+      archiveRequestReason: u.archiveRequestReason,
       avatarUrl: u.avatarUrl ?? null,
       groups: u.groups.map((g) => g.group),
     })),

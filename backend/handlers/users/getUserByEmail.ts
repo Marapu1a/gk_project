@@ -10,7 +10,7 @@ export async function getUserByEmailHandler(req: FastifyRequest, reply: FastifyR
   }
 
   const user = await prisma.user.findFirst({
-    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' }, archivedAt: null },
     orderBy: [{ email: 'asc' }, { id: 'asc' }],
     select: {
       id: true,

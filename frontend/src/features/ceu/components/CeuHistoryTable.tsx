@@ -64,7 +64,7 @@ export function CeuHistoryTable() {
                       entry.status === 'CONFIRMED'
                         ? 'text-green-700'
                         : entry.status === 'REJECTED'
-                          ? 'text-red-600'
+                          ? 'text-[#FF5364]'
                           : entry.status === 'SPENT'
                             ? 'text-gray-500 italic'
                             : 'text-yellow-700'
@@ -73,7 +73,7 @@ export function CeuHistoryTable() {
                     {statusMap[entry.status]}
                   </span>
                 </td>
-                <td className="p-2 text-center text-red-600">
+                <td className="p-2 text-center text-[#FF5364]">
                   {entry.status === 'REJECTED' ? entry.rejectedReason || '—' : '—'}
                 </td>
               </tr>

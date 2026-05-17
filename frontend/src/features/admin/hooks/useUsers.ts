@@ -8,11 +8,17 @@ type UserRow = {
   id: string;
   fullName: string;
   email: string;
+  registrationNumber?: string | null;
+  phone?: string | null;
   role: Role;
   createdAt: string;
+  lastActiveAt?: string | null;
   groups: { id: string; name: string }[];
   avatarUrl?: string | null;
   fullNameLatin?: string | null;
+  archivedAt?: string | null;
+  archiveRequestedAt?: string | null;
+  archiveRequestReason?: string | null;
 };
 
 type UsersResponse = {
@@ -33,6 +39,7 @@ type Params = {
   // practice — практика → супервизоры, опытные, админы
   // mentor   — менторство → опытные, админы
   supervision?: 'practice' | 'mentor';
+  archived?: 'active' | 'only' | 'with';
 };
 
 export function useUsers(params: Params) {
@@ -43,10 +50,11 @@ export function useUsers(params: Params) {
     role,
     group,
     supervision,
+    archived = 'active',
   } = params;
 
   return useQuery<UsersResponse, Error>({
-    queryKey: ['users', search, page, perPage, role ?? '', group ?? '', supervision ?? ''],
+    queryKey: ['users', search, page, perPage, role ?? '', group ?? '', supervision ?? '', archived],
     queryFn: async () => {
       const { data } = await api.get('/admin/users', {
         params: {
@@ -56,6 +64,7 @@ export function useUsers(params: Params) {
           role,
           group,
           supervision,
+          archived,
         },
       });
       return data as UsersResponse;

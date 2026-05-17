@@ -11,7 +11,7 @@ export default function MyCertificatesPage() {
   });
 
   if (isLoading) return <p>Загрузка…</p>;
-  if (!me) return <p className="text-red-600">401: Не авторизован</p>;
+  if (!me) return <p className="text-[#FF5364]">401: Не авторизован</p>;
 
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto">

@@ -38,7 +38,7 @@ function formatNumber(value: number) {
 
 function statusTextClass(status: string) {
   if (status === 'CONFIRMED') return 'text-[#1F305E]';
-  if (status === 'REJECTED') return 'text-[#FF5365]';
+  if (status === 'REJECTED') return 'text-[#FF5364]';
   return 'text-[#7F8AA3]';
 }
 
@@ -57,7 +57,7 @@ export function CeuPointsHistoryBlock() {
       {isLoading ? (
         <p className="text-[14px] text-[#6B7894]">Загрузка истории...</p>
       ) : error ? (
-        <p className="text-[14px] text-[#FF5365]">Не удалось загрузить историю CEU-баллов</p>
+        <p className="text-[14px] text-[#FF5364]">Не удалось загрузить историю CEU-баллов</p>
       ) : records.length === 0 ? (
         <p className="text-[14px] text-[#6B7894]">Пока нет заявок.</p>
       ) : (
@@ -177,7 +177,7 @@ function CeuDetailsModal({
             </div>
 
             {record.rejectedReason ? (
-              <div className="rounded-[10px] bg-[#FFF0F2] px-4 py-3 text-[14px] text-[#FF5365]">
+              <div className="rounded-[10px] bg-[#FFFFFF] px-4 py-3 text-[14px] text-[#FF5364]">
                 {record.rejectedReason}
               </div>
             ) : null}

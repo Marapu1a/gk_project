@@ -85,7 +85,7 @@ export function SupervisionHistoryTable() {
                         hour.status === 'CONFIRMED'
                           ? 'text-green-700'
                           : hour.status === 'REJECTED'
-                            ? 'text-red-600'
+                            ? 'text-[#FF5364]'
                             : hour.status === 'SPENT'
                               ? 'text-gray-500 italic'
                               : 'text-yellow-700'
@@ -97,7 +97,7 @@ export function SupervisionHistoryTable() {
                   <td className="p-2 text-center">
                     {hour.reviewedAt ? format(new Date(hour.reviewedAt), 'dd.MM.yyyy') : '—'}
                   </td>
-                  <td className="p-2 text-center text-red-600">
+                  <td className="p-2 text-center text-[#FF5364]">
                     {hour.status === 'REJECTED' ? hour.rejectedReason || '—' : '—'}
                   </td>
                 </tr>

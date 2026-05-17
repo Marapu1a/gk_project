@@ -2,19 +2,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUsers } from '../hooks/useUsers';
-import { useDeleteUser } from '@/features/user/hooks/useDeleteUser';
+import { useArchiveUser, useRestoreUser } from '../hooks/useArchiveUser';
 import { Button } from '@/components/Button';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 type Role = 'ADMIN' | 'STUDENT' | 'REVIEWER';
 type UserRow = {
   id: string;
   fullName: string;
   email: string;
+  registrationNumber?: string | null;
+  phone?: string | null;
   role: Role;
   createdAt: string;
+  lastActiveAt?: string | null;
   groups: { id: string; name: string }[];
   avatarUrl?: string | null; // 👈 аватар
+  archivedAt?: string | null;
+  archiveRequestedAt?: string | null;
+  archiveRequestReason?: string | null;
 };
 
 const roleMap: Record<Role, string> = {
@@ -34,6 +41,7 @@ export function UsersTable() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState(''); // уходит на сервер (debounced)
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [archiveMode, setArchiveMode] = useState<'active' | 'only'>('active');
 
   // серверная пагинация
   const [page, setPage] = useState(1);
@@ -48,8 +56,10 @@ export function UsersTable() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const { data, isLoading, error } = useUsers({ search, page, perPage });
-  const deleteUser = useDeleteUser();
+  const { data, isLoading, error } = useUsers({ search, page, perPage, archived: archiveMode });
+  const archiveUser = useArchiveUser();
+  const restoreUser = useRestoreUser();
+  const { confirm } = useConfirm();
 
   // локальные копии для оптимистичного удаления
   const [localUsers, setLocalUsers] = useState<UserRow[]>([]);
@@ -70,6 +80,8 @@ export function UsersTable() {
       const hayParts = [
         u.fullName,
         u.email,
+        u.phone ?? '',
+        u.registrationNumber ?? '',
         roleMap[u.role] || u.role, // русская роль
         u.role, // и enum на всякий
         ...u.groups.map((g) => g.name),
@@ -80,21 +92,15 @@ export function UsersTable() {
     });
   }, [localUsers, searchInput]);
 
-  const confirmToast = (message: string) =>
-    new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      });
+  const onArchive = async (u: UserRow) => {
+    const ok = await confirm({
+      message: `Архивировать пользователя ${u.email}?`,
+      description: 'Он не сможет войти и исчезнет из рабочих списков.',
+      confirmLabel: 'Архивировать',
+      variant: 'danger',
     });
-
-  const onDelete = async (u: UserRow) => {
-    const ok = await confirmToast(
-      `Удалить пользователя ${u.email} безвозвратно (включая файлы и все данные)?`,
-    );
     if (!ok) return;
 
-    // оптимистично скрываем строку сразу
     setPendingId(u.id);
     const prevUsers = localUsers;
     const prevTotal = localTotal;
@@ -102,13 +108,39 @@ export function UsersTable() {
     setLocalTotal((t) => Math.max(0, t - 1));
 
     try {
-      await deleteUser.mutateAsync(u.id);
-      toast.success('Пользователь удалён');
+      await archiveUser.mutateAsync({ userId: u.id });
+      toast.success('Пользователь отправлен в архив');
       if (prevUsers.length === 1 && page > 1) setPage((p) => p - 1);
     } catch (e: any) {
       setLocalUsers(prevUsers);
       setLocalTotal(prevTotal);
-      toast.error(e?.response?.data?.error || 'Не удалось удалить пользователя');
+      toast.error(e?.response?.data?.error || 'Не удалось архивировать пользователя');
+    } finally {
+      setPendingId(null);
+    }
+  };
+
+  const onRestore = async (u: UserRow) => {
+    const ok = await confirm({
+      message: `Восстановить пользователя ${u.email} из архива?`,
+      confirmLabel: 'Восстановить',
+    });
+    if (!ok) return;
+
+    setPendingId(u.id);
+    const prevUsers = localUsers;
+    const prevTotal = localTotal;
+    setLocalUsers((list) => list.filter((x) => x.id !== u.id));
+    setLocalTotal((t) => Math.max(0, t - 1));
+
+    try {
+      await restoreUser.mutateAsync(u.id);
+      toast.success('Пользователь восстановлен');
+      if (prevUsers.length === 1 && page > 1) setPage((p) => p - 1);
+    } catch (e: any) {
+      setLocalUsers(prevUsers);
+      setLocalTotal(prevTotal);
+      toast.error(e?.response?.data?.error || 'Не удалось восстановить пользователя');
     } finally {
       setPendingId(null);
     }
@@ -141,13 +173,25 @@ export function UsersTable() {
 
         {/* Живой фильтр */}
         <div className="flex items-end gap-2">
+          <button
+            type="button"
+            className={`btn h-[38px] rounded-full px-4 text-sm ${
+              archiveMode === 'only' ? 'btn-dark' : 'border border-blue-dark text-blue-dark'
+            }`}
+            onClick={() => {
+              setPage(1);
+              setArchiveMode((mode) => (mode === 'only' ? 'active' : 'only'));
+            }}
+          >
+            {archiveMode === 'only' ? 'Активные' : 'Архив'}
+          </button>
           <div className="relative">
             <label className="block mb-1 text-sm text-blue-dark">Фильтр</label>
             <input
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="ФИО, email, группа, роль (Соискатель/проверяющий/админ)"
+              placeholder="ФИО, email, телефон, номер, группа, роль"
               className="input w-80 pr-8"
             />
             {searchInput && (
@@ -180,12 +224,14 @@ export function UsersTable() {
               <table className="w-full text-sm table-auto">
                 <thead>
                   <tr className="text-blue-dark" style={{ background: 'var(--color-blue-soft)' }}>
-                    <th className="p-3 text-left w-12">№</th>
+                    <th className="p-3 text-left w-24">N</th>
                     <th className="p-3 text-left w-64">ФИО</th>
                     <th className="p-3 text-left w-56">Email</th>
                     <th className="p-3 text-left w-32">Роль</th>
                     <th className="p-3 text-left w-56">Группы</th>
                     <th className="p-3 text-left w-32">Создан</th>
+                    <th className="p-3 text-left w-36">Активность</th>
+                    <th className="p-3 text-left w-40">Архив</th>
                     <th className="p-3 text-center w-40">Действия</th>
                   </tr>
                 </thead>
@@ -193,7 +239,6 @@ export function UsersTable() {
                   {users.map((u, idx) => {
                     const isAdmin = u.role === 'ADMIN';
                     const isRowPending = pendingId === u.id;
-                    const number = (currentPage - 1) * currentPerPage + idx + 1;
                     const avatarSrc = u.avatarUrl || '/avatar_placeholder.svg';
 
                     return (
@@ -202,7 +247,9 @@ export function UsersTable() {
                         className="border-t align-top"
                         style={{ borderColor: 'var(--color-green-light)' }}
                       >
-                        <td className="p-4 text-center">{number}</td>
+                        <td className="p-4 font-semibold text-blue-dark">
+                          {u.registrationNumber || '—'}
+                        </td>
 
                         <td className="p-4">
                           <div className="flex items-center gap-3">
@@ -257,18 +304,52 @@ export function UsersTable() {
                         </td>
 
                         <td className="p-4">
-                          <div className="flex items-center justify-center gap-2">
+                          {u.lastActiveAt
+                            ? new Date(u.lastActiveAt).toLocaleDateString('ru-RU')
+                            : '—'}
+                        </td>
+
+                        <td className="p-4 text-xs">
+                          {u.archivedAt ? (
+                            <span className="text-[#8D96B5]">
+                              Архив: {new Date(u.archivedAt).toLocaleDateString('ru-RU')}
+                            </span>
+                          ) : u.archiveRequestedAt ? (
+                            <span
+                              className="rounded-full bg-[rgba(255,83,100,0.18)] px-2 py-1 text-[var(--color-danger)]"
+                              title={u.archiveRequestReason || undefined}
+                            >
+                              Запрос на удаление
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+
+                        <td className="p-4">
+                          <div className="flex flex-wrap items-center justify-center gap-2">
                             <Link to={`/admin/users/${u.id}`} className="btn btn-brand">
                               Детали
                             </Link>
-                            <button
-                              onClick={() => onDelete(u)}
-                              className="btn btn-danger"
-                              disabled={isRowPending}
-                              title="Удалить пользователя"
-                            >
-                              {isRowPending ? 'Удаляю…' : 'Удалить'}
-                            </button>
+                            {archiveMode === 'only' ? (
+                              <button
+                                onClick={() => onRestore(u)}
+                                className="btn btn-dark rounded-full px-4 py-2 text-xs"
+                                disabled={isRowPending}
+                                title="Восстановить пользователя"
+                              >
+                                {isRowPending ? '...' : 'Вернуть'}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => onArchive(u)}
+                                className="btn btn-ghost rounded-full border border-blue-dark px-4 py-2 text-xs"
+                                disabled={isRowPending}
+                                title="Архивировать пользователя"
+                              >
+                                {isRowPending ? '...' : 'Архив'}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

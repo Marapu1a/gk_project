@@ -1,154 +1,217 @@
 // src/features/notifications/components/NotificationModal.tsx
-import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+
 import {
   useNotifications,
   useDeleteNotification,
   useMarkNotificationRead,
 } from '../hooks/useNotifications';
-import { X } from 'lucide-react';
-import { toast } from 'sonner';
-import { NOTIFICATION_TYPE_LABELS, NOTIFICATION_TYPE_COLORS } from '@/utils/notificationDictionary';
+import type { Notification } from '../api/notifications';
+import {
+  NOTIFICATION_TYPE_LABELS,
+  NOTIFICATION_TYPE_TONES,
+  type NotificationTone,
+} from '@/utils/notificationDictionary';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
+
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+const ARROW_ICON = '/dashboard-v2/button_X_mini.svg';
+const EMPTY_ICON = '/dashboard-v2/icon_notification_bell.svg';
 
 export function NotificationModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data = [] } = useNotifications();
   const deleteNotif = useDeleteNotification();
   const markRead = useMarkNotificationRead();
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [deletingAll, setDeletingAll] = useState(false);
+  const { confirm } = useConfirm();
 
   if (!open) return null;
 
-  const confirmToast = (message: string) =>
-    new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      });
-    });
+  const unread = data.filter((item) => !item.isRead);
 
-  const handleDelete = async (id: string) => {
-    if (!(await confirmToast('Удалить уведомление?'))) return;
-    try {
-      await deleteNotif.mutateAsync(id);
-      toast.success('Уведомление удалено');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось удалить уведомление');
+  const handleOpen = async (notification: (typeof data)[number]) => {
+    if (!notification.isRead) {
+      markRead.mutate(notification.id);
+    }
+
+    if (notification.link) {
+      navigate(notification.link);
+      onClose();
     }
   };
 
-  const handleDeleteAll = async () => {
-    if (!data.length) return;
-    if (!(await confirmToast('Удалить все уведомления?'))) return;
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      message: 'Удалить уведомление?',
+      confirmLabel: 'Удалить',
+      variant: 'danger',
+    });
+
+    if (!ok) return;
+
     try {
-      setDeletingAll(true);
-      await Promise.allSettled(data.map((n) => deleteNotif.mutateAsync(n.id)));
-      await qc.invalidateQueries({ queryKey: ['notifications'] });
-      toast.success('Все уведомления удалены');
+      await deleteNotif.mutateAsync(id);
+      toast.success('Уведомление удалено');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Не удалось удалить уведомление');
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    if (!unread.length) return;
+
+    try {
+      await Promise.allSettled(unread.map((item) => markRead.mutateAsync(item.id)));
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast.success('Уведомления отмечены прочитанными');
     } catch {
-      toast.error('Не все уведомления удалось удалить');
-    } finally {
-      setDeletingAll(false);
+      toast.error('Не удалось отметить все уведомления');
     }
   };
 
   const modal = (
-    <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center px-4">
-      <div
-        className="w-full max-w-2xl rounded-2xl border bg-white header-shadow overflow-hidden"
-        style={{ borderColor: 'var(--color-green-light)' }}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-6 py-4 border-b"
-          style={{ borderColor: 'var(--color-green-light)' }}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6">
+      <section className="relative flex h-[min(92vh,760px)] w-full max-w-[1060px] flex-col overflow-hidden rounded-[30px] bg-white shadow-[0_18px_45px_rgba(0,0,0,0.22)]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-8 top-8 z-10 flex h-[42px] w-[42px] cursor-pointer items-center justify-center opacity-80 transition hover:opacity-100"
+          aria-label="Закрыть уведомления"
         >
-          <h2 className="text-xl font-semibold text-blue-dark">Уведомления</h2>
-          <div className="flex items-center gap-2">
-            {data.length > 0 && (
+          <img src={EXIT_ICON} alt="" className="h-[38px] w-[38px]" />
+        </button>
+
+        <header className="px-8 pb-6 pt-10 text-center">
+          <h2 className="text-[40px] font-extrabold leading-none text-[var(--color-blue-dark)]">
+            Уведомления
+          </h2>
+        </header>
+
+        {data.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <>
+            <div className="mx-8 h-[3px] shrink-0 bg-[var(--color-blue-soft)]" />
+
+            <div className="notification-scroll min-h-0 flex-1 overflow-y-auto px-8">
+              {data.map((notification) => (
+                <NotificationRow
+                  key={notification.id}
+                  notification={notification}
+                  onOpen={() => handleOpen(notification)}
+                  onDelete={() => handleDelete(notification.id)}
+                  deleting={deleteNotif.isPending}
+                />
+              ))}
+            </div>
+
+            <footer className="shrink-0 bg-white/95 px-8 py-6 shadow-[0_-8px_20px_rgba(31,48,94,0.08)]">
               <button
-                onClick={handleDeleteAll}
-                className="btn btn-danger"
-                disabled={deletingAll || deleteNotif.isPending}
+                type="button"
+                onClick={handleMarkAllRead}
+                disabled={!unread.length || markRead.isPending}
+                className="btn mx-auto flex h-[34px] text-[24px] font-medium text-[#8D96B5] transition hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                {deletingAll ? 'Удаляю…' : 'Удалить все'}
+                Отметить все прочитанным
               </button>
-            )}
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-              aria-label="Закрыть"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* List */}
-        <div className="space-y-2 max-h-96 overflow-y-auto p-4">
-          {data.length === 0 ? (
-            <p className="text-sm text-gray-500">Уведомлений нет</p>
-          ) : (
-            data.slice(0, 10).map((n) => {
-              const isUnread = !n.isRead;
-              const badgeColor = NOTIFICATION_TYPE_COLORS[n.type] ?? 'bg-gray-500';
-              const badgeLabel = NOTIFICATION_TYPE_LABELS[n.type] ?? 'Уведомление';
-
-              return (
-                <div
-                  key={n.id}
-                  className={`group flex items-start gap-3 border rounded-xl px-4 py-3 hover:shadow-sm transition ${
-                    isUnread ? 'bg-blue-50' : 'bg-white'
-                  }`}
-                  style={{ borderColor: 'var(--color-green-light)' }}
-                >
-                  <span
-                    className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium text-white ${badgeColor}`}
-                  >
-                    {badgeLabel}
-                  </span>
-
-                  <button
-                    onClick={() => {
-                      if (isUnread) {
-                        markRead.mutate(n.id);
-                      }
-                      if (n.link) navigate(n.link);
-                      onClose();
-                    }}
-                    className="text-left text-sm text-blue-dark hover:underline flex-1"
-                    title={n.message}
-                  >
-                    <div className={`line-clamp-2 ${isUnread ? 'font-semibold' : ''}`}>
-                      {n.message}
-                    </div>
-                    {n.createdAt && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        {new Date(n.createdAt).toLocaleString('ru-RU')}
-                      </div>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(n.id)}
-                    className="ml-1 text-gray-400 hover:text-red-600"
-                    aria-label="Удалить"
-                    title="Удалить"
-                    disabled={deleteNotif.isPending}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
+            </footer>
+          </>
+        )}
+      </section>
     </div>
   );
 
   return createPortal(modal, document.body);
+}
+
+function NotificationRow({
+  notification,
+  onOpen,
+  onDelete,
+  deleting,
+}: {
+  notification: Notification;
+  onOpen: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  const createdAt = new Date(notification.createdAt);
+  const date = Number.isNaN(createdAt.getTime()) ? '—' : createdAt.toLocaleDateString('ru-RU');
+  const time = Number.isNaN(createdAt.getTime())
+    ? '—'
+    : createdAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const tone = NOTIFICATION_TYPE_TONES[notification.type] ?? 'soft';
+  const label = NOTIFICATION_TYPE_LABELS[notification.type] ?? 'Уведомление';
+
+  return (
+    <article
+      className={`grid min-h-[114px] grid-cols-[minmax(0,1fr)_140px_64px_42px] items-center gap-4 border-b-[3px] border-[var(--color-blue-soft)] px-4 py-4 transition ${
+        notification.isRead ? 'bg-white' : 'bg-[#F4FAFB]'
+      }`}
+    >
+      <div className="min-w-0 self-start">
+        <NotificationBadge tone={tone}>{label}</NotificationBadge>
+        <p className="mt-3 whitespace-pre-line text-[26px] leading-[1.18] text-[#222]">
+          {notification.message}
+        </p>
+      </div>
+
+      <div className="text-right text-[24px] leading-[1.45] text-[#8D96B5]">
+        <div>{date}</div>
+        <div>{time}</div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={!notification.link && notification.isRead}
+        className={`notification-arrow h-[53px] w-[53px] cursor-pointer rounded-[19px] transition disabled:cursor-default ${
+          notification.isRead ? 'opacity-45' : 'opacity-100'
+        }`}
+        aria-label={notification.link ? 'Открыть уведомление' : 'Отметить прочитанным'}
+      >
+        <img src={ARROW_ICON} alt="" className="h-full w-full" />
+      </button>
+
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={deleting}
+        className="flex h-[38px] w-[38px] cursor-pointer items-center justify-center opacity-45 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
+        aria-label="Удалить уведомление"
+      >
+        <img src={EXIT_ICON} alt="" className="h-[26px] w-[26px]" />
+      </button>
+    </article>
+  );
+}
+
+function NotificationBadge({ tone, children }: { tone: NotificationTone; children: string }) {
+  const className =
+    tone === 'dark'
+      ? 'bg-[var(--color-blue-dark)] text-white'
+      : tone === 'danger'
+        ? 'bg-[rgba(255,83,100,0.36)] text-[var(--color-blue-dark)]'
+        : 'bg-[#C7D8FF] text-[var(--color-blue-dark)]';
+
+  return (
+    <span
+      className={`inline-flex h-[40px] items-center rounded-full px-4 text-[26px] font-medium leading-none ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center pb-20">
+      <img src={EMPTY_ICON} alt="" className="h-[173px] w-[140px]" />
+      <p className="mt-[110px] text-[28px] font-extrabold text-[#C0C5D2]">Новых событий нет</p>
+    </div>
+  );
 }

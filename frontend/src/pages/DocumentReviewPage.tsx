@@ -34,7 +34,7 @@ export default function DocumentReviewPage() {
         ? 'var(--color-green-brand)'
         : s === 'UNCONFIRMED'
           ? 'var(--color-blue-dark)'
-          : '#ef4444';
+          : '#FF5364';
 
     return (
       <span
@@ -54,7 +54,7 @@ export default function DocumentReviewPage() {
         ? 'var(--color-green-brand)'
         : st === 'PENDING'
           ? 'var(--color-blue-dark)'
-          : '#ef4444';
+          : '#FF5364';
 
     return (
       <span
@@ -103,7 +103,7 @@ export default function DocumentReviewPage() {
             </div>
 
             {status === 'REJECTED' && request?.comment && (
-              <p className="text-sm text-red-700">
+              <p className="text-sm text-[#FF5364]">
                 Комментарий модератора: <span className="font-medium">{request.comment}</span>
               </p>
             )}

@@ -147,7 +147,7 @@ export function UserLocationFields({ countries, cities, onChange }: Props) {
     <>
       <div>
         <label className="block text-sm mb-1 text-blue-dark">
-          Страны<span className="text-red-500 ml-1">*</span>
+          Страны<span className="text-[#FF5364] ml-1">*</span>
         </label>
         <Select
           isMulti
@@ -165,7 +165,7 @@ export function UserLocationFields({ countries, cities, onChange }: Props) {
 
       <div>
         <label className="block text-sm mb-1 text-blue-dark">
-          Города<span className="text-red-500 ml-1">*</span>
+          Города<span className="text-[#FF5364] ml-1">*</span>
         </label>
         <AsyncCreatableSelect
           isMulti

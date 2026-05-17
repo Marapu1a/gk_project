@@ -5,7 +5,7 @@ import { useSetTargetLevel } from '@/features/user/hooks/useSetTargetLevel';
 import type { TargetLevel as ApiTargetLevel } from '@/features/user/api/setTargetLevel';
 import type { CurrentUser } from '@/features/auth/api/me';
 import { isTargetLocked } from '@/features/auth/api/me';
-import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 const LEVELS = ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'] as const;
 type Level = (typeof LEVELS)[number];
@@ -91,6 +91,7 @@ type Props = {
 
 export function TargetLevelSelector({ user, isAdmin }: Props) {
   const setTarget = useSetTargetLevel(user.id);
+  const { confirm } = useConfirm();
 
   const [selected, setSelected] = useState<Level | ''>((user.targetLevel ?? '') as Level | '');
 
@@ -165,7 +166,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (saveDisabled) return;
 
     const nextTarget = selected === '' ? null : (selected as ApiTargetLevel);
@@ -184,23 +185,15 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
         label = 'Опытный супервизор';
       }
 
-      toast(
-        isRenewalChoice
-          ? `Вы выбираете ресертификацию уровня «${label}». Изменить цель будет нельзя, пока цикл не завершён.`
-          : `Вы выбираете уровень «${label}». Изменить цель будет нельзя, пока цикл не завершён.`,
-        {
-          action: {
-            label: 'Подтвердить',
-            onClick: () => doMutate(nextTarget, goalMode),
-          },
-          cancel: {
-            label: 'Отмена',
-            onClick: () => {
-              //
-            },
-          },
-        },
-      );
+      const ok = await confirm({
+        message: isRenewalChoice
+          ? `Вы выбираете ресертификацию уровня «${label}».`
+          : `Вы выбираете уровень «${label}».`,
+        description: 'Изменить цель будет нельзя, пока цикл не завершён.',
+        confirmLabel: 'Подтвердить',
+      });
+
+      if (ok) doMutate(nextTarget, goalMode);
     } else {
       doMutate(null, 'CERTIFICATION');
     }
@@ -250,7 +243,7 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
           </Button>
 
           {setTarget.isError && (
-            <span className="text-red-600">{lockedMsg ?? 'Ошибка сохранения цели'}</span>
+            <span className="text-[#FF5364]">{lockedMsg ?? 'Ошибка сохранения цели'}</span>
           )}
           {setTarget.isSuccess && <span className="text-green-600">Цель обновлена</span>}
         </div>

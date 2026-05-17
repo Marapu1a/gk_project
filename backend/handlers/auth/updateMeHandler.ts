@@ -11,6 +11,17 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
   const userId = req.user?.userId;
   if (!userId) return reply.code(401).send({ error: 'Не авторизован' });
 
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { archivedAt: true },
+  });
+  if (!currentUser) return reply.code(404).send({ error: 'Пользователь не найден' });
+  if (currentUser.archivedAt) {
+    return reply.code(403).send({
+      error: 'Аккаунт удалён, для восстановления свяжитесь с нами',
+    });
+  }
+
   const parsed = updateMeSchema.safeParse(req.body);
   if (!parsed.success) {
     return reply.code(400).send({ error: 'Неверные данные', details: parsed.error.flatten() });
@@ -33,6 +44,7 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
   if (body.city !== undefined) data.city = body.city.trim();
   if (body.avatarUrl !== undefined) data.avatarUrl = body.avatarUrl.trim();
   if (body.bio !== undefined) data.bio = body.bio.trim();
+  if (body.ibaoId !== undefined) data.ibaoId = body.ibaoId.trim() || null;
 
   if (Object.keys(data).length === 0) {
     return reply.code(400).send({ error: 'Нет данных для обновления' });
@@ -48,12 +60,14 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
       role: true,
       fullName: true,
       fullNameLatin: true,
+      registrationNumber: true,
       phone: true,
       birthDate: true,
       country: true,
       city: true,
       avatarUrl: true,
       bio: true,
+      ibaoId: true,
       targetLevel: true,       // ← добавлено
       targetLockRank: true,    // ← добавлено
       groups: { include: { group: { select: { id: true, name: true, rank: true } } } },
@@ -75,12 +89,14 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
     role: updated.role,
     fullName: updated.fullName,
     fullNameLatin: updated.fullNameLatin,
+    registrationNumber: updated.registrationNumber,
     phone: updated.phone,
     birthDate: updated.birthDate,
     country: updated.country,
     city: updated.city,
     avatarUrl: updated.avatarUrl,
     bio: updated.bio,
+    ibaoId: updated.ibaoId,
     targetLevel: updated.targetLevel,
     targetLockRank: updated.targetLockRank,
     groups: groupList.map(({ id, name }) => ({ id, name })),

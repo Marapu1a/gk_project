@@ -378,7 +378,7 @@ export function SupervisionRequestForm() {
                   type="button"
                   onClick={() => remove(index)}
                   disabled={isSubmitting || fields.length === 1}
-                  className="px-3 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 transition disabled:opacity-50"
+                  className="px-3 py-1 text-sm font-medium text-white bg-[#FF5364] rounded hover:bg-[#FF5364] transition disabled:opacity-50"
                 >
                   Удалить
                 </button>

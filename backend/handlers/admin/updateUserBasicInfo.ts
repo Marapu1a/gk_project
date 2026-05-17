@@ -10,6 +10,7 @@ const updateUserSchema = z.object({
   birthDate: z.string().datetime().nullable().optional(),
   country: z.string().max(100).nullable().optional(),
   city: z.string().max(100).nullable().optional(),
+  ibaoId: z.string().max(100).nullable().optional(),
 });
 
 export async function updateUserBasicInfoHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -35,6 +36,7 @@ export async function updateUserBasicInfoHandler(req: FastifyRequest, reply: Fas
       birthDate: true,
       country: true,
       city: true,
+      ibaoId: true,
     },
   });
 

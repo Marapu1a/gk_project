@@ -9,6 +9,7 @@ import { deleteUserHandler } from '../handlers/users/deleteUser';
 import { setTargetLevelHandler } from '../handlers/users/setTargetLevel';
 import { abandonActiveCycleHandler } from '../handlers/users/abandonActiveCycle';
 import { getReviewerSuggestionsHandler } from '../handlers/users/getReviewerSuggestionsHandler';
+import { requestProfileArchiveHandler } from '../handlers/users/requestProfileArchive';
 
 export async function moderatorsRoutes(app: FastifyInstance) {
   app.get('/moderators', { preHandler: [verifyToken] }, getModeratorsHandler);
@@ -19,6 +20,7 @@ export async function moderatorsRoutes(app: FastifyInstance) {
   app.patch('/users/:userId/bio', { preHandler: [verifyToken] }, setUserBioHandler);
   app.patch('/users/:id/target-level', { preHandler: [verifyToken] }, setTargetLevelHandler);
   app.patch('/users/:id/abandon-cycle', { preHandler: [verifyToken] }, abandonActiveCycleHandler);
+  app.post('/users/me/archive-request', { preHandler: [verifyToken] }, requestProfileArchiveHandler);
 
   app.delete('/admin/users/:id', { preHandler: [verifyToken] }, deleteUserHandler);
 }

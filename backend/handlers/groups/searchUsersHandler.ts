@@ -23,6 +23,7 @@ export async function searchUsersHandler(
 
   const users = await prisma.user.findMany({
     where: {
+      archivedAt: null,
       OR: [
         { email: { contains: q, mode: 'insensitive' } },
         { AND: tokens.map(t => ({ fullName: { contains: t, mode: 'insensitive' } })) },

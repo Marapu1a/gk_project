@@ -6,6 +6,7 @@ import { useUserGroupsById } from '@/features/groups/hooks/useUserGroupsById';
 import { useUpdateUserGroups } from '@/features/groups/hooks/useUpdateUserGroups';
 import { useAbandonActiveCycle } from '@/features/admin/hooks/useAbandonActiveCycle';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import { useUpdateTargetLevel } from '@/features/admin/hooks/useUpdateTargetLevel';
@@ -71,6 +72,7 @@ type ActionOption = {
 export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
   const { data, isLoading, error } = useUserGroupsById(userId, true);
   const mutation = useUpdateUserGroups(userId);
+  const { confirm } = useConfirm();
 
   const { data: currentUser } = useQuery({
     queryKey: ['me'],
@@ -100,12 +102,10 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const save = async () => {
-    const ok = await new Promise<boolean>((resolve) =>
-      toast('Сохранить изменения групп пользователя?', {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      }),
-    );
+    const ok = await confirm({
+      message: 'Сохранить изменения групп пользователя?',
+      confirmLabel: 'Сохранить',
+    });
 
     if (!ok) return;
 

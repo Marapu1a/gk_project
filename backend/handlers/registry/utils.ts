@@ -46,6 +46,7 @@ export async function getRegistryList({
   const where: any = {
     role: { not: 'ADMIN' },
     isProfileVisible: true,
+    archivedAt: null,
   };
   if (country) where.country = country;
   if (city) where.city = city;
@@ -118,6 +119,7 @@ export async function getRegistryProfile(userId: string) {
       avatarUrl: true,
       createdAt: true,
       bio: true,
+      archivedAt: true,
       // активная группа
       groups: { include: { group: { select: { name: true, rank: true } } } },
       certificates: {
@@ -137,6 +139,7 @@ export async function getRegistryProfile(userId: string) {
   });
 
   if (!user) return null;
+  if ((user as any).archivedAt) return null;
 
   const top = user.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank)[0];
   const c = user.certificates[0] || null;

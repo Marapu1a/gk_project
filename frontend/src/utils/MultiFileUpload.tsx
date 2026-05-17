@@ -6,6 +6,7 @@ import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabel
 import { useUpdateFileType } from '@/features/documentReview/hooks/useUpdateFileType';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 export type UploadedFile = {
   id: string;
@@ -28,6 +29,7 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const updateFileType = useUpdateFileType();
+  const { confirm } = useConfirm();
 
   const initRef = useRef(false);
   useEffect(() => {
@@ -50,14 +52,6 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
     onChange(newFiles);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newFiles));
   };
-
-  const confirmToast = (message: string) =>
-    new Promise<boolean>((resolve) => {
-      toast(message, {
-        action: { label: 'Да', onClick: () => resolve(true) },
-        cancel: { label: 'Отмена', onClick: () => resolve(false) },
-      });
-    });
 
   const handleDrop = async (accepted: File[]) => {
     if (!accepted.length || disabled || files.length >= MAX_FILES) return;
@@ -88,7 +82,15 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
 
   const handleDelete = async (id: string) => {
     if (disabled) return;
-    if (!(await confirmToast('Удалить файл?'))) return;
+    if (
+      !(await confirm({
+        message: 'Удалить файл?',
+        confirmLabel: 'Удалить',
+        variant: 'danger',
+      }))
+    ) {
+      return;
+    }
     try {
       await deleteFile(id);
       toast.success('Файл удалён');
@@ -162,7 +164,7 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
               }}
             />
           ) : file.mimeType === 'application/pdf' ? (
-            <div className="w-16 h-16 flex items-center justify-center border rounded bg-red-100 text-red-600 font-bold">
+            <div className="w-16 h-16 flex items-center justify-center border rounded bg-[#FF5364] text-white font-bold">
               PDF
             </div>
           ) : (
@@ -189,7 +191,7 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
           <button
             type="button"
             onClick={() => handleDelete(file.id)}
-            className="p-1 text-red-500 hover:text-red-700 transition disabled:opacity-50"
+            className="p-1 text-[#FF5364] hover:text-[#FF5364] transition disabled:opacity-50"
             title="Удалить файл"
             disabled={disabled}
           >

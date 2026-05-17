@@ -355,12 +355,14 @@ export async function getReviewerCandidateDetailsHandler(
       fullName: true,
       email: true,
       avatarUrl: true,
+      archivedAt: true,
       targetLevel: true,
       groups: { select: { group: { select: { id: true, name: true, rank: true } } } },
     },
   });
 
   if (!candidate) return reply.code(404).send({ error: 'Кандидат не найден' });
+  if (candidate.archivedAt) return reply.code(404).send({ error: 'Кандидат не найден' });
 
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId: candidateId, status: CycleStatus.ACTIVE },

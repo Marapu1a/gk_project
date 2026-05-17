@@ -15,6 +15,7 @@ export const updateMeSchema = z
     city: z.string().trim().max(100).optional(),
     avatarUrl: z.string().trim().max(500).optional(),
     bio: z.string().trim().max(500).optional(),
+    ibaoId: z.string().trim().max(100).optional(),
   })
   .strict(); // лишние поля — 400
 
