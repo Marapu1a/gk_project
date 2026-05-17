@@ -6,6 +6,8 @@ import { getPaymentLink } from '@/utils/getPaymentLink';
 import type { PaymentItem } from '@/features/payment/api/getUserPayments';
 import { useSubmitPaymentMark } from '@/features/payment/hooks/useSubmitPaymentMark';
 
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+
 type PaymentModalProps = {
   payment: PaymentItem | null;
   payments: PaymentItem[];
@@ -114,17 +116,10 @@ export function PaymentModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-[rgba(31,48,94,0.14)] text-[#1F305E] transition hover:bg-[rgba(31,48,94,0.05)]"
+            className="flex h-11 w-11 cursor-pointer items-center justify-center opacity-65 transition hover:opacity-100"
             aria-label="Закрыть"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M6 6L18 18M18 6L6 18"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
+            <img src={EXIT_ICON} alt="" className="h-6 w-6" />
           </button>
         </div>
 

@@ -347,9 +347,14 @@ export function CertificationBlock({ user }: Props) {
           <p>
             Если допустили ошибку,
             <br />
-            <span className="text-blue-dark underline underline-offset-2">
+            <a
+              href="https://reestrpap.ru/contacts"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cursor-pointer text-blue-dark underline underline-offset-2"
+            >
               обратитесь к администрации
-            </span>
+            </a>
           </p>
         </div>
 

@@ -1,136 +1,252 @@
 // src/features/certificate/components/MyCertificatesBlock.tsx
-import { useMemo, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { Mail, Printer, Send } from 'lucide-react';
+import { toast } from 'sonner';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
+
 import { useMyCertificates } from '../hooks/useMyCertificates';
+import type { CertificateDTO } from '../api/issueCertificate';
+
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+
+function fileUrl(cert: CertificateDTO) {
+  return `/uploads/${cert.file.fileId}`;
+}
+
+function fileName(cert: CertificateDTO) {
+  const safeTitle = cert.title?.trim() || 'certificate';
+  const safeNumber = cert.number?.trim() || cert.id;
+  return `${safeTitle}-${safeNumber}.pdf`.replace(/[\\/:*?"<>|]+/g, '-');
+}
 
 export function MyCertificatesBlock() {
   const { data, isLoading, error } = useMyCertificates(true);
-  const [showHistory, setShowHistory] = useState(false);
+  const [selected, setSelected] = useState<CertificateDTO | null>(null);
 
   const certs = data ?? [];
-  const active = useMemo(() => {
-    if (!certs.length) return null;
-    return certs.find((c) => c.isActiveNow) ?? certs[0];
-  }, [certs]);
 
-  const history = useMemo(
-    () => (active ? certs.filter((c) => c.id !== active.id) : []),
-    [certs, active],
-  );
+  if (isLoading) {
+    return <p className="text-[14px] text-[#6B7894]">Загрузка сертификатов...</p>;
+  }
 
-  if (isLoading) return <p className="text-sm text-blue-dark">Загрузка…</p>;
-  if (error) return <p className="text-error">Ошибка загрузки сертификатов</p>;
-  if (!active)
+  if (error) {
+    return <p className="text-[14px] text-[#FF5364]">Ошибка загрузки сертификатов</p>;
+  }
+
+  if (!certs.length) {
     return (
-      <div
-        className="rounded-2xl border header-shadow bg-white p-6 text-sm"
-        style={{ borderColor: 'var(--color-green-light)' }}
-      >
+      <section className="card-section mx-auto max-w-[720px] text-center text-[16px] text-[#6B7894] shadow-soft">
         У вас пока нет выданных сертификатов.
-      </div>
+      </section>
     );
-
-  const link = `/uploads/${active.file.fileId}`;
-
-  const StatusPill = ({ active }: { active: boolean }) => (
-    <span
-      className="text-xs px-2 py-0.5 rounded-full text-white"
-      style={{
-        background: active ? 'var(--color-green-brand)' : 'var(--color-blue-dark)',
-      }}
-    >
-      {active ? 'Активный' : 'Истёк'}
-    </span>
-  );
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Текущий сертификат */}
+    <>
+      <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        {certs.map((cert) => (
+          <button
+            key={cert.id}
+            type="button"
+            onClick={() => setSelected(cert)}
+            className="group flex min-h-[408px] cursor-pointer items-center justify-center rounded-[10px] border border-[#B8C4D8] bg-white p-5 transition hover:border-[var(--color-blue-dark)] hover:shadow-soft"
+            title="Открыть сертификат"
+          >
+            <CertificatePreview cert={cert} className="h-full max-h-[368px] w-full" />
+          </button>
+        ))}
+      </section>
+
+      {selected ? (
+        <CertificateModal cert={selected} onClose={() => setSelected(null)} />
+      ) : null}
+    </>
+  );
+}
+
+function CertificatePreview({ cert, className = '' }: { cert: CertificateDTO; className?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [failed, setFailed] = useState(false);
+  const url = fileUrl(cert);
+
+  useEffect(() => {
+    let cancelled = false;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    async function renderPdf() {
+      try {
+        setFailed(false);
+        const pdfjs = await import('pdfjs-dist');
+        pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+        const loadingTask = pdfjs.getDocument(url);
+        const pdf = await loadingTask.promise;
+        if (cancelled) return;
+
+        const page = await pdf.getPage(1);
+        if (cancelled) return;
+
+        const baseViewport = page.getViewport({ scale: 1 });
+        const targetWidth = 760;
+        const scale = targetWidth / baseViewport.width;
+        const viewport = page.getViewport({ scale });
+        const context = canvas.getContext('2d');
+
+        if (!context) {
+          setFailed(true);
+          return;
+        }
+
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        await page.render({ canvasContext: context, viewport }).promise;
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    }
+
+    renderPdf();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  if (failed) {
+    return (
       <div
-        className="rounded-2xl border header-shadow bg-white overflow-hidden"
-        style={{ borderColor: 'var(--color-green-light)' }}
+        className={`flex items-center justify-center rounded-[4px] border border-[#DCE3EF] bg-[#F4F6FA] text-[18px] font-extrabold text-[#8D96B5] ${className}`}
       >
-        <div
-          className="px-6 py-4 border-b flex items-center justify-between"
-          style={{ borderColor: 'var(--color-green-light)' }}
+        PDF
+      </div>
+    );
+  }
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={`object-contain ${className}`}
+      aria-label={cert.title || 'Сертификат'}
+    />
+  );
+}
+
+function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: () => void }) {
+  const url = fileUrl(cert);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  const handlePrint = () => {
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+
+      window.setTimeout(() => iframe.remove(), 1000);
+    };
+  };
+
+  const showTemporaryUnavailable = () => {
+    toast.info('Отправка пока не работает. Скачайте сертификат и отправьте файл вручную.');
+  };
+
+  const modal = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-5">
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        onClick={onClose}
+        aria-label="Закрыть просмотр сертификата"
+      />
+
+      <div className="relative z-10 flex max-h-[96vh] w-full max-w-[760px] flex-col items-center">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-[34px] top-[-34px] flex h-11 w-11 cursor-pointer items-center justify-center opacity-80 transition hover:opacity-100"
+          aria-label="Закрыть"
+          title="Закрыть"
         >
-          <h3 className="text-lg font-semibold text-blue-dark">Мой сертификат</h3>
-          <StatusPill active={!!active.isActiveNow} />
-        </div>
+          <img src={EXIT_ICON} alt="" className="h-6 w-6 brightness-0 invert" />
+        </button>
 
-        <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          <div>
-            <span className="text-gray-500">Название:</span> {active.title}
-          </div>
-          <div>
-            <span className="text-gray-500">Номер:</span> {active.number}
-          </div>
-          <div>
-            <span className="text-gray-500">Группа:</span> {active.group.name}
-          </div>
-          <div>
-            <span className="text-gray-500">Выдан:</span>{' '}
-            {new Date(active.issuedAt).toLocaleDateString('ru-RU')}
-          </div>
-          <div className={active.isExpired ? 'text-[#FF5364]' : ''}>
-            <span className="text-gray-500">Действует до:</span>{' '}
-            {new Date(active.expiresAt).toLocaleDateString('ru-RU')}
+        <div className="flex max-h-[calc(96vh-82px)] w-full items-center justify-center">
+          <div className="rounded-[6px] bg-white p-2 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
+            <CertificatePreview cert={cert} className="max-h-[calc(96vh-98px)] max-w-full" />
           </div>
         </div>
 
-        <div className="px-6 pb-5">
-          <a href={link} target="_blank" rel="noreferrer" className="text-brand underline text-sm">
-            Открыть файл
+        <div className="mt-4 flex w-full max-w-[410px] items-center justify-between gap-5">
+          <a
+            href={url}
+            download={fileName(cert)}
+            className="btn h-[44px] min-w-[126px] rounded-[8px] border-2 border-white px-6 text-[14px] font-extrabold text-white hover:bg-white/10"
+          >
+            Скачать
           </a>
+
+          <div className="flex items-center gap-3">
+            <IconAction title="Отправить по email" onClick={showTemporaryUnavailable}>
+              <Mail size={22} />
+            </IconAction>
+
+            <IconAction title="Отправить в мессенджере" onClick={showTemporaryUnavailable}>
+              <Send size={22} />
+            </IconAction>
+
+            <IconAction title="Распечатать" onClick={handlePrint}>
+              <Printer size={22} />
+            </IconAction>
+          </div>
         </div>
       </div>
-
-      {/* История */}
-      {history.length > 0 && (
-        <div
-          className="rounded-2xl border header-shadow bg-white overflow-hidden"
-          style={{ borderColor: 'var(--color-green-light)' }}
-        >
-          <div
-            className="px-6 py-4 border-b flex items-center justify-between"
-            style={{ borderColor: 'var(--color-green-light)' }}
-          >
-            <h4 className="text-blue-dark font-semibold">История сертификатов</h4>
-            <button
-              type="button"
-              onClick={() => setShowHistory((v) => !v)}
-              className="text-sm text-brand underline"
-            >
-              {showHistory ? 'Скрыть' : `Показать (${history.length})`}
-            </button>
-          </div>
-
-          {showHistory && (
-            <ul className="px-6 py-3 divide-y" style={{ borderColor: 'var(--color-green-light)' }}>
-              {history.map((c) => (
-                <li key={c.id} className="py-3 flex items-center justify-between">
-                  <div className="text-sm">
-                    <div className="font-medium">
-                      {c.title} — №{c.number}
-                    </div>
-                    <div className="text-gray-500">
-                      {c.group.name} · выдан {new Date(c.issuedAt).toLocaleDateString('ru-RU')} · до{' '}
-                      {new Date(c.expiresAt).toLocaleDateString('ru-RU')}
-                    </div>
-                  </div>
-                  <a
-                    href={`/uploads/${c.file.fileId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-brand underline"
-                  >
-                    Файл
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
     </div>
+  );
+
+  return createPortal(modal, document.body);
+}
+
+function IconAction({
+  title,
+  onClick,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="btn h-[36px] w-[36px] rounded-[8px] border-2 border-white text-white hover:bg-white/10"
+    >
+      {children}
+    </button>
   );
 }

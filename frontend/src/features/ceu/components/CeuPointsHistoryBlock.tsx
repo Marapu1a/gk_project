@@ -3,6 +3,8 @@ import { format } from 'date-fns';
 import { useCeuHistory } from '../hooks/useCeuHistory';
 import type { CeuHistoryItem } from '../api/getCeuHistory';
 
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+
 const categoryLabels: Record<string, string> = {
   ETHICS: 'Этика',
   CULTURAL_DIVERSITY: 'Культурное разнообразие',
@@ -130,10 +132,10 @@ function CeuDetailsModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-5 top-4 cursor-pointer text-[34px] leading-none text-[#A7B1C7]"
+          className="absolute right-4 top-3 flex h-11 w-11 cursor-pointer items-center justify-center opacity-55 transition hover:opacity-100"
           aria-label="Закрыть"
         >
-          ×
+          <img src={EXIT_ICON} alt="" className="h-5 w-5" />
         </button>
 
         <h3 className="mb-6 text-center text-[22px] font-extrabold text-[#1F305E]">

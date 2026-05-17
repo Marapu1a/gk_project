@@ -1,6 +1,7 @@
 import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
 import { type UploadedFile } from '@/utils/MultiFileUpload';
-import { X } from 'lucide-react';
+
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
 interface Props {
   files: UploadedFile[];
@@ -52,11 +53,12 @@ export function DocumentReviewTable({ files, onDelete, onTypeChange, disabled }:
           <button
             type="button"
             onClick={() => onDelete(file.id)}
-            className="p-1 text-[#FF5364] hover:text-[#FF5364] transition"
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full opacity-65 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
             title="Удалить файл"
+            aria-label="Удалить файл"
             disabled={disabled}
           >
-            <X className="w-5 h-5" />
+            <img src={EXIT_ICON} alt="" className="h-5 w-5" />
           </button>
         </div>
       ))}

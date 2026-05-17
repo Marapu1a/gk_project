@@ -7,6 +7,8 @@ import type {
   ReviewerCandidateRequest,
 } from '../../api/getReviewerCandidateDetails';
 
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+
 type CandidateRequestDetailsModalProps = {
   kind: ReviewerCandidateKind;
   request: ReviewerCandidateRequest;
@@ -111,10 +113,10 @@ export function CandidateRequestDetailsModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-5 top-4 cursor-pointer text-[34px] leading-none text-[#A7B1C7]"
+          className="absolute right-4 top-3 flex h-11 w-11 cursor-pointer items-center justify-center opacity-55 transition hover:opacity-100"
           aria-label="Закрыть"
         >
-          ×
+          <img src={EXIT_ICON} alt="" className="h-5 w-5" />
         </button>
 
         <h3 className="mb-5 text-center text-[22px] font-extrabold text-[#1F305E]">

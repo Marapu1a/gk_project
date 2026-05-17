@@ -10,6 +10,7 @@ import {
 } from '../hooks/useSupervisionContracts';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_SIZE_MB = 10;
 
 const norm = (value: string) => value.toLowerCase().normalize('NFKC').trim();
@@ -293,11 +294,11 @@ export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?
                       type="button"
                       onClick={() => handleDelete(contract.id)}
                       disabled={deleteContract.isPending}
-                      className="btn h-[32px] w-[32px] rounded-full border border-[#A7B1C7] text-[18px] leading-none text-[#1F305E] disabled:opacity-50"
+                      className="flex h-[36px] w-[36px] shrink-0 cursor-pointer items-center justify-center rounded-full opacity-65 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
                       aria-label="Удалить контракт"
                       title="Удалить контракт"
                     >
-                      ×
+                      <img src={EXIT_ICON} alt="" className="h-5 w-5" />
                     </button>
                   </div>
                 ))

@@ -5,6 +5,8 @@ import { useDropzone, type Accept } from 'react-dropzone';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { deleteFile } from '@/features/files/api/deleteFile';
 
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+
 export type UploadedFile = {
   id: string;
   fileId: string;
@@ -223,11 +225,12 @@ export function FileUpload({
           <button
             type="button"
             onClick={handleDelete}
-            className="text-[#FF5364] hover:text-[#FF5364] text-lg font-bold"
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full opacity-65 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
             title="Удалить"
+            aria-label="Удалить файл"
             disabled={disabled || uploading}
           >
-            ×
+            <img src={EXIT_ICON} alt="" className="h-5 w-5" />
           </button>
         </div>
       )}

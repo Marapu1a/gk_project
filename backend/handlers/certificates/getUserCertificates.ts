@@ -36,7 +36,7 @@ export async function getUserCertificatesHandler(
       isRenewal: c.isRenewal,
       previousId: c.previousId,
       group: { id: c.group.id, name: c.group.name, rank: c.group.rank },
-      file: { id: c.file.id, name: c.file.name, fileId: c.file.fileId },
+      file: { id: c.file.id, name: c.file.name, fileId: c.file.fileId, mimeType: c.file.mimeType },
       confirmedBy: c.confirmedBy
         ? { id: c.confirmedBy.id, email: c.confirmedBy.email, fullName: c.confirmedBy.fullName }
         : null,

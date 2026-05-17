@@ -10,6 +10,8 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+
 type ConfirmVariant = 'primary' | 'danger';
 
 export type ConfirmOptions = {
@@ -121,10 +123,10 @@ function ConfirmDialog({
         <button
           type="button"
           onClick={() => onClose(false)}
-          className="absolute right-5 top-4 flex h-7 w-7 cursor-pointer items-center justify-center text-[#A7B1C7] transition hover:text-[var(--color-blue-dark)]"
+          className="absolute right-4 top-4 flex h-11 w-11 cursor-pointer items-center justify-center opacity-65 transition hover:opacity-100"
           aria-label="Закрыть"
         >
-          <span className="block h-[24px] w-[24px] text-[36px] font-light leading-[20px]">×</span>
+          <img src={EXIT_ICON} alt="" className="h-6 w-6" />
         </button>
 
         <h2

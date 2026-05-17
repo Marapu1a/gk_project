@@ -12,7 +12,7 @@ export type CertificateDTO = {
   cycleId: string | null;
 
   group: { id: string; name: string; rank: number };
-  file: { id: string; name: string; fileId: string };
+  file: { id: string; name: string; fileId: string; mimeType?: string | null };
   confirmedBy: { id: string; email: string; fullName: string } | null;
 
   isActiveNow: boolean;

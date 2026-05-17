@@ -4,9 +4,10 @@ import { uploadFile } from '@/features/files/api/uploadFile';
 import { deleteFile } from '@/features/files/api/deleteFile';
 import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
 import { useUpdateFileType } from '@/features/documentReview/hooks/useUpdateFileType';
-import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
 export type UploadedFile = {
   id: string;
@@ -191,11 +192,12 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
           <button
             type="button"
             onClick={() => handleDelete(file.id)}
-            className="p-1 text-[#FF5364] hover:text-[#FF5364] transition disabled:opacity-50"
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full opacity-65 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
             title="Удалить файл"
+            aria-label="Удалить файл"
             disabled={disabled}
           >
-            <X className="w-5 h-5" />
+            <img src={EXIT_ICON} alt="" className="h-5 w-5" />
           </button>
         </div>
       ))}

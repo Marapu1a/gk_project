@@ -1,25 +1,44 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { MyCertificatesBlock } from '@/features/certificate/components/MyCertificatesBlock';
-import { BackButton } from '@/components/BackButton';
 
 export default function MyCertificatesPage() {
+  const navigate = useNavigate();
   const { data: me, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isLoading) return <p>Загрузка…</p>;
-  if (!me) return <p className="text-[#FF5364]">401: Не авторизован</p>;
+  if (isLoading) {
+    return <div className="min-h-screen bg-[#F0F0F0] p-6 text-blue-dark">Загрузка...</div>;
+  }
+
+  if (!me) {
+    return <div className="min-h-screen bg-[#F0F0F0] p-6 text-[#FF5364]">401: Не авторизован</div>;
+  }
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-blue-dark">Мои сертификаты</h1>
-        <BackButton />
-      </div>
-      <MyCertificatesBlock />
+    <div className="min-h-screen bg-[#F0F0F0] px-5 pb-12 pt-4 text-blue-dark">
+      <button
+        type="button"
+        onClick={() => navigate('/dashboard-v2')}
+        className="btn h-[30px] rounded-full border border-[#8D96B5] px-3 text-[14px] text-[#53617F] hover:bg-white"
+      >
+        ← Профиль
+      </button>
+
+      <header className="mb-7 text-center">
+        <h1 className="text-[28px] font-extrabold leading-none text-[var(--color-blue-dark)]">
+          Мои сертификаты
+        </h1>
+      </header>
+
+      <main className="mx-auto max-w-[1160px]">
+        <MyCertificatesBlock />
+      </main>
     </div>
   );
 }

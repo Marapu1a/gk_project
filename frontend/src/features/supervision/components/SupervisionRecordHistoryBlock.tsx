@@ -3,6 +3,8 @@ import { format } from 'date-fns';
 import { useSupervisionRecordHistory } from '../hooks/useSupervisionRecordHistory';
 import type { SupervisionRecordHistoryItem } from '../api/getSupervisionRecordHistory';
 
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+
 function formatDate(value: string | null | undefined) {
   if (!value) return '—';
   return format(new Date(value), 'dd.MM.yyyy');
@@ -146,10 +148,10 @@ function SupervisionRecordDetailsModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 text-[28px] leading-none text-[#A7B1C7]"
+          className="absolute right-3 top-3 flex h-11 w-11 cursor-pointer items-center justify-center opacity-55 transition hover:opacity-100"
           aria-label="Закрыть"
         >
-          ×
+          <img src={EXIT_ICON} alt="" className="h-5 w-5" />
         </button>
 
         <h3 className="mb-5 text-center text-[18px] font-extrabold text-[#1F305E]">
