@@ -27,6 +27,10 @@ export async function deleteNotification(id: string): Promise<void> {
   await api.delete(`/notifications/${id}`);
 }
 
+export async function deleteAllNotifications(): Promise<void> {
+  await api.delete('/notifications');
+}
+
 // 👇 новое — отметить как прочитанное
 export async function markNotificationRead(id: string): Promise<void> {
   await api.patch(`/notifications/${id}/read`);

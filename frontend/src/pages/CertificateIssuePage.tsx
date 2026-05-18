@@ -15,17 +15,22 @@ export default function CertificateIssuePage() {
     return <p className="text-[#FF5364]">403: Доступ только для админов</p>;
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-blue-dark">Выдать сертификат</h1>
-        <BackButton />
-      </div>
+    <div className="min-h-screen bg-[#F0F0F0] px-4 pb-12 pt-4">
+      <div className="relative mx-auto w-full max-w-[1100px]">
+        <div className="absolute left-0 top-0">
+          <BackButton />
+        </div>
 
-      <AdminIssueCertificateForm
-        onSuccess={() => {
-          /* при желании: инвалидация/тост */
-        }}
-      />
+        <h1 className="dashboard-v2-title text-center">Выдать сертификат</h1>
+
+        <div className="mt-8">
+          <AdminIssueCertificateForm
+            onSuccess={() => {
+              /* при желании: инвалидация/тост */
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }

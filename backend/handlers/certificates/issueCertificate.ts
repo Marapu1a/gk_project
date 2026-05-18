@@ -106,6 +106,9 @@ export async function issueCertificateHandler(
 
   const file = await prisma.uploadedFile.findUnique({ where: { id: uploadedFileId } });
   if (!file) return reply.code(404).send({ error: 'Файл не найден' });
+  if (file.mimeType !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    return reply.code(422).send({ error: 'CERTIFICATE_FILE_MUST_BE_PDF' });
+  }
 
   const existingByFile = await prisma.certificate.findUnique({ where: { fileId: file.id } });
   if (existingByFile) {

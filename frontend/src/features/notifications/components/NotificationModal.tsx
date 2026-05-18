@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import {
   useNotifications,
+  useDeleteAllNotifications,
   useDeleteNotification,
   useMarkNotificationRead,
 } from '../hooks/useNotifications';
@@ -24,6 +25,7 @@ const EMPTY_ICON = '/dashboard-v2/icon_notification_bell.svg';
 export function NotificationModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data = [] } = useNotifications();
   const deleteNotif = useDeleteNotification();
+  const deleteAllNotif = useDeleteAllNotifications();
   const markRead = useMarkNotificationRead();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -73,6 +75,26 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (!data.length) return;
+
+    const ok = await confirm({
+      message: 'Удалить все уведомления?',
+      description: 'Это действие очистит весь список уведомлений.',
+      confirmLabel: 'Удалить',
+      variant: 'danger',
+    });
+
+    if (!ok) return;
+
+    try {
+      await deleteAllNotif.mutateAsync();
+      toast.success('Уведомления удалены');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Не удалось удалить уведомления');
+    }
+  };
+
   const modal = (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6">
       <section className="relative flex h-[min(92vh,760px)] w-full max-w-[1060px] flex-col overflow-hidden rounded-[30px] bg-white shadow-[0_18px_45px_rgba(0,0,0,0.22)]">
@@ -109,14 +131,23 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
               ))}
             </div>
 
-            <footer className="shrink-0 bg-white/95 px-8 py-6 shadow-[0_-8px_20px_rgba(31,48,94,0.08)]">
+            <footer className="flex shrink-0 items-center justify-between gap-4 bg-white/95 px-8 py-6 shadow-[0_-8px_20px_rgba(31,48,94,0.08)]">
               <button
                 type="button"
                 onClick={handleMarkAllRead}
                 disabled={!unread.length || markRead.isPending}
-                className="btn mx-auto flex h-[34px] text-[24px] font-medium text-[#8D96B5] transition hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
+                className="btn flex h-[34px] cursor-pointer text-[24px] font-medium text-[#8D96B5] transition hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 Отметить все прочитанным
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteAll}
+                disabled={!data.length || deleteAllNotif.isPending}
+                className="btn flex h-[34px] cursor-pointer text-[24px] font-medium text-[var(--color-danger)] transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Удалить все уведомления
               </button>
             </footer>
           </>

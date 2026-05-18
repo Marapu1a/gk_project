@@ -71,7 +71,6 @@ select {
   line-height: 1;
   text-decoration: none;
   cursor: pointer;
-  background: transparent;
 
   transition:
     transform 0.12s ease,

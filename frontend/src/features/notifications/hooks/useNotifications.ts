@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getNotifications,
   deleteNotification,
+  deleteAllNotifications,
   markNotificationRead, // 👈 добавили
   type Notification,
 } from '../api/notifications';
@@ -19,6 +20,17 @@ export function useDeleteNotification() {
 
   return useMutation({
     mutationFn: deleteNotification,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+export function useDeleteAllNotifications() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteAllNotifications,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
