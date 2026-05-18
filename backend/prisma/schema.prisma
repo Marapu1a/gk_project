@@ -17,8 +17,16 @@ enum Role {
 enum RecordStatus {
   UNCONFIRMED
   CONFIRMED
+  PARTIALLY_CONFIRMED
   REJECTED
   SPENT
+}
+
+enum DocumentReviewFileStatus {
+  UNCONFIRMED
+  CONFIRMED
+  REJECTED
+  DELETED
 }
 
 enum ReviewerCandidateKind {
@@ -159,6 +167,8 @@ model User {
   reviewedCEUEntries       CEUEntry[]        @relation("ReviewedCEUEntry")
   reviewedSupervisionHours SupervisionHour[] @relation("ReviewedSupervisionHour")
   confirmedCertificates    Certificate[]     @relation("CertificateConfirmedBy")
+  reviewedDocumentFiles    DocumentReviewFile[] @relation("ReviewedDocumentFile")
+  deletedDocumentFiles     DocumentReviewFile[] @relation("DeletedDocumentFile")
 
   documentReviewRequests DocumentReviewRequest[]
 
@@ -233,6 +243,7 @@ model CertificationCycle {
   certificate                Certificate?
   reviewerCandidateRelations ReviewerCandidateRelation[]
   examApplications           ExamApplication[]
+  documentReviewRequests     DocumentReviewRequest[]
 
   requirementsSnapshot Json?
   modifiersSnapshot    Json?
@@ -534,6 +545,8 @@ model DocumentReviewRequest {
   id     String @id @default(cuid())
   userId String
   user   User   @relation(fields: [userId], references: [id])
+  cycleId String?
+  cycle   CertificationCycle? @relation(fields: [cycleId], references: [id])
 
   status        RecordStatus @default(UNCONFIRMED)
   paid          Boolean      @default(false)
@@ -543,6 +556,9 @@ model DocumentReviewRequest {
   comment       String?
 
   documents UploadedFile[]
+  documentFiles DocumentReviewFile[]
+
+  @@index([cycleId])
 }
 
 model UploadedFile {
@@ -561,4 +577,34 @@ model UploadedFile {
 
   requestId String?
   request   DocumentReviewRequest? @relation(fields: [requestId], references: [id])
+
+  documentReviewFiles DocumentReviewFile[]
+}
+
+model DocumentReviewFile {
+  id        String @id @default(cuid())
+  requestId String
+  request   DocumentReviewRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  fileId String
+  file   UploadedFile @relation(fields: [fileId], references: [id])
+
+  type          String?
+  status        DocumentReviewFileStatus @default(UNCONFIRMED)
+  adminComment  String?
+  deletionRequestedAt DateTime?
+  deletionRequestComment String?
+  reviewedAt    DateTime?
+  reviewedById  String?
+  reviewedBy    User? @relation("ReviewedDocumentFile", fields: [reviewedById], references: [id])
+  deletedAt     DateTime?
+  deletedById   String?
+  deletedBy     User? @relation("DeletedDocumentFile", fields: [deletedById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([requestId, fileId])
+  @@index([requestId])
+  @@index([fileId])
+  @@index([status])
 }

@@ -36,6 +36,14 @@ export async function getDocumentReviewRequestById(req: FastifyRequest, reply: F
         },
       },
       documents: true,
+      documentFiles: {
+        include: {
+          file: true,
+          reviewedBy: { select: { id: true, email: true, fullName: true } },
+          deletedBy: { select: { id: true, email: true, fullName: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
     },
   });
 

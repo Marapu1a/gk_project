@@ -4,20 +4,13 @@ import { BackButton } from '@/components/BackButton';
 
 export default function AdminDocumentReviewListPage() {
   return (
-    <div className="p-6 space-y-6">
-      {/* Верхняя панель кнопок */}
-      <div className="flex gap-3">
+    <div className="min-h-screen bg-[#F0F0F0] px-4 py-6">
+      <div className="mx-auto mb-5 flex max-w-[1180px] gap-3">
         <BackButton />
         <DashboardButton />
       </div>
 
       <AdminDocumentReviewList />
-
-      {/* Нижняя панель кнопок */}
-      <div className="flex gap-3 pt-4 border-t border-gray-200">
-        <BackButton />
-        <DashboardButton />
-      </div>
     </div>
   );
 }

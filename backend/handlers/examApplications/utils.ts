@@ -1,3 +1,4 @@
+import { PaymentStatus, PaymentType, TargetLevel } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 
 export type ExamStatus = 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -76,4 +77,45 @@ export async function userHasPaidExam(userId: string) {
     select: { id: true },
   });
   return Boolean(last);
+}
+
+export async function getMissingExamPaymentTypes(userId: string): Promise<PaymentType[]> {
+  const activeCycle = await prisma.certificationCycle.findFirst({
+    where: { userId, status: 'ACTIVE' },
+    orderBy: { startedAt: 'desc' },
+    select: { targetLevel: true },
+  });
+
+  if (!activeCycle) {
+    return [PaymentType.REGISTRATION, PaymentType.DOCUMENT_REVIEW, PaymentType.EXAM_ACCESS];
+  }
+
+  const payments = await prisma.payment.findMany({
+    where: {
+      userId,
+      status: PaymentStatus.PAID,
+      type: {
+        in: [
+          PaymentType.FULL_PACKAGE,
+          PaymentType.REGISTRATION,
+          PaymentType.DOCUMENT_REVIEW,
+          PaymentType.EXAM_ACCESS,
+        ],
+      },
+    },
+    select: { type: true },
+  });
+
+  const paidTypes = new Set(payments.map((payment) => payment.type));
+
+  if (paidTypes.has(PaymentType.FULL_PACKAGE)) {
+    return [];
+  }
+
+  const requiredTypes =
+    activeCycle.targetLevel === TargetLevel.SUPERVISOR
+      ? [PaymentType.DOCUMENT_REVIEW, PaymentType.EXAM_ACCESS]
+      : [PaymentType.REGISTRATION, PaymentType.DOCUMENT_REVIEW, PaymentType.EXAM_ACCESS];
+
+  return requiredTypes.filter((type) => !paidTypes.has(type));
 }

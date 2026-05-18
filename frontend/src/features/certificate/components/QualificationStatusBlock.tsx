@@ -7,6 +7,7 @@ import { usePatchExamAppStatus } from '@/features/exam/hooks/usePatchExamAppStat
 import { useQueryClient } from '@tanstack/react-query';
 import { examStatusLabels } from '@/utils/labels';
 import type { TargetLevel } from '@/features/user/api/setTargetLevel';
+import { toast } from 'sonner';
 
 export function QualificationStatusBlock({
   activeGroupName,
@@ -202,6 +203,13 @@ function ExamSection({ isEligible, examPaid }: { isEligible: boolean; examPaid: 
       {
         onSuccess: async () => {
           queryClient.invalidateQueries({ queryKey: ['exam-apps'] });
+        },
+        onError: (err: any) => {
+          toast.error(
+            err?.response?.data?.message ||
+              err?.response?.data?.error ||
+              'Не удалось отправить заявку на экзамен',
+          );
         },
       },
     );

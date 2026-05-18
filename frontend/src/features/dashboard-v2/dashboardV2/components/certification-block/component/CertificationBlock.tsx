@@ -186,6 +186,8 @@ export function CertificationBlock({ user }: Props) {
     ceuReady?: boolean;
     supervisionReady?: boolean;
     documentsReady?: boolean;
+    documentReviewPaid?: boolean;
+    requiredPaymentsPaid?: boolean;
     loading?: boolean;
     isEligible?: boolean;
     examPaid?: boolean;
@@ -235,9 +237,9 @@ export function CertificationBlock({ user }: Props) {
   const supervisionCurrent = Number(supervisionSummary?.usable?.supervision ?? 0);
   const supervisionRequired = Number(supervisionSummary?.required?.supervision ?? 0);
 
-  const examButtonLabel = progress.examPaid
+  const examButtonLabel = progress.requiredPaymentsPaid
     ? 'Подать заявку на экзамен'
-    : 'Доступ к экзамену не оплачен';
+    : 'Не все оплаты внесены';
 
   const selectDisabled = locked || options.length === 0 || setTarget.isPending;
 
@@ -409,20 +411,26 @@ export function CertificationBlock({ user }: Props) {
         />
       </ul>
 
+      {!progress.documentReviewPaid ? (
+        <p className="mt-3 text-center text-[12px] font-semibold leading-[1.25] text-[var(--color-danger)]">
+          Проверка документов не оплачена
+        </p>
+      ) : null}
+
       <button
         type="button"
         className={`btn mt-auto h-[42px] w-full rounded-[8px] text-[14px] font-extrabold leading-none ${
-          progress.isEligible && progress.examPaid ? 'btn-dark' : ''
+          progress.isEligible && progress.requiredPaymentsPaid ? 'btn-dark' : ''
         }`}
         style={
-          progress.isEligible && progress.examPaid
+          progress.isEligible && progress.requiredPaymentsPaid
             ? undefined
             : {
                 backgroundColor: '#B8C0D1',
                 color: '#FFFFFF',
               }
         }
-        disabled={!progress.isEligible || !progress.examPaid}
+        disabled={!progress.isEligible || !progress.requiredPaymentsPaid}
       >
         {examButtonLabel}
       </button>

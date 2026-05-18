@@ -6,8 +6,9 @@ export function BackButton() {
 
   return (
     <button
+      type="button"
       onClick={() => navigate(-1)}
-      className="btn btn-ghost cursor-pointer inline-flex items-center gap-2 text-sm"
+      className="btn h-[30px] min-w-[88px] cursor-pointer rounded-full border border-[#A7B1C7] px-3 text-[14px] font-medium text-[#1F305E] transition hover:bg-white active:bg-[#E7F1F4]"
     >
       ← Назад
     </button>

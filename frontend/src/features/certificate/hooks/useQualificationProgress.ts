@@ -25,6 +25,8 @@ type QualificationProgress = {
   ceuReady: boolean;
   supervisionReady: boolean;
   documentsReady: boolean;
+  documentReviewPaid: boolean;
+  requiredPaymentsPaid: boolean;
   loading: boolean;
   reasons: string[];
 };
@@ -116,15 +118,21 @@ export function useQualificationProgress(
     }
   }
 
-  // === Документы + оплата проверки документов ===
-  const documentPayment = payments?.find((p) => p.type === 'DOCUMENT_REVIEW');
-  const documentsReady =
-    docReview?.status === 'CONFIRMED' && documentPayment?.status === 'PAID';
+  // === Документы + платежи ===
+  const isPaid = (type: 'DOCUMENT_REVIEW' | 'EXAM_ACCESS' | 'REGISTRATION' | 'FULL_PACKAGE') =>
+    (payments ?? []).some((p) => p.type === type && p.status === 'PAID');
 
-  // Экзаменная оплата (нужна только в EXAM)
-  const examPaid = (payments ?? []).some(
-    (p) => p.type === 'EXAM_ACCESS' && p.status === 'PAID',
-  );
+  const fullPackagePaid = isPaid('FULL_PACKAGE');
+  const registrationPaid = fullPackagePaid || isPaid('REGISTRATION');
+  const documentReviewPaid = fullPackagePaid || isPaid('DOCUMENT_REVIEW');
+  const examPaid = fullPackagePaid || isPaid('EXAM_ACCESS');
+
+  const documentsReady = docReview?.status === 'CONFIRMED';
+
+  const requiredPaymentsPaid =
+    mode === 'EXAM'
+      ? registrationPaid && documentReviewPaid && examPaid
+      : documentReviewPaid;
 
   // Причины (только EXAM — супервизорам причины не показываем)
   const reasons: string[] = [];
@@ -132,7 +140,9 @@ export function useQualificationProgress(
     if (!targetGroup) reasons.push('Цель сертификации не выбрана');
     if (!ceuReady) reasons.push('Недостаточно CEU-баллов');
     if (!supervisionReady) reasons.push('Недостаточно часов супервизии');
-    if (!documentsReady) reasons.push('Документы не подтверждены или не оплачены');
+    if (!documentsReady) reasons.push('Документы не подтверждены');
+    if (!documentReviewPaid) reasons.push('Проверка документов не оплачена');
+    if (!registrationPaid || !examPaid) reasons.push('Не все платежи оплачены');
   }
 
   // ✅ Допуск
@@ -150,6 +160,8 @@ export function useQualificationProgress(
     ceuReady,
     supervisionReady,
     documentsReady,
+    documentReviewPaid,
+    requiredPaymentsPaid,
     loading: ceuLoading || supervisionLoading || docLoading || paymentsLoading,
     reasons,
     examPaid,

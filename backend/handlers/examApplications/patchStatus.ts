@@ -1,8 +1,8 @@
 // src/handlers/examApplications/patchStatus.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { assertStatusTransition, getOrCreateExamApp } from './utils';
-import { NotificationType } from '@prisma/client';
+import { assertStatusTransition, getMissingExamPaymentTypes, getOrCreateExamApp } from './utils';
+import { NotificationType, PaymentType } from '@prisma/client';
 import { createNotification, notifyAdmins } from '../../utils/notifications';
 
 type Body = {
@@ -10,6 +10,14 @@ type Body = {
   comment?: string;   // опционально, если хочешь логировать причину отклонения
   notify?: boolean;   // опционально: управлять уведомлениями
   manual?: boolean;   // ручная правка из деталей пользователя
+};
+
+const PAYMENT_LABELS: Record<PaymentType, string> = {
+  FULL_PACKAGE: 'полный пакет',
+  REGISTRATION: 'подача заявки на сертификацию',
+  DOCUMENT_REVIEW: 'экспертиза документов',
+  EXAM_ACCESS: 'экзамен',
+  RENEWAL: 'ресертификация',
 };
 
 export async function patchExamAppStatusHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -36,6 +44,20 @@ export async function patchExamAppStatusHandler(req: FastifyRequest, reply: Fast
   } catch (e: any) {
     if (e.message === 'FORBIDDEN') return reply.code(403).send({ error: 'Доступ запрещён' });
     return reply.code(400).send({ error: 'Недопустимый переход статуса' });
+  }
+
+  if (!isAdminActor && next === 'PENDING') {
+    const missingPayments = await getMissingExamPaymentTypes(userId);
+
+    if (missingPayments.length) {
+      return reply.code(403).send({
+        error: 'EXAM_PAYMENTS_REQUIRED',
+        message: `Для отправки заявки на экзамен нужны оплаты: ${missingPayments
+          .map((type) => PAYMENT_LABELS[type])
+          .join(', ')}.`,
+        missingPayments,
+      });
+    }
   }
 
   // меняем статус

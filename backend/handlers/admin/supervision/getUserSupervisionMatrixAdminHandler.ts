@@ -193,10 +193,18 @@ function normalize(type: PracticeLevel | string): Level | null {
 }
 
 function matrixEmpty(): Record<Level, Record<RecordStatus, number>> {
+  const empty = {
+    CONFIRMED: 0,
+    UNCONFIRMED: 0,
+    PARTIALLY_CONFIRMED: 0,
+    REJECTED: 0,
+    SPENT: 0,
+  };
+
   return {
-    PRACTICE: { CONFIRMED: 0, UNCONFIRMED: 0, REJECTED: 0, SPENT: 0 },
-    SUPERVISION: { CONFIRMED: 0, UNCONFIRMED: 0, REJECTED: 0, SPENT: 0 },
-    SUPERVISOR: { CONFIRMED: 0, UNCONFIRMED: 0, REJECTED: 0, SPENT: 0 },
+    PRACTICE: { ...empty },
+    SUPERVISION: { ...empty },
+    SUPERVISOR: { ...empty },
   };
 }
 

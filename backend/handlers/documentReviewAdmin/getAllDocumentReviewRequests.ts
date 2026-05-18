@@ -23,6 +23,7 @@ export async function getAllDocumentReviewRequests(req: FastifyRequest, reply: F
     include: {
       user: { select: { email: true, fullName: true } },
       documents: true,
+      documentFiles: { select: { id: true, status: true, deletionRequestedAt: true } },
     },
   });
 

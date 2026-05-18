@@ -9,7 +9,17 @@ export async function getDocReviewReq(req: FastifyRequest, reply: FastifyReply) 
 
   const request = await prisma.documentReviewRequest.findFirst({
     where: { userId: user.userId },
-    include: { documents: true },
+    include: {
+      documents: true,
+      documentFiles: {
+        include: {
+          file: true,
+          reviewedBy: { select: { id: true, email: true, fullName: true } },
+          deletedBy: { select: { id: true, email: true, fullName: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
     orderBy: { submittedAt: 'desc' },
   });
 

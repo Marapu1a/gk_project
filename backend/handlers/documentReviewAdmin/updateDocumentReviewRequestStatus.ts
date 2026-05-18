@@ -6,13 +6,16 @@ import { createNotification } from '../../utils/notifications';
 export async function updateDocumentReviewRequestStatus(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
   const { id } = req.params as { id: string };
-  const { status, comment } = req.body as { status: 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED'; comment?: string };
+  const { status, comment } = req.body as {
+    status: 'UNCONFIRMED' | 'CONFIRMED' | 'PARTIALLY_CONFIRMED' | 'REJECTED';
+    comment?: string;
+  };
 
   if (!user?.userId || user.role !== 'ADMIN') {
     return reply.code(403).send({ error: 'Нет доступа' });
   }
 
-  if (!['UNCONFIRMED', 'CONFIRMED', 'REJECTED'].includes(status)) {
+  if (!['UNCONFIRMED', 'CONFIRMED', 'PARTIALLY_CONFIRMED', 'REJECTED'].includes(status)) {
     return reply.code(400).send({ error: 'Недопустимый статус' });
   }
 
@@ -37,6 +40,8 @@ export async function updateDocumentReviewRequestStatus(req: FastifyRequest, rep
       message:
         status === 'REJECTED'
           ? 'Ваша заявка на проверку документов отклонена'
+          : status === 'PARTIALLY_CONFIRMED'
+            ? 'Ваша заявка на проверку документов принята частично'
           : 'Ваша заявка на проверку документов подтверждена',
       link: '/document-review',
     });
