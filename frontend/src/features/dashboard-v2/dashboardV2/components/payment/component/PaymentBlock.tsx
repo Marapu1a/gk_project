@@ -44,7 +44,7 @@ function PaymentSummary({ subtitle }: { subtitle: string }) {
   return (
     <section className="card-section flex h-full min-h-[340px] w-full flex-col items-center px-5 py-6 shadow-soft">
       <h2 className="dashboard-v2-title mb-6 text-center">Оплата</h2>
-      <p className="mb-8 text-center text-[14px] text-[#8D96B5]">{subtitle}</p>
+      <p className="dashboard-v2-text mb-8 text-center text-[#8D96B5]">{subtitle}</p>
       <div className="flex flex-1 items-center justify-center">
         <PaymentStatusIcon className="h-24 w-24" />
       </div>
@@ -55,7 +55,7 @@ function PaymentSummary({ subtitle }: { subtitle: string }) {
 function PaymentEmptyState() {
   return (
     <section className="card-section flex h-full min-h-[340px] w-full items-center justify-center px-6 py-6 shadow-soft">
-      <p className="max-w-[260px] text-center text-[14px] leading-[1.35] text-[#8D96B5]">
+      <p className="dashboard-v2-text max-w-[260px] text-center text-[#8D96B5]">
         Выберите целевой уровень сертификации, чтобы продолжить
       </p>
     </section>
@@ -69,6 +69,12 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
   const billingGroup = resolveBillingGroup(targetLevelName, activeGroupName);
   const isRenewalCycle = cycleType === 'RENEWAL';
   const isSupervisorTarget = targetLevel === 'SUPERVISOR';
+  const displayTargetLevelName =
+    isRenewalCycle &&
+    targetLevelName === 'Супервизор' &&
+    (activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор')
+      ? 'Опытный Супервизор'
+      : targetLevelName;
 
   const preparedPayments = useMemo(() => {
     if (!payments) return [];
@@ -165,8 +171,8 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
       <section className="card-section flex h-full min-h-[340px] w-full flex-col overflow-hidden px-5 py-6 shadow-soft">
         <h2 className="dashboard-v2-title mb-5 text-center">Оплата</h2>
 
-        <div className="mb-5 flex h-[42px] items-center justify-center rounded-[14px] bg-[var(--color-blue-soft)] px-5 text-center text-[16px] font-medium text-[#1F305E]">
-          {targetLevelName}
+        <div className="dashboard-v2-label dashboard-v2-level-pill mb-5">
+          {displayTargetLevelName}
         </div>
 
         <div className="-mx-1 flex flex-1 flex-col justify-center gap-3">

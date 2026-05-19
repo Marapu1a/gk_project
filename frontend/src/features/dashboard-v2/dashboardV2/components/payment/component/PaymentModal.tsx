@@ -105,9 +105,9 @@ export function PaymentModal({
       <div className="relative z-10 w-full max-w-[520px] rounded-[28px] bg-white p-6 shadow-strong">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-[22px] font-semibold text-[#1F305E]">{title}</h3>
+            <h3 className="dashboard-v2-page-title text-[#1F305E]">{title}</h3>
 
-            <p className="mt-2 text-[15px] leading-6 text-[#1F305E]/80">
+            <p className="dashboard-v2-text mt-2 text-[#1F305E]/80">
               Перейдите по ссылке для оплаты. После оплаты нажмите кнопку ниже, чтобы отправить
               отметку администратору.
             </p>
@@ -129,12 +129,12 @@ export function PaymentModal({
               href={paymentLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex w-full cursor-pointer items-center justify-center rounded-full bg-[#1F305E] px-6 py-4 text-[16px] font-semibold text-white transition hover:opacity-90"
+              className="dashboard-v2-label flex w-full cursor-pointer items-center justify-center rounded-full bg-[#1F305E] px-6 py-4 text-white transition hover:opacity-90"
             >
               Перейти к оплате
             </a>
           ) : (
-            <div className="rounded-[18px] border border-[rgba(31,48,94,0.14)] px-4 py-3 text-sm text-[#1F305E]/70">
+            <div className="dashboard-v2-text rounded-[18px] border border-[rgba(31,48,94,0.14)] px-4 py-3 text-[#1F305E]/70">
               Ссылка на оплату для этой позиции не найдена.
             </div>
           )}
@@ -144,20 +144,20 @@ export function PaymentModal({
               type="button"
               onClick={handleTogglePending}
               disabled={mutation.isPending}
-              className="w-full cursor-pointer rounded-full border border-[#1F305E] px-6 py-4 text-[16px] font-semibold text-[#1F305E] transition hover:bg-[rgba(31,48,94,0.05)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="dashboard-v2-label w-full cursor-pointer rounded-full border border-[#1F305E] px-6 py-4 text-[#1F305E] transition hover:bg-[rgba(31,48,94,0.05)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isPending ? 'Отменить отметку' : 'Я оплатил(а)'}
             </button>
           )}
 
           {isPending && (
-            <div className="rounded-[18px] bg-[rgba(31,48,94,0.06)] px-4 py-3 text-sm text-[#1F305E]/80">
+            <div className="dashboard-v2-text rounded-[18px] bg-[rgba(31,48,94,0.06)] px-4 py-3 text-[#1F305E]/80">
               Отметка уже отправлена. После проверки администратором статус обновится.
             </div>
           )}
 
           {isPaid && (
-            <div className="rounded-[18px] bg-[var(--color-blue-soft)] px-4 py-3 text-sm font-medium text-[#1F305E]">
+            <div className="dashboard-v2-text rounded-[18px] bg-[var(--color-blue-soft)] px-4 py-3 text-[#1F305E]">
               Эта оплата уже подтверждена.
             </div>
           )}

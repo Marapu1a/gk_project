@@ -33,7 +33,7 @@ export function PaymentCard({
     .join(' ');
 
   const titleClassName = [
-    'text-[13px] font-extrabold leading-[1.15]',
+    'dashboard-v2-caption font-extrabold',
     isPaid ? 'text-[#9FB3B8]' : 'text-[#1F305E]',
   ].join(' ');
 
@@ -63,7 +63,7 @@ export function PaymentCard({
             <button
               type="button"
               disabled
-              className="h-[34px] min-w-[98px] cursor-not-allowed rounded-full bg-[#7583A3] px-3 text-[12px] font-semibold leading-none text-white"
+              className="dashboard-v2-small h-[34px] min-w-[98px] cursor-not-allowed rounded-full bg-[#7583A3] px-3 text-white"
             >
               На проверке
             </button>
@@ -73,7 +73,7 @@ export function PaymentCard({
               onClick={onPay}
               disabled={disabled}
               title={disabledReason}
-              className="h-[34px] min-w-[98px] cursor-pointer rounded-full bg-[#1F305E] px-3 text-[13px] font-semibold leading-none text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-[#9AA4BD] disabled:opacity-100"
+              className="dashboard-v2-caption h-[34px] min-w-[98px] cursor-pointer rounded-full bg-[#1F305E] px-3 font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-[#9AA4BD] disabled:opacity-100"
             >
               Оплатить
             </button>

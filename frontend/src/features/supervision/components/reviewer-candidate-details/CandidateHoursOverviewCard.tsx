@@ -37,10 +37,10 @@ function MetricCard({
   return (
     <div className="rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-3">
       <div className="mb-2 flex items-start justify-between gap-2">
-        <span className="text-[15px] leading-[1.2] text-[#1F305E]">{label}</span>
+        <span className="dashboard-v2-metric-label text-[#1F305E]">{label}</span>
         {hint ? <HelpBadge title={hint} /> : null}
       </div>
-      <div className="text-[24px] font-extrabold leading-none text-[#1F305E]">{value}</div>
+      <div className="dashboard-v2-metric-value-lg text-[#1F305E]">{value}</div>
     </div>
   );
 }
@@ -60,8 +60,8 @@ function MetricSegment({
         side === 'left' ? 'rounded-l-[12px]' : 'rounded-r-[12px] border-l border-white'
       }`}
     >
-      <div className="mb-2 text-[13px] leading-[1.2] text-[#1F305E]">{label}</div>
-      <div className="text-[24px] font-extrabold leading-none text-[#1F305E]">{value}</div>
+      <div className="dashboard-v2-caption mb-2 text-[#1F305E]">{label}</div>
+      <div className="dashboard-v2-metric-value-lg text-[#1F305E]">{value}</div>
     </div>
   );
 }
@@ -94,7 +94,7 @@ function TotalCircle({
 
   return (
     <div className="flex h-full min-h-[176px] flex-col items-center justify-center rounded-[12px] bg-[var(--color-blue-soft)] px-5 py-5">
-      <span className="mb-5 text-[15px] text-[#1F305E]">{label}</span>
+      <span className="dashboard-v2-metric-label mb-5 text-[#1F305E]">{label}</span>
       <div
         className="relative flex h-[116px] w-[116px] items-center justify-center rounded-full"
         style={{
@@ -103,7 +103,7 @@ function TotalCircle({
       >
         <div className="absolute inset-[5px] rounded-full bg-[var(--color-blue-soft)]" />
         <div className="absolute inset-[10px] rounded-full border-[4px] border-[#D6DDEA] bg-white" />
-        <span className="relative z-10 text-[28px] font-extrabold text-[#26396E]">{value}</span>
+        <span className="dashboard-v2-page-title relative z-10 text-[#26396E]">{value}</span>
       </div>
     </div>
   );

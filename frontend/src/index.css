@@ -423,6 +423,67 @@ select:disabled,
   color: var(--color-blue-dark);
 }
 
+.dashboard-v2-page-title {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-blue-dark);
+}
+
+.dashboard-v2-text {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.dashboard-v2-caption {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.dashboard-v2-label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.dashboard-v2-level-pill {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background-color: var(--color-blue-soft);
+  padding: 8px 20px;
+  text-align: center;
+  color: var(--color-blue-dark);
+}
+
+.dashboard-v2-small {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.dashboard-v2-metric-label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.dashboard-v2-metric-value {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.dashboard-v2-metric-value-lg {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 /* Интерактивный знак вопроса для подсказок в карточках дашборда v2. */
 .dashboard-v2-help {
   display: inline-flex;

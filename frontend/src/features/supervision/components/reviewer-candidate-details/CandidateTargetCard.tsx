@@ -29,11 +29,11 @@ export function CandidateTargetCard({
 }: CandidateTargetCardProps) {
   return (
     <section className="flex min-h-[230px] flex-col rounded-[22px] bg-white px-5 py-5 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
-      <h2 className="mb-7 text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
+      <h2 className="dashboard-v2-title mb-7 text-center">
         Целевой уровень сертификации
       </h2>
 
-      <div className="mb-8 flex min-h-[42px] items-center justify-center rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-2 text-center text-[20px] font-extrabold leading-tight text-[#1F305E]">
+      <div className="dashboard-v2-title mb-8 flex min-h-[42px] items-center justify-center rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-2 text-center">
         {targetLabel}
       </div>
 
@@ -60,7 +60,7 @@ export function CandidateTargetCard({
 
 function StatusRow({ ok, label, value }: { ok: boolean; label: string; value: string }) {
   return (
-    <li className="flex items-center gap-2 text-[16px] leading-none">
+    <li className="dashboard-v2-label flex items-center gap-2">
       {ok ? (
         <CheckCircle
           size={22}

@@ -21,7 +21,7 @@ export function DashboardV2() {
   if (isLoading) {
     return (
       <div className="container-fixed p-6">
-        <p className="text-sm text-blue-dark">Загрузка...</p>
+        <p className="dashboard-v2-text text-blue-dark">Загрузка...</p>
       </div>
     );
   }
@@ -29,7 +29,7 @@ export function DashboardV2() {
   if (isError || !user) {
     return (
       <div className="container-fixed p-6">
-        <p className="text-sm text-error">Не удалось загрузить дашборд</p>
+        <p className="dashboard-v2-text text-error">Не удалось загрузить дашборд</p>
       </div>
     );
   }
@@ -47,7 +47,7 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
   if (paymentsLoading) {
     return (
       <div className="container-fixed p-6">
-        <p className="text-sm text-blue-dark">Загрузка...</p>
+        <p className="dashboard-v2-text text-blue-dark">Загрузка...</p>
       </div>
     );
   }
@@ -122,7 +122,7 @@ function CertificationAccessPlaceholder() {
     <section className="card-section overflow-hidden px-5 py-5 shadow-soft">
       <div className="rounded-[14px] bg-[var(--color-blue-soft)] px-5 py-5 text-[#1F305E]">
         <h2 className="dashboard-v2-title mb-3">Доступ к функциям сертификации закрыт</h2>
-        <p className="max-w-[760px] text-[14px] leading-[1.45]">
+        <p className="dashboard-v2-text max-w-[760px]">
           Для доступа к функциям сертификации нужна оплата{' '}
           <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
           После подтверждения оплаты администратором вы сможете добавлять CEU-баллы и отправлять

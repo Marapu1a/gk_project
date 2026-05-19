@@ -74,13 +74,13 @@ export function ProfileCard({ user }: ProfileCardProps) {
 
           <div className="flex min-w-0 flex-1 flex-col pt-1">
             <div className="min-w-0 leading-tight text-blue-dark">
-              <p className="break-words text-[18px] font-extrabold">{lastName}</p>
-              <p className="break-words text-[16px]">{firstName}</p>
-              <p className="break-words text-[16px]">{middleName}</p>
+              <p className="dashboard-v2-title break-words">{lastName}</p>
+              <p className="dashboard-v2-label break-words font-medium">{firstName}</p>
+              <p className="dashboard-v2-label break-words font-medium">{middleName}</p>
             </div>
 
             <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[#1F305E]">
-              <span className="truncate text-[12px] font-medium" title={user.email}>
+              <span className="dashboard-v2-small truncate font-medium" title={user.email}>
                 {user.email}
               </span>
               <button
@@ -98,7 +98,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
               <button
                 type="button"
                 onClick={() => navigate('/history')}
-                className="btn h-[34px] w-full cursor-pointer rounded-full border border-[var(--color-blue-dark)] text-[15px] text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
+                className="btn dashboard-v2-label h-[34px] w-full cursor-pointer rounded-full border border-[var(--color-blue-dark)] text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
               >
                 История
               </button>
@@ -142,26 +142,22 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
 
         <div
-          className="mt-4 h-[38px] px-4 py-2 text-center text-[16px] font-semibold text-blue-dark"
-          style={{
-            backgroundColor: 'var(--color-blue-soft)',
-            borderRadius: '10px',
-          }}
+          className="dashboard-v2-label dashboard-v2-level-pill mt-4"
         >
           {activeGroupName}
         </div>
 
-        <div className="mt-4 text-center text-[14px]" style={{ color: '#8D96B5' }}>
+        <div className="dashboard-v2-text mt-4 text-center" style={{ color: '#8D96B5' }}>
           Регистрационный номер:{' '}
           <span className="font-semibold text-blue-dark">{user.registrationNumber ?? '-'}</span>
         </div>
 
-        <div className="mt-2 text-center text-[14px]" style={{ color: '#8D96B5' }}>
+        <div className="dashboard-v2-text mt-2 text-center" style={{ color: '#8D96B5' }}>
           Срок действия сертификата:{' '}
           <span className="font-semibold text-[var(--color-danger)]">{expiresAt ?? '-'}</span>
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-3 text-[13px]">
+        <div className="dashboard-v2-caption mt-4 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => navigate('/my-certificate')}

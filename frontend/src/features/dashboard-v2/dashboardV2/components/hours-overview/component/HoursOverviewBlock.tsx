@@ -25,10 +25,10 @@ function MetricCard({ label, value, hint }: { label: string; value: string; hint
   return (
     <div className="rounded-[14px] bg-[var(--color-blue-soft)] px-3 py-2.5">
       <div className="mb-1.5 flex items-start justify-between gap-2">
-        <span className="text-[14px] leading-[1.2] text-[#1F305E]">{label}</span>
+        <span className="dashboard-v2-metric-label text-[#1F305E]">{label}</span>
         {hint ? <HelpBadge title={hint} /> : null}
       </div>
-      <div className="text-[18px] font-extrabold leading-none text-[#1F305E]">{value}</div>
+      <div className="dashboard-v2-metric-value text-[#1F305E]">{value}</div>
     </div>
   );
 }
@@ -48,8 +48,8 @@ function MetricSegment({
         side === 'left' ? 'rounded-l-[14px]' : 'rounded-r-[14px] border-l border-white'
       }`}
     >
-      <div className="mb-1.5 text-[13px] leading-[1.2] text-[#1F305E]">{label}</div>
-      <div className="text-[18px] font-extrabold leading-none text-[#1F305E]">{value}</div>
+      <div className="dashboard-v2-caption mb-1.5 text-[#1F305E]">{label}</div>
+      <div className="dashboard-v2-metric-value text-[#1F305E]">{value}</div>
     </div>
   );
 }
@@ -82,7 +82,7 @@ function TotalCircle({
 
   return (
     <div className="flex h-full min-h-[138px] flex-col items-center justify-center rounded-[16px] bg-[var(--color-blue-soft)] px-5 py-4">
-      <span className="mb-4 text-[14px] text-[#1F305E]">{label}</span>
+      <span className="dashboard-v2-metric-label mb-4 text-[#1F305E]">{label}</span>
       <div
         className="relative flex h-[86px] w-[86px] items-center justify-center rounded-full"
         style={{
@@ -91,7 +91,7 @@ function TotalCircle({
       >
         <div className="absolute inset-[4px] rounded-full bg-[var(--color-blue-soft)]" />
         <div className="absolute inset-[8px] rounded-full border-[3px] border-[#D6DDEA] bg-white" />
-        <span className="relative z-10 text-[18px] font-extrabold text-[#26396E]">{value}</span>
+        <span className="dashboard-v2-metric-value relative z-10 text-[#26396E]">{value}</span>
       </div>
     </div>
   );
@@ -112,7 +112,7 @@ export function HoursOverviewBlock({
   if (isLoading) {
     return (
       <section className="card-section">
-        <p className="text-sm text-blue-dark">Загрузка часов...</p>
+        <p className="dashboard-v2-text text-blue-dark">Загрузка часов...</p>
       </section>
     );
   }
@@ -120,7 +120,7 @@ export function HoursOverviewBlock({
   if (isError || !summary) {
     return (
       <section className="card-section">
-        <p className="text-sm text-error">Не удалось загрузить часы практики и супервизии</p>
+        <p className="dashboard-v2-text text-error">Не удалось загрузить часы практики и супервизии</p>
       </section>
     );
   }

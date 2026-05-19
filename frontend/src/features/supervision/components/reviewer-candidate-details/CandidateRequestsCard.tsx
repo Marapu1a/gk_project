@@ -45,10 +45,10 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
       <h2 className="dashboard-v2-title mb-7">{title}</h2>
 
       {requests.length === 0 ? (
-        <p className="text-[14px] text-[#6B7894]">Заявок пока нет.</p>
+        <p className="dashboard-v2-text text-[#6B7894]">Заявок пока нет.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[460px] text-[14px] text-[#1F305E]">
+          <table className="dashboard-v2-text w-full min-w-[460px] text-[#1F305E]">
             <thead>
               <tr className="bg-[var(--color-blue-soft)] text-left">
                 <th className="rounded-l-[8px] px-3 py-3 text-center font-medium">
@@ -107,12 +107,12 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                     <td className="px-3 py-4">
                       {request.status === 'CONFIRMED' ? (
                         <div className="flex justify-center">
-                          <span className="rounded-full bg-[var(--color-blue-soft)] px-3 py-1 text-[13px] font-medium text-[#1F305E]">
+                          <span className="dashboard-v2-caption rounded-full bg-[var(--color-blue-soft)] px-3 py-1 text-[#1F305E]">
                             {STATUS_LABELS[request.status]}
                           </span>
                         </div>
                       ) : (
-                        <div className={`text-center text-[13px] ${statusClass(request.status)}`}>
+                        <div className={`dashboard-v2-caption text-center ${statusClass(request.status)}`}>
                           {STATUS_LABELS[request.status]}
                         </div>
                       )}

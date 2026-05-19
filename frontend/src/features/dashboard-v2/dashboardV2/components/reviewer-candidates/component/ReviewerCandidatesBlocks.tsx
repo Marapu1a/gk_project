@@ -35,7 +35,7 @@ export function ReviewerCandidatesBlocks() {
   if (isLoading) {
     return (
       <section className="card-section">
-        <p className="text-sm text-blue-dark">Загрузка кандидатов...</p>
+        <p className="dashboard-v2-text text-blue-dark">Загрузка кандидатов...</p>
       </section>
     );
   }
@@ -121,7 +121,7 @@ function CandidatesTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[880px] text-[14px] text-[#1F305E]">
+        <table className="dashboard-v2-text w-full min-w-[880px] text-[#1F305E]">
           <thead>
             <tr className="bg-[var(--color-blue-soft)] text-left">
               <th className="rounded-l-[8px] px-4 py-3 font-medium">ФИО ↑</th>
@@ -201,7 +201,7 @@ function CandidatesTable({
                             type="button"
                             onClick={() => acceptCandidate(candidate)}
                             disabled={mutation.isPending}
-                            className="btn btn-dark h-[32px] min-w-[112px] cursor-pointer rounded-full px-5 text-[14px] font-extrabold disabled:cursor-not-allowed disabled:bg-[#B7BFCE]"
+                            className="btn btn-dark dashboard-v2-label h-[32px] min-w-[112px] cursor-pointer rounded-full px-5 disabled:cursor-not-allowed disabled:bg-[#B7BFCE]"
                           >
                             Принять
                           </button>
@@ -209,19 +209,19 @@ function CandidatesTable({
                             type="button"
                             onClick={() => rejectCandidate(candidate)}
                             disabled={mutation.isPending}
-                            className="btn h-[32px] min-w-[112px] cursor-pointer rounded-full border-2 border-[#1F305E] px-5 text-[14px] font-extrabold text-[#1F305E] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="btn dashboard-v2-label h-[32px] min-w-[112px] cursor-pointer rounded-full border-2 border-[#1F305E] px-5 text-[#1F305E] disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Отклонить
                           </button>
                         </div>
                       ) : candidate.status === 'ACCEPTED' ? (
                         <div className="flex justify-center">
-                          <span className="rounded-full bg-[var(--color-blue-soft)] px-3 py-1 text-[13px] font-medium text-[#1F305E]">
+                          <span className="dashboard-v2-caption rounded-full bg-[var(--color-blue-soft)] px-3 py-1 text-[#1F305E]">
                             {statusLabels[candidate.status]}
                           </span>
                         </div>
                       ) : (
-                        <div className="text-center text-[13px] text-[#7F8AA3]">
+                        <div className="dashboard-v2-caption text-center text-[#7F8AA3]">
                           {statusLabels[candidate.status]}
                         </div>
                       )}

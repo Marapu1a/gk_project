@@ -45,8 +45,8 @@ function formatNumber(value: number | null | undefined) {
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="mb-1 text-[12px] font-semibold text-[#1F305E]">{label}</div>
-      <div className="min-h-[30px] rounded-[8px] bg-[var(--color-blue-soft)] px-3 py-1.5 text-[13px] text-[#1F305E]">
+      <div className="dashboard-v2-small mb-1 text-[#1F305E]">{label}</div>
+      <div className="dashboard-v2-caption min-h-[30px] rounded-[8px] bg-[var(--color-blue-soft)] px-3 py-1.5 text-[#1F305E]">
         {value}
       </div>
     </div>
@@ -119,7 +119,7 @@ export function CandidateRequestDetailsModal({
           <img src={EXIT_ICON} alt="" className="h-5 w-5" />
         </button>
 
-        <h3 className="mb-5 text-center text-[22px] font-extrabold text-[#1F305E]">
+        <h3 className="dashboard-v2-page-title mb-5 text-center text-[#1F305E]">
           Детали заявки
         </h3>
 
@@ -134,8 +134,8 @@ export function CandidateRequestDetailsModal({
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div className="space-y-5">
-            <section className="rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-4 text-[14px] text-[#1F305E]">
-              <h4 className="mb-3 text-[16px] font-extrabold">Часы</h4>
+            <section className="dashboard-v2-text rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-4 text-[#1F305E]">
+              <h4 className="dashboard-v2-title mb-3">Часы</h4>
               {request.hours.length > 0 ? (
                 <div className="rounded-[10px] bg-white px-3 py-2">
                   {request.hours.map((hour) => (
@@ -153,8 +153,8 @@ export function CandidateRequestDetailsModal({
             </section>
 
             {kind === 'supervision' ? (
-              <section className="rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-4 text-[14px] text-[#1F305E]">
-                <h4 className="mb-3 text-[16px] font-extrabold">Распределение супервизии</h4>
+              <section className="dashboard-v2-text rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-4 text-[#1F305E]">
+                <h4 className="dashboard-v2-title mb-3">Распределение супервизии</h4>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-[10px] bg-white px-3 py-2">
                     <HourRow label="С наблюдением" value={request.distribution.direct} />
@@ -186,21 +186,21 @@ export function CandidateRequestDetailsModal({
             <ReadOnlyField label="Условия практики" value={request.treatmentSetting || '—'} />
 
             <div>
-              <div className="mb-1 text-[12px] font-semibold text-[#1F305E]">Описание</div>
-              <div className="min-h-[120px] rounded-[8px] bg-[var(--color-blue-soft)] px-3 py-2 text-[13px] leading-relaxed text-[#1F305E]">
+              <div className="dashboard-v2-small mb-1 text-[#1F305E]">Описание</div>
+              <div className="dashboard-v2-caption min-h-[120px] rounded-[8px] bg-[var(--color-blue-soft)] px-3 py-2 text-[#1F305E]">
                 {request.description || '—'}
               </div>
             </div>
 
             {request.rejectedReason ? (
-              <div className="rounded-[10px] bg-white px-4 py-3 text-[14px] text-[var(--color-danger)]">
+              <div className="dashboard-v2-text rounded-[10px] bg-white px-4 py-3 text-[var(--color-danger)]">
                 {request.rejectedReason}
               </div>
             ) : null}
 
             {rejectMode ? (
               <label className="block">
-                <span className="mb-1 block text-[12px] font-semibold text-[#1F305E]">
+                <span className="dashboard-v2-small mb-1 block text-[#1F305E]">
                   Причина отклонения
                 </span>
                 <textarea
@@ -221,7 +221,7 @@ export function CandidateRequestDetailsModal({
                 type="button"
                 onClick={accept}
                 disabled={mutation.isPending}
-                className="btn btn-dark h-[42px] min-w-[140px] rounded-full px-6 text-[15px] font-extrabold disabled:bg-[#B7BFCE]"
+                className="btn btn-dark dashboard-v2-label h-[42px] min-w-[140px] rounded-full px-6 disabled:bg-[#B7BFCE]"
               >
                 Подтвердить
               </button>
@@ -230,7 +230,7 @@ export function CandidateRequestDetailsModal({
                   type="button"
                   onClick={reject}
                   disabled={mutation.isPending}
-                  className="btn h-[42px] min-w-[150px] rounded-full border-2 border-[#1F305E] px-6 text-[15px] font-extrabold text-[#1F305E] disabled:opacity-50"
+                  className="btn dashboard-v2-label h-[42px] min-w-[150px] rounded-full border-2 border-[#1F305E] px-6 text-[#1F305E] disabled:opacity-50"
                 >
                   Отправить отказ
                 </button>
@@ -239,7 +239,7 @@ export function CandidateRequestDetailsModal({
                   type="button"
                   onClick={() => setRejectMode(true)}
                   disabled={mutation.isPending}
-                  className="btn h-[42px] min-w-[140px] rounded-full border-2 border-[#1F305E] px-6 text-[15px] font-extrabold text-[#1F305E] disabled:opacity-50"
+                  className="btn dashboard-v2-label h-[42px] min-w-[140px] rounded-full border-2 border-[#1F305E] px-6 text-[#1F305E] disabled:opacity-50"
                 >
                   Отклонить
                 </button>
@@ -249,7 +249,7 @@ export function CandidateRequestDetailsModal({
             <button
               type="button"
               onClick={onClose}
-              className="btn btn-dark h-[42px] min-w-[120px] rounded-full px-6 text-[15px] font-extrabold"
+              className="btn btn-dark dashboard-v2-label h-[42px] min-w-[120px] rounded-full px-6"
             >
               Закрыть
             </button>

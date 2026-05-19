@@ -238,7 +238,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
                 <div className="mt-6 grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
                   <div>
                     <p className="mb-3 text-[13px] font-semibold text-[#1F305E]">Тема CEU</p>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {CATEGORIES.map((item) => (
                         <CheckOption
                           key={item.value}
@@ -253,7 +253,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
 
                   <div>
                     <p className="mb-3 text-[13px] font-semibold text-[#1F305E]">Тип CEU</p>
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {ACTIVITY_TYPES.map((item) => (
                         <CheckOption
                           key={item.value}
@@ -271,7 +271,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
               <div className="flex min-w-0 flex-col justify-end">
                 <div
                   {...getRootProps()}
-                  className={`flex min-h-[126px] cursor-pointer items-center justify-center rounded-[10px] border-2 border-dashed px-5 text-center text-[14px] transition ${
+                  className={`flex min-h-[126px] cursor-pointer items-center justify-center rounded-[10px] border-2 border-dashed px-5 text-center text-[13px] transition ${
                     selectedFile
                       ? 'border-[#A5CB37] bg-[rgba(165,203,55,0.10)] text-[#1F305E] hover:bg-[rgba(165,203,55,0.14)]'
                       : 'border-[#B8C4D8] text-[#A7B1C7] hover:bg-[#F7F9FB]'
@@ -287,7 +287,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
                       </span>
                     ) : null}
 
-                    <div className="font-medium">
+                    <div className="font-medium leading-[1.25]">
                       {isDragActive
                         ? 'Отпустите файл здесь'
                         : selectedFile
@@ -354,10 +354,10 @@ function CheckOption({
       type="button"
       onClick={onChange}
       disabled={disabled}
-      className="flex w-full cursor-pointer items-start gap-3 text-left text-[13px] leading-[1.25] text-[#1F305E] disabled:cursor-not-allowed disabled:opacity-60"
+      className="flex w-full cursor-pointer items-start gap-3 text-left text-[12px] leading-[1.28] text-[#1F305E] disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span
-        className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[9px] border border-[#B8C4D8] bg-white ${
+        className={`mt-0.5 flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[8px] border border-[#B8C4D8] bg-white ${
           checked ? 'text-[#1F305E]' : 'text-transparent'
         }`}
       >

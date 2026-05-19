@@ -43,18 +43,18 @@ function CeuMetricCard({
   const isEmpty = value <= 0 && required <= 0;
 
   return (
-    <div className="flex min-h-[80px] items-center justify-between gap-4 rounded-[10px] bg-[var(--color-blue-soft)] px-5 py-4">
+    <div className="flex min-h-[86px] items-center justify-between gap-5 rounded-[10px] bg-[var(--color-blue-soft)] px-5 py-4">
       <span className="min-w-0 text-[16px] font-extrabold leading-[1.2] text-[#1F305E]">
         {label}
       </span>
 
       <span
-        className={`shrink-0 whitespace-nowrap text-[22px] font-extrabold leading-none ${
+        className={`shrink-0 whitespace-nowrap text-[26px] font-extrabold leading-none ${
           isEmpty ? 'text-[#A7B1C7]' : 'text-[#1F305E]'
         }`}
       >
         {formatNumber(value)}
-        <span className="ml-1 text-[16px] font-medium text-[#7F8AA3]">/{formatNumber(required)}</span>
+        <span className="ml-1 text-[14px] font-semibold text-[#7F8AA3]">/{formatNumber(required)}</span>
       </span>
     </div>
   );
@@ -67,7 +67,7 @@ export function CeuOverviewBlock({ level = null, showActions = true }: CeuOvervi
   if (isLoading) {
     return (
       <section className="card-section">
-        <p className="text-sm text-blue-dark">Загрузка CEU...</p>
+        <p className="dashboard-v2-text text-blue-dark">Загрузка CEU...</p>
       </section>
     );
   }
@@ -75,7 +75,7 @@ export function CeuOverviewBlock({ level = null, showActions = true }: CeuOvervi
   if (isError || !summary) {
     return (
       <section className="card-section">
-        <p className="text-sm text-error">Не удалось загрузить CEU-баллы</p>
+        <p className="dashboard-v2-text text-error">Не удалось загрузить CEU-баллы</p>
       </section>
     );
   }

@@ -105,10 +105,10 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
     <div className="container-fixed px-4 pb-10 pt-3 text-blue-dark md:px-6">
       <header className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
         <div />
-        <h1 className="text-center text-[18px] font-extrabold leading-tight md:text-[24px]">
+        <h1 className="dashboard-v2-page-title text-center">
           Панель администратора
         </h1>
-        <div className="flex min-w-0 items-center justify-end gap-3 text-[12px] text-[#8D96B5]">
+        <div className="dashboard-v2-small flex min-w-0 items-center justify-end gap-3 text-[#8D96B5]">
           <span className="hidden max-w-[260px] truncate sm:block">{user.email}</span>
           <button
             type="button"
@@ -178,7 +178,7 @@ function AdminPanel({
 }) {
   return (
     <section className={`card-section shadow-soft ${className}`}>
-      <h2 className="px-5 text-center text-[15px] font-extrabold text-blue-dark md:text-[16px]">
+      <h2 className="dashboard-v2-title px-5 text-center">
         {title}
       </h2>
       {children}
@@ -190,7 +190,7 @@ function TaskLink({ task }: { task: TaskItem }) {
   return (
     <Link
       to={task.to}
-      className="flex min-h-[44px] items-center justify-between gap-3 px-5 py-2 text-[14px] leading-[1.25] text-[#222] transition hover:bg-[var(--color-blue-soft)]"
+      className="dashboard-v2-text flex min-h-[44px] items-center justify-between gap-3 px-5 py-2 text-[#222] transition hover:bg-[var(--color-blue-soft)]"
     >
       <span>{task.label}</span>
       {typeof task.count === 'number' && task.count > 0 ? <TaskBadge count={task.count} /> : null}
@@ -200,7 +200,7 @@ function TaskLink({ task }: { task: TaskItem }) {
 
 function TaskBadge({ count }: { count: number }) {
   return (
-    <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-[var(--color-danger)] px-2 text-[12px] font-extrabold text-white">
+    <span className="dashboard-v2-small inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-[var(--color-danger)] px-2 text-white">
       {count > 99 ? '99' : count}
     </span>
   );
@@ -222,7 +222,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-[48px] w-full items-center gap-3 px-5 py-2 text-left text-[14px] leading-[1.25] text-[#222] transition hover:bg-[var(--color-blue-soft)] disabled:cursor-not-allowed disabled:opacity-50"
+      className="dashboard-v2-text flex min-h-[48px] w-full items-center gap-3 px-5 py-2 text-left text-[#222] transition hover:bg-[var(--color-blue-soft)] disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span className="text-[#8D96B5]">{icon}</span>
       <span>{label}</span>
@@ -235,7 +235,7 @@ function AdminNotifications({ notifications }: { notifications: Notification[] }
 
   if (!visible.length) {
     return (
-      <div className="flex min-h-[180px] items-center justify-center px-4 text-center text-[14px] text-[#8D96B5]">
+      <div className="dashboard-v2-text flex min-h-[180px] items-center justify-center px-4 text-center text-[#8D96B5]">
         Новых событий нет
       </div>
     );
@@ -298,10 +298,10 @@ function NotificationRow({ notification }: { notification: Notification }) {
             />
           ) : null}
         </div>
-        <p className="mt-1 truncate text-[14px] leading-5 text-[#222]">{notification.message}</p>
+        <p className="dashboard-v2-text mt-1 truncate text-[#222]">{notification.message}</p>
       </div>
 
-      <div className="text-right text-[13px] leading-5 text-[#8D96B5]">
+      <div className="dashboard-v2-caption text-right text-[#8D96B5]">
         <div>{date}</div>
         <div>{time}</div>
       </div>
@@ -339,7 +339,7 @@ function NotificationBadge({ tone, children }: { tone: NotificationTone; childre
 
   return (
     <span
-      className={`inline-flex h-[24px] max-w-[180px] shrink-0 items-center truncate rounded-full px-3 text-[12px] font-semibold ${className}`}
+      className={`dashboard-v2-small inline-flex h-[24px] max-w-[180px] shrink-0 items-center truncate rounded-full px-3 ${className}`}
     >
       {children}
     </span>

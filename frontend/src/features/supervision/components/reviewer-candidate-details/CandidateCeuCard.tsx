@@ -29,7 +29,7 @@ export function CandidateCeuCard({ summary }: CandidateCeuCardProps) {
 
   return (
     <section className="flex min-h-[230px] flex-col rounded-[22px] bg-white px-6 py-5 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
-      <h2 className="mb-6 text-center text-[20px] font-extrabold leading-tight text-[#1F305E]">
+      <h2 className="dashboard-v2-title mb-6 text-center">
         CEU-Баллы
       </h2>
 
@@ -42,14 +42,14 @@ export function CandidateCeuCard({ summary }: CandidateCeuCardProps) {
               key={label}
               className="flex min-h-[42px] items-center justify-between border-b border-[#DCE8EC] py-2 last:border-b-0"
             >
-              <span className="text-[16px] font-medium leading-tight">{label}</span>
+              <span className="dashboard-v2-label font-medium">{label}</span>
               <span
-                className={`text-[24px] font-extrabold leading-none ${
+                className={`dashboard-v2-metric-value-lg ${
                   isEmpty ? 'text-[#A7B1C7]' : 'text-[#1F305E]'
                 }`}
               >
                 {formatNumber(value)}
-                <span className="ml-1 text-[16px] font-medium text-[#7F8AA3]">
+                <span className="dashboard-v2-label ml-1 text-[#7F8AA3]">
                   /{formatNumber(required)}
                 </span>
               </span>

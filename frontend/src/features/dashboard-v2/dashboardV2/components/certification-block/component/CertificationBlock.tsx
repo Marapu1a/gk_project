@@ -295,7 +295,7 @@ export function CertificationBlock({ user }: Props) {
   if (loading) {
     return (
       <section className="card-section">
-        <p className="text-sm text-blue-dark">Загрузка...</p>
+        <p className="dashboard-v2-text text-blue-dark">Загрузка...</p>
       </section>
     );
   }
@@ -309,7 +309,7 @@ export function CertificationBlock({ user }: Props) {
 
         <div className="relative mb-5">
           <select
-            className="h-[32px] w-full appearance-none rounded-[8px] border-0 bg-[var(--color-blue-dark)] px-4 pr-10 text-center text-[14px] font-extrabold leading-none text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            className="dashboard-v2-label h-[32px] w-full appearance-none rounded-[8px] border-0 bg-[var(--color-blue-dark)] px-4 pr-10 text-center text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
             value={selected}
             onChange={(e) => {
               const value = e.target.value;
@@ -350,7 +350,7 @@ export function CertificationBlock({ user }: Props) {
           </div>
         </div>
 
-        <div className="mb-5 space-y-4 text-center text-[13px] leading-[1.35] text-[#97A0BD]">
+        <div className="dashboard-v2-caption mb-5 space-y-4 text-center text-[#97A0BD]">
           <p>
             Поменять выбор будет нельзя,
             <br />
@@ -374,14 +374,14 @@ export function CertificationBlock({ user }: Props) {
         </div>
 
         {errorMessage && (
-          <p className="text-center text-sm text-[var(--color-danger)]">{errorMessage}</p>
+          <p className="dashboard-v2-text text-center text-[var(--color-danger)]">{errorMessage}</p>
         )}
 
         {setTarget.isSuccess && !errorMessage && (
-          <p className="text-center text-sm text-[var(--color-green-brand)]">Цель обновлена</p>
+          <p className="dashboard-v2-text text-center text-[var(--color-green-brand)]">Цель обновлена</p>
         )}
 
-        <div className="mt-auto flex h-[42px] items-center justify-center rounded-[8px] bg-[#B8C0D1] px-5 text-[14px] font-extrabold leading-none text-white">
+        <div className="dashboard-v2-label mt-auto flex h-[42px] items-center justify-center rounded-[8px] bg-[#B8C0D1] px-5 text-white">
           Не выбрано
         </div>
       </section>
@@ -394,11 +394,11 @@ export function CertificationBlock({ user }: Props) {
         Целевой уровень сертификации
       </h2>
 
-      <div className="mb-6 flex h-[32px] items-center justify-center rounded-[8px] bg-[var(--color-blue-soft)] px-5 text-center text-[14px] font-extrabold leading-none text-blue-dark">
+      <div className="dashboard-v2-label dashboard-v2-level-pill mb-6">
         {targetLevelName}
       </div>
 
-      <p className="mb-5 text-center text-[13px] leading-[1.35] text-[#97A0BD]">
+      <p className="dashboard-v2-caption mb-5 text-center text-[#97A0BD]">
         Выполните условия
         <br />
         целевого уровня сертификации
@@ -427,14 +427,14 @@ export function CertificationBlock({ user }: Props) {
       </ul>
 
       {!progress.documentReviewPaid ? (
-        <p className="mt-3 text-center text-[12px] font-semibold leading-[1.25] text-[var(--color-danger)]">
+        <p className="dashboard-v2-small mt-3 text-center text-[var(--color-danger)]">
           Проверка документов не оплачена
         </p>
       ) : null}
 
       <button
         type="button"
-        className={`btn mt-auto h-[42px] w-full rounded-[8px] text-[14px] font-extrabold leading-none ${
+        className={`btn dashboard-v2-label mt-auto h-[42px] w-full rounded-[8px] ${
           progress.isEligible && progress.requiredPaymentsPaid ? 'btn-dark' : ''
         }`}
         style={
@@ -455,7 +455,7 @@ export function CertificationBlock({ user }: Props) {
 
 function StatusRow({ ok, label, value }: { ok: boolean; label: string; value: string }) {
   return (
-    <li className="flex min-w-0 items-center gap-2 text-[13px] leading-none">
+    <li className="dashboard-v2-caption flex min-w-0 items-center gap-2">
       {ok ? (
         <CheckCircle
           size={16}
