@@ -31,6 +31,7 @@ import CeuPointsPage from './pages/CeuPointsPage';
 import ReviewerCandidatesPage from './pages/ReviewerCandidatesPage';
 import ReviewerCandidateDetailsPage from './pages/ReviewerCandidateDetailsPage';
 import ProfileEditPage from './pages/ProfileEditPage';
+import AdminUserBannerPage from './pages/AdminUserBannerPage';
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const router = createBrowserRouter([
       { path: 'document-review', element: <DocumentReviewPage /> },
       { path: 'admin/document-review', element: <AdminDocumentReviewListPage /> },
       { path: 'admin/document-review/:id', element: <AdminDocumentReviewDetailsPage /> },
+      { path: 'admin/user-banner', element: <AdminUserBannerPage /> },
       { path: 'users', element: <UsersPage /> },
       { path: 'admin/users/:id', element: <UserDetailsPage /> },
       { path: 'exam-applications', element: <ExamApplicationsPage /> },

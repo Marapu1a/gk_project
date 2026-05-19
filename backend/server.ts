@@ -24,6 +24,7 @@ import { registryRoutes } from './routes/registry';
 import { cycleRoutes } from './routes/cycleRoutes';
 import { backupRoutes } from './routes/backup';
 import { locationRoutes } from './routes/location';
+import { userBannerRoutes } from './routes/userBanner';
 
 dotenv.config()
 
@@ -72,6 +73,7 @@ app.register(registryRoutes);
 app.register(cycleRoutes);
 app.register(backupRoutes);
 app.register(locationRoutes);
+app.register(userBannerRoutes);
 
 app.get('/', async () => ({ ok: true }))
 

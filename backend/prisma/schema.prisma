@@ -130,6 +130,12 @@ enum NotificationType {
   USER
 }
 
+enum UserBannerTone {
+  DANGER
+  DARK
+  SOFT
+}
+
 model User {
   id            String  @id @default(cuid())
   email         String  @unique
@@ -398,6 +404,19 @@ model Notification {
   createdAt DateTime         @default(now())
 
   isRead Boolean @default(false)
+}
+
+model UserBanner {
+  id          String         @id @default("global")
+  enabled     Boolean        @default(false)
+  tone        UserBannerTone @default(DARK)
+  message     String         @default("")
+  ctaLabel    String?
+  ctaUrl      String?
+  dismissible Boolean        @default(true)
+  updatedById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
 
 model ExamApplication {

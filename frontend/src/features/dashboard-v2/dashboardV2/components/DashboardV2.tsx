@@ -6,6 +6,8 @@ import { CertificationBlock } from './certification-block/component/Certificatio
 import { HoursOverviewBlock } from './hours-overview/component/HoursOverviewBlock';
 import { CeuOverviewBlock } from './ceu-overview/component/CeuOverviewBlock';
 import { ReviewerCandidatesBlocks } from './reviewer-candidates/component/ReviewerCandidatesBlocks';
+import { AdminDashboard } from './admin-dashboard/AdminDashboard';
+import { UserDashboardBanner } from '@/features/userBanner/components/UserDashboardBanner';
 
 const TARGET_LEVEL_LABELS = {
   INSTRUCTOR: 'Инструктор',
@@ -15,9 +17,8 @@ const TARGET_LEVEL_LABELS = {
 
 export function DashboardV2() {
   const { data: user, isLoading, isError } = useCurrentUser();
-  const { data: payments = [], isLoading: paymentsLoading } = useUserPayments();
 
-  if (isLoading || paymentsLoading) {
+  if (isLoading) {
     return (
       <div className="container-fixed p-6">
         <p className="text-sm text-blue-dark">Загрузка...</p>
@@ -33,9 +34,26 @@ export function DashboardV2() {
     );
   }
 
+  if (user.role === 'ADMIN') {
+    return <AdminDashboard user={{ email: user.email }} />;
+  }
+
+  return <UserDashboardV2 user={user} />;
+}
+
+function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurrentUser>['data']> }) {
+  const { data: payments = [], isLoading: paymentsLoading } = useUserPayments();
+
+  if (paymentsLoading) {
+    return (
+      <div className="container-fixed p-6">
+        <p className="text-sm text-blue-dark">Загрузка...</p>
+      </div>
+    );
+  }
+
   const activeGroupName = user.activeGroup?.name ?? '';
   const targetLevelName = user.targetLevel ? TARGET_LEVEL_LABELS[user.targetLevel] : undefined;
-  const isAdmin = user.role === 'ADMIN';
   const isRenewalCycle = user.activeCycle?.type === 'RENEWAL';
   const registrationPaid =
     payments.some((payment) => payment.type === 'REGISTRATION' && payment.status === 'PAID') ||
@@ -43,11 +61,13 @@ export function DashboardV2() {
 
   // Повторяет текущую продовую логику: для ресертификации проверка оплаты временно отключена.
   const hasRequiredPayment = isRenewalCycle ? true : registrationPaid;
-  const canUseCertificationContent = isAdmin || hasRequiredPayment;
+  const canUseCertificationContent = hasRequiredPayment;
 
   return (
     <div className="container-fixed p-6">
       <div className="space-y-6">
+        <UserDashboardBanner />
+
         <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-3">
           <div className="flex min-w-0">
             <CertificationBlock user={user} />
