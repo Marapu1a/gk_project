@@ -1,11 +1,10 @@
-import { BackButton } from '@/components/BackButton';
+import { AuthScreen } from '@/features/auth/components/AuthLayout';
 import { ForgotPasswordForm } from '@/features/auth/components/ForgotPasswordForm';
 
 export default function ForgotPasswordPage() {
   return (
-    <div className="p-4">
+    <AuthScreen title="Восстановление пароля" maxWidth="max-w-[380px]">
       <ForgotPasswordForm />
-      <BackButton />
-    </div>
+    </AuthScreen>
   );
 }

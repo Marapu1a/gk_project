@@ -1,11 +1,11 @@
 // src/pages/LoginPage.tsx
+import { AuthScreen } from '@/features/auth/components/AuthLayout';
 import { LoginForm } from '../features/auth/components/LoginForm';
 
 export default function LoginPage() {
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4 text-blue-dark">Вход</h1>
+    <AuthScreen title="Вход" maxWidth="max-w-[380px]">
       <LoginForm />
-    </div>
+    </AuthScreen>
   );
 }

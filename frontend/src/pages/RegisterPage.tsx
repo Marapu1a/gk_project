@@ -1,11 +1,11 @@
 // src/pages/RegisterPage.tsx
+import { AuthScreen } from '@/features/auth/components/AuthLayout';
 import { RegisterForm } from '../features/auth/components/RegisterForm';
 
 export default function RegisterPage() {
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4 text-blue-dark">Регистрация</h1>
+    <AuthScreen title="Регистрация" maxWidth="max-w-[628px]">
       <RegisterForm />
-    </div>
+    </AuthScreen>
   );
 }

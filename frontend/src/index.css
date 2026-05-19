@@ -141,6 +141,12 @@ select {
   background-color: var(--color-blue-darker);
 }
 
+.auth-submit:disabled {
+  opacity: 1;
+  color: var(--color-white);
+  background-color: #BFC5D2;
+}
+
 .btn-dark:focus-visible {
   box-shadow: 0 0 0 3px rgba(31, 48, 94, 0.18);
 }
@@ -332,6 +338,37 @@ select {
   box-shadow: 0 0 0 2px var(--color-green-brand);
 }
 
+.react-tel-input.auth-phone {
+  width: 100%;
+}
+
+.react-tel-input .form-control.input-design.auth-phone-input {
+  width: 100% !important;
+  height: 32px !important;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  color: var(--color-blue-dark);
+  border: 1px solid #B8C4D8;
+  border-radius: 10px;
+}
+
+.react-tel-input .form-control.input-design.auth-phone-input:focus {
+  border-color: var(--color-blue-dark);
+  box-shadow: 0 0 0 2px rgba(31, 48, 94, 0.12);
+}
+
+.react-tel-input .auth-phone-flag {
+  border: 1px solid #B8C4D8;
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  background-color: var(--color-white);
+}
+
+.react-tel-input .auth-phone-flag.open,
+.react-tel-input .auth-phone-flag:hover {
+  background-color: var(--color-white);
+}
+
 /* ==========================================================================
    🎨 Утилиты
    ========================================================================== */
@@ -459,6 +496,44 @@ select {
 }
 
 .profile-edit-select .select__placeholder {
+  color: #8D96B5;
+  font-size: 13px;
+}
+
+.auth-select .select__control {
+  min-height: 32px;
+  border-color: #B8C4D8;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.auth-select .select__control:hover,
+.auth-select .select__control--is-focused {
+  border-color: var(--color-blue-dark);
+  box-shadow: 0 0 0 2px rgba(31, 48, 94, 0.12);
+}
+
+.auth-select .select__value-container {
+  min-height: 30px;
+  padding: 1px 8px;
+}
+
+.auth-select .select__multi-value {
+  border-radius: 8px;
+  background-color: #E7E9EF;
+}
+
+.auth-select .select__multi-value__label {
+  color: var(--color-blue-dark);
+  font-size: 13px;
+}
+
+.auth-select .select__indicator {
+  padding: 4px;
+  color: #8D96B5;
+}
+
+.auth-select .select__placeholder {
   color: #8D96B5;
   font-size: 13px;
 }

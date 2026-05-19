@@ -1,11 +1,10 @@
-import { BackButton } from '@/components/BackButton';
+import { AuthScreen } from '@/features/auth/components/AuthLayout';
 import { ResetPasswordForm } from '@/features/auth/components/ResetPasswordForm';
 
 export default function ResetPasswordPage() {
   return (
-    <div className="p-4">
+    <AuthScreen title="Сброс пароля" maxWidth="max-w-[380px]">
       <ResetPasswordForm />
-      <BackButton />
-    </div>
+    </AuthScreen>
   );
 }

@@ -1,11 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { Button } from '@/components/Button';
+import { AuthCard, AuthField, AuthSubmitButton, PasswordInput } from './AuthLayout';
 import { loginSchema } from '../validation/loginSchema';
 import type { LoginDto } from '../validation/loginSchema';
 import { loginUser } from '../api/login';
@@ -33,6 +33,7 @@ function ArchivedAccountError() {
 export function LoginForm() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   // Если уже залогинен — проверяем токен сервером
   useEffect(() => {
@@ -83,19 +84,12 @@ export function LoginForm() {
   const disabled = mutation.isPending;
 
   return (
-    <div
-      className="w-full max-w-md rounded-2xl border header-shadow bg-white"
-      style={{ borderColor: 'var(--color-green-light)' }}
-    >
-      <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--color-green-light)' }}>
-        <h1 className="text-xl font-semibold text-blue-dark">Вход</h1>
-      </div>
-
-      <form onSubmit={onSubmit} className="px-6 py-5 space-y-4">
+    <>
+      <AuthCard className="px-5 py-6 md:px-5">
+        <form onSubmit={onSubmit} className="space-y-7">
         {form.formState.errors.root?.serverError && (
           <div
-            className="text-error text-sm border rounded-md p-3"
-            style={{ borderColor: 'var(--color-green-light)' }}
+            className="rounded-[10px] border border-[var(--color-danger)] p-3 text-sm text-[var(--color-danger)]"
           >
             {form.formState.errors.root.serverError.message === ARCHIVED_ACCOUNT_MESSAGE ? (
               <ArchivedAccountError />
@@ -105,60 +99,50 @@ export function LoginForm() {
           </div>
         )}
 
-        <div>
-          <label htmlFor="email" className="block mb-1 text-sm text-blue-dark">
-            Email
-          </label>
+        <AuthField label="Email" error={form.formState.errors.email?.message}>
           <input
             id="email"
             type="email"
             inputMode="email"
             autoComplete="email"
             spellCheck={false}
-            className="input"
+            className="input-design h-[32px]"
             aria-invalid={!!form.formState.errors.email}
             disabled={disabled}
             {...form.register('email')}
           />
-          {form.formState.errors.email && (
-            <p className="text-error">{form.formState.errors.email.message}</p>
-          )}
-        </div>
+        </AuthField>
 
-        <div>
-          <label htmlFor="password" className="block mb-1 text-sm text-blue-dark">
-            Пароль
-          </label>
-          <input
+        <AuthField label="Пароль" error={form.formState.errors.password?.message}>
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="current-password"
-            className="input"
             aria-invalid={!!form.formState.errors.password}
             disabled={disabled}
+            valueVisible={passwordVisible}
+            onToggleVisible={() => setPasswordVisible((value) => !value)}
             {...form.register('password')}
           />
-          {form.formState.errors.password && (
-            <p className="text-error">{form.formState.errors.password.message}</p>
-          )}
-          <div className="mt-1 text-right">
-            <Link to="/forgot-password" className="text-sm text-brand underline">
-              Забыли пароль?
-            </Link>
-          </div>
-        </div>
+        </AuthField>
 
-        <Button type="submit" loading={mutation.isPending} disabled={disabled}>
+        <AuthSubmitButton loading={mutation.isPending} disabled={disabled}>
           Войти
-        </Button>
+        </AuthSubmitButton>
 
-        <p className="text-sm mt-2">
-          Нет аккаунта?{' '}
-          <Link to="/register" className="text-brand underline">
-            Зарегистрируйтесь
+        <div className="text-center">
+          <Link to="/forgot-password" className="text-[15px] text-blue-dark underline">
+            Восстановить пароль
           </Link>
-        </p>
-      </form>
-    </div>
+        </div>
+        </form>
+      </AuthCard>
+
+      <p className="mt-7 text-center text-[15px] text-[#8D96B5]">
+        Нет аккаунта?{' '}
+        <Link to="/register" className="text-blue-dark underline">
+          Регистрация
+        </Link>
+      </p>
+    </>
   );
 }
