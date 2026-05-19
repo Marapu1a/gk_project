@@ -5,6 +5,8 @@ import type { SupervisionRecordHistoryItem } from '../api/getSupervisionRecordHi
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
+type HistoryMode = 'supervision' | 'mentorship';
+
 function formatDate(value: string | null | undefined) {
   if (!value) return '—';
   return format(new Date(value), 'dd.MM.yyyy');
@@ -15,11 +17,12 @@ function formatNumber(value: number | null | undefined) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function statusLabel(record: SupervisionRecordHistoryItem) {
+function statusLabel(record: SupervisionRecordHistoryItem, mode: HistoryMode = 'supervision') {
   const supervisorName = record.supervisor?.fullName || record.supervisor?.email || '';
+  const reviewerLabel = mode === 'mentorship' ? 'ментором' : 'супервизором';
 
   if (record.status === 'CONFIRMED') {
-    return supervisorName ? `Принято супервизором ${supervisorName}` : 'Принято супервизором';
+    return supervisorName ? `Принято ${reviewerLabel} ${supervisorName}` : `Принято ${reviewerLabel}`;
   }
 
   if (record.status === 'REJECTED') {
@@ -37,7 +40,7 @@ function statusLabel(record: SupervisionRecordHistoryItem) {
   return 'На рассмотрении';
 }
 
-export function SupervisionRecordHistoryBlock() {
+export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?: HistoryMode }) {
   const [selectedRecord, setSelectedRecord] = useState<SupervisionRecordHistoryItem | null>(null);
   const {
     data,
@@ -47,10 +50,12 @@ export function SupervisionRecordHistoryBlock() {
     isFetchingNextPage,
   } = useSupervisionRecordHistory({ take: 25 });
 
-  const records = useMemo(
-    () => (data ? data.pages.flatMap((page) => page.records) : []),
-    [data],
-  );
+  const records = useMemo(() => {
+    const allRecords = data ? data.pages.flatMap((page) => page.records) : [];
+    return allRecords.filter((record) =>
+      mode === 'mentorship' ? record.hours.mentor > 0 : record.hours.mentor <= 0,
+    );
+  }, [data, mode]);
 
   return (
     <section
@@ -65,50 +70,85 @@ export function SupervisionRecordHistoryBlock() {
         <p className="text-[14px] text-[#6B7894]">Пока нет заявок.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-[14px] text-[#1F305E]">
-            <thead>
-              <tr className="bg-[#E7F1F4] text-left">
-                <th className="rounded-l-[10px] px-4 py-3 font-medium">Начало</th>
-                <th className="px-4 py-3 font-medium">Окончание</th>
-                <th className="px-4 py-3 text-center font-medium">Полевая практика</th>
-                <th className="px-4 py-3 text-center font-medium">Работа с информацией</th>
-                <th className="px-4 py-3 text-center font-medium">С наблюдением</th>
-                <th className="px-4 py-3 text-center font-medium">Без наблюдения</th>
-                <th className="px-4 py-3 font-medium">Статус</th>
-                <th className="rounded-r-[10px] px-4 py-3 text-right font-medium" />
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((record) => (
-                <tr key={record.id} className="border-b border-[#DCE8EC] last:border-b-0">
-                  <td className="px-4 py-4">{formatDate(record.periodStartedAt)}</td>
-                  <td className="px-4 py-4">{formatDate(record.periodEndedAt)}</td>
-                  <td className="px-4 py-4 text-center text-[#6B7894]">
-                    {formatNumber(record.hours.implementing)}
-                  </td>
-                  <td className="px-4 py-4 text-center font-extrabold">
-                    {formatNumber(record.hours.programming)}
-                  </td>
-                  <td className="px-4 py-4 text-center text-[#6B7894]">
-                    {formatNumber(record.distribution.direct)}
-                  </td>
-                  <td className="px-4 py-4 text-center font-extrabold">
-                    {formatNumber(record.distribution.nonObserving)}
-                  </td>
-                  <td className="px-4 py-4 text-[#6B7894]">{statusLabel(record)}</td>
-                  <td className="px-4 py-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedRecord(record)}
-                      className="btn btn-dark h-[34px] rounded-full px-5 text-[14px] font-extrabold"
-                    >
-                      Детали
-                    </button>
-                  </td>
+          {mode === 'mentorship' ? (
+            <table className="w-full min-w-[780px] text-[14px] text-[#1F305E]">
+              <thead>
+                <tr className="bg-[#E7F1F4] text-left">
+                  <th className="rounded-l-[10px] px-4 py-3 font-medium">Дата</th>
+                  <th className="px-4 py-3 text-center font-medium">Часы менторства</th>
+                  <th className="px-4 py-3 font-medium">Формат</th>
+                  <th className="px-4 py-3 font-medium">Статус</th>
+                  <th className="rounded-r-[10px] px-4 py-3 text-right font-medium" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {records.map((record) => (
+                  <tr key={record.id} className="border-b border-[#DCE8EC] last:border-b-0">
+                    <td className="px-4 py-4">{formatDate(record.periodStartedAt)}</td>
+                    <td className="px-4 py-4 text-center font-extrabold">
+                      {formatNumber(record.hours.mentor)}
+                    </td>
+                    <td className="px-4 py-4 text-[#6B7894]">{record.treatmentSetting || '—'}</td>
+                    <td className="px-4 py-4 text-[#6B7894]">{statusLabel(record, mode)}</td>
+                    <td className="px-4 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRecord(record)}
+                        className="btn btn-dark h-[34px] rounded-full px-5 text-[14px] font-extrabold"
+                      >
+                        Детали
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full min-w-[960px] text-[14px] text-[#1F305E]">
+              <thead>
+                <tr className="bg-[#E7F1F4] text-left">
+                  <th className="rounded-l-[10px] px-4 py-3 font-medium">Начало</th>
+                  <th className="px-4 py-3 font-medium">Окончание</th>
+                  <th className="px-4 py-3 text-center font-medium">Полевая практика</th>
+                  <th className="px-4 py-3 text-center font-medium">Работа с информацией</th>
+                  <th className="px-4 py-3 text-center font-medium">С наблюдением</th>
+                  <th className="px-4 py-3 text-center font-medium">Без наблюдения</th>
+                  <th className="px-4 py-3 font-medium">Статус</th>
+                  <th className="rounded-r-[10px] px-4 py-3 text-right font-medium" />
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((record) => (
+                  <tr key={record.id} className="border-b border-[#DCE8EC] last:border-b-0">
+                    <td className="px-4 py-4">{formatDate(record.periodStartedAt)}</td>
+                    <td className="px-4 py-4">{formatDate(record.periodEndedAt)}</td>
+                    <td className="px-4 py-4 text-center text-[#6B7894]">
+                      {formatNumber(record.hours.implementing)}
+                    </td>
+                    <td className="px-4 py-4 text-center font-extrabold">
+                      {formatNumber(record.hours.programming)}
+                    </td>
+                    <td className="px-4 py-4 text-center text-[#6B7894]">
+                      {formatNumber(record.distribution.direct)}
+                    </td>
+                    <td className="px-4 py-4 text-center font-extrabold">
+                      {formatNumber(record.distribution.nonObserving)}
+                    </td>
+                    <td className="px-4 py-4 text-[#6B7894]">{statusLabel(record, mode)}</td>
+                    <td className="px-4 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRecord(record)}
+                        className="btn btn-dark h-[34px] rounded-full px-5 text-[14px] font-extrabold"
+                      >
+                        Детали
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
@@ -128,6 +168,7 @@ export function SupervisionRecordHistoryBlock() {
       {selectedRecord ? (
         <SupervisionRecordDetailsModal
           record={selectedRecord}
+          mode={mode}
           onClose={() => setSelectedRecord(null)}
         />
       ) : null}
@@ -137,9 +178,11 @@ export function SupervisionRecordHistoryBlock() {
 
 function SupervisionRecordDetailsModal({
   record,
+  mode,
   onClose,
 }: {
   record: SupervisionRecordHistoryItem;
+  mode: HistoryMode;
   onClose: () => void;
 }) {
   return (
@@ -161,27 +204,46 @@ function SupervisionRecordDetailsModal({
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-            <ReadOnlyField label="Дата подачи заявки" value={formatDate(record.createdAt)} />
-            <ReadOnlyField label="Условия практики" value={record.treatmentSetting || '—'} />
-            <ReadOnlyField label="Дата начала" value={formatDate(record.periodStartedAt)} />
-            <ReadOnlyField label="Дата окончания" value={formatDate(record.periodEndedAt)} />
+              <ReadOnlyField label="Дата подачи заявки" value={formatDate(record.createdAt)} />
+              <ReadOnlyField
+                label={mode === 'mentorship' ? 'Формат менторства' : 'Условия практики'}
+                value={record.treatmentSetting || '—'}
+              />
+              <ReadOnlyField
+                label={mode === 'mentorship' ? 'Дата менторства' : 'Дата начала'}
+                value={formatDate(record.periodStartedAt)}
+              />
+              {mode === 'supervision' ? (
+                <ReadOnlyField label="Дата окончания" value={formatDate(record.periodEndedAt)} />
+              ) : null}
             </div>
 
-            <div>
-              <h4 className="mb-3 text-[14px] font-extrabold text-[#1F305E]">Практика</h4>
-              <div className="grid gap-4 sm:grid-cols-2">
+            {mode === 'mentorship' ? (
+              <div>
+                <h4 className="mb-3 text-[14px] font-extrabold text-[#1F305E]">Менторство</h4>
                 <ReadOnlyField
-                  label="Полевая практика"
-                  value={formatNumber(record.hours.implementing)}
-                />
-                <ReadOnlyField
-                  label="Работа с информацией"
-                  value={formatNumber(record.hours.programming)}
+                  label="Количество часов"
+                  value={formatNumber(record.hours.mentor)}
                 />
               </div>
-            </div>
+            ) : (
+              <div>
+                <h4 className="mb-3 text-[14px] font-extrabold text-[#1F305E]">Практика</h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <ReadOnlyField
+                    label="Полевая практика"
+                    value={formatNumber(record.hours.implementing)}
+                  />
+                  <ReadOnlyField
+                    label="Работа с информацией"
+                    value={formatNumber(record.hours.programming)}
+                  />
+                </div>
+              </div>
+            )}
 
-            <div>
+            {mode === 'supervision' ? (
+              <div>
               <h4 className="mb-3 text-[14px] font-extrabold text-[#1F305E]">Супервизия</h4>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-4 sm:border-r sm:border-[#DCE3EF] sm:pr-4">
@@ -215,11 +277,12 @@ function SupervisionRecordDetailsModal({
                 </div>
               </div>
             </div>
+            ) : null}
           </div>
 
           <div>
             <ReadOnlyField
-              label="Супервизор"
+              label={mode === 'mentorship' ? 'Ментор' : 'Супервизор'}
               value={record.supervisor?.fullName || record.supervisor?.email || '—'}
             />
 
@@ -229,7 +292,7 @@ function SupervisionRecordDetailsModal({
             </div>
 
             <div className="mt-4 rounded-[10px] bg-[#C8CEDB] px-4 py-3 text-center text-[14px] font-semibold text-[#1F305E]">
-              {statusLabel(record)}
+              {statusLabel(record, mode)}
             </div>
 
             {record.rejectedReason ? (

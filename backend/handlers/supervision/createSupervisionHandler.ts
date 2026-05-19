@@ -77,6 +77,11 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     return reply.code(403).send({ error: 'Аккаунт архивирован' });
   }
 
+  const acceptedEthicsAt = currentUser.supervisionEthicsAcceptedAt ?? (ethicsAccepted ? new Date() : null);
+  if (!acceptedEthicsAt) {
+    return reply.code(400).send({ error: 'Необходимо принять этические принципы IBAO' });
+  }
+
   const userGroups = currentUser.groups.map((g) => g.group.name);
   const reviewerGroups = reviewer.groups.map((g) => g.group.name);
 
@@ -90,7 +95,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
 
   if (isAuthorExperiencedSupervisor) {
     return reply.code(400).send({
-      error: 'Опытные супервизоры не набирают часы. Для менторских часов выбирают вас.',
+      error: 'Опытные супервизоры не набирают часы менторства.',
     });
   }
 
@@ -154,6 +159,13 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     : ReviewerCandidateKind.SUPERVISION;
 
   const record = await prisma.$transaction(async (tx) => {
+    if (!currentUser.supervisionEthicsAcceptedAt && ethicsAccepted) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { supervisionEthicsAcceptedAt: acceptedEthicsAt },
+      });
+    }
+
     const createdRecord = await tx.supervisionRecord.create({
       data: {
         userId,
@@ -163,7 +175,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
         periodEndedAt,
         treatmentSetting,
         description,
-        ethicsAcceptedAt: ethicsAccepted ? new Date() : undefined,
+        ethicsAcceptedAt: acceptedEthicsAt,
         draftDirectIndividual: draftDistribution?.directIndividual,
         draftDirectGroup: draftDistribution?.directGroup,
         draftNonObservingIndividual: draftDistribution?.nonObservingIndividual,

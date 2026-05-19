@@ -134,6 +134,12 @@ export type ReviewerCandidateDetailsResponse = {
       distributedTotal: number;
       remaining: number;
     };
+    mentor: {
+      total: number;
+      required: number;
+      percent: number;
+      pending: number;
+    } | null;
   };
   requests: {
     supervision: ReviewerCandidateRequest[];

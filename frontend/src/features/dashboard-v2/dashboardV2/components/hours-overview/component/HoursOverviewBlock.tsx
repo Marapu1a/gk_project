@@ -23,7 +23,7 @@ function HelpBadge({ title }: { title: string }) {
 
 function MetricCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-[14px] bg-[#E5EFF1] px-3 py-2.5">
+    <div className="rounded-[14px] bg-[var(--color-blue-soft)] px-3 py-2.5">
       <div className="mb-1.5 flex items-start justify-between gap-2">
         <span className="text-[14px] leading-[1.2] text-[#1F305E]">{label}</span>
         {hint ? <HelpBadge title={hint} /> : null}
@@ -44,7 +44,7 @@ function MetricSegment({
 }) {
   return (
     <div
-      className={`bg-[#F0F0F0] px-3 py-2.5 ${
+      className={`bg-[var(--color-blue-soft)] px-3 py-2.5 ${
         side === 'left' ? 'rounded-l-[14px]' : 'rounded-r-[14px] border-l border-white'
       }`}
     >
@@ -81,7 +81,7 @@ function TotalCircle({
   const normalizedProgress = Math.max(0, Math.min(100, progress));
 
   return (
-    <div className="flex h-full min-h-[138px] flex-col items-center justify-center rounded-[16px] bg-[#E5EFF1] px-5 py-4">
+    <div className="flex h-full min-h-[138px] flex-col items-center justify-center rounded-[16px] bg-[var(--color-blue-soft)] px-5 py-4">
       <span className="mb-4 text-[14px] text-[#1F305E]">{label}</span>
       <div
         className="relative flex h-[86px] w-[86px] items-center justify-center rounded-full"
@@ -89,7 +89,7 @@ function TotalCircle({
           background: `conic-gradient(#D8DFEA ${normalizedProgress}%, #FFFFFF ${normalizedProgress}% 100%)`,
         }}
       >
-        <div className="absolute inset-[4px] rounded-full bg-[#E5EFF1]" />
+        <div className="absolute inset-[4px] rounded-full bg-[var(--color-blue-soft)]" />
         <div className="absolute inset-[8px] rounded-full border-[3px] border-[#D6DDEA] bg-white" />
         <span className="relative z-10 text-[18px] font-extrabold text-[#26396E]">{value}</span>
       </div>
@@ -99,9 +99,13 @@ function TotalCircle({
 
 type HoursOverviewBlockProps = {
   showActions?: boolean;
+  forceMentorship?: boolean;
 };
 
-export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockProps) {
+export function HoursOverviewBlock({
+  showActions = true,
+  forceMentorship = false,
+}: HoursOverviewBlockProps) {
   const navigate = useNavigate();
   const { data: summary, isLoading, isError } = useSupervisionSummary();
 
@@ -128,9 +132,76 @@ export function HoursOverviewBlock({ showActions = true }: HoursOverviewBlockPro
 
   const hasSupervisionTrack =
     (summary.required?.supervision ?? 0) > 0 || summary.supervisionBreakdown.total > 0;
+  const hasMentorTrack =
+    forceMentorship ||
+    (summary.mentor?.required ?? 0) > 0 ||
+    (summary.mentor?.total ?? 0) > 0 ||
+    (summary.mentor?.pending ?? 0) > 0;
 
-  if (!hasPracticeTrack && !hasSupervisionTrack) {
+  if (!hasPracticeTrack && !hasSupervisionTrack && !hasMentorTrack) {
     return null;
+  }
+
+  if (hasMentorTrack && (forceMentorship || (!hasPracticeTrack && !hasSupervisionTrack))) {
+    const mentor = summary.mentor ?? { total: 0, required: 24, percent: 0, pending: 0 };
+    const mentorRemaining = Math.max(0, mentor.required - mentor.total - mentor.pending);
+
+    return (
+      <section className="card-section overflow-hidden px-5 py-5">
+        <div className="mb-3 flex items-start justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <h3 className="dashboard-v2-title">Часы менторства</h3>
+            <HelpBadge title="Подтвержденные часы менторства в текущем активном цикле." />
+          </div>
+
+          {showActions ? (
+            <div className="flex shrink-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/supervision/hours?panel=history')}
+                className="btn dashboard-v2-action dashboard-v2-action-secondary"
+              >
+                История
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/supervision/hours')}
+                className="btn dashboard-v2-action dashboard-v2-action-primary"
+              >
+                Добавить
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[150px_minmax(0,1fr)]">
+          <TotalCircle
+            label="Всего"
+            value={formatNumber(mentor.total)}
+            progress={mentor.percent}
+          />
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <MetricCard
+              label="Требуется"
+              value={formatNumber(mentor.required)}
+              hint="Фиксированное количество часов менторства для текущего цикла."
+            />
+            <MetricCard
+              label="На рассмотрении"
+              value={formatNumber(mentor.pending)}
+              hint="Часы менторства, отправленные ментору и ожидающие проверки."
+            />
+            <MetricCard
+              label="Осталось"
+              value={formatNumber(mentorRemaining)}
+              hint="Сколько часов менторства осталось отправить до выполнения условия."
+            />
+          </div>
+        </div>
+      </section>
+    );
   }
 
   const fieldPractice = summary.practiceBreakdown.legacy + summary.practiceBreakdown.implementing;

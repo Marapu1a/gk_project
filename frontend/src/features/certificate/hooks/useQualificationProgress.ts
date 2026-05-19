@@ -98,7 +98,7 @@ export function useQualificationProgress(
   } else {
     // RENEWAL — только супервизоры / опытные супервизоры
     if (isExperiencedSupervisorGroup) {
-      // опытный супервизор: менторские часы не требуются
+      // опытный супервизор набирает только CEU-баллы
       supervisionReady = true;
     } else if (isSupervisorGroup) {
       // обычный супервизор: смотрим на менторскую шкалу с бэка

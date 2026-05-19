@@ -46,7 +46,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="mb-1 text-[12px] font-semibold text-[#1F305E]">{label}</div>
-      <div className="min-h-[30px] rounded-[8px] bg-[#EFF1F5] px-3 py-1.5 text-[13px] text-[#1F305E]">
+      <div className="min-h-[30px] rounded-[8px] bg-[var(--color-blue-soft)] px-3 py-1.5 text-[13px] text-[#1F305E]">
         {value}
       </div>
     </div>
@@ -134,7 +134,7 @@ export function CandidateRequestDetailsModal({
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div className="space-y-5">
-            <section className="rounded-[12px] bg-[#E5EFF1] px-4 py-4 text-[14px] text-[#1F305E]">
+            <section className="rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-4 text-[14px] text-[#1F305E]">
               <h4 className="mb-3 text-[16px] font-extrabold">Часы</h4>
               {request.hours.length > 0 ? (
                 <div className="rounded-[10px] bg-white px-3 py-2">
@@ -153,7 +153,7 @@ export function CandidateRequestDetailsModal({
             </section>
 
             {kind === 'supervision' ? (
-              <section className="rounded-[12px] bg-[#F7F8FA] px-4 py-4 text-[14px] text-[#1F305E]">
+              <section className="rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-4 text-[14px] text-[#1F305E]">
                 <h4 className="mb-3 text-[16px] font-extrabold">Распределение супервизии</h4>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-[10px] bg-white px-3 py-2">
@@ -187,13 +187,13 @@ export function CandidateRequestDetailsModal({
 
             <div>
               <div className="mb-1 text-[12px] font-semibold text-[#1F305E]">Описание</div>
-              <div className="min-h-[120px] rounded-[8px] bg-[#EFF1F5] px-3 py-2 text-[13px] leading-relaxed text-[#1F305E]">
+              <div className="min-h-[120px] rounded-[8px] bg-[var(--color-blue-soft)] px-3 py-2 text-[13px] leading-relaxed text-[#1F305E]">
                 {request.description || '—'}
               </div>
             </div>
 
             {request.rejectedReason ? (
-              <div className="rounded-[10px] bg-[#FFFFFF] px-4 py-3 text-[14px] text-[#FF5364]">
+              <div className="rounded-[10px] bg-white px-4 py-3 text-[14px] text-[var(--color-danger)]">
                 {request.rejectedReason}
               </div>
             ) : null}

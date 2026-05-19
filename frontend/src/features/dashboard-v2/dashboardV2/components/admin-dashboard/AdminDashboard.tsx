@@ -108,12 +108,12 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
         <h1 className="text-center text-[18px] font-extrabold leading-tight md:text-[24px]">
           Панель администратора
         </h1>
-        <div className="flex min-w-0 items-center justify-end gap-2 text-[12px] text-[#8D96B5]">
+        <div className="flex min-w-0 items-center justify-end gap-3 text-[12px] text-[#8D96B5]">
           <span className="hidden max-w-[260px] truncate sm:block">{user.email}</span>
           <button
             type="button"
             onClick={() => navigate('/users')}
-            className="icon-button icon-button-primary h-8 w-8"
+            className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--color-blue-dark)] transition-colors hover:bg-[var(--color-blue-soft)]"
             aria-label="Управление"
             title="Управление"
           >
@@ -122,7 +122,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
           <button
             type="button"
             onClick={logout}
-            className="icon-button icon-button-danger h-8 w-8"
+            className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)] hover:text-white"
             aria-label="Выйти"
             title="Выйти"
           >
@@ -190,7 +190,7 @@ function TaskLink({ task }: { task: TaskItem }) {
   return (
     <Link
       to={task.to}
-      className="flex min-h-[44px] items-center justify-between gap-3 px-5 py-2 text-[14px] leading-[1.25] text-[#222] transition hover:bg-[#E5EFF1]"
+      className="flex min-h-[44px] items-center justify-between gap-3 px-5 py-2 text-[14px] leading-[1.25] text-[#222] transition hover:bg-[var(--color-blue-soft)]"
     >
       <span>{task.label}</span>
       {typeof task.count === 'number' && task.count > 0 ? <TaskBadge count={task.count} /> : null}
@@ -200,7 +200,7 @@ function TaskLink({ task }: { task: TaskItem }) {
 
 function TaskBadge({ count }: { count: number }) {
   return (
-    <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-[#F653A3] px-2 text-[12px] font-extrabold text-white">
+    <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-[var(--color-danger)] px-2 text-[12px] font-extrabold text-white">
       {count > 99 ? '99' : count}
     </span>
   );
@@ -222,7 +222,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-[48px] w-full items-center gap-3 px-5 py-2 text-left text-[14px] leading-[1.25] text-[#222] transition hover:bg-[#E5EFF1] disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex min-h-[48px] w-full items-center gap-3 px-5 py-2 text-left text-[14px] leading-[1.25] text-[#222] transition hover:bg-[var(--color-blue-soft)] disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span className="text-[#8D96B5]">{icon}</span>
       <span>{label}</span>
@@ -285,7 +285,7 @@ function NotificationRow({ notification }: { notification: Notification }) {
   return (
     <article
       className={`grid min-h-[72px] grid-cols-[minmax(0,1fr)_104px_38px_32px] items-center gap-3 px-5 py-3 transition ${
-        notification.isRead ? 'bg-white' : 'bg-[#EAF3F5]'
+        notification.isRead ? 'bg-white' : 'bg-[var(--color-blue-soft)]'
       }`}
     >
       <div className="min-w-0">
@@ -293,7 +293,7 @@ function NotificationRow({ notification }: { notification: Notification }) {
           <NotificationBadge tone={tone}>{label}</NotificationBadge>
           {!notification.isRead ? (
             <span
-              className="h-2 w-2 shrink-0 rounded-full bg-[#F653A3]"
+              className="h-2 w-2 shrink-0 rounded-full bg-[var(--color-danger)]"
               aria-label="Не прочитано"
             />
           ) : null}
@@ -334,8 +334,8 @@ function NotificationBadge({ tone, children }: { tone: NotificationTone; childre
     tone === 'dark'
       ? 'bg-[var(--color-blue-dark)] text-white'
       : tone === 'danger'
-        ? 'bg-[rgba(255,83,100,0.36)] text-[var(--color-blue-dark)]'
-        : 'bg-[#C7D8FF] text-[var(--color-blue-dark)]';
+        ? 'bg-[var(--color-danger)] text-white'
+        : 'bg-[var(--color-blue-soft)] text-[var(--color-blue-dark)]';
 
   return (
     <span

@@ -6,6 +6,7 @@ type CandidateTargetCardProps = {
   ceuRequired: number;
   supervisionCurrent: number;
   supervisionRequired: number;
+  supervisionLabel?: string;
   documentsReady?: boolean;
 };
 
@@ -23,6 +24,7 @@ export function CandidateTargetCard({
   ceuRequired,
   supervisionCurrent,
   supervisionRequired,
+  supervisionLabel = 'Часы супервизии',
   documentsReady = false,
 }: CandidateTargetCardProps) {
   return (
@@ -31,7 +33,7 @@ export function CandidateTargetCard({
         Целевой уровень сертификации
       </h2>
 
-      <div className="mb-8 flex min-h-[42px] items-center justify-center rounded-[12px] bg-[#E5EFF1] px-4 py-2 text-center text-[20px] font-extrabold leading-tight text-[#1F305E]">
+      <div className="mb-8 flex min-h-[42px] items-center justify-center rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-2 text-center text-[20px] font-extrabold leading-tight text-[#1F305E]">
         {targetLabel}
       </div>
 
@@ -43,7 +45,7 @@ export function CandidateTargetCard({
         />
         <StatusRow
           ok={isReady(supervisionCurrent, supervisionRequired)}
-          label="Часы супервизии"
+          label={supervisionLabel}
           value={`${formatNumber(supervisionCurrent)} / ${formatNumber(supervisionRequired)}`}
         />
         <StatusRow

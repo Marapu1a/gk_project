@@ -154,6 +154,7 @@ model User {
   bio                  String?
   isProfileVisible     Boolean   @default(true)
   ibaoId               String?
+  supervisionEthicsAcceptedAt DateTime?
   archivedAt           DateTime?
   archivedById         String?
   archiveReason        String?

@@ -123,7 +123,7 @@ function CandidatesTable({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[880px] text-[14px] text-[#1F305E]">
           <thead>
-            <tr className="bg-[#E5EFF1] text-left">
+            <tr className="bg-[var(--color-blue-soft)] text-left">
               <th className="rounded-l-[8px] px-4 py-3 font-medium">ФИО ↑</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 text-center font-medium">Дата заявки</th>
@@ -216,7 +216,7 @@ function CandidatesTable({
                         </div>
                       ) : candidate.status === 'ACCEPTED' ? (
                         <div className="flex justify-center">
-                          <span className="rounded-full bg-[#C9D8FF] px-3 py-1 text-[13px] font-medium text-[#1F305E]">
+                          <span className="rounded-full bg-[var(--color-blue-soft)] px-3 py-1 text-[13px] font-medium text-[#1F305E]">
                             {statusLabels[candidate.status]}
                           </span>
                         </div>

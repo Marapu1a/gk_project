@@ -43,7 +43,7 @@ function CeuMetricCard({
   const isEmpty = value <= 0 && required <= 0;
 
   return (
-    <div className="flex min-h-[80px] items-center justify-between gap-4 rounded-[10px] bg-[#E5EFF1] px-5 py-4">
+    <div className="flex min-h-[80px] items-center justify-between gap-4 rounded-[10px] bg-[var(--color-blue-soft)] px-5 py-4">
       <span className="min-w-0 text-[16px] font-extrabold leading-[1.2] text-[#1F305E]">
         {label}
       </span>

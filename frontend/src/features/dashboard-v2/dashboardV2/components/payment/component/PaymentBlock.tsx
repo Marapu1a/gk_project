@@ -165,7 +165,7 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
       <section className="card-section flex h-full min-h-[340px] w-full flex-col overflow-hidden px-5 py-6 shadow-soft">
         <h2 className="dashboard-v2-title mb-5 text-center">Оплата</h2>
 
-        <div className="mb-5 flex h-[42px] items-center justify-center rounded-[14px] bg-[#E5EFF1] px-5 text-center text-[16px] font-medium text-[#1F305E]">
+        <div className="mb-5 flex h-[42px] items-center justify-center rounded-[14px] bg-[var(--color-blue-soft)] px-5 text-center text-[16px] font-medium text-[#1F305E]">
           {targetLevelName}
         </div>
 

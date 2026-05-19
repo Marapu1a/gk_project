@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
 import { uploadFile } from '@/features/files/api/uploadFile';
@@ -26,8 +27,12 @@ type ReviewerSuggestion = {
   groups?: { name: string }[];
 };
 
-export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?: boolean }) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+type SupervisionContractBlockProps = {
+  open: boolean;
+  onClose: () => void;
+};
+
+export function SupervisionContractBlock({ open, onClose }: SupervisionContractBlockProps) {
   const [supervisorInput, setSupervisorInput] = useState('');
   const [selectedSupervisorId, setSelectedSupervisorId] = useState<string | undefined>();
   const [search, setSearch] = useState('');
@@ -147,46 +152,36 @@ export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?
     disabled: uploading || createContract.isPending,
   });
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className={`btn w-full rounded-[10px] border-2 border-[#1F305E] text-[16px] font-extrabold text-[#1F305E] transition-all duration-300 ease-out hover:bg-[rgba(31,48,94,0.04)] ${
-          isOpen
-            ? 'pointer-events-none mt-0 h-0 overflow-hidden opacity-0'
-            : 'mt-5 h-[48px] opacity-100'
-        }`}
-        aria-hidden={isOpen}
-        tabIndex={isOpen ? -1 : 0}
-      >
-        Загрузить контракт с супервизором
-      </button>
+  if (!open) return null;
 
-      <div
-        className={`grid overflow-hidden transition-all duration-300 ease-out ${
-          isOpen ? 'mt-5 grid-rows-[1fr] opacity-100' : 'mt-0 grid-rows-[0fr] opacity-0'
-        }`}
+  const modal = (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 px-4 py-6">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="supervision-contract-title"
+        className="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[16px] bg-white px-5 pb-5 pt-4 text-[#1F305E] shadow-[0_16px_40px_rgba(0,0,0,0.24)] sm:px-7 sm:pb-7"
       >
-        <div className="min-h-0">
-          <section className="rounded-[16px] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="flex h-[64px] w-full items-center justify-center gap-2 text-[16px] font-extrabold text-[#1F305E]"
-            >
-              Контракт с супервизором
-              <img
-                src="/dashboard-v2/btn_hide.svg"
-                alt=""
-                className="h-[21px] w-[21px] cursor-pointer"
-              />
-            </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center opacity-65 transition hover:opacity-100"
+          aria-label="Закрыть"
+        >
+          <img src={EXIT_ICON} alt="" className="h-6 w-6" />
+        </button>
 
-            <div className="grid overflow-hidden transition-[grid-template-rows] duration-200 ease-out grid-rows-[1fr]">
-              <div className="min-h-0">
-                <div className="grid gap-8 px-5 pb-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+        <h2
+          id="supervision-contract-title"
+          className="pr-9 text-center text-[22px] font-extrabold leading-tight sm:text-[24px]"
+        >
+          Контракт с супервизором
+        </h2>
+
+        <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
             <div>
+              <h3 className="mb-4 text-[16px] font-extrabold">Загрузить контракт</h3>
+
               <label className="relative block text-[13px] font-semibold text-[#1F305E]">
                 <span className="mb-1 block">Добавить супервизора</span>
                 <input
@@ -239,18 +234,39 @@ export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?
 
               <div
                 {...getRootProps()}
-                className={`mt-4 flex min-h-[126px] cursor-pointer items-center justify-center rounded-[10px] border-2 border-dashed border-[#B8C4D8] px-5 text-center text-[14px] text-[#A7B1C7] transition hover:bg-[#F7F9FB] ${
-                  uploading || createContract.isPending ? 'pointer-events-none opacity-60' : ''
-                }`}
+                className={`mt-4 flex min-h-[126px] cursor-pointer items-center justify-center rounded-[10px] border-2 border-dashed px-5 text-center text-[14px] transition ${
+                  selectedFile
+                    ? 'border-[#A5CB37] bg-[rgba(165,203,55,0.10)] text-[#1F305E] hover:bg-[rgba(165,203,55,0.14)]'
+                    : 'border-[#B8C4D8] text-[#A7B1C7] hover:bg-[#F7F9FB]'
+                } ${uploading || createContract.isPending ? 'pointer-events-none opacity-60' : ''}`}
               >
                 <input {...getInputProps()} />
-                {uploading || createContract.isPending
-                  ? 'Загрузка...'
-                  : isDragActive
-                    ? 'Отпустите файл здесь'
-                    : selectedFile
-                      ? selectedFile.name
-                      : 'Выберите или перетащите файл PDF, JPG, PNG'}
+                <div className="space-y-2">
+                  {selectedFile ? (
+                    <span className="mx-auto flex h-[28px] w-[28px] items-center justify-center rounded-full bg-[rgba(165,203,55,0.22)] text-[#75AD14]">
+                      <span className="block h-[8px] w-[14px] rotate-[-45deg] border-b-[3px] border-l-[3px] border-current" />
+                    </span>
+                  ) : null}
+
+                  <div className="font-medium">
+                    {uploading || createContract.isPending
+                      ? 'Загрузка...'
+                      : isDragActive
+                        ? 'Отпустите файл здесь'
+                        : selectedFile
+                          ? 'Файл выбран'
+                          : 'Выберите или перетащите файл PDF, JPG, PNG'}
+                  </div>
+
+                  {selectedFile ? (
+                    <>
+                      <div className="mx-auto max-w-[260px] truncate text-[12px] text-[#6B7894]">
+                        {selectedFile.name}
+                      </div>
+                      <div className="text-[12px] font-semibold text-[#1F305E]">Изменить файл</div>
+                    </>
+                  ) : null}
+                </div>
               </div>
 
               <button
@@ -268,7 +284,10 @@ export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div>
+              <h3 className="mb-4 text-[16px] font-extrabold">История контрактов</h3>
+
+              <div className="space-y-3">
               {isLoading ? (
                 <p className="text-[14px] text-[#6B7894]">Загрузка контрактов...</p>
               ) : contracts.length === 0 ? (
@@ -276,11 +295,17 @@ export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?
               ) : (
                 contracts.map((contract) => (
                   <div key={contract.id} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3">
-                    <div className="min-w-0 rounded-[10px] bg-[#EFF1F5] px-3 py-2 text-[13px] text-[#1F305E]">
-                      <div className="truncate font-semibold">
-                        {contract.supervisorName || contract.supervisorInput}
+                    <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[10px] border border-[#A5CB37] bg-[rgba(165,203,55,0.10)] px-3 py-2 text-[13px] text-[#1F305E]">
+                      <span className="flex h-[24px] w-[24px] items-center justify-center rounded-full bg-[rgba(165,203,55,0.22)] text-[#75AD14]">
+                        <span className="block h-[7px] w-[12px] rotate-[-45deg] border-b-[2px] border-l-[2px] border-current" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold">
+                          {contract.supervisorName || contract.supervisorInput}
+                        </div>
+                        <div className="truncate text-[#6B7894]">{contract.file.name}</div>
+                        <div className="text-[11px] font-semibold text-[#75AD14]">Загружен</div>
                       </div>
-                      <div className="truncate text-[#6B7894]">{contract.file.name}</div>
                     </div>
                     <a
                       href={`/uploads/${contract.file.fileId}`}
@@ -303,13 +328,12 @@ export function SupervisionContractBlock({ defaultOpen = false }: { defaultOpen?
                   </div>
                 ))
               )}
-            </div>
-                </div>
               </div>
             </div>
-          </section>
         </div>
-      </div>
-    </>
+      </section>
+    </div>
   );
+
+  return createPortal(modal, document.body);
 }

@@ -37,6 +37,7 @@ export type CurrentUser = {
   avatarUrl: string | null;
   bio: string | null;
   ibaoId: string | null;
+  supervisionEthicsAcceptedAt: string | null;
   archivedAt?: string | null;
   targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
   targetLockRank: number | null;

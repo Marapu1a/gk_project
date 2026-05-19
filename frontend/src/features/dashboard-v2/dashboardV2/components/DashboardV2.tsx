@@ -55,6 +55,8 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
   const activeGroupName = user.activeGroup?.name ?? '';
   const targetLevelName = user.targetLevel ? TARGET_LEVEL_LABELS[user.targetLevel] : undefined;
   const isRenewalCycle = user.activeCycle?.type === 'RENEWAL';
+  const isBasicSupervisor = activeGroupName === 'Супервизор';
+  const isExperiencedSupervisor = activeGroupName === 'Опытный Супервизор';
   const registrationPaid =
     payments.some((payment) => payment.type === 'REGISTRATION' && payment.status === 'PAID') ||
     payments.some((payment) => payment.type === 'FULL_PACKAGE' && payment.status === 'PAID');
@@ -99,7 +101,9 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
 
         {canUseCertificationContent ? (
           <>
-            <HoursOverviewBlock />
+            {!isExperiencedSupervisor ? (
+              <HoursOverviewBlock forceMentorship={isBasicSupervisor} />
+            ) : null}
 
             <CeuOverviewBlock level={user.targetLevel} />
 
@@ -116,7 +120,7 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
 function CertificationAccessPlaceholder() {
   return (
     <section className="card-section overflow-hidden px-5 py-5 shadow-soft">
-      <div className="rounded-[14px] bg-[#E5EFF1] px-5 py-5 text-[#1F305E]">
+      <div className="rounded-[14px] bg-[var(--color-blue-soft)] px-5 py-5 text-[#1F305E]">
         <h2 className="dashboard-v2-title mb-3">Доступ к функциям сертификации закрыт</h2>
         <p className="max-w-[760px] text-[14px] leading-[1.45]">
           Для доступа к функциям сертификации нужна оплата{' '}

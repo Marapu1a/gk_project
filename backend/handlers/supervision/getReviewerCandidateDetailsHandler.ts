@@ -480,7 +480,15 @@ export async function getReviewerCandidateDetailsHandler(
   const groupList = candidate.groups.map((item) => item.group).sort((a, b) => b.rank - a.rank);
   const primaryGroup = groupList[0] ?? null;
 
-  const [confirmedCeu, spentCeu, supervisionTotals, confirmedPracticeHours, distributionRecords] = await Promise.all([
+  const [
+    confirmedCeu,
+    spentCeu,
+    supervisionTotals,
+    confirmedPracticeHours,
+    distributionRecords,
+    confirmedMentorHours,
+    pendingMentorHours,
+  ] = await Promise.all([
     prisma.cEUEntry.findMany({
       where: { status: RecordStatus.CONFIRMED, record: { cycleId: activeCycle.id } },
       select: { category: true, value: true },
@@ -513,6 +521,22 @@ export async function getReviewerCandidateDetailsHandler(
         draftNonObservingGroup: true,
       },
     }),
+    prisma.supervisionHour.aggregate({
+      where: {
+        status: RecordStatus.CONFIRMED,
+        type: { in: MENTORSHIP_TYPES },
+        record: { cycleId: activeCycle.id },
+      },
+      _sum: { value: true },
+    }),
+    prisma.supervisionHour.aggregate({
+      where: {
+        status: RecordStatus.UNCONFIRMED,
+        type: { in: MENTORSHIP_TYPES },
+        record: { cycleId: activeCycle.id },
+      },
+      _sum: { value: true },
+    }),
   ]);
 
   const ceuUsable = aggregateCeu(confirmedCeu);
@@ -525,6 +549,9 @@ export async function getReviewerCandidateDetailsHandler(
   });
 
   const supervisionRequired = resolveSupervisionRequirement(activeCycle);
+  const mentorRequired = supervisionRequired?.supervisor ?? 0;
+  const mentorTotal = round2(confirmedMentorHours._sum.value ?? 0);
+  const mentorPending = round2(pendingMentorHours._sum.value ?? 0);
 
   return reply.send({
     candidate: {
@@ -560,6 +587,17 @@ export async function getReviewerCandidateDetailsHandler(
         distributionRecords,
         supervisionTotals.supervisionConfirmed,
       ),
+      mentor: mentorRequired > 0
+        ? {
+            total: mentorTotal,
+            required: mentorRequired,
+            percent:
+              mentorRequired > 0
+                ? Math.floor((Math.min(mentorTotal, mentorRequired) / mentorRequired) * 100)
+                : 0,
+            pending: mentorPending,
+          }
+        : null,
     },
     requests: {
       supervision: supervisionRecords.map(serializeRequest),

@@ -53,7 +53,7 @@ export function CandidateInfoCard({
         {name.secondLine ? <div className="font-medium">{name.secondLine}</div> : null}
       </div>
 
-      <div className="mb-6 w-full rounded-[12px] bg-[#E5EFF1] px-4 py-2 text-[20px] font-extrabold leading-tight text-[#1F305E]">
+      <div className="mb-6 w-full rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-2 text-[20px] font-extrabold leading-tight text-[#1F305E]">
         {groupName || '—'}
       </div>
 

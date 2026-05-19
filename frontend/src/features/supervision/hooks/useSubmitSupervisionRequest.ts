@@ -14,6 +14,7 @@ export function useSubmitSupervisionRequest() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['supervision', 'history'] });
       await qc.invalidateQueries({ queryKey: ['supervision', 'summary'] });
+      await qc.invalidateQueries({ queryKey: ['me'] });
     },
   });
 }

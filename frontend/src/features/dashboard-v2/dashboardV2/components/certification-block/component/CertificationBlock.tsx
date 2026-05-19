@@ -62,6 +62,12 @@ type SupervisionSummaryLike = {
   required?: {
     supervision?: number;
   } | null;
+  mentor?: {
+    total?: number;
+    required?: number;
+    percent?: number;
+    pending?: number;
+  } | null;
 };
 
 type CertificateLike = {
@@ -234,8 +240,15 @@ export function CertificationBlock({ user }: Props) {
   const ceuCurrent = sumCeu(ceuSummary?.usable);
   const ceuRequired = sumCeu(ceuSummary?.required);
 
-  const supervisionCurrent = Number(supervisionSummary?.usable?.supervision ?? 0);
-  const supervisionRequired = Number(supervisionSummary?.required?.supervision ?? 0);
+  const isMentorshipTarget = activeGroupName === 'Супервизор';
+  const isExperiencedSupervisor = activeGroupName === 'Опытный Супервизор';
+  const supervisionCurrent = isMentorshipTarget
+    ? Number(supervisionSummary?.mentor?.total ?? 0)
+    : Number(supervisionSummary?.usable?.supervision ?? 0);
+  const supervisionRequired = isMentorshipTarget
+    ? Number(supervisionSummary?.mentor?.required ?? 24)
+    : Number(supervisionSummary?.required?.supervision ?? 0);
+  const supervisionLabel = isMentorshipTarget ? 'Часы менторства' : 'Часы супервизии';
 
   const examButtonLabel = progress.requiredPaymentsPaid
     ? 'Подать заявку на экзамен'
@@ -365,7 +378,7 @@ export function CertificationBlock({ user }: Props) {
         )}
 
         {setTarget.isSuccess && !errorMessage && (
-          <p className="text-center text-sm text-[var(--color-green-dark)]">Цель обновлена</p>
+          <p className="text-center text-sm text-[var(--color-green-brand)]">Цель обновлена</p>
         )}
 
         <div className="mt-auto flex h-[42px] items-center justify-center rounded-[8px] bg-[#B8C0D1] px-5 text-[14px] font-extrabold leading-none text-white">
@@ -398,11 +411,13 @@ export function CertificationBlock({ user }: Props) {
           value={`${formatNumber(ceuCurrent)} / ${formatNumber(ceuRequired)}`}
         />
 
-        <StatusRow
-          ok={!!progress.supervisionReady}
-          label="Часы супервизии"
-          value={`${formatNumber(supervisionCurrent)} / ${formatNumber(supervisionRequired)}`}
-        />
+        {!isExperiencedSupervisor ? (
+          <StatusRow
+            ok={!!progress.supervisionReady}
+            label={supervisionLabel}
+            value={`${formatNumber(supervisionCurrent)} / ${formatNumber(supervisionRequired)}`}
+          />
+        ) : null}
 
         <StatusRow
           ok={!!progress.documentsReady}

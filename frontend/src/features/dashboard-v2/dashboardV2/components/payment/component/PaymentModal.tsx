@@ -157,7 +157,7 @@ export function PaymentModal({
           )}
 
           {isPaid && (
-            <div className="rounded-[18px] bg-[rgba(165,203,55,0.12)] px-4 py-3 text-sm font-medium text-[#1F305E]">
+            <div className="rounded-[18px] bg-[var(--color-blue-soft)] px-4 py-3 text-sm font-medium text-[#1F305E]">
               Эта оплата уже подтверждена.
             </div>
           )}

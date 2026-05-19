@@ -59,13 +59,22 @@ function ReviewerCandidateDetailsContent() {
   if (isError || !data) {
     return (
       <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
-        <button
-          type="button"
-          onClick={() => navigate(`/reviewer/candidates/${kind}`)}
-          className="mb-4 inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[14px] font-medium text-[#1F305E]"
-        >
-          ← Назад
-        </button>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(`/reviewer/candidates/${kind}`)}
+            className="inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[14px] font-medium text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
+          >
+            ← В историю
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard-v2')}
+            className="inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[14px] font-medium text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
+          >
+            В профиль
+          </button>
+        </div>
         <p className="text-sm text-error">
           {(error as any)?.response?.data?.error || 'Не удалось загрузить кандидата'}
         </p>
@@ -76,23 +85,41 @@ function ReviewerCandidateDetailsContent() {
   const candidate = data.candidate;
   const activeRequests = kind === 'mentorship' ? data.requests.mentorship : data.requests.supervision;
   const otherRequests = kind === 'mentorship' ? data.requests.supervision : data.requests.mentorship;
+  const mentorSummary = data.supervisionSummary.mentor;
+  const hoursCurrent =
+    kind === 'mentorship'
+      ? (mentorSummary?.total ?? 0)
+      : data.supervisionSummary.supervisionConfirmed;
+  const hoursRequired =
+    kind === 'mentorship'
+      ? (mentorSummary?.required ?? data.supervisionSummary.required?.supervisor ?? 24)
+      : (data.supervisionSummary.required?.supervision ?? 0);
 
   return (
     <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
-      <header className="mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
-        <button
-          type="button"
-          onClick={() => navigate(`/reviewer/candidates/${kind}`)}
-          className="inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[14px] font-medium text-[#1F305E] hover:bg-white active:bg-[#E7F1F4]"
-        >
-          ← Назад
-        </button>
+      <header className="mb-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
+        <div className="flex min-w-0 items-center gap-3 justify-self-start">
+          <button
+            type="button"
+            onClick={() => navigate(`/reviewer/candidates/${kind}`)}
+            className="inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[14px] font-medium text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
+          >
+            ← В историю
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard-v2')}
+            className="inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[14px] font-medium text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
+          >
+            В профиль
+          </button>
+        </div>
 
         <h1 className="min-w-0 text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
           Детали кандидата
         </h1>
 
-        <div className="hidden min-w-[88px] sm:block" aria-hidden="true" />
+        <div className="hidden min-w-[188px] sm:block" aria-hidden="true" />
       </header>
 
       <div className="grid gap-5 xl:grid-cols-3">
@@ -106,14 +133,15 @@ function ReviewerCandidateDetailsContent() {
           targetLabel={getTargetDisplayLabel(data)}
           ceuCurrent={data.ceuSummary.usable.total}
           ceuRequired={data.ceuSummary.required?.total ?? 0}
-          supervisionCurrent={data.supervisionSummary.supervisionConfirmed}
-          supervisionRequired={data.supervisionSummary.required?.supervision ?? 0}
+          supervisionCurrent={hoursCurrent}
+          supervisionRequired={hoursRequired}
+          supervisionLabel={kind === 'mentorship' ? 'Часы менторства' : 'Часы супервизии'}
           documentsReady={false}
         />
         <CandidateCeuCard summary={data.ceuSummary} />
       </div>
 
-      <CandidateHoursOverviewCard summary={data.supervisionSummary} />
+      <CandidateHoursOverviewCard summary={data.supervisionSummary} mode={kind} />
 
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
         <CandidateRequestsCard kind={kind} title={KIND_LABELS[kind]} requests={activeRequests} />

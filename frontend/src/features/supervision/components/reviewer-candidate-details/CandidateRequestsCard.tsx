@@ -50,7 +50,7 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
         <div className="overflow-x-auto">
           <table className="w-full min-w-[460px] text-[14px] text-[#1F305E]">
             <thead>
-              <tr className="bg-[#E5EFF1] text-left">
+              <tr className="bg-[var(--color-blue-soft)] text-left">
                 <th className="rounded-l-[8px] px-3 py-3 text-center font-medium">
                   <button
                     type="button"
@@ -107,7 +107,7 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                     <td className="px-3 py-4">
                       {request.status === 'CONFIRMED' ? (
                         <div className="flex justify-center">
-                          <span className="rounded-full bg-[#C9D8FF] px-3 py-1 text-[13px] font-medium text-[#1F305E]">
+                          <span className="rounded-full bg-[var(--color-blue-soft)] px-3 py-1 text-[13px] font-medium text-[#1F305E]">
                             {STATUS_LABELS[request.status]}
                           </span>
                         </div>
