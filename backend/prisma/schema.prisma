@@ -428,6 +428,10 @@ model ExamApplication {
   cycleId   String?
   cycle     CertificationCycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
   status    ExamStatus          @default(NOT_SUBMITTED)
+  comment   String?
+  submittedAt DateTime?
+  reviewedAt DateTime?
+  reviewedByEmail String?
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt
 

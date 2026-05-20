@@ -1,151 +1,266 @@
 import { useState } from 'react';
-import { usePatchExamAppStatus } from '../hooks/usePatchExamAppStatus';
+import type { ReactNode } from 'react';
+import { CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/Button';
+import { usePatchExamAppStatus } from '../hooks/usePatchExamAppStatus';
+import { useExamAppDetails } from '../hooks/useExamAppDetails';
+import type { ExamApp, ExamStatus } from '../api/getMyExamApp';
+import { examStatusLabels, targetLevelLabels } from '@/utils/labels';
 
-type ExamStatus = 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
 export type ExamAppModalProps = {
-  app: {
-    id: string;
-    userId: string;
-    status: ExamStatus;
-    createdAt: string;
-    updatedAt: string;
-    user: { email: string; fullName: string | null };
-  };
+  app: ExamApp;
   onClose: () => void;
 };
 
-const statusLabel: Record<ExamStatus, string> = {
-  NOT_SUBMITTED: 'не отправлена',
-  PENDING: 'ожидает',
-  APPROVED: 'подтверждена',
-  REJECTED: 'отклонена',
-};
+function formatDate(value?: string | null) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('ru-RU');
+}
+
+function formatNumber(value?: number | null) {
+  if (value == null) return '-';
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function statusText(status: ExamStatus) {
+  return examStatusLabels[status] ?? status;
+}
 
 export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
-  const [comment, setComment] = useState('');
-  const mutate = usePatchExamAppStatus();
+  const [comment, setComment] = useState(app.comment ?? '');
+  const mutation = usePatchExamAppStatus();
+  const details = useExamAppDetails(app.userId);
+  const summary = details.data?.readiness ?? null;
+  const currentApp = details.data?.application ?? app;
+  const disabled = mutation.isPending || details.isLoading;
 
   const doChange = (next: ExamStatus) => {
-    // обязательный коммент при отклонении
-    if (next === 'REJECTED' && !comment.trim()) {
-      toast.error('Нужен комментарий для отклонения.');
+    const trimmedComment = comment.trim();
+    if (next === 'REJECTED' && !trimmedComment) {
+      toast.error('Укажите причину отклонения');
       return;
     }
 
-    mutate.mutate(
-      { userId: app.userId, status: next, comment },
+    mutation.mutate(
+      { userId: app.userId, status: next, comment: trimmedComment },
       {
-        onSuccess: async () => {
+        onSuccess: () => {
           const message =
             next === 'APPROVED'
               ? 'Заявка на экзамен одобрена'
               : next === 'REJECTED'
-                ? `Заявка на экзамен отклонена: ${comment.trim()}`
-                : 'Заявка на экзамен сброшена, можно подать заново';
+                ? 'Заявка на экзамен отклонена'
+                : next === 'PENDING'
+                  ? 'Заявка возвращена на рассмотрение'
+                  : 'Заявка сброшена';
 
-          onClose();
           toast.success(message);
+          onClose();
         },
         onError: (err: any) => {
-          const msg = err?.response?.data?.error || 'Не удалось изменить статус';
-          toast.error(msg);
+          toast.error(err?.response?.data?.message || err?.response?.data?.error || 'Не удалось изменить статус');
         },
       },
     );
   };
 
-  const disabled = mutate.isPending;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="w-full max-w-lg rounded-2xl bg-white shadow-xl border"
-        style={{ borderColor: 'var(--color-green-light)' }}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-6 py-4 border-b header-shadow"
-          style={{ borderColor: 'var(--color-green-light)' }}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+      <div className="relative max-h-[92vh] w-full max-w-[1080px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-3 flex h-11 w-11 cursor-pointer items-center justify-center opacity-55 transition hover:opacity-100"
+          aria-label="Закрыть"
         >
-          <h3 className="text-xl font-semibold text-blue-dark">Заявка на экзамен</h3>
-          <button className="nav-btn" onClick={onClose} disabled={disabled}>
-            Закрыть
-          </button>
-        </div>
+          <img src={EXIT_ICON} alt="" className="h-5 w-5" />
+        </button>
 
-        {/* Body */}
-        <div className="p-6 space-y-5">
-          <div className="grid grid-cols-2 gap-y-2 text-sm">
-            <div className="text-blue-dark font-medium">Email:</div>
-            <div>{app.user.email}</div>
+        <h3 className="dashboard-v2-page-title mb-5 text-center">Заявка на экзамен</h3>
 
-            <div className="text-blue-dark font-medium">Имя:</div>
-            <div>{app.user.fullName || '—'}</div>
-
-            <div className="text-blue-dark font-medium">Статус:</div>
-            <div className="inline-flex items-center gap-2">
-              <span>{statusLabel[app.status]}</span>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+          <section className="space-y-5">
+            <div className="rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-4">
+              <h4 className="dashboard-v2-title mb-3">Кандидат</h4>
+              <InfoRow label="ФИО" value={summary?.user.fullName || app.user.fullName || '-'} />
+              <InfoRow label="Email" value={summary?.user.email || app.user.email} />
+              <InfoRow
+                label="Текущий уровень"
+                value={summary?.user.currentGroup?.name || '-'}
+              />
+              <InfoRow
+                label="Цель"
+                value={
+                  summary?.activeCycle?.targetLevel
+                    ? targetLevelLabels[summary.activeCycle.targetLevel]
+                    : app.cycle?.targetLevel
+                      ? targetLevelLabels[app.cycle.targetLevel]
+                      : '-'
+                }
+              />
             </div>
 
-            <div className="text-blue-dark font-medium">Обновлено:</div>
-            <div>{new Date(app.updatedAt).toLocaleDateString('ru-RU')}</div>
-          </div>
+            <div className="rounded-[10px] bg-white px-4 py-4 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
+              <h4 className="dashboard-v2-title mb-3">Решение</h4>
+              <InfoRow label="Статус" value={statusText(currentApp.status)} />
+              <InfoRow label="Подана" value={formatDate(currentApp.submittedAt ?? currentApp.updatedAt)} />
+              <InfoRow label="Рассмотрена" value={formatDate(currentApp.reviewedAt)} />
+              <InfoRow label="Проверил" value={currentApp.reviewedByEmail || '-'} />
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-blue-dark">
-              Комментарий (обязателен для отклонения)
-            </label>
-            <textarea
-              className="input"
-              rows={3}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Причина решения…"
-              style={{ resize: 'vertical' }}
-              disabled={disabled}
-            />
-          </div>
+              {currentApp.comment ? (
+                <div className="dashboard-v2-caption mt-3 rounded-[8px] bg-[#FFF5F6] px-3 py-2 text-[var(--color-danger)]">
+                  {currentApp.comment}
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="space-y-5">
+            {details.isLoading ? (
+              <p className="dashboard-v2-text text-[#6B7894]">Загрузка сводки...</p>
+            ) : details.error || !summary ? (
+              <p className="dashboard-v2-text text-[var(--color-danger)]">Не удалось загрузить сводку.</p>
+            ) : (
+              <>
+                <div className="rounded-[10px] bg-white px-4 py-4 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
+                  <h4 className="dashboard-v2-title mb-3">Готовность к экзамену</h4>
+                  <CheckLine ok={summary.ceu.ready} label="CEU-баллы">
+                    {formatNumber(summary.ceu.current.total)} / {formatNumber(summary.ceu.required?.total)}
+                  </CheckLine>
+                  <CheckLine ok={summary.supervision.ready} label="Часы">
+                    {summary.supervision.required?.supervisor
+                      ? `${formatNumber(summary.supervision.current.mentor)} / ${formatNumber(summary.supervision.required.supervisor)} менторство`
+                      : `${formatNumber(summary.supervision.current.practice)} / ${formatNumber(summary.supervision.required?.practice)} практика, ${formatNumber(summary.supervision.current.supervision)} / ${formatNumber(summary.supervision.required?.supervision)} супервизия`}
+                  </CheckLine>
+                  <CheckLine ok={summary.documents.ready} label="Документы">
+                    {summary.documents.request ? (
+                      <a
+                        href={summary.documents.request.adminUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="cursor-pointer underline underline-offset-2"
+                      >
+                        Открыть проверку документов
+                      </a>
+                    ) : (
+                      'заявка не найдена'
+                    )}
+                  </CheckLine>
+                  <CheckLine ok={summary.payments.ready} label="Оплаты">
+                    {summary.payments.ready ? 'все платежи оплачены' : 'есть неоплаченные платежи'}
+                  </CheckLine>
+                </div>
+
+                <div className="rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-4">
+                  <h4 className="dashboard-v2-title mb-3">Оплаты</h4>
+                  <div className="space-y-2">
+                    {summary.payments.items.map((payment) => (
+                      <CheckLine key={payment.type} ok={payment.paid} label={payment.label}>
+                        {payment.confirmedAt ? formatDate(payment.confirmedAt) : 'не оплачено'}
+                      </CheckLine>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  className={`dashboard-v2-label rounded-[10px] px-4 py-3 text-center ${
+                    summary.ready
+                      ? 'bg-[var(--color-green-brand)] text-white'
+                      : 'bg-[#FFF5F6] text-[var(--color-danger)]'
+                  }`}
+                >
+                  {summary.ready
+                    ? 'Все готово, можно проводить экзамен'
+                    : `Не готово: ${summary.missing.join(', ')}`}
+                </div>
+              </>
+            )}
+          </section>
         </div>
 
-        {/* Footer */}
-        <div
-          className="px-6 py-4 border-t flex items-center justify-end gap-2"
-          style={{ borderColor: 'var(--color-green-light)' }}
-        >
-          {app.status === 'REJECTED' && (
-            <button
-              className="btn btn-accent"
-              onClick={() => doChange('NOT_SUBMITTED')}
-              disabled={disabled}
-            >
-              Сбросить
-            </button>
-          )}
+        <label className="mt-5 block">
+          <span className="dashboard-v2-small mb-1 block text-[#1F305E]">
+            Комментарий для пользователя
+          </span>
+          <textarea
+            className="input-design min-h-[90px] resize-y"
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            placeholder="Причина отклонения или служебный комментарий"
+            disabled={disabled}
+          />
+        </label>
 
-          {app.status === 'PENDING' && (
-            <>
-              <button
-                className="btn btn-brand"
-                onClick={() => doChange('APPROVED')}
-                disabled={disabled}
-              >
-                Одобрить
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={() => doChange('REJECTED')}
-                disabled={disabled}
-              >
-                Отклонить
-              </button>
-            </>
-          )}
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <Button type="button" variant="ghost" onClick={onClose} disabled={disabled}>
+            Закрыть
+          </Button>
+
+          {currentApp.status === 'REJECTED' ? (
+            <Button type="button" variant="ghost" onClick={() => doChange('NOT_SUBMITTED')} disabled={disabled}>
+              Сбросить
+            </Button>
+          ) : null}
+
+          {currentApp.status === 'PENDING' ? (
+            <button
+              type="button"
+              onClick={() => doChange('APPROVED')}
+              disabled={disabled}
+              className="btn btn-dark dashboard-v2-label h-[42px] min-w-[140px] rounded-full px-6 disabled:bg-[#B7BFCE]"
+            >
+              Одобрить
+            </button>
+          ) : null}
+
+          {currentApp.status === 'PENDING' ? (
+            <button
+              type="button"
+              onClick={() => doChange('REJECTED')}
+              disabled={disabled}
+              className="btn dashboard-v2-label h-[42px] min-w-[140px] rounded-full border-2 border-[var(--color-danger)] px-6 text-[var(--color-danger)] disabled:opacity-50"
+            >
+              Отклонить
+            </button>
+          ) : null}
         </div>
       </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="dashboard-v2-caption mb-2 grid grid-cols-[130px_minmax(0,1fr)] gap-3 text-[#1F305E]">
+      <span className="text-[#8D96B5]">{label}</span>
+      <span className="min-w-0 break-words font-extrabold">{value}</span>
+    </div>
+  );
+}
+
+function CheckLine({
+  ok,
+  label,
+  children,
+}: {
+  ok: boolean;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="dashboard-v2-caption mb-2 flex min-w-0 items-start gap-2 text-[#1F305E]">
+      {ok ? (
+        <CheckCircle size={16} className="mt-[2px] shrink-0 text-[var(--color-green-brand)]" />
+      ) : (
+        <XCircle size={16} className="mt-[2px] shrink-0 text-[var(--color-danger)]" />
+      )}
+      <span className="font-extrabold">{label}:</span>
+      <span className="min-w-0">{children}</span>
     </div>
   );
 }

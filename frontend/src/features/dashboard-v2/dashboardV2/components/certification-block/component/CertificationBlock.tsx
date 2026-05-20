@@ -11,6 +11,10 @@ import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisi
 import { useSetTargetLevel } from '@/features/user/hooks/useSetTargetLevel';
 import type { TargetLevel as ApiTargetLevel, GoalMode } from '@/features/user/api/setTargetLevel';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { useMyExamApp } from '@/features/exam/hooks/useMyExamApp';
+import { usePatchExamAppStatus } from '@/features/exam/hooks/usePatchExamAppStatus';
+import { examStatusLabels } from '@/utils/labels';
+import { toast } from 'sonner';
 
 type Props = {
   user: CurrentUser;
@@ -201,12 +205,15 @@ export function CertificationBlock({ user }: Props) {
 
   const ceuSummaryQuery = useCeuSummary(targetLevel);
   const supervisionSummaryQuery = useSupervisionSummary();
+  const examAppQuery = useMyExamApp();
+  const patchExamApp = usePatchExamAppStatus();
 
   const loading =
     !!progress.loading ||
     ceuSummaryQuery.isLoading ||
     supervisionSummaryQuery.isLoading ||
-    certificatesLoading;
+    certificatesLoading ||
+    examAppQuery.isLoading;
 
   const locked = isTargetLocked(user);
   const currentTargetLevel = user.targetLevel as ApiTargetLevel | null;
@@ -250,9 +257,43 @@ export function CertificationBlock({ user }: Props) {
     : Number(supervisionSummary?.required?.supervision ?? 0);
   const supervisionLabel = isMentorshipTarget ? 'Часы менторства' : 'Часы супервизии';
 
-  const examButtonLabel = progress.requiredPaymentsPaid
-    ? 'Подать заявку на экзамен'
-    : 'Не все оплаты внесены';
+  const examApp = examAppQuery.data;
+  const canSubmitExam =
+    !!examApp &&
+    !!progress.isEligible &&
+    !!progress.requiredPaymentsPaid &&
+    (examApp.status === 'NOT_SUBMITTED' || examApp.status === 'REJECTED') &&
+    !patchExamApp.isPending;
+
+  const examButtonLabel = (() => {
+    if (patchExamApp.isPending) return 'Отправляем...';
+    if (examApp?.status === 'PENDING') return 'Заявка на рассмотрении';
+    if (examApp?.status === 'APPROVED') return 'Заявка одобрена';
+    if (!progress.isEligible) return 'Не все условия выполнены';
+    if (!progress.requiredPaymentsPaid) return 'Не все оплаты внесены';
+    if (examApp?.status === 'REJECTED') return 'Подать заявку повторно';
+    return 'Подать заявку на экзамен';
+  })();
+
+  const submitExamApplication = () => {
+    if (!examApp?.userId) return;
+
+    patchExamApp.mutate(
+      { userId: examApp.userId, status: 'PENDING' },
+      {
+        onSuccess: () => {
+          toast.success('Заявка на экзамен отправлена');
+        },
+        onError: (error: any) => {
+          toast.error(
+            error?.response?.data?.message ||
+              error?.response?.data?.error ||
+              'Не удалось отправить заявку на экзамен',
+          );
+        },
+      },
+    );
+  };
 
   const selectDisabled = locked || options.length === 0 || setTarget.isPending;
 
@@ -435,20 +476,27 @@ export function CertificationBlock({ user }: Props) {
       <button
         type="button"
         className={`btn dashboard-v2-label mt-auto h-[42px] w-full rounded-[8px] ${
-          progress.isEligible && progress.requiredPaymentsPaid ? 'btn-dark' : ''
+          canSubmitExam ? 'btn-dark' : ''
         }`}
         style={
-          progress.isEligible && progress.requiredPaymentsPaid
+          canSubmitExam
             ? undefined
             : {
                 backgroundColor: '#B8C0D1',
                 color: '#FFFFFF',
               }
         }
-        disabled={!progress.isEligible || !progress.requiredPaymentsPaid}
+        disabled={!canSubmitExam}
+        onClick={submitExamApplication}
       >
         {examButtonLabel}
       </button>
+
+      {examApp?.status === 'REJECTED' && examApp.comment ? (
+        <p className="dashboard-v2-small mt-2 text-center text-[var(--color-danger)]">
+          {examStatusLabels.REJECTED}: {examApp.comment}
+        </p>
+      ) : null}
     </section>
   );
 }

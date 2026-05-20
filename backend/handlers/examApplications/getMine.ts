@@ -19,6 +19,10 @@ export async function getMyExamAppHandler(req: FastifyRequest, reply: FastifyRep
     userId: app.userId,
     cycleId: app.cycleId,
     status: app.status,
+    comment: app.comment,
+    submittedAt: app.submittedAt,
+    reviewedAt: app.reviewedAt,
+    reviewedByEmail: app.reviewedByEmail,
     createdAt: app.createdAt,
     updatedAt: app.updatedAt,
     user, // <- { email, fullName }

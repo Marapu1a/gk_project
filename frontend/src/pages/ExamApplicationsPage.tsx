@@ -1,25 +1,18 @@
 import ExamAppsTable from '@/features/exam/components/ExamAppsTable';
-import { BackButton } from '@/components/BackButton';
 import { DashboardButton } from '@/components/DashboardButton';
 
 export default function ExamApplicationsPage() {
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-blue-dark">Заявки на экзамен</h1>
-
-      {/* Верхняя панель кнопок */}
-      <div className="flex gap-3">
-        <BackButton />
-        <DashboardButton />
-      </div>
+    <div className="container-fixed mx-auto px-5 py-4 text-blue-dark sm:px-6">
+      <header className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <DashboardButton />
+        </div>
+        <h1 className="dashboard-v2-page-title text-center">Заявки на экзамен</h1>
+        <div />
+      </header>
 
       <ExamAppsTable />
-
-      {/* Нижняя панель кнопок */}
-      <div className="flex gap-3 pt-4 border-t border-gray-200">
-        <BackButton />
-        <DashboardButton />
-      </div>
     </div>
   );
 }

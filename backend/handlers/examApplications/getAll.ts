@@ -18,6 +18,10 @@ export async function getAllExamAppsHandler(req: FastifyRequest, reply: FastifyR
       userId: true,
       cycleId: true,
       status: true,
+      comment: true,
+      submittedAt: true,
+      reviewedAt: true,
+      reviewedByEmail: true,
       createdAt: true,
       updatedAt: true,
       cycle: {

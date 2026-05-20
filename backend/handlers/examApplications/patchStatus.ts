@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import { assertStatusTransition, getMissingExamPaymentTypes, getOrCreateExamApp } from './utils';
 import { NotificationType, PaymentType } from '@prisma/client';
 import { createNotification, notifyAdmins } from '../../utils/notifications';
+import { buildExamReadiness } from './readiness';
 
 type Body = {
   status: 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -58,17 +59,42 @@ export async function patchExamAppStatusHandler(req: FastifyRequest, reply: Fast
         missingPayments,
       });
     }
+
+    const readiness = await buildExamReadiness(userId);
+    if (!readiness?.ready) {
+      return reply.code(403).send({
+        error: 'EXAM_REQUIREMENTS_NOT_READY',
+        message: `Для отправки заявки на экзамен нужно выполнить условия: ${
+          readiness?.missing.join(', ') || 'нет активного цикла'
+        }.`,
+        missing: readiness?.missing ?? ['Нет активного цикла сертификации'],
+      });
+    }
   }
 
   // меняем статус
+  const now = new Date();
   const updated = await prisma.examApplication.update({
     where: { id: app.id },
-    data: { status: next },
+    data: {
+      status: next,
+      comment: isAdminActor ? comment.trim() || null : next === 'PENDING' ? null : app.comment,
+      submittedAt: next === 'PENDING' ? now : app.submittedAt,
+      reviewedAt: isAdminActor && (next === 'APPROVED' || next === 'REJECTED') ? now : app.reviewedAt,
+      reviewedByEmail:
+        isAdminActor && (next === 'APPROVED' || next === 'REJECTED')
+          ? req.user.email ?? null
+          : app.reviewedByEmail,
+    },
     select: {
       id: true,
       userId: true,
       cycleId: true,
       status: true,
+      comment: true,
+      submittedAt: true,
+      reviewedAt: true,
+      reviewedByEmail: true,
       createdAt: true,
       updatedAt: true,
       user: { select: { email: true, fullName: true } },

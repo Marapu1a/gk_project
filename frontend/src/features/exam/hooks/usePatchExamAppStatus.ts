@@ -26,6 +26,7 @@ export function usePatchExamAppStatus() {
       // Синхронизируем все места, где админ видит заявку на экзамен:
       // общий список /exam-applications и детали конкретного пользователя.
       qc.invalidateQueries({ queryKey: ['exam', 'all'] });
+      qc.invalidateQueries({ queryKey: ['exam', 'details', updated.userId] });
       qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', updated.userId] });
     },
   });
