@@ -60,7 +60,13 @@ export type ExamReadinessDetails = {
     };
     payments: {
       ready: boolean;
-      items: Array<{ type: string; label: string; paid: boolean; confirmedAt: string | null }>;
+      items: Array<{
+        type: string;
+        label: string;
+        paid: boolean;
+        requestedAt: string | null;
+        confirmedAt: string | null;
+      }>;
     };
     ready: boolean;
     missing: string[];
@@ -72,7 +78,9 @@ export async function getMyExamApp() {
   return res.data as ExamApp;
 }
 
-export async function getExamAppDetails(userId: string) {
-  const res = await api.get(`/exam-applications/${userId}/details`);
+export async function getExamAppDetails(userId: string, applicationId?: string | null) {
+  const res = await api.get(`/exam-applications/${userId}/details`, {
+    params: applicationId ? { applicationId } : undefined,
+  });
   return res.data as ExamReadinessDetails;
 }

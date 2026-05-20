@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { DashboardButton } from '@/components/DashboardButton';
+import { PageNav } from '@/components/PageNav';
 import { Button } from '@/components/Button';
 import { useAdminReviewerCandidates } from '@/features/admin/hooks/supervision/useAdminReviewerCandidates';
 import type {
@@ -191,9 +191,7 @@ function AdminSupervisionCandidatesContent() {
   return (
     <div className="container-fixed mx-auto px-5 py-4 text-blue-dark sm:px-6">
       <header className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <DashboardButton />
-        </div>
+        <PageNav />
         <h1 className="dashboard-v2-page-title text-center">Проверка часов</h1>
         <div />
       </header>

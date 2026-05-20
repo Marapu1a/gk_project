@@ -207,9 +207,12 @@ export async function updateSupervisionHourHandler(
 
     await createNotification({
       userId: recordOwnerId,
-      type: NotificationType.SUPERVISION,
+      type:
+        relationKindForHour(existing.type) === ReviewerCandidateKind.MENTORSHIP
+          ? NotificationType.MENTORSHIP
+          : NotificationType.SUPERVISION,
       message,
-      link: '/history',
+      link: '/supervision/hours?panel=history',
     });
   } catch (err) {
     req.log.error(err, 'SUPERVISION_REVIEW notification failed');

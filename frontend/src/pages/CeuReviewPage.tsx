@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/Button';
-import { DashboardButton } from '@/components/DashboardButton';
+import { PageNav } from '@/components/PageNav';
 import { useAdminCeuHistory } from '@/features/admin/hooks/ceu/useAdminCeuHistory';
 import {
   downloadAdminCeuHistoryCsv,
@@ -14,6 +14,7 @@ import {
   type AdminCeuStatus,
 } from '@/features/admin/api/ceu/getAdminCeuHistory';
 import { useUpdateCEUEntry } from '@/features/ceu/hooks/useUpdateCeuEntry';
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { ceuCategoryLabels, recordStatusLabels } from '@/utils/labels';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
@@ -191,9 +192,7 @@ export default function CeuReviewPage() {
   return (
     <div className="container-fixed mx-auto px-5 py-4 text-blue-dark sm:px-6">
       <header className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <DashboardButton />
-        </div>
+        <PageNav />
         <h1 className="dashboard-v2-page-title text-center">Проверка CEU</h1>
         <div />
       </header>
@@ -559,6 +558,7 @@ function AdminCeuDetailsModal({
                     className="input-design min-h-[96px] resize-y"
                     value={rejectedReason}
                     onChange={(event) => setRejectedReason(event.target.value)}
+                    maxLength={COMMENT_MAX_LENGTH}
                     placeholder="Например: прикреплён неверный сертификат"
                   />
                 </label>

@@ -7,7 +7,7 @@ import PaymentsBlock from './PaymentsBlock';
 import DetailBlock from './DetailBlock';
 import ActiveCertificateBlock from './ActiveCertificateBlock';
 import AdminUserGroupsBlock from '@/features/admin/components/AdminUserGroupsBlock';
-import { BackButton } from '@/components/BackButton';
+import { PageNav } from '@/components/PageNav';
 import AdminExamApplicationBlock from './AdminExamApplicationBlock';
 
 export default function UserDetails() {
@@ -30,7 +30,7 @@ export default function UserDetails() {
         style={{ borderColor: 'var(--color-green-light)' }}
       >
         <h1 className="text-2xl font-bold text-blue-dark">Детали пользователя</h1>
-        <BackButton />
+        <PageNav />
       </div>
 
       <div className="p-6 space-y-6">

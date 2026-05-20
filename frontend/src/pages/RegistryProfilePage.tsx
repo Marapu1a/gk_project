@@ -1,7 +1,7 @@
 // src/pages/RegistryProfilePage.tsx
 import { useParams } from 'react-router-dom';
 import { RegistryProfile } from '@/features/registry/components/RegistryProfile';
-import { BackButton } from '@/components/BackButton';
+import { PageNav } from '@/components/PageNav';
 
 export default function RegistryProfilePage() {
   const { userId } = useParams<{ userId: string }>();
@@ -9,7 +9,7 @@ export default function RegistryProfilePage() {
 
   return (
     <div className="container-fixed p-6 space-y-6">
-      <BackButton />
+      <PageNav />
       <RegistryProfile userId={userId} />
     </div>
   );

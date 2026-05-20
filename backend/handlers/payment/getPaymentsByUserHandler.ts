@@ -20,6 +20,7 @@ export async function getPaymentsByUserHandler(req: FastifyRequest, reply: Fasti
       status: true,
       comment: true,
       createdAt: true,
+      requestedAt: true,
       confirmedAt: true,
       user: {
         select: {

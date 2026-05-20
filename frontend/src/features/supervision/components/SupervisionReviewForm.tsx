@@ -4,6 +4,7 @@ import { useAssignedHours } from '../hooks/useAssignedHours';
 import { useUpdateHourStatus } from '../hooks/useUpdateHourStatus';
 import { toast } from 'sonner';
 import type { AssignedHourItem } from '../api/getAssignedHours';
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 
 type HourType = AssignedHourItem['type'];
 
@@ -160,6 +161,7 @@ export function SupervisionReviewForm() {
                         placeholder="Причина отклонения"
                         className="input w-44"
                         value={rejectedReasonMap[record.recordId] ?? ''}
+                        maxLength={COMMENT_MAX_LENGTH}
                         onChange={(e) =>
                           setRejectedReasonMap((prev) => ({
                             ...prev,

@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 
-import { BackButton } from '@/components/BackButton';
+import { PageNav } from '@/components/PageNav';
 import { DocumentReviewForm } from '@/features/documentReview/components/DocumentReviewForm';
 import { useGetDocReviewReq } from '@/features/documentReview/hooks/useGetDocReviewReq';
 import { useRequestDocumentDeletion } from '@/features/documentReview/hooks/useRequestDocumentDeletion';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { documentTypeLabels } from '@/utils/documentTypeLabels';
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 
 type FileStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'DELETED';
 
@@ -104,7 +105,7 @@ export default function DocumentReviewPage() {
       <div className="mx-auto max-w-[760px]">
         <div className="relative mb-5 flex min-h-[34px] items-center justify-center">
           <div className="absolute left-0 top-0">
-            <BackButton />
+            <PageNav />
           </div>
           <h1 className="text-center text-[22px] font-extrabold leading-tight">Мои документы</h1>
         </div>
@@ -326,6 +327,7 @@ function DeletionRequestModal({
           <textarea
             value={comment}
             onChange={(event) => setComment(event.target.value)}
+            maxLength={COMMENT_MAX_LENGTH}
             disabled={isPending}
             className="input-design mt-1 min-h-[108px] resize-y py-2"
             placeholder="Почему нужно удалить документ"

@@ -7,6 +7,7 @@ import { fetchCurrentUser } from '@/features/auth/api/me';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
 import { useSubmitSupervisionRequest } from '@/features/supervision/hooks/useSubmitSupervisionRequest';
 import { useReviewerSuggestions } from '@/features/supervision/hooks/useReviewerSuggestions';
+import { LONG_TEXT_MAX_LENGTH } from '@/utils/formLimits';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const GUIDE_STORAGE_PREFIX = 'supervision-hours-guide-hidden:v1';
@@ -443,6 +444,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                 className="input-design min-h-[132px] resize-y text-[14px]"
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
+                maxLength={LONG_TEXT_MAX_LENGTH}
                 placeholder="Кратко опишите практику"
               />
             </Field>

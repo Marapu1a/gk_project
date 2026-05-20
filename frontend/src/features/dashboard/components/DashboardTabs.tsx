@@ -28,7 +28,7 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
       {!isAdmin ? (
         <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <li>
-            <Link to="/ceu/create" className="btn btn-brand w-full">
+            <Link to="/ceu/points" className="btn btn-brand w-full">
               <div className="flex items-center justify-center gap-2">
                 <BookOpenCheck size={18} />
                 <span>Добавить CEU-баллы</span>
@@ -36,7 +36,7 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
             </Link>
           </li>
           <li>
-            <Link to="/supervision/create" className="btn btn-brand w-full">
+            <Link to="/supervision/hours" className="btn btn-brand w-full">
               <div className="flex items-center justify-center gap-2">
                 <Timer size={18} />
                 <span>
@@ -48,7 +48,7 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
             </Link>
           </li>
           <li>
-            <Link to="/history" className="btn btn-brand w-full">
+            <Link to="/supervision/hours?panel=history" className="btn btn-brand w-full">
               <div className="flex items-center justify-center gap-2">
                 <Clock size={18} />
                 <span>История</span>
@@ -102,7 +102,10 @@ export function DashboardTabs({ user }: DashboardTabsProps) {
 
         {(isSupervisor || isExperiencedSupervisor || isAdmin) && (
           <li>
-            <Link to="/review/supervision" className="btn btn-accent w-full">
+            <Link
+              to={isAdmin ? '/admin/supervision-candidates' : '/reviewer/candidates/supervision'}
+              className="btn btn-accent w-full"
+            >
               <div className="flex items-center justify-center gap-2">
                 <ListChecks size={18} />
                 <span>Проверка супервизии</span>

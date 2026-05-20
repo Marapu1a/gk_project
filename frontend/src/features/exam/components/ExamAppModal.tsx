@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/Button';
 import { usePatchExamAppStatus } from '../hooks/usePatchExamAppStatus';
 import { useExamAppDetails } from '../hooks/useExamAppDetails';
-import type { ExamApp, ExamStatus } from '../api/getMyExamApp';
+import type { ExamApp, ExamReadinessDetails, ExamStatus } from '../api/getMyExamApp';
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { examStatusLabels, targetLevelLabels } from '@/utils/labels';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
@@ -31,10 +32,40 @@ function statusText(status: ExamStatus) {
   return examStatusLabels[status] ?? status;
 }
 
+function examGoalLabel(summary: ExamReadinessDetails['readiness'] | null, app: ExamApp) {
+  const cycle = summary?.activeCycle ?? app.cycle ?? null;
+  const currentGroup = summary?.user.currentGroup?.name ?? '';
+
+  if (!cycle?.targetLevel) return '-';
+
+  if (cycle.type === 'RENEWAL') {
+    if (
+      cycle.targetLevel === 'SUPERVISOR' &&
+      (currentGroup === 'Супервизор' || currentGroup === 'Опытный Супервизор')
+    ) {
+      return 'Ресертификация: Супервизор -> Опытный Супервизор';
+    }
+
+    return `Ресертификация: ${targetLevelLabels[cycle.targetLevel]}`;
+  }
+
+  return targetLevelLabels[cycle.targetLevel] ?? cycle.targetLevel;
+}
+
+function applicationDateLabel(status: ExamStatus, submittedAt?: string | null) {
+  if (status === 'NOT_SUBMITTED') return 'не подавалась';
+  return formatDate(submittedAt);
+}
+
+function reviewDateLabel(status: ExamStatus, reviewedAt?: string | null) {
+  if (status === 'APPROVED' || status === 'REJECTED') return formatDate(reviewedAt);
+  return 'еще не рассматривалась';
+}
+
 export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
   const [comment, setComment] = useState(app.comment ?? '');
   const mutation = usePatchExamAppStatus();
-  const details = useExamAppDetails(app.userId);
+  const details = useExamAppDetails(app.userId, app.id);
   const summary = details.data?.readiness ?? null;
   const currentApp = details.data?.application ?? app;
   const disabled = mutation.isPending || details.isLoading;
@@ -47,7 +78,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
     }
 
     mutation.mutate(
-      { userId: app.userId, status: next, comment: trimmedComment },
+      { userId: app.userId, applicationId: app.id, status: next, comment: trimmedComment },
       {
         onSuccess: () => {
           const message =
@@ -95,21 +126,15 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
               />
               <InfoRow
                 label="Цель"
-                value={
-                  summary?.activeCycle?.targetLevel
-                    ? targetLevelLabels[summary.activeCycle.targetLevel]
-                    : app.cycle?.targetLevel
-                      ? targetLevelLabels[app.cycle.targetLevel]
-                      : '-'
-                }
+                value={examGoalLabel(summary, app)}
               />
             </div>
 
             <div className="rounded-[10px] bg-white px-4 py-4 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
-              <h4 className="dashboard-v2-title mb-3">Решение</h4>
-              <InfoRow label="Статус" value={statusText(currentApp.status)} />
-              <InfoRow label="Подана" value={formatDate(currentApp.submittedAt ?? currentApp.updatedAt)} />
-              <InfoRow label="Рассмотрена" value={formatDate(currentApp.reviewedAt)} />
+              <h4 className="dashboard-v2-title mb-3">Состояние заявки</h4>
+              <InfoRow label="Заявка" value={statusText(currentApp.status)} />
+              <InfoRow label="Дата подачи" value={applicationDateLabel(currentApp.status, currentApp.submittedAt)} />
+              <InfoRow label="Решение" value={reviewDateLabel(currentApp.status, currentApp.reviewedAt)} />
               <InfoRow label="Проверил" value={currentApp.reviewedByEmail || '-'} />
 
               {currentApp.comment ? (
@@ -158,11 +183,15 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
 
                 <div className="rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-4">
                   <h4 className="dashboard-v2-title mb-3">Оплаты</h4>
-                  <div className="space-y-2">
+                  <div className="divide-y divide-[#D4E2E6]">
                     {summary.payments.items.map((payment) => (
-                      <CheckLine key={payment.type} ok={payment.paid} label={payment.label}>
-                        {payment.confirmedAt ? formatDate(payment.confirmedAt) : 'не оплачено'}
-                      </CheckLine>
+                      <PaymentLine
+                        key={payment.type}
+                        ok={payment.paid}
+                        label={payment.label}
+                        requestedAt={payment.requestedAt}
+                        confirmedAt={payment.confirmedAt}
+                      />
                     ))}
                   </div>
                 </div>
@@ -191,6 +220,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
             className="input-design min-h-[90px] resize-y"
             value={comment}
             onChange={(event) => setComment(event.target.value)}
+            maxLength={COMMENT_MAX_LENGTH}
             placeholder="Причина отклонения или служебный комментарий"
             disabled={disabled}
           />
@@ -218,7 +248,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
             </button>
           ) : null}
 
-          {currentApp.status === 'PENDING' ? (
+          {currentApp.status !== 'REJECTED' ? (
             <button
               type="button"
               onClick={() => doChange('REJECTED')}
@@ -261,6 +291,38 @@ function CheckLine({
       )}
       <span className="font-extrabold">{label}:</span>
       <span className="min-w-0">{children}</span>
+    </div>
+  );
+}
+
+function PaymentLine({
+  ok,
+  label,
+  requestedAt,
+  confirmedAt,
+}: {
+  ok: boolean;
+  label: string;
+  requestedAt?: string | null;
+  confirmedAt?: string | null;
+}) {
+  return (
+    <div className="dashboard-v2-caption grid grid-cols-[minmax(180px,1fr)_minmax(210px,auto)] items-start gap-4 py-2 text-[#1F305E] first:pt-0 last:pb-0">
+      <div className="flex min-w-0 items-start gap-2">
+        {ok ? (
+          <CheckCircle size={16} className="mt-[2px] shrink-0 text-[var(--color-green-brand)]" />
+        ) : (
+          <XCircle size={16} className="mt-[2px] shrink-0 text-[var(--color-danger)]" />
+        )}
+        <span className="min-w-0 font-extrabold">{label}:</span>
+      </div>
+
+      <div className="grid min-w-[210px] grid-cols-[105px_minmax(0,1fr)] gap-x-2 text-left">
+        <span className="text-[#8D96B5]">Заявлено:</span>
+        <span>{requestedAt ? formatDate(requestedAt) : 'нет'}</span>
+        <span className="text-[#8D96B5]">Подтверждено:</span>
+        <span>{confirmedAt ? formatDate(confirmedAt) : 'нет'}</span>
+      </div>
     </div>
   );
 }

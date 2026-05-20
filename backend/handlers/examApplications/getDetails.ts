@@ -5,6 +5,7 @@ import { buildExamReadiness } from './readiness';
 export async function getExamAppDetailsHandler(req: FastifyRequest, reply: FastifyReply) {
   const currentUser = req.user;
   const { userId } = req.params as { userId: string };
+  const { applicationId } = (req.query ?? {}) as { applicationId?: string };
 
   if (!currentUser?.userId) {
     return reply.code(401).send({ error: 'Не авторизован' });
@@ -20,10 +21,12 @@ export async function getExamAppDetailsHandler(req: FastifyRequest, reply: Fasti
   }
 
   const application = await prisma.examApplication.findFirst({
-    where: {
-      userId,
-      cycleId: readiness.activeCycle?.id ?? null,
-    },
+    where: applicationId
+      ? { id: applicationId, userId }
+      : {
+          userId,
+          cycleId: readiness.activeCycle?.id ?? null,
+        },
     select: {
       id: true,
       userId: true,

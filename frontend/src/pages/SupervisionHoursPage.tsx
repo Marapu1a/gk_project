@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { PageNav } from '@/components/PageNav';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { HoursOverviewBlock } from '@/features/dashboard-v2/dashboardV2/components/hours-overview/component/HoursOverviewBlock';
@@ -10,7 +11,6 @@ import { SupervisionContractBlock } from '@/features/supervision/components/Supe
 import { SupervisionRecordHistoryBlock } from '@/features/supervision/components/SupervisionRecordHistoryBlock';
 
 function SupervisionHoursContent() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const panel = searchParams.get('panel');
@@ -41,20 +41,14 @@ function SupervisionHoursContent() {
   return (
     <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
       <header className="mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
-        <button
-          type="button"
-          onClick={() => navigate('/dashboard-v2')}
-          className="inline-flex h-[30px] min-w-[88px] items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[14px] font-medium text-[#1F305E] hover:bg-white active:bg-[#E7F1F4]"
-        >
-          ← Профиль
-        </button>
+        <PageNav />
 
         <h1 className="min-w-0 text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
           {isMentorshipMode ? 'Часы менторства' : 'Часы супервизии'}
         </h1>
 
         {isMentorshipMode ? (
-          <div className="hidden min-w-[88px] sm:block" aria-hidden="true" />
+          <div className="hidden min-w-[207px] sm:block" aria-hidden="true" />
         ) : (
           <button
             type="button"

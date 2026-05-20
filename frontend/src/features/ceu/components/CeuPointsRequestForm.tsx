@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import { toast } from 'sonner';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { submitCeuRequest } from '../api/submitCeuRequest';
@@ -9,6 +10,10 @@ type CeuCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
 type CeuActivityType = 'TRAINING_ATTENDANCE' | 'PRESENTATION' | 'PUBLICATION' | 'TEACHING';
 
 const MAX_SIZE_MB = 10;
+const ceuValueInputSchema = z.string().refine(
+  (value) => value === '' || /^\d*(?:[.]\d{0,2})?$/.test(value),
+  'Введите неотрицательное число',
+);
 
 const CATEGORIES: Array<{ value: CeuCategory; label: string }> = [
   { value: 'ETHICS', label: 'Этика' },
@@ -49,6 +54,21 @@ function parseCeuValue(value: string) {
   if (!normalized) return 0;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function sanitizeCeuValueInput(rawValue: string) {
+  const value = rawValue.replace(/\s/g, '').replace(',', '.');
+  return ceuValueInputSchema.safeParse(value).success ? value : null;
+}
+
+function normalizeCeuValueInput(value: string) {
+  const sanitized = sanitizeCeuValueInput(value);
+  if (!sanitized || sanitized === '.') return '0';
+
+  const parsed = Number(sanitized);
+  if (!Number.isFinite(parsed) || parsed < 0) return '0';
+
+  return String(Math.round(parsed * 100) / 100);
 }
 
 function isHalfStep(value: number) {
@@ -207,7 +227,14 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
                       className="input-design h-[32px]"
                       inputMode="decimal"
                       value={duration}
-                      onChange={(event) => setDuration(event.target.value)}
+                      onFocus={() => {
+                        if (duration === '0') setDuration('');
+                      }}
+                      onBlur={() => setDuration(normalizeCeuValueInput(duration))}
+                      onChange={(event) => {
+                        const nextValue = sanitizeCeuValueInput(event.target.value);
+                        if (nextValue !== null) setDuration(nextValue);
+                      }}
                       disabled={submitting}
                       placeholder="0"
                     />

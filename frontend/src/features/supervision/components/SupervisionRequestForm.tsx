@@ -205,7 +205,7 @@ export function SupervisionRequestForm() {
       queryClient.invalidateQueries({ queryKey: ['supervision', 'unconfirmed'] });
 
       toast.success('Заявка отправлена');
-      navigate('/dashboard');
+      navigate('/dashboard-v2');
     } catch (err: any) {
       console.error('Ошибка при отправке формы:', err);
       toast.error(err?.response?.data?.error || 'Ошибка отправки');

@@ -1,4 +1,5 @@
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { PageNav } from '@/components/PageNav';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { CandidateCeuCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateCeuCard';
 import { CandidateHoursOverviewCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateHoursOverviewCard';
@@ -44,13 +45,10 @@ function getTargetDisplayLabel(
 }
 
 function AdminReviewerCandidateDetailsContent() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const params = useParams();
   const routeKind = isKind(params.kind) ? params.kind : 'supervision';
   const relationId = params.relationId;
   const { data, isLoading, isError, error } = useAdminReviewerCandidateDetails(relationId);
-  const listUrl = `/admin/supervision-candidates${location.search}`;
 
   if (isLoading) {
     return (
@@ -64,20 +62,7 @@ function AdminReviewerCandidateDetailsContent() {
     return (
       <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(listUrl)}
-            className="dashboard-v2-caption inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
-          >
-            ← В список
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard-v2')}
-            className="dashboard-v2-caption inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
-          >
-            В профиль
-          </button>
+          <PageNav />
         </div>
         <p className="dashboard-v2-text text-error">
           {(error as any)?.response?.data?.error || 'Не удалось загрузить кандидата'}
@@ -104,20 +89,7 @@ function AdminReviewerCandidateDetailsContent() {
     <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
       <header className="mb-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
         <div className="flex min-w-0 items-center gap-3 justify-self-start">
-          <button
-            type="button"
-            onClick={() => navigate(listUrl)}
-            className="dashboard-v2-caption inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
-          >
-            ← В список
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard-v2')}
-            className="dashboard-v2-caption inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
-          >
-            В профиль
-          </button>
+          <PageNav />
         </div>
 
         <h1 className="dashboard-v2-page-title min-w-0 text-center">

@@ -5,6 +5,7 @@ import { paymentStatusLabels, paymentTypeLabels } from '@/utils/labels';
 import { useUpdatePaymentStatus } from '@/features/payment/hooks/useUpdatePaymentStatus';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 
 type Payment = {
   id: string;
@@ -272,6 +273,7 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
                           placeholder="Комментарий (по желанию)"
                           value={cancelComment}
                           onChange={(e) => setCancelComment(e.target.value)}
+                          maxLength={COMMENT_MAX_LENGTH}
                           disabled={mutate.isPending}
                         />
                         <div className="flex gap-2">

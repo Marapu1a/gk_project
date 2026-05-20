@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { patchExamAppStatus } from '../api/patchExamAppStatus';
-import type { ExamStatus } from '../api/getMyExamApp';
+import type { ExamApp, ExamStatus } from '../api/getMyExamApp';
 
 export function usePatchExamAppStatus() {
   const qc = useQueryClient();
@@ -8,12 +8,14 @@ export function usePatchExamAppStatus() {
   return useMutation({
     mutationFn: (p: {
       userId: string;
+      applicationId?: string;
       status: ExamStatus;
       comment?: string;
       notify?: boolean;
       manual?: boolean;
     }) =>
       patchExamAppStatus(p.userId, p.status, {
+        applicationId: p.applicationId,
         comment: p.comment,
         notify: p.notify,
         manual: p.manual,
@@ -23,10 +25,17 @@ export function usePatchExamAppStatus() {
       qc.setQueryData(['exam', 'me'], (prev: any) =>
         prev && prev.userId === updated.userId ? updated : prev
       );
+
+      qc.setQueryData<ExamApp[]>(['exam', 'all'], (prev) =>
+        prev?.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)) ?? prev,
+      );
+
       // Синхронизируем все места, где админ видит заявку на экзамен:
       // общий список /exam-applications и детали конкретного пользователя.
       qc.invalidateQueries({ queryKey: ['exam', 'all'] });
+      qc.refetchQueries({ queryKey: ['exam', 'all'], type: 'active' });
       qc.invalidateQueries({ queryKey: ['exam', 'details', updated.userId] });
+      qc.invalidateQueries({ queryKey: ['exam', 'details', updated.userId, updated.id] });
       qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', updated.userId] });
     },
   });

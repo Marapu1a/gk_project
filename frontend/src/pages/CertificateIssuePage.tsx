@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { AdminIssueCertificateForm } from '@/features/certificate/components/AdminIssueCertificateForm';
-import { BackButton } from '@/components/BackButton';
+import { PageNav } from '@/components/PageNav';
 
 export default function CertificateIssuePage() {
   const { data: me, isLoading } = useQuery({
@@ -18,7 +18,7 @@ export default function CertificateIssuePage() {
     <div className="min-h-screen bg-[#F0F0F0] px-4 pb-12 pt-4">
       <div className="relative mx-auto w-full max-w-[1100px]">
         <div className="absolute left-0 top-0">
-          <BackButton />
+          <PageNav />
         </div>
 
         <h1 className="dashboard-v2-title text-center">Выдать сертификат</h1>

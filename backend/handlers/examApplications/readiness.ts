@@ -39,6 +39,7 @@ type PaymentCheck = {
   type: PaymentType;
   label: string;
   paid: boolean;
+  requestedAt: Date | null;
   confirmedAt: Date | null;
 };
 
@@ -186,7 +187,7 @@ export async function buildExamReadiness(userId: string) {
         },
       },
       orderBy: { confirmedAt: 'desc' },
-      select: { id: true, type: true, status: true, confirmedAt: true, comment: true },
+      select: { id: true, type: true, status: true, requestedAt: true, confirmedAt: true, comment: true },
     }),
     prisma.documentReviewRequest.findMany({
       where: {
@@ -285,15 +286,18 @@ export async function buildExamReadiness(userId: string) {
     (payment) => payment.type === PaymentType.FULL_PACKAGE && payment.status === PaymentStatus.PAID,
   );
   const paymentItems: PaymentCheck[] = requiredPaymentTypes(activeCycle.targetLevel).map((type) => {
-    const direct = payments.find(
+    const directPaid = payments.find(
       (payment) => payment.type === type && payment.status === PaymentStatus.PAID,
     );
-    const paidPayment = fullPackage ?? direct ?? null;
+    const directLatest = payments.find((payment) => payment.type === type) ?? null;
+    const paidPayment = fullPackage ?? directPaid ?? null;
+    const requestedPayment = fullPackage ?? directLatest ?? null;
 
     return {
       type,
       label: PAYMENT_LABELS[type],
       paid: Boolean(paidPayment),
+      requestedAt: requestedPayment?.requestedAt ?? null,
       confirmedAt: paidPayment?.confirmedAt ?? null,
     };
   });

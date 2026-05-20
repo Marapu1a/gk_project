@@ -1,7 +1,6 @@
 // src/pages/UsersPage.tsx
 import { UsersTable } from '@/features/admin/components/UsersTable';
-import { BackButton } from '@/components/BackButton';
-import { DashboardButton } from '@/components/DashboardButton';
+import { PageNav } from '@/components/PageNav';
 
 export default function UsersPage() {
   return (
@@ -12,18 +11,12 @@ export default function UsersPage() {
       </p>
 
       {/* Верхняя панель кнопок */}
-      <div className="flex gap-3">
-        <BackButton />
-        <DashboardButton />
-      </div>
+      <PageNav />
 
       <UsersTable />
 
       {/* Нижняя панель кнопок */}
-      <div className="flex gap-3 pt-4 border-t border-gray-200">
-        <BackButton />
-        <DashboardButton />
-      </div>
+      <PageNav className="border-t border-gray-200 pt-4" />
     </div>
   );
 }

@@ -58,13 +58,14 @@ export function assertStatusTransition(params: {
   if (manual) return;
 
   // ADMIN:
-  // PENDING -> APPROVED | REJECTED
+  // PENDING -> APPROVED
+  // Любую неотклоненную заявку можно отклонить с комментарием: это нужно
+  // для старых зависших заявок после смены логики.
   // REJECTED -> NOT_SUBMITTED (открыть путь к повторной отправке)
-  // (по желанию можешь также разрешить PENDING -> NOT_SUBMITTED)
   const allowedAdmin =
-    (current === 'PENDING' && (next === 'APPROVED' || next === 'REJECTED')) ||
+    (current === 'PENDING' && next === 'APPROVED') ||
+    (next === 'REJECTED' && current !== 'REJECTED') ||
     (current === 'REJECTED' && next === 'NOT_SUBMITTED');
-  // || (current === 'PENDING' && next === 'NOT_SUBMITTED'); // опционально
 
   if (!allowedAdmin) throw new Error('INVALID_TRANSITION');
 }

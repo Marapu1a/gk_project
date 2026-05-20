@@ -74,6 +74,14 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
       where: { id },
       data: {
         status,
+        requestedAt:
+          user.role !== 'ADMIN' && status === 'PENDING'
+            ? now
+            : status === 'UNPAID'
+              ? null
+              : status === 'PAID'
+                ? dbPayment.requestedAt ?? now
+                : dbPayment.requestedAt,
         confirmedAt: status === 'PAID' ? now : status === 'UNPAID' ? null : dbPayment.confirmedAt,
         comment,
       },
@@ -97,6 +105,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
         },
         data: {
           status: 'PAID',
+          requestedAt: dbPayment.requestedAt ?? now,
           confirmedAt: now,
           comment: 'Активировано пакетной оплатой',
         },
@@ -117,6 +126,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
         },
         data: {
           status,
+          requestedAt: status === 'PENDING' ? now : null,
           confirmedAt: null,
           comment:
             status === 'PENDING'
@@ -158,7 +168,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
             dbPayment.type === PaymentType.FULL_PACKAGE
               ? 'Пакетная оплата подтверждена'
               : `Оплата подтверждена: ${paymentTypeLabel(dbPayment.type)}`,
-          link: '/dashboard',
+          link: '/dashboard-v2',
         });
       }
     } catch (err) {

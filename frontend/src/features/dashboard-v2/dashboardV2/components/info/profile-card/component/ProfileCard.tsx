@@ -97,7 +97,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
             <div className="mt-2">
               <button
                 type="button"
-                onClick={() => navigate('/history')}
+                onClick={() => navigate('/supervision/hours?panel=history')}
                 className="btn dashboard-v2-label h-[34px] w-full cursor-pointer rounded-full border border-[var(--color-blue-dark)] text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
               >
                 История

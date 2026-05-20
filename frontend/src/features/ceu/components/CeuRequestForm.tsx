@@ -69,7 +69,7 @@ export function CeuRequestForm() {
       localStorage.removeItem('file:ceu');
       reset();
       toast.success('Заявка на CEU отправлена');
-      navigate('/dashboard');
+      navigate('/dashboard-v2');
     } catch (err: any) {
       const message = err?.response?.data?.error || 'Ошибка при отправке формы';
       setError('root.serverError', { message });

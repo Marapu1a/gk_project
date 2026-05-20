@@ -14,6 +14,13 @@ import { fetchCurrentUser } from '@/features/auth/api/me';
 const ARCHIVED_ACCOUNT_MESSAGE = 'Аккаунт удалён, для восстановления свяжитесь с нами';
 const CONTACTS_URL = 'https://reestrpap.ru/contacts';
 
+function normalizeRedirect(to: string | null) {
+  if (!to || to === '/dashboard') return '/dashboard-v2';
+  if (to === '/history') return '/supervision/hours?panel=history';
+  if (to === '/review/supervision') return '/reviewer/candidates/supervision';
+  return to;
+}
+
 function ArchivedAccountError() {
   return (
     <span>
@@ -48,7 +55,7 @@ export function LoginForm() {
       try {
         // Просто вызов без аргументов
         await fetchCurrentUser();
-        if (!cancelled) navigate('/dashboard', { replace: true });
+        if (!cancelled) navigate('/dashboard-v2', { replace: true });
       } catch {
         // Токен битый — чистим
         localStorage.removeItem('token');
@@ -70,8 +77,7 @@ export function LoginForm() {
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
       toast.success('Вход выполнен');
-      const to = params.get('to') || '/dashboard';
-      navigate(to, { replace: true });
+      navigate(normalizeRedirect(params.get('to')), { replace: true });
     },
     onError: (error: any) => {
       const message = error?.response?.data?.error || 'Ошибка входа';

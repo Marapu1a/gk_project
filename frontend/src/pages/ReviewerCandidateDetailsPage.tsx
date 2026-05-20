@@ -1,4 +1,5 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { PageNav } from '@/components/PageNav';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { CandidateCeuCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateCeuCard';
 import { CandidateHoursOverviewCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateHoursOverviewCard';
@@ -42,7 +43,6 @@ function getTargetDisplayLabel(data: NonNullable<ReturnType<typeof useReviewerCa
 }
 
 function ReviewerCandidateDetailsContent() {
-  const navigate = useNavigate();
   const params = useParams();
   const kind = isKind(params.kind) ? params.kind : 'supervision';
   const userId = params.userId;
@@ -60,20 +60,7 @@ function ReviewerCandidateDetailsContent() {
     return (
       <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(`/reviewer/candidates/${kind}`)}
-            className="dashboard-v2-caption inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
-          >
-            ← В историю
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard-v2')}
-            className="dashboard-v2-caption inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
-          >
-            В профиль
-          </button>
+          <PageNav />
         </div>
         <p className="dashboard-v2-text text-error">
           {(error as any)?.response?.data?.error || 'Не удалось загрузить кандидата'}
@@ -99,20 +86,7 @@ function ReviewerCandidateDetailsContent() {
     <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
       <header className="mb-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
         <div className="flex min-w-0 items-center gap-3 justify-self-start">
-          <button
-            type="button"
-            onClick={() => navigate(`/reviewer/candidates/${kind}`)}
-            className="dashboard-v2-caption inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
-          >
-            ← В историю
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard-v2')}
-            className="dashboard-v2-caption inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
-          >
-            В профиль
-          </button>
+          <PageNav />
         </div>
 
         <h1 className="dashboard-v2-page-title min-w-0 text-center">

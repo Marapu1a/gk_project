@@ -1,7 +1,11 @@
+import type { DocumentType } from '@/utils/documentTypeLabels';
 import { api } from '@/lib/axios';
 
 type CreateDocReviewReqPayload = {
-  fileIds: string[];
+  documents: Array<{
+    fileId: string;
+    type: DocumentType;
+  }>;
   comment?: string;
 };
 

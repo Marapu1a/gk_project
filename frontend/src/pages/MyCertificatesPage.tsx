@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 
+import { PageNav } from '@/components/PageNav';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { MyCertificatesBlock } from '@/features/certificate/components/MyCertificatesBlock';
 
 export default function MyCertificatesPage() {
-  const navigate = useNavigate();
   const { data: me, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: fetchCurrentUser,
@@ -22,13 +21,7 @@ export default function MyCertificatesPage() {
 
   return (
     <div className="min-h-screen bg-[#F0F0F0] px-5 pb-12 pt-4 text-blue-dark">
-      <button
-        type="button"
-        onClick={() => navigate('/dashboard-v2')}
-        className="btn h-[30px] rounded-full border border-[#8D96B5] px-3 text-[14px] text-[#53617F] hover:bg-white"
-      >
-        ← Профиль
-      </button>
+      <PageNav />
 
       <header className="mb-7 text-center">
         <h1 className="text-[28px] font-extrabold leading-none text-[var(--color-blue-dark)]">

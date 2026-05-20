@@ -168,7 +168,7 @@ export function RegisterForm() {
     },
     onSuccess: () => {
       toast.success('Регистрация успешна');
-      navigate('/dashboard');
+      navigate('/dashboard-v2');
     },
     onError: (error: any) => {
       const backendMessage = error?.response?.data?.error;

@@ -216,9 +216,11 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   try {
     await createNotification({
       userId: reviewer.id,
-      type: NotificationType.SUPERVISION,
+      type: isAuthorSimpleSupervisor ? NotificationType.MENTORSHIP : NotificationType.SUPERVISION,
       message: `Новая заявка на ${isAuthorSimpleSupervisor ? 'менторство' : 'супервизию'} от ${currentUser.email}`,
-      link: '/review/supervision',
+      link: isAuthorSimpleSupervisor
+        ? '/reviewer/candidates/mentorship'
+        : '/reviewer/candidates/supervision',
     });
   } catch (err) {
     req.log.error(err, 'SUPERVISION_CREATE notification failed');

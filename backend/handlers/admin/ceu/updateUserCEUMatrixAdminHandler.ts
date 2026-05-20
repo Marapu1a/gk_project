@@ -101,7 +101,7 @@ export async function updateUserCEUMatrixAdminHandler(
       userId,
       type: 'CEU',
       message: `Ваши CEU-баллы (${labelCEUCategory(category)}, ${labelCEUStatus(status)}) были изменены администратором.`,
-      link: '/history',
+      link: '/ceu/points?panel=history',
     },
   });
 

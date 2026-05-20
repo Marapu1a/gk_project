@@ -7,6 +7,7 @@ import { fetchCurrentUser } from '@/features/auth/api/me';
 import { useReviewerSuggestions } from '../hooks/useReviewerSuggestions';
 import { useSubmitSupervisionRequest } from '../hooks/useSubmitSupervisionRequest';
 import { useSupervisionSummary } from '../hooks/useSupervisionSummary';
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 
 const hoursInputSchema = z.string().refine(
   (value) => value === '' || /^\d*(?:[.]\d{0,2})?$/.test(value),
@@ -291,6 +292,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
                     className="input-design min-h-[132px] resize-y text-[14px]"
                     value={comment}
                     onChange={(event) => setComment(event.target.value)}
+                    maxLength={COMMENT_MAX_LENGTH}
                     placeholder="Кратко опишите менторство"
                   />
                 </Field>

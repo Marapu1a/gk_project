@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useUpdateCEUEntry } from '../hooks/useUpdateCeuEntry';
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import type { CEUReviewResponse } from '../hooks/useCeuRecordsByEmail';
 import { toast } from 'sonner';
 
@@ -139,6 +140,7 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                               placeholder="Причина"
                               className="input w-44"
                               value={reasons[entry.id] || ''}
+                              maxLength={COMMENT_MAX_LENGTH}
                               onChange={(e) =>
                                 setReasons((prev) => ({ ...prev, [entry.id]: e.target.value }))
                               }

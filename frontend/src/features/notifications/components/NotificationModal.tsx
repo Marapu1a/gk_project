@@ -14,6 +14,7 @@ import type { Notification } from '../api/notifications';
 import {
   NOTIFICATION_TYPE_LABELS,
   NOTIFICATION_TYPE_TONES,
+  normalizeNotificationLink,
   type NotificationTone,
 } from '@/utils/notificationDictionary';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
@@ -40,8 +41,14 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
       markRead.mutate(notification.id);
     }
 
-    if (notification.link) {
-      navigate(notification.link);
+    const normalizedLink = normalizeNotificationLink(
+      notification.link,
+      notification.type,
+      notification.message,
+    );
+
+    if (normalizedLink) {
+      navigate(normalizedLink);
       onClose();
     }
   };
@@ -177,6 +184,11 @@ function NotificationRow({
     : createdAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const tone = NOTIFICATION_TYPE_TONES[notification.type] ?? 'soft';
   const label = NOTIFICATION_TYPE_LABELS[notification.type] ?? 'Уведомление';
+  const normalizedLink = normalizeNotificationLink(
+    notification.link,
+    notification.type,
+    notification.message,
+  );
 
   return (
     <article
@@ -199,11 +211,11 @@ function NotificationRow({
       <button
         type="button"
         onClick={onOpen}
-        disabled={!notification.link && notification.isRead}
+        disabled={!normalizedLink && notification.isRead}
         className={`notification-arrow h-[53px] w-[53px] cursor-pointer rounded-[19px] transition disabled:cursor-default ${
           notification.isRead ? 'opacity-45' : 'opacity-100'
         }`}
-        aria-label={notification.link ? 'Открыть уведомление' : 'Отметить прочитанным'}
+        aria-label={normalizedLink ? 'Открыть уведомление' : 'Отметить прочитанным'}
       >
         <img src={ARROW_ICON} alt="" className="h-full w-full" />
       </button>

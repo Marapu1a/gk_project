@@ -11,6 +11,7 @@ import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import { useUpdateTargetLevel } from '@/features/admin/hooks/useUpdateTargetLevel';
 
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { targetLevelLabels } from '@/utils/labels';
 
 type TargetLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
@@ -354,6 +355,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
                     placeholder="Причина отмены цикла"
                     value={abandonReason}
                     onChange={(e) => setAbandonReason(e.target.value)}
+                    maxLength={COMMENT_MAX_LENGTH}
                     disabled={abandonCycle.isPending}
                   />
 

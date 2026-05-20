@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { isValidPhoneNumber } from 'libphonenumber-js';
+import { PageNav } from '@/components/PageNav';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import { useUpdateMe } from '@/features/user/hooks/useUpdateMe';
 import { useRequestProfileArchive } from '@/features/user/hooks/useRequestProfileArchive';
@@ -139,13 +140,7 @@ export default function ProfileEditPage() {
 
   return (
     <div className="px-4 pb-10 pt-3 text-blue-dark">
-      <button
-        type="button"
-        onClick={() => navigate('/dashboard-v2')}
-        className="btn h-[30px] rounded-full border border-[#8D96B5] px-3 text-[14px] text-[#53617F] hover:bg-white"
-      >
-        ← Профиль
-      </button>
+      <PageNav />
 
       <div className="mx-auto max-w-[980px]">
         <header className="mb-5 text-center">

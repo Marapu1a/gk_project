@@ -68,15 +68,7 @@ export const examStatusLabels: Record<string, string> = {
 };
 
 // Документы (типы)
-export const documentTypeLabels: Record<string, string> = {
-  HIGHER_EDUCATION: 'Высшее образование',
-  ADDITIONAL_EDUCATION: 'Доп. образование',
-  COURSE_CERTIFICATE: 'Сертификат курса',
-  WORKSHOP: 'Воркшоп/семинар',
-  DIPLOMA: 'Диплом',
-  LICENSE: 'Лицензия',
-  OTHER: 'Другое',
-};
+export { documentTypeLabels } from './documentTypeLabels';
 
 // Статусы заявок на проверку документов
 export const docReviewStatusLabels: Record<string, string> = {

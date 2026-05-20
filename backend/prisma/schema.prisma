@@ -355,6 +355,7 @@ model Payment {
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  requestedAt DateTime?
   confirmedAt DateTime?
   comment     String?
 

@@ -13,6 +13,7 @@ import type { Notification } from '@/features/notifications/api/notifications';
 import {
   NOTIFICATION_TYPE_LABELS,
   NOTIFICATION_TYPE_TONES,
+  normalizeNotificationLink,
   type NotificationTone,
 } from '@/utils/notificationDictionary';
 import { useAllDocReviewRequests } from '@/features/documentReviewAdmin/hooks/useAllDocReviewRequests';
@@ -248,9 +249,7 @@ function ActionButton({
 }
 
 function AdminNotifications({ notifications }: { notifications: Notification[] }) {
-  const visible = notifications.slice(0, 6);
-
-  if (!visible.length) {
+  if (!notifications.length) {
     return (
       <div className="dashboard-v2-text flex min-h-[180px] items-center justify-center px-4 text-center text-[#8D96B5]">
         Новых событий нет
@@ -259,8 +258,8 @@ function AdminNotifications({ notifications }: { notifications: Notification[] }
   }
 
   return (
-    <div className="mt-3">
-      {visible.map((notification) => (
+    <div className="notification-scroll mt-3 max-h-[430px] overflow-y-auto pr-1">
+      {notifications.map((notification) => (
         <NotificationRow key={notification.id} notification={notification} />
       ))}
     </div>
@@ -279,14 +278,19 @@ function NotificationRow({ notification }: { notification: Notification }) {
     : createdAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const label = NOTIFICATION_TYPE_LABELS[notification.type] ?? 'Уведомление';
   const tone = NOTIFICATION_TYPE_TONES[notification.type] ?? 'soft';
+  const normalizedLink = normalizeNotificationLink(
+    notification.link,
+    notification.type,
+    notification.message,
+  );
 
   const onOpen = async () => {
     if (!notification.isRead) {
       markRead.mutate(notification.id);
     }
 
-    if (notification.link) {
-      navigate(notification.link);
+    if (normalizedLink) {
+      navigate(normalizedLink);
     }
   };
 
@@ -327,8 +331,8 @@ function NotificationRow({ notification }: { notification: Notification }) {
         type="button"
         onClick={onOpen}
         className="flex h-[32px] w-[32px] items-center justify-center rounded-full bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-blue-darker)] disabled:opacity-45"
-        disabled={!notification.link && notification.isRead}
-        aria-label={notification.link ? 'Открыть уведомление' : 'Отметить прочитанным'}
+        disabled={!normalizedLink && notification.isRead}
+        aria-label={normalizedLink ? 'Открыть уведомление' : 'Отметить прочитанным'}
       >
         <ArrowRight size={18} />
       </button>

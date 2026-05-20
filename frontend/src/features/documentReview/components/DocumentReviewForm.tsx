@@ -8,6 +8,7 @@ import { useUpdateFileType } from '../hooks/useUpdateFileType';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { deleteFile } from '@/features/files/api/deleteFile';
 import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
@@ -137,7 +138,10 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
 
     try {
       await createRequest.mutateAsync({
-        fileIds: files.map((file) => file.id),
+        documents: files.map((file) => ({
+          fileId: file.id,
+          type: file.type as DocumentType,
+        })),
         comment,
       });
 
@@ -227,6 +231,7 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
           type="text"
           value={comment}
           onChange={(event) => setComment(event.target.value)}
+          maxLength={COMMENT_MAX_LENGTH}
           placeholder="Необязательно"
           className="input-design mt-1 h-[34px]"
         />

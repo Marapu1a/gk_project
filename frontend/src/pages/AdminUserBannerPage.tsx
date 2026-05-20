@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { PageNav } from '@/components/PageNav';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { UserBannerView } from '@/features/userBanner/components/UserBannerView';
 import { useAdminUserBanner, useUpdateAdminUserBanner } from '@/features/userBanner/hooks/useUserBanner';
@@ -14,7 +14,6 @@ const toneOptions: Array<{ value: UserBannerTone; label: string }> = [
 ];
 
 function AdminUserBannerPageInner() {
-  const navigate = useNavigate();
   const { data: banner, isLoading, error } = useAdminUserBanner();
   const updateBanner = useUpdateAdminUserBanner();
 
@@ -73,13 +72,7 @@ function AdminUserBannerPageInner() {
 
   return (
     <div className="container-fixed px-4 pb-10 pt-3 text-blue-dark md:px-6">
-      <button
-        type="button"
-        onClick={() => navigate('/dashboard-v2')}
-        className="btn h-[30px] rounded-full border border-[#8D96B5] px-3 text-[14px] text-[#53617F] hover:bg-white"
-      >
-        ← Админ-панель
-      </button>
+      <PageNav />
 
       <div className="mx-auto mt-2 max-w-[960px]">
         <header className="mb-5 text-center">

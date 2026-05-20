@@ -1,6 +1,6 @@
 export const documentTypeLabels: Record<string, string> = {
   HIGHER_EDUCATION: 'Высшее образование',
-  ADDITIONAL_EDUCATION: 'Доп. образование',
+  ADDITIONAL_EDUCATION: 'Образование ПАП',
   OTHER: 'Другое',
 };
 

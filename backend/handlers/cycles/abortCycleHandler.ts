@@ -71,7 +71,7 @@ export async function abortCycleHandler(
         userId: cycle.userId,
         type: 'DOCUMENT',
         message: `Цикл сертификации прерван администратором. Причина: ${reason}`,
-        link: '/dashboard',
+        link: '/dashboard-v2',
       },
     });
 

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { BackButton } from '@/components/BackButton';
-import { DashboardButton } from '@/components/DashboardButton';
+import { PageNav } from '@/components/PageNav';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import {
   documentReviewStatusLabels,
 } from '@/utils/documentReviewStatusLabels';
@@ -211,10 +211,7 @@ export function AdminDocumentReviewDetails() {
               Подана: {formatDate(request.submittedAt)}
             </p>
           </div>
-          <div className="flex shrink-0 gap-3">
-            <BackButton />
-            <DashboardButton />
-          </div>
+          <PageNav className="shrink-0" />
         </header>
 
         <div className="space-y-7 px-6 py-6">
@@ -416,6 +413,7 @@ function DocumentFileCard({
           <textarea
             value={comment}
             onChange={(event) => onCommentChange(event.target.value)}
+            maxLength={COMMENT_MAX_LENGTH}
             disabled={disabled || item.status === 'DELETED'}
             className="input-design mt-1 min-h-[70px] resize-y py-2"
             placeholder="Комментарий к документу"

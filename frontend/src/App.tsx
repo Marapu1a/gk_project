@@ -1,6 +1,6 @@
 // src/App.tsx
 import { Toaster } from 'sonner';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfirmProvider } from '@/components/confirm/ConfirmProvider';
 import MainLayout from './layouts/MainLayout';
@@ -8,11 +8,6 @@ import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
-import DashboardPage from './pages/DashboardPage';
-import CeuRequestPage from './pages/CeuRequestPage';
-import SupervisionRequestPage from './pages/SupervisionRequestPage';
-import HistoryPage from './pages/HistoryPage';
-import SupervisionReviewPage from './pages/SupervisionReviewPage';
 import CeuReviewPage from './pages/CeuReviewPage';
 // import GroupAssignmentPage from './pages/GroupAssignmentPage';
 import DocumentReviewPage from './pages/DocumentReviewPage';
@@ -46,17 +41,17 @@ const router = createBrowserRouter([
       { path: 'login', element: <LoginPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       { path: 'reset-password', element: <ResetPasswordPage /> },
-      { path: 'dashboard', element: <DashboardPage /> },
+      { path: 'dashboard', element: <Navigate to="/dashboard-v2" replace /> },
       { path: 'dashboard-v2', element: <DashboardPageV2 /> },
       { path: 'profile', element: <ProfileEditPage /> },
       { path: 'reviewer/candidates/:kind', element: <ReviewerCandidatesPage /> },
       { path: 'reviewer/candidates/:kind/:userId', element: <ReviewerCandidateDetailsPage /> },
       { path: 'ceu/points', element: <CeuPointsPage /> },
-      { path: 'ceu/create', element: <CeuRequestPage /> },
+      { path: 'ceu/create', element: <Navigate to="/ceu/points" replace /> },
       { path: 'supervision/hours', element: <SupervisionHoursPage /> },
-      { path: 'supervision/create', element: <SupervisionRequestPage /> },
-      { path: 'history', element: <HistoryPage /> },
-      { path: 'review/supervision', element: <SupervisionReviewPage /> },
+      { path: 'supervision/create', element: <Navigate to="/supervision/hours" replace /> },
+      { path: 'history', element: <Navigate to="/supervision/hours?panel=history" replace /> },
+      { path: 'review/supervision', element: <Navigate to="/reviewer/candidates/supervision" replace /> },
       { path: 'review/ceu', element: <CeuReviewPage /> },
       // { path: 'groups', element: <GroupAssignmentPage /> },
       { path: 'document-review', element: <DocumentReviewPage /> },

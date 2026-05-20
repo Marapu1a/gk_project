@@ -15,18 +15,55 @@ type NotifyAdminsInput = {
   excludeUserId?: string | null;
 };
 
+export function normalizeNotificationType(type: NotificationType, message = '') {
+  if (
+    type === NotificationType.SUPERVISION &&
+    message.toLowerCase().includes('ментор')
+  ) {
+    return NotificationType.MENTORSHIP;
+  }
+
+  return type;
+}
+
+export function normalizeNotificationLink(
+  link: string | null | undefined,
+  type: NotificationType,
+  message = '',
+) {
+  if (!link) return null;
+
+  const normalizedType = normalizeNotificationType(type, message);
+
+  if (link === '/dashboard') return '/dashboard-v2';
+  if (link === '/history') {
+    return normalizedType === NotificationType.CEU
+      ? '/ceu/points?panel=history'
+      : '/supervision/hours?panel=history';
+  }
+  if (link === '/review/supervision') {
+    return normalizedType === NotificationType.MENTORSHIP
+      ? '/reviewer/candidates/mentorship'
+      : '/reviewer/candidates/supervision';
+  }
+
+  return link;
+}
+
 export async function createNotification({
   userId,
   type,
   message,
   link = null,
 }: CreateNotificationInput) {
+  const normalizedType = normalizeNotificationType(type, message);
+
   return prisma.notification.create({
     data: {
       userId,
-      type,
+      type: normalizedType,
       message,
-      link,
+      link: normalizeNotificationLink(link, normalizedType, message),
       isRead: false,
     },
   });
@@ -50,13 +87,17 @@ export async function notifyAdmins({
   if (!admins.length) return { count: 0 };
 
   const result = await prisma.notification.createMany({
-    data: admins.map((admin) => ({
-      userId: admin.id,
-      type,
-      message,
-      link,
-      isRead: false,
-    })),
+    data: admins.map((admin) => {
+      const normalizedType = normalizeNotificationType(type, message);
+
+      return {
+        userId: admin.id,
+        type: normalizedType,
+        message,
+        link: normalizeNotificationLink(link, normalizedType, message),
+        isRead: false,
+      };
+    }),
   });
 
   return { count: result.count };

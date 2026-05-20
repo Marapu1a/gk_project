@@ -8,6 +8,7 @@ import { buildExamReadiness } from './readiness';
 
 type Body = {
   status: 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  applicationId?: string;
   comment?: string;   // опционально, если хочешь логировать причину отклонения
   notify?: boolean;   // опционально: управлять уведомлениями
   manual?: boolean;   // ручная правка из деталей пользователя
@@ -23,14 +24,21 @@ const PAYMENT_LABELS: Record<PaymentType, string> = {
 
 export async function patchExamAppStatusHandler(req: FastifyRequest, reply: FastifyReply) {
   const { userId } = req.params as { userId: string };
-  const { status: next, comment = '', manual = false } = req.body as Body;
+  const { status: next, applicationId, comment = '', manual = false } = req.body as Body;
 
   if (!req.user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
-  // гарантируем наличие заявки
-  const app = await getOrCreateExamApp(userId);
-  const current = app.status as Body['status'];
   const isAdminActor = req.user.role === 'ADMIN';
+  const app =
+    isAdminActor && applicationId
+      ? await prisma.examApplication.findFirst({ where: { id: applicationId, userId } })
+      : await getOrCreateExamApp(userId);
+
+  if (!app) {
+    return reply.code(404).send({ error: 'Заявка на экзамен не найдена' });
+  }
+
+  const current = app.status as Body['status'];
 
   // проверяем права и допустимость перехода
   try {
@@ -131,7 +139,7 @@ export async function patchExamAppStatusHandler(req: FastifyRequest, reply: Fast
         userId,
         type: NotificationType.EXAM,
         message,
-        link: '/dashboard',
+        link: '/dashboard-v2',
       });
     }
   } catch (err) {

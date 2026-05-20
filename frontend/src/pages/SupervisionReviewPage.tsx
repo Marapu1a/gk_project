@@ -1,7 +1,6 @@
 import { SupervisionReviewForm } from '@/features/supervision/components/SupervisionReviewForm';
 import { useAssignedHours } from '@/features/supervision/hooks/useAssignedHours';
-import { BackButton } from '@/components/BackButton';
-import { DashboardButton } from '@/components/DashboardButton';
+import { PageNav } from '@/components/PageNav';
 
 export default function SupervisionReviewPage() {
   const { data, isLoading, error } = useAssignedHours();
@@ -14,18 +13,12 @@ export default function SupervisionReviewPage() {
       <h1 className="text-2xl font-bold text-blue-dark">Проверка часов супервизии</h1>
 
       {/* Верхняя панель кнопок */}
-      <div className="flex gap-3">
-        <BackButton />
-        <DashboardButton />
-      </div>
+      <PageNav />
 
       <SupervisionReviewForm />
 
       {/* Нижняя панель кнопок */}
-      <div className="flex gap-3 pt-4 border-t border-gray-200">
-        <BackButton />
-        <DashboardButton />
-      </div>
+      <PageNav className="border-t border-gray-200 pt-4" />
     </div>
   );
 }

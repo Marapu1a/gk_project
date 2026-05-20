@@ -2,6 +2,7 @@ import { api } from '@/lib/axios';
 import type { ExamApp, ExamStatus } from './getMyExamApp';
 
 export async function patchExamAppStatus(userId: string, status: ExamStatus, opts?: {
+  applicationId?: string;
   comment?: string;
   notify?: boolean;
   manual?: boolean;

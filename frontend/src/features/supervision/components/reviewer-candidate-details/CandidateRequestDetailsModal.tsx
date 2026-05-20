@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useUpdateHourStatus } from '../../hooks/useUpdateHourStatus';
+import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import type {
   ReviewerCandidateKind,
   ReviewerCandidateRequest,
@@ -219,6 +220,7 @@ export function CandidateRequestDetailsModal({
                   className="input-design min-h-[90px] resize-y"
                   value={rejectedReason}
                   onChange={(event) => setRejectedReason(event.target.value)}
+                  maxLength={COMMENT_MAX_LENGTH}
                   placeholder="Кратко укажите причину"
                 />
               </label>
