@@ -1,34 +1,22 @@
-import { useMemo, useRef, useState } from 'react';
-import { BackButton } from '@/components/BackButton';
+import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { DashboardButton } from '@/components/DashboardButton';
 import { useAdminCeuHistory } from '@/features/admin/hooks/ceu/useAdminCeuHistory';
-import type {
-  AdminCeuCategory,
-  AdminCeuHistoryRow,
-  AdminCeuSortBy,
-  AdminCeuSortDir,
-  AdminCeuStatus,
+import {
+  downloadAdminCeuHistoryCsv,
+  type AdminCeuHistoryRow,
+  type AdminCeuCategory,
+  type AdminCeuSortBy,
+  type AdminCeuSortDir,
+  type AdminCeuStatus,
 } from '@/features/admin/api/ceu/getAdminCeuHistory';
-import { ceuCategoryLabels, recordStatusLabels, targetLevelLabels } from '@/utils/labels';
+import { useUpdateCEUEntry } from '@/features/ceu/hooks/useUpdateCeuEntry';
+import { ceuCategoryLabels, recordStatusLabels } from '@/utils/labels';
 
-const activityTypeLabels: Record<string, string> = {
-  TRAINING_ATTENDANCE: 'Участие в семинаре/тренинге',
-  PRESENTATION: 'Проведение семинара/тренинга',
-  PUBLICATION: 'Публикация материалов',
-  TEACHING: 'Преподавание курсов',
-};
-
-const cycleTypeLabels: Record<string, string> = {
-  CERTIFICATION: 'сертификация',
-  RENEWAL: 'ресертификация',
-};
-
-const cycleStatusLabels: Record<string, string> = {
-  ACTIVE: 'активный',
-  COMPLETED: 'закрыт',
-  ABANDONED: 'прерван',
-};
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
 const commonGroups = [
   '',
@@ -39,17 +27,41 @@ const commonGroups = [
   'Опытный Супервизор',
 ];
 
+const CATEGORY_VALUES = new Set<AdminCeuCategory | 'ALL'>([
+  'ALL',
+  'ETHICS',
+  'CULTURAL_DIVERSITY',
+  'SUPERVISION',
+  'GENERAL',
+]);
+const STATUS_VALUES = new Set<AdminCeuStatus | 'ALL'>([
+  'ALL',
+  'UNCONFIRMED',
+  'CONFIRMED',
+  'REJECTED',
+  'SPENT',
+]);
+const SORT_VALUES = new Set<AdminCeuSortBy>([
+  'createdAt',
+  'eventDate',
+  'email',
+  'group',
+  'category',
+  'status',
+  'points',
+]);
+
 function formatDate(value?: string | null) {
-  if (!value) return '—';
+  if (!value) return '-';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleDateString('ru-RU');
 }
 
 function formatDateTime(value?: string | null) {
-  if (!value) return '—';
+  if (!value) return '-';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
@@ -59,48 +71,14 @@ function formatDateTime(value?: string | null) {
   });
 }
 
-function csvCell(value: unknown) {
-  const text = String(value ?? '').replaceAll('"', '""');
-  return `"${text}"`;
+function statusClass(status: AdminCeuStatus) {
+  if (status === 'CONFIRMED') return 'bg-[var(--color-green-brand)] text-white';
+  if (status === 'REJECTED') return 'bg-[var(--color-danger)] text-white';
+  if (status === 'SPENT') return 'bg-[#EEF0F4] text-[#6B7894]';
+  return 'bg-[var(--color-blue-soft)] text-[#1F305E]';
 }
 
-function downloadCsv(rows: AdminCeuHistoryRow[]) {
-  const header = [
-    'Дата добавления',
-    'Дата мероприятия',
-    'Email',
-    'Группа',
-    'Категория',
-    'Баллы',
-    'Статус',
-    'Тип CEU',
-    'Цикл',
-    'Файл',
-  ];
-
-  const lines = rows.map((row) =>
-    [
-      formatDateTime(row.recordCreatedAt),
-      formatDate(row.eventDate),
-      row.email,
-      row.currentGroup?.name ?? '',
-      ceuCategoryLabels[row.category] ?? row.category,
-      row.points,
-      recordStatusLabels[row.status] ?? row.status,
-      row.activityType ? activityTypeLabels[row.activityType] ?? row.activityType : '',
-      row.cycle
-        ? `${cycleTypeLabels[row.cycle.type] ?? row.cycle.type}, ${
-            targetLevelLabels[row.cycle.targetLevel] ?? row.cycle.targetLevel
-          }, ${cycleStatusLabels[row.cycle.status] ?? row.cycle.status}`
-        : '',
-      row.file?.name ?? '',
-    ]
-      .map(csvCell)
-      .join(';')
-  );
-
-  const csv = [header.map(csvCell).join(';'), ...lines].join('\n');
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+function downloadBlob(blob: Blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -109,27 +87,63 @@ function downloadCsv(rows: AdminCeuHistoryRow[]) {
   URL.revokeObjectURL(url);
 }
 
-function statusClass(status: AdminCeuStatus) {
-  if (status === 'CONFIRMED') return 'bg-green-100 text-green-700';
-  if (status === 'REJECTED') return 'bg-[#FF5364] text-white';
-  if (status === 'SPENT') return 'bg-gray-100 text-gray-600';
-  return 'bg-yellow-100 text-yellow-700';
-}
-
 export default function CeuReviewPage() {
-  const topScrollRef = useRef<HTMLDivElement | null>(null);
-  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedRow, setSelectedRow] = useState<AdminCeuHistoryRow | null>(null);
 
-  const [createdFrom, setCreatedFrom] = useState('');
-  const [createdTo, setCreatedTo] = useState('');
-  const [search, setSearch] = useState('');
-  const [group, setGroup] = useState('');
-  const [category, setCategory] = useState<AdminCeuCategory | 'ALL'>('ALL');
-  const [status, setStatus] = useState<AdminCeuStatus | 'ALL'>('ALL');
-  const [sortBy, setSortBy] = useState<AdminCeuSortBy>('group');
-  const [sortDir, setSortDir] = useState<AdminCeuSortDir>('asc');
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(100);
+  const rawCategory = searchParams.get('category');
+  const rawStatus = searchParams.get('status');
+  const rawSortBy = searchParams.get('sortBy');
+  const rawSortDir = searchParams.get('sortDir');
+
+  const createdFrom = searchParams.get('createdFrom') ?? '';
+  const createdTo = searchParams.get('createdTo') ?? '';
+  const search = searchParams.get('search') ?? '';
+  const group = searchParams.get('group') ?? '';
+  const category: AdminCeuCategory | 'ALL' = CATEGORY_VALUES.has(rawCategory as AdminCeuCategory | 'ALL')
+    ? (rawCategory as AdminCeuCategory | 'ALL')
+    : 'ALL';
+  const status: AdminCeuStatus | 'ALL' = STATUS_VALUES.has(rawStatus as AdminCeuStatus | 'ALL')
+    ? (rawStatus as AdminCeuStatus | 'ALL')
+    : 'ALL';
+  const sortBy: AdminCeuSortBy = SORT_VALUES.has(rawSortBy as AdminCeuSortBy)
+    ? (rawSortBy as AdminCeuSortBy)
+    : 'createdAt';
+  const sortDir: AdminCeuSortDir = rawSortDir === 'asc' ? 'asc' : 'desc';
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const perPage = [50, 100, 250, 500].includes(Number(searchParams.get('perPage')))
+    ? Number(searchParams.get('perPage'))
+    : 100;
+
+  const updateQuery = (
+    patch: Record<string, string | number | null | undefined>,
+    options: { resetPage?: boolean; replace?: boolean } = {},
+  ) => {
+    const next = new URLSearchParams(searchParams);
+    const defaults: Record<string, string> = {
+      category: 'ALL',
+      status: 'ALL',
+      sortBy: 'createdAt',
+      sortDir: 'desc',
+      page: '1',
+      perPage: '100',
+    };
+
+    Object.entries(patch).forEach(([key, value]) => {
+      const stringValue = value == null ? '' : String(value);
+      if (!stringValue || stringValue === (defaults[key] ?? '')) {
+        next.delete(key);
+      } else {
+        next.set(key, stringValue);
+      }
+    });
+
+    if (options.resetPage !== false && !('page' in patch)) {
+      next.delete('page');
+    }
+
+    setSearchParams(next, { replace: options.replace ?? true });
+  };
 
   const params = useMemo(
     () => ({
@@ -144,7 +158,7 @@ export default function CeuReviewPage() {
       page,
       perPage,
     }),
-    [category, createdFrom, createdTo, group, page, perPage, search, sortBy, sortDir, status]
+    [category, createdFrom, createdTo, group, page, perPage, search, sortBy, sortDir, status],
   );
 
   const { data, isLoading, error, isFetching } = useAdminCeuHistory(params);
@@ -152,86 +166,85 @@ export default function CeuReviewPage() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
-  const resetPage = (fn: () => void) => {
-    setPage(1);
-    fn();
-  };
-
   const setSort = (nextSortBy: AdminCeuSortBy) => {
-    setPage(1);
     if (sortBy === nextSortBy) {
-      setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'));
+      updateQuery({ sortDir: sortDir === 'asc' ? 'desc' : 'asc' });
       return;
     }
-    setSortBy(nextSortBy);
-    setSortDir(nextSortBy === 'createdAt' ? 'desc' : 'asc');
+    updateQuery({ sortBy: nextSortBy, sortDir: nextSortBy === 'createdAt' ? 'desc' : 'asc' });
   };
 
-  const syncScroll = (source: 'top' | 'table') => {
-    const top = topScrollRef.current;
-    const table = tableScrollRef.current;
-    if (!top || !table) return;
+  const resetFilters = () => {
+    setSearchParams(new URLSearchParams());
+  };
 
-    if (source === 'top') {
-      table.scrollLeft = top.scrollLeft;
-      return;
+  const exportCsv = async () => {
+    try {
+      const blob = await downloadAdminCeuHistoryCsv(params);
+      downloadBlob(blob);
+      toast.success('CSV выгружен по выбранным фильтрам');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Не удалось выгрузить CSV');
     }
-
-    top.scrollLeft = table.scrollLeft;
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <BackButton />
-        <DashboardButton />
-      </div>
+    <div className="container-fixed mx-auto px-5 py-4 text-blue-dark sm:px-6">
+      <header className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <DashboardButton />
+        </div>
+        <h1 className="dashboard-v2-page-title text-center">Проверка CEU</h1>
+        <div />
+      </header>
 
-      <div>
-        <h1 className="text-2xl font-bold text-blue-dark">История CEU-баллов</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Журнал показывает CEU-записи по дате добавления. Это помогает найти старые сертификаты,
-          загруженные в период миграции циклов.
-        </p>
-      </div>
+      <section className="card-section space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="dashboard-v2-text text-[#6B7894]">
+            Найдено: <span className="font-extrabold text-[#1F305E]">{total}</span>
+            {isFetching && !isLoading ? <span className="ml-2">обновляю...</span> : null}
+          </div>
+          <Button type="button" variant="ghost" onClick={exportCsv} disabled={!total}>
+            CSV
+          </Button>
+        </div>
 
-      <section className="card-section space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <label className="block text-sm text-blue-dark">
+          <label className="dashboard-v2-small block text-[#1F305E]">
             Добавлено с
             <input
               type="date"
               value={createdFrom}
-              onChange={(e) => resetPage(() => setCreatedFrom(e.target.value))}
+              onChange={(event) => updateQuery({ createdFrom: event.target.value }, { replace: true })}
               className="input-design mt-1"
             />
           </label>
 
-          <label className="block text-sm text-blue-dark">
+          <label className="dashboard-v2-small block text-[#1F305E]">
             Добавлено по
             <input
               type="date"
               value={createdTo}
-              onChange={(e) => resetPage(() => setCreatedTo(e.target.value))}
+              onChange={(event) => updateQuery({ createdTo: event.target.value }, { replace: true })}
               className="input-design mt-1"
             />
           </label>
 
-          <label className="block text-sm text-blue-dark">
-            Поиск по email или ФИО
+          <label className="dashboard-v2-small block text-[#1F305E]">
+            Пользователь
             <input
               value={search}
-              onChange={(e) => resetPage(() => setSearch(e.target.value))}
+              onChange={(event) => updateQuery({ search: event.target.value }, { replace: true })}
               className="input-design mt-1"
-              placeholder="mail@example.com"
+              placeholder="ФИО или email"
             />
           </label>
 
-          <label className="block text-sm text-blue-dark">
+          <label className="dashboard-v2-small block text-[#1F305E]">
             Группа
             <select
               value={group}
-              onChange={(e) => resetPage(() => setGroup(e.target.value))}
+              onChange={(event) => updateQuery({ group: event.target.value })}
               className="input-design mt-1"
             >
               {commonGroups.map((item) => (
@@ -242,13 +255,11 @@ export default function CeuReviewPage() {
             </select>
           </label>
 
-          <label className="block text-sm text-blue-dark">
+          <label className="dashboard-v2-small block text-[#1F305E]">
             Категория
             <select
               value={category}
-              onChange={(e) =>
-                resetPage(() => setCategory(e.target.value as AdminCeuCategory | 'ALL'))
-              }
+              onChange={(event) => updateQuery({ category: event.target.value })}
               className="input-design mt-1"
             >
               <option value="ALL">Все категории</option>
@@ -259,11 +270,11 @@ export default function CeuReviewPage() {
             </select>
           </label>
 
-          <label className="block text-sm text-blue-dark">
+          <label className="dashboard-v2-small block text-[#1F305E]">
             Статус
             <select
               value={status}
-              onChange={(e) => resetPage(() => setStatus(e.target.value as AdminCeuStatus | 'ALL'))}
+              onChange={(event) => updateQuery({ status: event.target.value })}
               className="input-design mt-1"
             >
               <option value="ALL">Все статусы</option>
@@ -274,192 +285,138 @@ export default function CeuReviewPage() {
             </select>
           </label>
 
-          <label className="block text-sm text-blue-dark">
-            Сортировка
+          <label className="dashboard-v2-small block text-[#1F305E]">
+            Строк
             <select
-              value={sortBy}
-              onChange={(e) => resetPage(() => setSortBy(e.target.value as AdminCeuSortBy))}
+              value={perPage}
+              onChange={(event) => updateQuery({ perPage: event.target.value })}
               className="input-design mt-1"
             >
-              <option value="group">Группа</option>
-              <option value="createdAt">Дата добавления</option>
-              <option value="eventDate">Дата мероприятия</option>
-              <option value="email">Email</option>
-              <option value="category">Категория</option>
-              <option value="status">Статус</option>
-              <option value="points">Баллы</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={250}>250</option>
+              <option value={500}>500</option>
             </select>
           </label>
 
-          <label className="block text-sm text-blue-dark">
-            Порядок
-            <select
-              value={sortDir}
-              onChange={(e) => resetPage(() => setSortDir(e.target.value as AdminCeuSortDir))}
-              className="input-design mt-1"
-            >
-              <option value="asc">По возрастанию</option>
-              <option value="desc">По убыванию</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-soft pt-4">
-          <div className="text-sm text-gray-600">
-            Найдено: <span className="font-bold text-blue-dark">{total}</span>
-            {isFetching && !isLoading ? <span className="ml-2">обновляю…</span> : null}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-blue-dark">
-              Строк
-              <select
-                value={perPage}
-                onChange={(e) => {
-                  setPage(1);
-                  setPerPage(Number(e.target.value));
-                }}
-                className="input-design w-24"
-              >
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-                <option value={250}>250</option>
-                <option value={500}>500</option>
-              </select>
-            </label>
-
-            <Button type="button" variant="ghost" onClick={() => downloadCsv(rows)} disabled={!rows.length}>
-              CSV текущей страницы
+          <div className="flex items-end">
+            <Button type="button" variant="ghost" className="h-[38px] w-full" onClick={resetFilters}>
+              Сбросить фильтры
             </Button>
           </div>
         </div>
       </section>
 
-      <section className="card-section overflow-hidden p-0">
+      <section className="card-section mt-5 overflow-hidden p-0">
         {isLoading ? (
-          <div className="p-6 text-gray-600">Загрузка истории...</div>
+          <p className="dashboard-v2-text p-6 text-[#6B7894]">Загрузка CEU...</p>
         ) : error ? (
-          <div className="p-6 text-[#FF5364]">Не удалось загрузить историю CEU.</div>
+          <p className="dashboard-v2-text p-6 text-[var(--color-danger)]">Не удалось загрузить CEU.</p>
         ) : rows.length === 0 ? (
-          <div className="p-6 text-gray-600">За выбранный период записей не найдено.</div>
+          <p className="dashboard-v2-text p-6 text-[#6B7894]">Записей не найдено.</p>
         ) : (
-          <div className="space-y-2">
-            <div
-              ref={topScrollRef}
-              onScroll={() => syncScroll('top')}
-              className="overflow-x-scroll [scrollbar-color:var(--color-blue-dark)_var(--color-blue-soft)] [scrollbar-width:thin]"
-            >
-              <div className="h-1 w-[1470px]" />
-            </div>
-            <div
-              ref={tableScrollRef}
-              onScroll={() => syncScroll('table')}
-              className="overflow-x-scroll pb-3 [scrollbar-color:var(--color-blue-dark)_var(--color-blue-soft)] [scrollbar-width:thin]"
-            >
-            <table className="w-[1470px] table-fixed text-left text-sm">
-              <thead className="bg-[var(--color-blue-soft)] text-blue-dark">
-                <tr>
-                  <th className="w-[130px] px-4 py-3">
-                    <button type="button" className="font-bold" onClick={() => setSort('createdAt')}>
+          <div className="p-5">
+            <table className="dashboard-v2-text w-full table-fixed text-[#1F305E]">
+              <thead>
+                <tr className="bg-[var(--color-blue-soft)] text-left">
+                  <th className="w-[56px] rounded-l-[8px] px-4 py-3 font-medium" />
+                  <th className="w-[132px] px-4 py-3 font-medium">
+                    <button type="button" onClick={() => setSort('createdAt')} className="font-medium">
                       Добавлено {sortBy === 'createdAt' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[120px] px-4 py-3">
-                    <button type="button" className="font-bold" onClick={() => setSort('eventDate')}>
-                      Мероприятие {sortBy === 'eventDate' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                  <th className="px-4 py-3 font-medium">
+                    <button type="button" onClick={() => setSort('email')} className="font-medium">
+                      Пользователь {sortBy === 'email' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[220px] px-4 py-3">
-                    <button type="button" className="font-bold" onClick={() => setSort('email')}>
-                      Email {sortBy === 'email' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
-                    </button>
-                  </th>
-                  <th className="w-[160px] px-4 py-3">
-                    <button type="button" className="font-bold" onClick={() => setSort('group')}>
+                  <th className="w-[150px] px-4 py-3 font-medium">
+                    <button type="button" onClick={() => setSort('group')} className="font-medium">
                       Группа {sortBy === 'group' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[190px] px-4 py-3">
-                    <button type="button" className="font-bold" onClick={() => setSort('category')}>
+                  <th className="w-[185px] px-4 py-3 font-medium">
+                    <button type="button" onClick={() => setSort('category')} className="font-medium">
                       Категория {sortBy === 'category' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[90px] px-4 py-3">
-                    <button type="button" className="font-bold" onClick={() => setSort('points')}>
+                  <th className="w-[84px] px-4 py-3 text-center font-medium">
+                    <button type="button" onClick={() => setSort('points')} className="font-medium">
                       Баллы {sortBy === 'points' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[160px] px-4 py-3">
-                    <button type="button" className="font-bold" onClick={() => setSort('status')}>
+                  <th className="w-[150px] px-4 py-3 text-center font-medium">
+                    <button type="button" onClick={() => setSort('status')} className="font-medium">
                       Статус {sortBy === 'status' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[210px] px-4 py-3">Цикл</th>
-                  <th className="w-[190px] px-4 py-3">Файл</th>
+                  <th className="w-[94px] rounded-r-[8px] px-4 py-3 text-center font-medium">Файл</th>
                 </tr>
               </thead>
+
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.entryId} className="border-b border-soft align-top">
-                    <td className="px-4 py-3 text-blue-dark">{formatDateTime(row.recordCreatedAt)}</td>
-                    <td className="px-4 py-3">{formatDate(row.eventDate)}</td>
+                  <tr key={row.entryId} className="border-b border-[#DCE8EC] align-top last:border-b-0">
                     <td className="px-4 py-3">
-                      <a href={`mailto:${row.email}`} className="text-blue-dark underline-offset-2 hover:underline">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRow(row)}
+                        className="flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-blue-darker)]"
+                        title="Открыть детали CEU"
+                        aria-label="Открыть детали CEU"
+                      >
+                        <ArrowRight size={18} />
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div>{formatDateTime(row.recordCreatedAt)}</div>
+                      <div className="dashboard-v2-caption mt-1 text-[#8D96B5]">
+                        событие: {formatDate(row.eventDate)}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="truncate font-extrabold">{row.fullName || row.email}</div>
+                      <a
+                        href={`mailto:${row.email}`}
+                        className="dashboard-v2-caption mt-1 block truncate text-[#1F305E] underline-offset-2 hover:underline"
+                      >
                         {row.email}
                       </a>
                     </td>
-                    <td className="px-4 py-3">{row.currentGroup?.name || '—'}</td>
+                    <td className="px-4 py-3">{row.currentGroup?.name || '-'}</td>
                     <td className="px-4 py-3">{ceuCategoryLabels[row.category] ?? row.category}</td>
-                    <td className="px-4 py-3 font-bold text-blue-dark">{row.points}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-bold ${statusClass(row.status)}`}>
+                    <td className="px-4 py-3 text-center font-extrabold">{row.points}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span
+                        className={`dashboard-v2-caption inline-flex rounded-full px-3 py-1 ${statusClass(row.status)}`}
+                      >
                         {recordStatusLabels[row.status] ?? row.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-600">
-                      {row.cycle ? (
-                        <>
-                          <div>
-                            {cycleTypeLabels[row.cycle.type] ?? row.cycle.type},{' '}
-                            {targetLevelLabels[row.cycle.targetLevel] ?? row.cycle.targetLevel}
-                          </div>
-                          <div>
-                            {cycleStatusLabels[row.cycle.status] ?? row.cycle.status}, старт{' '}
-                            {formatDate(row.cycle.startedAt)}
-                          </div>
-                        </>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center">
                       {row.file ? (
                         <a
                           href={`/uploads/${row.file.fileId}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-blue-dark underline-offset-2 hover:underline"
+                          className="dashboard-v2-caption text-[#1F305E] underline-offset-2 hover:underline"
                         >
-                          {row.file.name}
+                          Открыть
                         </a>
                       ) : (
-                        '—'
+                        '-'
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <div className="mt-2 text-xs text-gray-500">
-              Таблицу можно прокрутить по горизонтали
-            </div>
-            </div>
           </div>
         )}
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-gray-600">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="dashboard-v2-text text-[#6B7894]">
           Страница {Math.min(page, totalPages)} из {totalPages}
         </div>
         <div className="flex gap-3">
@@ -467,7 +424,7 @@ export default function CeuReviewPage() {
             type="button"
             variant="ghost"
             disabled={page <= 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            onClick={() => updateQuery({ page: Math.max(1, page - 1) }, { resetPage: false })}
           >
             Назад
           </Button>
@@ -475,12 +432,282 @@ export default function CeuReviewPage() {
             type="button"
             variant="ghost"
             disabled={page >= totalPages}
-            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            onClick={() => updateQuery({ page: Math.min(totalPages, page + 1) }, { resetPage: false })}
           >
             Вперёд
           </Button>
         </div>
       </div>
+
+      {selectedRow ? (
+        <AdminCeuDetailsModal row={selectedRow} onClose={() => setSelectedRow(null)} />
+      ) : null}
+    </div>
+  );
+}
+
+function AdminCeuDetailsModal({
+  row,
+  onClose,
+}: {
+  row: AdminCeuHistoryRow;
+  onClose: () => void;
+}) {
+  const mutation = useUpdateCEUEntry(row.userId, row.email);
+  const [rejectMode, setRejectMode] = useState(row.status === 'REJECTED');
+  const [rejectedReason, setRejectedReason] = useState(row.rejectedReason ?? '');
+  const [deleteFile, setDeleteFile] = useState(false);
+  const isSpent = row.status === 'SPENT';
+
+  const confirm = async () => {
+    try {
+      await mutation.mutateAsync({ id: row.entryId, status: 'CONFIRMED' });
+      toast.success('CEU-баллы подтверждены');
+      onClose();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Не удалось подтвердить CEU-баллы');
+    }
+  };
+
+  const reject = async () => {
+    const reason = rejectedReason.trim();
+    if (!reason) {
+      toast.error('Укажите причину отклонения');
+      return;
+    }
+
+    try {
+      await mutation.mutateAsync({
+        id: row.entryId,
+        status: 'REJECTED',
+        rejectedReason: reason,
+        deleteFile,
+      });
+      toast.success(deleteFile ? 'CEU отклонены, файл удалён' : 'CEU-баллы отклонены');
+      onClose();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Не удалось отклонить CEU-баллы');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+      <div className="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-3 flex h-11 w-11 cursor-pointer items-center justify-center opacity-55 transition hover:opacity-100"
+          aria-label="Закрыть"
+        >
+          <img src={EXIT_ICON} alt="" className="h-5 w-5" />
+        </button>
+
+        <h3 className="dashboard-v2-page-title mb-5 text-center">Детали CEU</h3>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <div className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ReadOnlyField label="Баллы" value={formatNumber(row.points)} />
+              <ReadOnlyField label="Дата мероприятия" value={formatDate(row.eventDate)} />
+            </div>
+
+            <ReadOnlyPlain
+              label="Категория"
+              value={ceuCategoryLabels[row.category] ?? row.category}
+            />
+
+            <AdminCeuFilePreview file={row.file} />
+          </div>
+
+          <div className="space-y-5">
+            <ReadOnlyField label="Название или ведущий тренинга" value={row.eventName || '-'} />
+
+            <ReadOnlyPlain
+              label="Тип CEU"
+              value={row.activityType ? activityTypeLabel(row.activityType) : '-'}
+            />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ReadOnlyPlain label="Кандидат" value={row.fullName || '-'} mutedLabel />
+              <ReadOnlyPlain label="Email" value={row.email || '-'} mutedLabel />
+            </div>
+
+            <div className="rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-3 text-center dashboard-v2-label text-[#1F305E]">
+              {recordStatusLabels[row.status] ?? row.status}
+            </div>
+
+            {row.reviewer ? (
+              <div className="dashboard-v2-caption text-[#8D96B5]">
+                Проверил: {row.reviewer.email}
+                {row.reviewedAt ? `, ${formatDateTime(row.reviewedAt)}` : ''}
+              </div>
+            ) : null}
+
+            {row.rejectedReason && !rejectMode ? (
+              <div className="dashboard-v2-text rounded-[10px] bg-white px-4 py-3 text-[var(--color-danger)] shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
+                {row.rejectedReason}
+              </div>
+            ) : null}
+
+            {rejectMode ? (
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="dashboard-v2-small mb-1 block text-[#1F305E]">
+                    Причина отклонения
+                  </span>
+                  <textarea
+                    className="input-design min-h-[96px] resize-y"
+                    value={rejectedReason}
+                    onChange={(event) => setRejectedReason(event.target.value)}
+                    placeholder="Например: прикреплён неверный сертификат"
+                  />
+                </label>
+
+                {row.file ? (
+                  <label className="dashboard-v2-caption flex cursor-pointer items-center gap-2 text-[#1F305E]">
+                    <input
+                      type="checkbox"
+                      checked={deleteFile}
+                      onChange={(event) => setDeleteFile(event.target.checked)}
+                      className="h-4 w-4 cursor-pointer"
+                    />
+                    Удалить файл у всей CEU-отправки
+                  </label>
+                ) : null}
+                {deleteFile ? (
+                  <p className="dashboard-v2-caption text-[#8D96B5]">
+                    Все неиспользованные CEU-строки этой отправки будут отклонены с этим комментарием,
+                    потому что файл общий.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          {!isSpent ? (
+            <>
+              <button
+                type="button"
+                onClick={confirm}
+                disabled={mutation.isPending}
+                className="btn btn-dark dashboard-v2-label h-[42px] min-w-[140px] rounded-full px-6 disabled:bg-[#B7BFCE]"
+              >
+                Подтвердить
+              </button>
+              {rejectMode ? (
+                <button
+                  type="button"
+                  onClick={reject}
+                  disabled={mutation.isPending}
+                  className="btn dashboard-v2-label h-[42px] min-w-[150px] rounded-full border-2 border-[#1F305E] px-6 text-[#1F305E] disabled:opacity-50"
+                >
+                  Отправить отказ
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setRejectMode(true)}
+                  disabled={mutation.isPending}
+                  className="btn dashboard-v2-label h-[42px] min-w-[140px] rounded-full border-2 border-[#1F305E] px-6 text-[#1F305E] disabled:opacity-50"
+                >
+                  Отклонить
+                </button>
+              )}
+            </>
+          ) : (
+            <Button type="button" onClick={onClose}>
+              Закрыть
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatNumber(value: number | null | undefined) {
+  if (value == null) return '-';
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function activityTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    TRAINING_ATTENDANCE:
+      'Участие в онлайн- или очных семинарах, воркшопах и тренингах по прикладному анализу поведения (ПАП) или смежным направлениям поведенческого анализа',
+    PRESENTATION:
+      'Проведение семинара, воркшопа или тренинга по прикладному анализу поведения (ПАП) или смежным направлениям',
+    PUBLICATION:
+      'Публикация материалов по прикладному анализу поведения или смежным направлениям',
+    TEACHING:
+      'Преподавание курсов, соответствующих содержательным требованиям и компетенциям уровней Инструктор/Супервизор',
+  };
+  return labels[value] ?? value;
+}
+
+function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="dashboard-v2-small mb-1 text-[#1F305E]">{label}</div>
+      <div className="dashboard-v2-caption min-h-[32px] rounded-[8px] bg-[#EFF1F5] px-3 py-2 text-[#1F305E]">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ReadOnlyPlain({
+  label,
+  value,
+  mutedLabel = false,
+}: {
+  label: string;
+  value: string;
+  mutedLabel?: boolean;
+}) {
+  return (
+    <div>
+      <div className={`dashboard-v2-small mb-1 ${mutedLabel ? 'text-[#A7B1C7]' : 'text-[#1F305E]'}`}>
+        {label}
+      </div>
+      <div className="dashboard-v2-caption leading-snug text-[#1F305E]">{value}</div>
+    </div>
+  );
+}
+
+function AdminCeuFilePreview({ file }: { file: AdminCeuHistoryRow['file'] }) {
+  if (!file) {
+    return (
+      <div className="dashboard-v2-caption rounded-[10px] bg-white px-4 py-5 text-[#6B7894] shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
+        Файл не прикреплён
+      </div>
+    );
+  }
+
+  const fileUrl = `/uploads/${file.fileId}`;
+  const isImage = file.mimeType.startsWith('image/');
+
+  return (
+    <div className="grid grid-cols-[74px_minmax(0,1fr)_auto] items-center gap-4 rounded-[10px] bg-white px-3 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
+      <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[4px] border border-[#DCE3EF] bg-white dashboard-v2-caption font-bold text-[#A7B1C7]">
+        {isImage ? (
+          <img src={fileUrl} alt="" className="h-full w-full rounded-[4px] object-cover" />
+        ) : (
+          'PDF'
+        )}
+      </div>
+      <div className="dashboard-v2-caption min-w-0 truncate text-[#1F305E]" title={file.name}>
+        {file.name}
+      </div>
+      <a
+        href={fileUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="btn dashboard-v2-caption h-[34px] rounded-full border border-[#1F305E] px-4 font-semibold text-[#1F305E]"
+      >
+        Открыть
+      </a>
     </div>
   );
 }

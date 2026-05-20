@@ -1,15 +1,32 @@
 // handlers/ceu/updateCEUEntryHandler.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
+import fs from 'fs/promises';
+import path from 'path';
 import { prisma } from '../../lib/prisma';
 import { NotificationType } from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
+
+const UPLOAD_DIR = process.env.UPLOAD_DIR;
 
 interface UpdateCEUEntryRoute extends RouteGenericInterface {
   Params: { id: string };
   Body: {
     status: 'CONFIRMED' | 'REJECTED';
     rejectedReason?: string;
+    deleteFile?: boolean;
   };
+}
+
+async function deletePhysicalFile(fileId: string) {
+  const baseDir = UPLOAD_DIR
+    ? path.resolve(UPLOAD_DIR)
+    : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+
+  try {
+    await fs.unlink(path.join(baseDir, fileId));
+  } catch {
+    // Для CEU-истории не критично: файл мог уже отсутствовать.
+  }
 }
 
 export async function updateCEUEntryHandler(
@@ -17,7 +34,7 @@ export async function updateCEUEntryHandler(
   reply: FastifyReply
 ) {
   const { id } = req.params;
-  const { status, rejectedReason } = req.body;
+  const { status, rejectedReason, deleteFile = false } = req.body;
   const reviewerId = req.user?.userId;
   const reviewerRole = req.user?.role;
 
@@ -38,7 +55,15 @@ export async function updateCEUEntryHandler(
     where: { id },
     select: {
       status: true,
-      record: { select: { userId: true, cycleId: true } },
+      record: {
+        select: {
+          id: true,
+          userId: true,
+          cycleId: true,
+          fileId: true,
+          user: { select: { email: true } },
+        },
+      },
     },
   });
   if (!entry) return reply.code(404).send({ error: 'Запись не найдена' });
@@ -60,23 +85,61 @@ export async function updateCEUEntryHandler(
     return reply.code(400).send({ error: 'CEU_NOT_IN_ACTIVE_CYCLE' });
   }
 
-  if (entry.status === status) {
-    return reply.send({ success: true, updated: { id, status: entry.status } });
-  }
+  let fileIdToDelete: string | null = null;
 
-  // ✅ защита от гонки с выдачей сертификата: SPENT не даём переписать
-  const res = await prisma.cEUEntry.updateMany({
-    where: { id, status: { not: 'SPENT' } },
-    data: {
-      status,
-      reviewedAt: new Date(),
-      rejectedReason: status === 'REJECTED' ? reason : null,
-      reviewerId,
-    },
+  const res = await prisma.$transaction(async (tx) => {
+    const updateResult = await tx.cEUEntry.updateMany({
+      where: { id, status: { not: 'SPENT' } },
+      data: {
+        status,
+        reviewedAt: new Date(),
+        rejectedReason: status === 'REJECTED' ? reason : null,
+        reviewerId,
+      },
+    });
+
+    if (updateResult.count === 0) return updateResult;
+
+    if (status === 'REJECTED' && deleteFile && entry.record.fileId) {
+      await tx.cEUEntry.updateMany({
+        where: {
+          recordId: entry.record.id,
+          id: { not: id },
+          status: { not: 'SPENT' },
+        },
+        data: {
+          status,
+          reviewedAt: new Date(),
+          rejectedReason: reason,
+          reviewerId,
+        },
+      });
+
+      const file = await tx.uploadedFile.findUnique({
+        where: { fileId: entry.record.fileId },
+        select: { id: true, fileId: true },
+      });
+
+      await tx.cEURecord.update({
+        where: { id: entry.record.id },
+        data: { fileId: null },
+      });
+
+      if (file) {
+        await tx.uploadedFile.delete({ where: { id: file.id } });
+        fileIdToDelete = file.fileId;
+      }
+    }
+
+    return updateResult;
   });
 
   if (res.count === 0) {
     return reply.code(400).send({ error: 'Статус SPENT необратим' });
+  }
+
+  if (fileIdToDelete) {
+    await deletePhysicalFile(fileIdToDelete);
   }
 
   try {
@@ -87,11 +150,19 @@ export async function updateCEUEntryHandler(
         status === 'CONFIRMED'
           ? 'Ваши CEU-баллы подтверждены'
           : `Ваши CEU-баллы отклонены: ${reason}`,
-      link: '/history',
+      link: '/ceu/points?panel=history',
     });
   } catch (err) {
     req.log.error(err, 'CEU_REVIEW notification failed');
   }
 
-  return reply.send({ success: true, updated: { id, status } });
+  return reply.send({
+    success: true,
+    updated: {
+      id,
+      status,
+      rejectedReason: status === 'REJECTED' ? reason : null,
+      fileDeleted: !!fileIdToDelete,
+    },
+  });
 }

@@ -79,3 +79,11 @@ export async function getAdminCeuHistory(
   const res = await api.get<AdminCeuHistoryResponse>('/admin/ceu/history', { params });
   return res.data;
 }
+
+export async function downloadAdminCeuHistoryCsv(params: AdminCeuHistoryParams): Promise<Blob> {
+  const res = await api.get('/admin/ceu/history/export.csv', {
+    params,
+    responseType: 'blob',
+  });
+  return res.data;
+}

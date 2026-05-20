@@ -1,7 +1,13 @@
 // features/ceu/api/updateEntry.ts
 import { api } from '@/lib/axios';
 
-export async function updateCEUEntry(id: string, payload: { status: 'CONFIRMED' | 'REJECTED' | 'UNCONFIRMED'; rejectedReason?: string }) {
+export type UpdateCEUEntryPayload = {
+  status: 'CONFIRMED' | 'REJECTED' | 'UNCONFIRMED';
+  rejectedReason?: string;
+  deleteFile?: boolean;
+};
+
+export async function updateCEUEntry(id: string, payload: UpdateCEUEntryPayload) {
   const response = await api.patch(`/ceu/entry/${id}`, payload);
   return response.data;
 }

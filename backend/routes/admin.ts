@@ -13,7 +13,10 @@ import { archiveUserHandler, restoreUserHandler } from '../handlers/admin/archiv
 // CEU god-mode
 import { getUserCEUMatrixAdminHandler } from '../handlers/admin/ceu/getUserCEUMatrixAdminHandler';
 import { updateUserCEUMatrixAdminHandler } from '../handlers/admin/ceu/updateUserCEUMatrixAdminHandler';
-import { getCEUHistoryAdminHandler } from '../handlers/admin/ceu/getCEUHistoryAdminHandler';
+import {
+  getCEUHistoryAdminExportHandler,
+  getCEUHistoryAdminHandler,
+} from '../handlers/admin/ceu/getCEUHistoryAdminHandler';
 
 // Supervision god-mode
 import { getUserSupervisionMatrixAdminHandler } from '../handlers/admin/supervision/getUserSupervisionMatrixAdminHandler';
@@ -46,6 +49,7 @@ export async function usersRoutes(app: FastifyInstance) {
 
   // CEU (admin-only)
   app.get('/admin/ceu/history', { preHandler: verifyToken }, getCEUHistoryAdminHandler);
+  app.get('/admin/ceu/history/export.csv', { preHandler: verifyToken }, getCEUHistoryAdminExportHandler);
   app.get('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, getUserCEUMatrixAdminHandler);
   app.get('/admin/users/:id/export', { preHandler: verifyToken }, getUserExportHandler);
   app.patch('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, updateUserCEUMatrixAdminHandler);

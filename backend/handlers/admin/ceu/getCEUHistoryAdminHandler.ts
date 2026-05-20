@@ -32,6 +32,45 @@ const SORT_FIELDS = new Set<string>([
   'points',
 ]);
 
+const categoryLabels: Record<CEUCategory, string> = {
+  ETHICS: 'Этика',
+  CULTURAL_DIVERSITY: 'Культурное разнообразие',
+  SUPERVISION: 'Супервизия',
+  GENERAL: 'Общие',
+};
+
+const statusLabels: Record<RecordStatus, string> = {
+  UNCONFIRMED: 'Не подтверждено',
+  CONFIRMED: 'Подтверждено',
+  PARTIALLY_CONFIRMED: 'Частично подтверждено',
+  REJECTED: 'Отклонено',
+  SPENT: 'Использовано',
+};
+
+const activityTypeLabels: Record<string, string> = {
+  TRAINING_ATTENDANCE: 'Участие в семинаре/тренинге',
+  PRESENTATION: 'Проведение семинара/тренинга',
+  PUBLICATION: 'Публикация материалов',
+  TEACHING: 'Преподавание курсов',
+};
+
+const cycleTypeLabels: Record<string, string> = {
+  CERTIFICATION: 'сертификация',
+  RENEWAL: 'ресертификация',
+};
+
+const cycleStatusLabels: Record<string, string> = {
+  ACTIVE: 'активный',
+  COMPLETED: 'закрыт',
+  ABANDONED: 'прерван',
+};
+
+const targetLevelLabels: Record<string, string> = {
+  INSTRUCTOR: 'Инструктор',
+  CURATOR: 'Куратор',
+  SUPERVISOR: 'Супервизор',
+};
+
 function toInt(value: unknown, fallback: number) {
   const parsed =
     typeof value === 'string' ? parseInt(value, 10) : typeof value === 'number' ? value : fallback;
@@ -78,14 +117,72 @@ function compareValues(a: string | number | Date | null, b: string | number | Da
   return left < right ? -1 : 1;
 }
 
-export async function getCEUHistoryAdminHandler(
-  req: FastifyRequest<GetCEUHistoryAdminRoute>,
-  reply: FastifyReply
-) {
-  if (req.user?.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
+function csvCell(value: unknown) {
+  const text = String(value ?? '').replace(/"/g, '""');
+  return `"${text}"`;
+}
 
+function formatDate(value?: Date | string | null) {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('ru-RU');
+}
+
+function formatDateTime(value?: Date | string | null) {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function buildCsv(rows: Awaited<ReturnType<typeof buildCEUHistoryRows>>['rows']) {
+  const header = [
+    'Дата добавления',
+    'Дата мероприятия',
+    'Email',
+    'ФИО',
+    'Группа',
+    'Категория',
+    'Баллы',
+    'Статус',
+    'Тип CEU',
+    'Цикл',
+    'Файл',
+  ];
+
+  const lines = rows.map((row) =>
+    [
+      formatDateTime(row.recordCreatedAt),
+      formatDate(row.eventDate),
+      row.email,
+      row.fullName ?? '',
+      row.currentGroup?.name ?? '',
+      categoryLabels[row.category] ?? row.category,
+      row.points,
+      statusLabels[row.status] ?? row.status,
+      row.activityType ? activityTypeLabels[row.activityType] ?? row.activityType : '',
+      row.cycle
+        ? `${cycleTypeLabels[row.cycle.type] ?? row.cycle.type}, ${
+            targetLevelLabels[row.cycle.targetLevel] ?? row.cycle.targetLevel
+          }, ${cycleStatusLabels[row.cycle.status] ?? row.cycle.status}`
+        : '',
+      row.file?.name ?? '',
+    ]
+      .map(csvCell)
+      .join(';'),
+  );
+
+  return [header.map(csvCell).join(';'), ...lines].join('\n');
+}
+
+async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']) {
   const {
     createdFrom,
     createdTo,
@@ -95,26 +192,26 @@ export async function getCEUHistoryAdminHandler(
     status = 'ALL',
     sortBy: rawSortBy = 'createdAt',
     sortDir: rawSortDir = 'desc',
-  } = req.query;
+  } = query;
 
   const from = parseDateStart(createdFrom);
   const to = parseDateEndExclusive(createdTo);
 
-  if (from === null) return reply.code(400).send({ error: 'INVALID_CREATED_FROM' });
-  if (to === null) return reply.code(400).send({ error: 'INVALID_CREATED_TO' });
+  if (from === null) return { error: 'INVALID_CREATED_FROM' as const, rows: [], page: 1, perPage: 100 };
+  if (to === null) return { error: 'INVALID_CREATED_TO' as const, rows: [], page: 1, perPage: 100 };
 
   if (category !== 'ALL' && !CATEGORIES.has(category)) {
-    return reply.code(400).send({ error: 'INVALID_CATEGORY' });
+    return { error: 'INVALID_CATEGORY' as const, rows: [], page: 1, perPage: 100 };
   }
 
   if (status !== 'ALL' && !STATUSES.has(status)) {
-    return reply.code(400).send({ error: 'INVALID_STATUS' });
+    return { error: 'INVALID_STATUS' as const, rows: [], page: 1, perPage: 100 };
   }
 
   const sortBy: SortBy = SORT_FIELDS.has(rawSortBy) ? rawSortBy : 'createdAt';
   const sortDir: SortDir = rawSortDir === 'asc' ? 'asc' : 'desc';
-  const page = toInt(req.query.page, 1);
-  const perPage = Math.min(toInt(req.query.perPage, 100), 500);
+  const page = toInt(query.page, 1);
+  const perPage = Math.min(toInt(query.perPage, 100), 500);
 
   const where: any = {
     ...(category !== 'ALL' ? { category } : {}),
@@ -282,6 +379,26 @@ export async function getCEUHistoryAdminHandler(
     return compareValues(b.recordCreatedAt, a.recordCreatedAt);
   });
 
+  return {
+    error: null,
+    rows,
+    page,
+    perPage,
+  };
+}
+
+export async function getCEUHistoryAdminHandler(
+  req: FastifyRequest<GetCEUHistoryAdminRoute>,
+  reply: FastifyReply
+) {
+  if (req.user?.role !== 'ADMIN') {
+    return reply.code(403).send({ error: 'Доступ запрещён' });
+  }
+
+  const result = await buildCEUHistoryRows(req.query);
+  if (result.error) return reply.code(400).send({ error: result.error });
+
+  const { rows, page, perPage } = result;
   const total = rows.length;
   const pageRows = rows.slice((page - 1) * perPage, page * perPage);
 
@@ -291,4 +408,24 @@ export async function getCEUHistoryAdminHandler(
     perPage,
     rows: pageRows,
   });
+}
+
+export async function getCEUHistoryAdminExportHandler(
+  req: FastifyRequest<GetCEUHistoryAdminRoute>,
+  reply: FastifyReply,
+) {
+  if (req.user?.role !== 'ADMIN') {
+    return reply.code(403).send({ error: 'Доступ запрещён' });
+  }
+
+  const result = await buildCEUHistoryRows(req.query);
+  if (result.error) return reply.code(400).send({ error: result.error });
+
+  const csv = buildCsv(result.rows);
+  const filename = `ceu_history_${new Date().toISOString().slice(0, 10)}.csv`;
+
+  return reply
+    .header('Content-Type', 'text/csv; charset=utf-8')
+    .header('Content-Disposition', `attachment; filename="${filename}"`)
+    .send(`\uFEFF${csv}`);
 }
