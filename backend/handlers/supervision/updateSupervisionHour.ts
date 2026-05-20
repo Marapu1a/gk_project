@@ -1,6 +1,12 @@
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { PracticeLevel, CycleStatus, NotificationType } from '@prisma/client';
+import {
+  PracticeLevel,
+  CycleStatus,
+  NotificationType,
+  ReviewerCandidateKind,
+  ReviewerCandidateStatus,
+} from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
 
 interface UpdateSupervisionHourRoute extends RouteGenericInterface {
@@ -30,6 +36,12 @@ function notificationLabel(type: PracticeLevel) {
   if (normalized === 'SUPERVISOR') return 'менторские часы';
   if (normalized === 'PRACTICE') return 'часы практики';
   return 'часы супервизии';
+}
+
+function relationKindForHour(type: PracticeLevel) {
+  return type === PracticeLevel.SUPERVISOR || type === PracticeLevel.SUPERVISION
+    ? ReviewerCandidateKind.MENTORSHIP
+    : ReviewerCandidateKind.SUPERVISION;
 }
 
 export async function updateSupervisionHourHandler(
@@ -141,7 +153,7 @@ export async function updateSupervisionHourHandler(
   const reviewableHours = await prisma.supervisionHour.findMany({
     where: {
       recordId: existing.recordId,
-      ...(isAdmin ? {} : { reviewerId: existing.reviewerId }),
+      ...(existing.reviewerId ? { reviewerId: existing.reviewerId } : { id: existing.id }),
     },
     select: { id: true, status: true, type: true, value: true },
   });
@@ -153,21 +165,36 @@ export async function updateSupervisionHourHandler(
 
   const reviewedAt = new Date();
 
-  await prisma.supervisionHour.updateMany({
-    where: {
-      id: { in: reviewableHours.map((hour) => hour.id) },
-    },
-    data: {
-      status: desiredStatus,
-      reviewedAt,
-      rejectedReason: desiredStatus === 'REJECTED' ? rejectedReason : null,
-      reviewerId: actorId,
-    },
-  });
+  const updatedHours = await prisma.$transaction(async (tx) => {
+    await tx.supervisionHour.updateMany({
+      where: {
+        id: { in: reviewableHours.map((hour) => hour.id) },
+      },
+      data: {
+        status: desiredStatus,
+        reviewedAt,
+        rejectedReason: desiredStatus === 'REJECTED' ? rejectedReason : null,
+        reviewedById: actorId,
+      },
+    });
 
-  const updatedHours = await prisma.supervisionHour.findMany({
-    where: { recordId: existing.recordId },
-    orderBy: { id: 'asc' },
+    if (isAdmin && existing.reviewerId && existing.record.cycleId) {
+      await tx.reviewerCandidateRelation.updateMany({
+        where: {
+          reviewerId: existing.reviewerId,
+          candidateId: recordOwnerId,
+          cycleId: existing.record.cycleId,
+          kind: relationKindForHour(existing.type),
+          status: ReviewerCandidateStatus.PENDING,
+        },
+        data: { status: ReviewerCandidateStatus.ACCEPTED },
+      });
+    }
+
+    return tx.supervisionHour.findMany({
+      where: { recordId: existing.recordId },
+      orderBy: { id: 'asc' },
+    });
   });
 
   try {
@@ -196,7 +223,8 @@ export async function updateSupervisionHourHandler(
       status: desiredStatus,
       reviewedAt,
       rejectedReason: desiredStatus === 'REJECTED' ? rejectedReason : null,
-      reviewerId: actorId,
+      reviewerId: existing.reviewerId,
+      reviewedById: actorId,
       hours: updatedHours,
     },
   });

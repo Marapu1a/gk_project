@@ -101,6 +101,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
           reviewedAt: true,
           rejectedReason: true,
           reviewer: { select: { id: true, fullName: true, email: true } },
+          reviewedBy: { select: { id: true, fullName: true, email: true } },
         },
         orderBy: { id: 'asc' },
       },
@@ -118,6 +119,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
       const hourTotals = aggregateHours(hours);
       const statusSummary = summarizeStatus(hours);
       const supervisor = hours.find((hour) => hour.reviewer)?.reviewer ?? null;
+      const reviewedBy = hours.find((hour) => hour.reviewedBy)?.reviewedBy ?? null;
       const directIndividual = record.draftDirectIndividual ?? 0;
       const directGroup = record.draftDirectGroup ?? 0;
       const nonObservingIndividual = record.draftNonObservingIndividual ?? 0;
@@ -146,6 +148,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
         rejectedReason: statusSummary.rejectedReason,
         user: record.user,
         supervisor,
+        reviewedBy,
       };
     }),
     nextCursor,

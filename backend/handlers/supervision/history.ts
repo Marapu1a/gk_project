@@ -52,6 +52,7 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
       reviewedAt: true,
       rejectedReason: true,
       reviewer: { select: { id: true, fullName: true, email: true } },
+      reviewedBy: { select: { id: true, fullName: true, email: true } },
       record: { select: { id: true, createdAt: true, fileId: true } },
     },
     take: limit,
@@ -74,6 +75,9 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
       rejectedReason: h.rejectedReason,
       reviewer: h.reviewer
         ? { id: h.reviewer.id, fullName: h.reviewer.fullName, email: h.reviewer.email }
+        : null,
+      reviewedBy: h.reviewedBy
+        ? { id: h.reviewedBy.id, fullName: h.reviewedBy.fullName, email: h.reviewedBy.email }
         : null,
     })),
     nextCursor,

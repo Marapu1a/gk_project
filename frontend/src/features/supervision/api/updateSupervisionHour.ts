@@ -20,6 +20,7 @@ export interface UpdateSupervisionHourResponse {
     reviewedAt: string | null;
     rejectedReason: string | null;
     reviewerId: string | null;
+    reviewedById: string | null;
   };
 }
 

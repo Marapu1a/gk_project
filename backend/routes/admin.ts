@@ -18,6 +18,8 @@ import { getCEUHistoryAdminHandler } from '../handlers/admin/ceu/getCEUHistoryAd
 // Supervision god-mode
 import { getUserSupervisionMatrixAdminHandler } from '../handlers/admin/supervision/getUserSupervisionMatrixAdminHandler';
 import { updateUserSupervisionMatrixAdminHandler } from '../handlers/admin/supervision/updateUserSupervisionMatrixAdminHandler';
+import { getAdminReviewerCandidatesHandler } from '../handlers/admin/supervision/getAdminReviewerCandidatesHandler';
+import { getReviewerCandidateDetailsHandler } from '../handlers/supervision/getReviewerCandidateDetailsHandler';
 
 import { verifyToken } from '../middlewares/verifyToken';
 
@@ -37,6 +39,8 @@ export async function usersRoutes(app: FastifyInstance) {
   app.patch('/admin/users/:id/target-level', { preHandler: verifyToken }, updateTargetLevelHandler);
 
   // Supervision (admin-only)
+  app.get('/admin/supervision/reviewer-candidates', { preHandler: verifyToken }, getAdminReviewerCandidatesHandler);
+  app.get('/admin/supervision/reviewer-candidates/:relationId', { preHandler: verifyToken }, getReviewerCandidateDetailsHandler);
   app.get('/admin/supervision/:userId/matrix', { preHandler: verifyToken }, getUserSupervisionMatrixAdminHandler);
   app.patch('/admin/supervision/:userId/matrix', { preHandler: verifyToken }, updateUserSupervisionMatrixAdminHandler);
 

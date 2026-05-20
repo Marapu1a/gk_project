@@ -173,6 +173,7 @@ model User {
 
   reviewedCEUEntries       CEUEntry[]        @relation("ReviewedCEUEntry")
   reviewedSupervisionHours SupervisionHour[] @relation("ReviewedSupervisionHour")
+  actedOnSupervisionHours  SupervisionHour[] @relation("SupervisionHourReviewedBy")
   confirmedCertificates    Certificate[]     @relation("CertificateConfirmedBy")
   reviewedDocumentFiles    DocumentReviewFile[] @relation("ReviewedDocumentFile")
   deletedDocumentFiles     DocumentReviewFile[] @relation("DeletedDocumentFile")
@@ -539,8 +540,12 @@ model SupervisionHour {
 
   reviewerId     String?
   reviewer       User?     @relation("ReviewedSupervisionHour", fields: [reviewerId], references: [id])
+  reviewedById   String?
+  reviewedBy     User?     @relation("SupervisionHourReviewedBy", fields: [reviewedById], references: [id])
   reviewedAt     DateTime?
   rejectedReason String?
+
+  @@index([reviewedById])
 }
 
 model Group {

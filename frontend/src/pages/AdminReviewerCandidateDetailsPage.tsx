@@ -1,11 +1,11 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { CandidateCeuCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateCeuCard';
 import { CandidateHoursOverviewCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateHoursOverviewCard';
 import { CandidateInfoCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateInfoCard';
 import { CandidateRequestsCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateRequestsCard';
 import { CandidateTargetCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateTargetCard';
-import { useReviewerCandidateDetails } from '@/features/supervision/hooks/useReviewerCandidateDetails';
+import { useAdminReviewerCandidateDetails } from '@/features/admin/hooks/supervision/useAdminReviewerCandidates';
 import type {
   ReviewerCandidateKind,
   TargetLevel,
@@ -26,7 +26,9 @@ function isKind(value: string | undefined): value is ReviewerCandidateKind {
   return value === 'supervision' || value === 'mentorship';
 }
 
-function getTargetDisplayLabel(data: NonNullable<ReturnType<typeof useReviewerCandidateDetails>['data']>) {
+function getTargetDisplayLabel(
+  data: NonNullable<ReturnType<typeof useAdminReviewerCandidateDetails>['data']>,
+) {
   const target = data.activeCycle.targetLevel;
   const primaryGroupName = data.candidate.primaryGroup?.name;
 
@@ -41,12 +43,14 @@ function getTargetDisplayLabel(data: NonNullable<ReturnType<typeof useReviewerCa
   return TARGET_LABELS[target];
 }
 
-function ReviewerCandidateDetailsContent() {
+function AdminReviewerCandidateDetailsContent() {
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams();
-  const kind = isKind(params.kind) ? params.kind : 'supervision';
-  const userId = params.userId;
-  const { data, isLoading, isError, error } = useReviewerCandidateDetails(userId, kind);
+  const routeKind = isKind(params.kind) ? params.kind : 'supervision';
+  const relationId = params.relationId;
+  const { data, isLoading, isError, error } = useAdminReviewerCandidateDetails(relationId);
+  const listUrl = `/admin/supervision-candidates${location.search}`;
 
   if (isLoading) {
     return (
@@ -62,10 +66,10 @@ function ReviewerCandidateDetailsContent() {
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate(`/reviewer/candidates/${kind}`)}
+            onClick={() => navigate(listUrl)}
             className="dashboard-v2-caption inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
           >
-            ← В историю
+            ← В список
           </button>
           <button
             type="button"
@@ -82,6 +86,7 @@ function ReviewerCandidateDetailsContent() {
     );
   }
 
+  const kind = data.permissions.requestedKind ?? routeKind;
   const candidate = data.candidate;
   const activeRequests = kind === 'mentorship' ? data.requests.mentorship : data.requests.supervision;
   const otherRequests = kind === 'mentorship' ? data.requests.supervision : data.requests.mentorship;
@@ -101,10 +106,10 @@ function ReviewerCandidateDetailsContent() {
         <div className="flex min-w-0 items-center gap-3 justify-self-start">
           <button
             type="button"
-            onClick={() => navigate(`/reviewer/candidates/${kind}`)}
+            onClick={() => navigate(listUrl)}
             className="dashboard-v2-caption inline-flex h-[30px] min-w-[88px] cursor-pointer items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-[#1F305E] hover:bg-white active:bg-[var(--color-blue-soft)]"
           >
-            ← В историю
+            ← В список
           </button>
           <button
             type="button"
@@ -157,10 +162,10 @@ function ReviewerCandidateDetailsContent() {
   );
 }
 
-export default function ReviewerCandidateDetailsPage() {
+export default function AdminReviewerCandidateDetailsPage() {
   return (
     <ProtectedRoute>
-      <ReviewerCandidateDetailsContent />
+      <AdminReviewerCandidateDetailsContent />
     </ProtectedRoute>
   );
 }

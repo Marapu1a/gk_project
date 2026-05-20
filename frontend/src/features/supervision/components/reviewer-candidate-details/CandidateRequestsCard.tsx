@@ -14,8 +14,8 @@ type CandidateRequestsCardProps = {
 
 const STATUS_LABELS: Record<ReviewerCandidateRequest['status'], string> = {
   UNCONFIRMED: 'На рассмотрении',
-  CONFIRMED: 'Заявка принята',
-  REJECTED: 'Заявка отклонена',
+  CONFIRMED: 'Часы подтверждены',
+  REJECTED: 'Часы отклонены',
   SPENT: 'Использовано',
 };
 
@@ -45,7 +45,7 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
       <h2 className="dashboard-v2-title mb-7">{title}</h2>
 
       {requests.length === 0 ? (
-        <p className="dashboard-v2-text text-[#6B7894]">Заявок пока нет.</p>
+        <p className="dashboard-v2-text text-[#6B7894]">Отправок пока нет.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="dashboard-v2-text w-full min-w-[460px] text-[#1F305E]">
@@ -59,7 +59,7 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                     }
                     className="mx-auto inline-flex cursor-pointer items-center gap-1"
                   >
-                    Дата заявки
+                    Дата отправки
                     <img
                       src="/dashboard-v2/icon_sort_by.svg"
                       alt=""
@@ -90,8 +90,8 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                           type="button"
                           onClick={() => setSelectedRequest(request)}
                           className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-full"
-                          title="Открыть детали заявки"
-                          aria-label="Открыть детали заявки"
+                          title="Открыть детали отправки"
+                          aria-label="Открыть детали отправки"
                         >
                           <img
                             src="/dashboard-v2/button_X_mini.svg"

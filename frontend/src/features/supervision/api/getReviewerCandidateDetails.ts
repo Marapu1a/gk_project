@@ -30,6 +30,8 @@ export type ReviewerCandidateRequest = {
     status: RecordStatus;
     reviewedAt: string | null;
     rejectedReason: string | null;
+    reviewer: { id: string; email: string; fullName: string | null } | null;
+    reviewedBy: { id: string; email: string; fullName: string | null } | null;
   }>;
   totals: {
     total: number;

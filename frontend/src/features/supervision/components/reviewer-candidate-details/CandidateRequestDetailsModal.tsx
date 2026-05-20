@@ -17,8 +17,8 @@ type CandidateRequestDetailsModalProps = {
 
 const STATUS_LABELS: Record<ReviewerCandidateRequest['status'], string> = {
   UNCONFIRMED: 'На рассмотрении',
-  CONFIRMED: 'Заявка принята',
-  REJECTED: 'Заявка отклонена',
+  CONFIRMED: 'Часы подтверждены',
+  REJECTED: 'Часы отклонены',
   SPENT: 'Использовано',
 };
 
@@ -72,16 +72,22 @@ export function CandidateRequestDetailsModal({
   const [rejectedReason, setRejectedReason] = useState('');
 
   const isPending = !!request.actionHourId;
+  const reviewer = request.hours.find((hour) => hour.reviewer)?.reviewer ?? null;
+  const reviewedBy = request.hours.find((hour) => hour.reviewedBy)?.reviewedBy ?? null;
+  const adminReviewNote =
+    reviewedBy && (!reviewer || reviewedBy.id !== reviewer.id) && request.status !== 'UNCONFIRMED'
+      ? `${request.status === 'REJECTED' ? 'Отклонено' : 'Подтверждено'} админом: ${reviewedBy.email}`
+      : null;
 
   const accept = async () => {
     if (!request.actionHourId) return;
 
     try {
       await mutation.mutateAsync({ id: request.actionHourId, status: 'CONFIRMED' });
-      toast.success('Заявка принята');
+      toast.success('Часы подтверждены');
       onClose();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось принять заявку');
+      toast.error(error?.response?.data?.error || 'Не удалось подтвердить часы');
     }
   };
 
@@ -100,10 +106,10 @@ export function CandidateRequestDetailsModal({
         status: 'REJECTED',
         rejectedReason: trimmed,
       });
-      toast.success('Заявка отклонена');
+      toast.success('Часы отклонены');
       onClose();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось отклонить заявку');
+      toast.error(error?.response?.data?.error || 'Не удалось отклонить часы');
     }
   };
 
@@ -120,17 +126,23 @@ export function CandidateRequestDetailsModal({
         </button>
 
         <h3 className="dashboard-v2-page-title mb-5 text-center text-[#1F305E]">
-          Детали заявки
+          Детали отправки часов
         </h3>
 
         <div className="mb-5 grid gap-4 sm:grid-cols-3">
-          <ReadOnlyField label="Дата заявки" value={formatDate(request.createdAt)} />
+          <ReadOnlyField label="Дата отправки" value={formatDate(request.createdAt)} />
           <ReadOnlyField
-            label="Тип заявки"
+            label="Тип часов"
             value={kind === 'mentorship' ? 'Менторство' : 'Супервизия'}
           />
           <ReadOnlyField label="Статус" value={STATUS_LABELS[request.status]} />
         </div>
+
+        {adminReviewNote ? (
+          <div className="dashboard-v2-caption mb-5 rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-3 text-[#1F305E]">
+            {adminReviewNote}
+          </div>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div className="space-y-5">

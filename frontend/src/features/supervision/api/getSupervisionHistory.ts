@@ -22,6 +22,7 @@ export type SupervisionHistoryItem = {
   reviewedAt: string | null;
   rejectedReason: string | null;
   reviewer: { id: string; fullName: string; email: string } | null;
+  reviewedBy: { id: string; fullName: string; email: string } | null;
 };
 
 export type GetSupervisionHistoryResponse = {

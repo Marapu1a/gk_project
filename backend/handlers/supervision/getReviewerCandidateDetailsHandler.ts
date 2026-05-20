@@ -25,8 +25,8 @@ import {
 } from '../../utils/supervisionRequirements';
 
 type CandidateKind = 'supervision' | 'mentorship';
-type Query = { kind?: CandidateKind };
-type Params = { userId: string };
+type Query = { kind?: CandidateKind; relationId?: string };
+type Params = { userId?: string; relationId?: string };
 
 type ReviewHour = {
   id: string;
@@ -35,6 +35,8 @@ type ReviewHour = {
   status: RecordStatus;
   reviewedAt: Date | null;
   rejectedReason: string | null;
+  reviewer: { id: string; email: string; fullName: string | null } | null;
+  reviewedBy: { id: string; email: string; fullName: string | null } | null;
 };
 
 const SUPERVISION_TYPES = [
@@ -331,14 +333,48 @@ export async function getReviewerCandidateDetailsHandler(
   req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const reviewerId = req.user?.userId;
+  const actorId = req.user?.userId;
   const reviewerRole = req.user?.role;
-  if (!reviewerId) return reply.code(401).send({ error: 'Не авторизован' });
+  if (!actorId) return reply.code(401).send({ error: 'Не авторизован' });
 
-  const { userId: candidateId } = req.params as Params;
+  const params = req.params as Params;
   const query = (req.query ?? {}) as Query;
-  const requestedKind = normalizeKind(query.kind);
-  const capabilities = await getReviewerCapabilities(reviewerId, reviewerRole);
+  const relationId = params.relationId ?? query.relationId;
+  const adminMode = reviewerRole === 'ADMIN' && !!relationId;
+  let reviewerId = actorId;
+  let candidateId = params.userId;
+  let requestedKind = normalizeKind(query.kind);
+  let adminRelation: {
+    reviewerId: string;
+    candidateId: string;
+    cycleId: string;
+    kind: ReviewerCandidateKind;
+    status: ReviewerCandidateStatus;
+  } | null = null;
+
+  if (adminMode) {
+    adminRelation = await prisma.reviewerCandidateRelation.findUnique({
+      where: { id: relationId },
+      select: {
+        reviewerId: true,
+        candidateId: true,
+        cycleId: true,
+        kind: true,
+        status: true,
+      },
+    });
+
+    if (!adminRelation) return reply.code(404).send({ error: 'Связь с проверяющим не найдена' });
+
+    reviewerId = adminRelation.reviewerId;
+    candidateId = adminRelation.candidateId;
+    requestedKind =
+      adminRelation.kind === ReviewerCandidateKind.MENTORSHIP ? 'mentorship' : 'supervision';
+  }
+
+  if (!candidateId) return reply.code(400).send({ error: 'Кандидат не указан' });
+
+  const capabilities = await getReviewerCapabilities(actorId, reviewerRole);
 
   if (!capabilities) return reply.code(404).send({ error: 'Проверяющий не найден' });
   if (!capabilities.canReviewSupervision) {
@@ -373,20 +409,30 @@ export async function getReviewerCandidateDetailsHandler(
     return reply.code(404).send({ error: 'У кандидата нет активного цикла' });
   }
 
-  const relation = await prisma.reviewerCandidateRelation.findUnique({
-    where: {
-      reviewerId_candidateId_cycleId_kind: {
-        reviewerId,
-        candidateId,
-        cycleId: activeCycle.id,
-        kind: prismaKind(requestedKind),
-      },
-    },
-    select: { status: true },
-  });
+  if (adminRelation && adminRelation.cycleId !== activeCycle.id) {
+    return reply.code(404).send({ error: 'Активный цикл кандидата изменился' });
+  }
 
-  if (!relation || relation.status !== ReviewerCandidateStatus.ACCEPTED) {
+  const relation = adminRelation
+    ? { status: adminRelation.status }
+    : await prisma.reviewerCandidateRelation.findUnique({
+        where: {
+          reviewerId_candidateId_cycleId_kind: {
+            reviewerId,
+            candidateId,
+            cycleId: activeCycle.id,
+            kind: prismaKind(requestedKind),
+          },
+        },
+        select: { status: true },
+      });
+
+  if (!relation || (!adminMode && relation.status !== ReviewerCandidateStatus.ACCEPTED)) {
     return reply.code(403).send({ error: 'Кандидат ещё не принят проверяющим' });
+  }
+
+  if (adminMode && relation.status === ReviewerCandidateStatus.REJECTED) {
+    return reply.code(403).send({ error: 'Связь с проверяющим отклонена' });
   }
 
   const requestedKindAccessCount = await prisma.supervisionRecord.count({
@@ -435,6 +481,8 @@ export async function getReviewerCandidateDetailsHandler(
             status: true,
             reviewedAt: true,
             rejectedReason: true,
+            reviewer: { select: { id: true, email: true, fullName: true } },
+            reviewedBy: { select: { id: true, email: true, fullName: true } },
           },
         },
       },
@@ -469,6 +517,8 @@ export async function getReviewerCandidateDetailsHandler(
                 status: true,
                 reviewedAt: true,
                 rejectedReason: true,
+                reviewer: { select: { id: true, email: true, fullName: true } },
+                reviewedBy: { select: { id: true, email: true, fullName: true } },
               },
             },
           },

@@ -17,7 +17,7 @@ import {
 } from '@/utils/notificationDictionary';
 import { useAllDocReviewRequests } from '@/features/documentReviewAdmin/hooks/useAllDocReviewRequests';
 import { useAdminCeuHistory } from '@/features/admin/hooks/ceu/useAdminCeuHistory';
-import { useAssignedHours } from '@/features/supervision/hooks/useAssignedHours';
+import { useAdminReviewerCandidates } from '@/features/admin/hooks/supervision/useAdminReviewerCandidates';
 import { useExamApps } from '@/features/exam/hooks/useExamApps';
 import { useDownloadUsersExport } from '@/features/admin/hooks/useDownloadUsersExport';
 import { useCreateDbBackup } from '@/features/backup/hooks/useCreateDbBackup';
@@ -54,7 +54,22 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
     sortBy: 'createdAt',
     sortDir: 'desc',
   });
-  const assignedHours = useAssignedHours({ status: 'UNCONFIRMED', take: 100 });
+  const supervisionCandidates = useAdminReviewerCandidates({
+    kind: 'supervision',
+    attention: true,
+    page: 1,
+    perPage: 1,
+    sortBy: 'createdAt',
+    sortDir: 'desc',
+  });
+  const mentorshipCandidates = useAdminReviewerCandidates({
+    kind: 'mentorship',
+    attention: true,
+    page: 1,
+    perPage: 1,
+    sortBy: 'createdAt',
+    sortDir: 'desc',
+  });
   const examApps = useExamApps();
   const exportUsers = useDownloadUsersExport();
   const backupDb = useCreateDbBackup();
@@ -69,7 +84,9 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
 
   const ceuCount = ceuHistory.data?.total ?? null;
   const supervisionHoursCount =
-    assignedHours.data?.pages.flatMap((page) => page.hours).length ?? null;
+    supervisionCandidates.data && mentorshipCandidates.data
+      ? supervisionCandidates.data.total + mentorshipCandidates.data.total
+      : null;
   const examCount =
     examApps.data?.filter((application) => application.status === 'PENDING').length ?? null;
 
@@ -78,7 +95,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
     { label: 'Баннер для пользователей', to: '/admin/user-banner' },
     { label: 'Проверка документов', to: '/admin/document-review', count: documentCount },
     { label: 'Проверка CEU', to: '/review/ceu', count: ceuCount },
-    { label: 'Проверка часов супервизии', to: '/review/supervision', count: supervisionHoursCount },
+    { label: 'Проверка часов', to: '/admin/supervision-candidates', count: supervisionHoursCount },
     { label: 'Выдача сертификата', to: '/certificate' },
     { label: 'Заявки на экзамен', to: '/exam-applications', count: examCount },
   ];
