@@ -1,15 +1,14 @@
-// src/features/admin/components/UserBasicBlock.tsx
-import { useState, useEffect } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { useUpdateUserInfo } from '@/features/admin/hooks/useUpdateUserInfo';
-import { useToggleUserRole } from '@/features/admin/hooks/useToggleUserRole';
-import { useUpdateUserVisibility } from '@/features/admin/hooks/useUpdateUserVisibility';
-import { useArchiveUser, useRestoreUser } from '@/features/admin/hooks/useArchiveUser';
-import { UserLocationFields } from '@/features/user/components/UserLocationFields';
-import { UpdateUserPasswordModal } from './UpdateUserPasswordModal';
 import PhoneInput from 'react-phone-input-2';
 import { isValidPhoneNumber } from 'libphonenumber-js';
-import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { AvatarDisplay } from '@/features/files/components/AvatarDisplay';
+import {
+  AVATAR_UPLOAD_HINT,
+  AvatarUploadModal,
+} from '@/features/files/components/AvatarUploadModal';
+import { useUpdateUserInfo } from '@/features/admin/hooks/useUpdateUserInfo';
+import { UserLocationFields } from '@/features/user/components/UserLocationFields';
 
 type Props = {
   userId: string;
@@ -19,15 +18,12 @@ type Props = {
   email: string;
   phone: string | null;
   birthDate: string | null;
-  country: string | null; // CSV
-  city: string | null; // CSV
+  country: string | null;
+  city: string | null;
+  avatarUrl: string | null;
   role: 'ADMIN' | 'REVIEWER' | 'STUDENT';
   createdAt: string;
   groupName: string | null;
-  isProfileVisible: boolean;
-  archivedAt?: string | null;
-  archiveRequestedAt?: string | null;
-  archiveRequestReason?: string | null;
 };
 
 const roleMap = { ADMIN: 'Администратор', REVIEWER: 'Проверяющий', STUDENT: 'Соискатель' } as const;
@@ -35,10 +31,12 @@ const roleMap = { ADMIN: 'Администратор', REVIEWER: 'Проверя
 function toDateInput(iso: string) {
   return iso.slice(0, 10);
 }
+
 function dateOnlyToISO(dateOnly: string) {
   const [y, m, d] = dateOnly.split('-').map(Number);
   return new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1)).toISOString();
 }
+
 function titleCaseRu(s: string) {
   return s
     .trim()
@@ -51,6 +49,7 @@ function titleCaseRu(s: string) {
     )
     .join(' ');
 }
+
 function titleCaseEn(s: string) {
   return s
     .trim()
@@ -63,6 +62,7 @@ function titleCaseEn(s: string) {
     )
     .join(' ');
 }
+
 function splitFullName(fullName?: string | null) {
   const parts = String(fullName || '')
     .replace(/\s+/g, ' ')
@@ -73,18 +73,19 @@ function splitFullName(fullName?: string | null) {
   const middleName = rest.length ? rest.join(' ') : '';
   return { lastName, firstName, middleName };
 }
+
 const strToArr = (s?: string | null) =>
   (s || '')
     .split(',')
     .map((x) => x.trim())
     .filter(Boolean);
+
 const arrToStr = (arr: string[]) =>
   arr
     .map((x) => x.trim())
     .filter(Boolean)
     .join(', ');
 
-// нормализуем к международному формату
 const normalizePhone = (raw: string) => {
   const digits = String(raw).replace(/[^\d+]/g, '');
   return digits ? (digits.startsWith('+') ? digits : `+${digits}`) : '';
@@ -101,54 +102,34 @@ export default function UserBasicBlock(props: Props) {
     birthDate,
     country,
     city,
+    avatarUrl,
     role,
     createdAt,
     groupName,
-    isProfileVisible,
-    archivedAt,
-    archiveRequestedAt,
-    archiveRequestReason,
   } = props;
 
   const namesRu = splitFullName(fullName);
   const namesLat = splitFullName(fullNameLatin);
-
-  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+  const mutation = useUpdateUserInfo(userId);
 
   const [edit, setEdit] = useState(false);
-
-  // локальное отображаемое ФИО (чтобы сразу видеть результат после сохранения)
+  const [isAvatarOpen, setIsAvatarOpen] = useState(false);
   const [displayFullName, setDisplayFullName] = useState<string>(fullName);
   const [displayFullNameLatin, setDisplayFullNameLatin] = useState<string | null>(
     fullNameLatin ?? null,
   );
-  const [profileVisible, setProfileVisible] = useState(isProfileVisible);
-
-  // форма
   const [form, setForm] = useState({
-    // русское ФИО
     lastName: namesRu.lastName,
     firstName: namesRu.firstName,
     middleName: namesRu.middleName,
-    // латиница (как в загранпаспорте: фамилия + имя)
     lastNameLatin: namesLat.lastName,
     firstNameLatin: namesLat.firstName,
-    // остальное
     phone: phone ?? '',
     birthDate: birthDate ? toDateInput(birthDate) : '',
-    countries: strToArr(country), // string[]
-    cities: strToArr(city), // string[]
-    avatarUrl: '',
+    countries: strToArr(country),
+    cities: strToArr(city),
   });
 
-  const mutation = useUpdateUserInfo(userId);
-  const toggleRole = useToggleUserRole();
-  const updateVisibility = useUpdateUserVisibility(userId);
-  const archiveUser = useArchiveUser();
-  const restoreUser = useRestoreUser();
-  const { confirm } = useConfirm();
-
-  // синхронизация, если сверху приехали новые данные (переключение юзера без размонтирования)
   useEffect(() => {
     const nRu = splitFullName(fullName);
     const nLat = splitFullName(fullNameLatin);
@@ -163,29 +144,11 @@ export default function UserBasicBlock(props: Props) {
       birthDate: birthDate ? toDateInput(birthDate) : '',
       countries: strToArr(country),
       cities: strToArr(city),
-      avatarUrl: '',
     });
 
     setDisplayFullName(fullName);
     setDisplayFullNameLatin(fullNameLatin ?? null);
-    setProfileVisible(isProfileVisible);
-  }, [fullName, fullNameLatin, phone, birthDate, country, city, isProfileVisible]);
-
-  const onToggleRole = async () => {
-    const toAdmin = role !== 'ADMIN';
-    const ok = await confirm({
-      message: toAdmin ? `Сделать ${email} администратором?` : `Снять администратора с ${email}?`,
-      confirmLabel: 'Да',
-      variant: toAdmin ? 'primary' : 'danger',
-    });
-    if (!ok) return;
-    try {
-      await toggleRole.mutateAsync(userId);
-      toast.success(toAdmin ? 'Права администратора выданы' : 'Права администратора сняты');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось обновить роль');
-    }
-  };
+  }, [fullName, fullNameLatin, phone, birthDate, country, city]);
 
   const onCancel = () => {
     const nRu = splitFullName(fullName);
@@ -201,60 +164,16 @@ export default function UserBasicBlock(props: Props) {
       birthDate: birthDate ? toDateInput(birthDate) : '',
       countries: strToArr(country),
       cities: strToArr(city),
-      avatarUrl: '',
     });
     setEdit(false);
   };
 
-  const onToggleProfileVisibility = async (nextValue: boolean) => {
-    setProfileVisible(nextValue);
-
-    try {
-      await updateVisibility.mutateAsync(nextValue);
-      toast.success(nextValue ? 'Профиль показан в реестре' : 'Профиль скрыт из реестра');
-    } catch (e: any) {
-      setProfileVisible(!nextValue);
-      toast.error(e?.response?.data?.error || 'Не удалось обновить видимость в реестре');
-    }
-  };
-
-  const onArchive = async () => {
-    const ok = await confirm({
-      message: `Архивировать пользователя ${email}?`,
-      confirmLabel: 'Архивировать',
-      variant: 'danger',
-    });
-    if (!ok) return;
-    try {
-      await archiveUser.mutateAsync({ userId, reason: archiveRequestReason ?? undefined });
-      toast.success('Пользователь отправлен в архив');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось архивировать пользователя');
-    }
-  };
-
-  const onRestore = async () => {
-    const ok = await confirm({
-      message: `Восстановить пользователя ${email} из архива?`,
-      confirmLabel: 'Восстановить',
-    });
-    if (!ok) return;
-    try {
-      await restoreUser.mutateAsync(userId);
-      toast.success('Пользователь восстановлен');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось восстановить пользователя');
-    }
-  };
-
   const onSave = async () => {
-    // русское ФИО
     const ln = titleCaseRu(form.lastName);
     const fn = titleCaseRu(form.firstName);
     const mn = form.middleName ? titleCaseRu(form.middleName) : '';
     const fullNameOut = [ln, fn, mn].filter(Boolean).join(' ');
 
-    // латиница: только фамилия + имя
     const lnLat = titleCaseEn(form.lastNameLatin);
     const fnLat = titleCaseEn(form.firstNameLatin);
     const fullNameLatinOut = [lnLat, fnLat].filter(Boolean).join(' ');
@@ -277,13 +196,11 @@ export default function UserBasicBlock(props: Props) {
         birthDate: birth,
         country: countriesStr || undefined,
         city: citiesStr || undefined,
-        avatarUrl: form.avatarUrl.trim() || undefined,
       });
 
       setDisplayFullName(fullNameOut || '');
       setDisplayFullNameLatin(fullNameLatinOut || null);
-
-      toast.success('Обновлено');
+      toast.success('Данные пользователя обновлены');
       setEdit(false);
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Не удалось сохранить');
@@ -293,149 +210,65 @@ export default function UserBasicBlock(props: Props) {
   const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
 
   return (
-    <div className="space-y-2">
-      <h2 className="text-xl font-semibold text-blue-dark">Основная информация</h2>
-
-      <div
-        className="rounded-2xl border bg-white p-4 space-y-4 header-shadow"
-        style={{ borderColor: 'var(--color-green-light)' }}
-      >
-        {/* Верхняя панель действий */}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            {!edit ? (
-              <>
-                <button className="btn btn-brand" onClick={() => setEdit(true)}>
-                  Редактировать
-                </button>
-                <button className="btn btn-ghost" onClick={() => setIsPasswordOpen(true)}>
-                  Сменить пароль
-                </button>
-                {isPasswordOpen && (
-                  <UpdateUserPasswordModal
-                    userId={userId}
-                    onClose={() => setIsPasswordOpen(false)}
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                <button className="btn btn-brand" onClick={onSave} disabled={mutation.isPending}>
-                  Сохранить
-                </button>
-                <button className="btn" onClick={onCancel} disabled={mutation.isPending}>
-                  Отмена
-                </button>
-              </>
-            )}
-          </div>
-
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="dashboard-v2-title">Основная информация</h2>
+        {!edit ? (
           <button
-            onClick={onToggleRole}
-            className={role === 'ADMIN' ? 'btn btn-danger' : 'btn btn-accent'}
+            className="btn dashboard-v2-action dashboard-v2-action-primary"
+            onClick={() => setEdit(true)}
           >
-            {role === 'ADMIN' ? 'Снять администратора' : 'Сделать админом'}
+            Редактировать
           </button>
-        </div>
-
-        <div
-          className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
-          style={{ borderColor: 'var(--color-green-light)' }}
-        >
-          <div className="text-sm text-blue-dark">
-            <span className="font-medium">Реестр:</span> {profileVisible ? 'Виден' : 'Скрыт'}
-          </div>
-
-          <label className="flex items-center gap-2 text-sm text-blue-dark">
-            <input
-              type="checkbox"
-              checked={profileVisible}
-              disabled={updateVisibility.isPending}
-              onChange={(e) => onToggleProfileVisibility(e.target.checked)}
-            />
-            Показывать в реестре
-          </label>
-        </div>
-
-        {(archiveRequestedAt || archivedAt) && (
-          <div
-            className="flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"
-            style={{ borderColor: 'var(--color-green-light)' }}
-          >
-            <div className="text-sm text-blue-dark">
-              {archivedAt ? (
-                <>
-                  <span className="font-medium">Архив:</span> пользователь архивирован{' '}
-                  {fmt(archivedAt)}
-                </>
-              ) : (
-                <>
-                  <span className="font-medium text-[var(--color-danger)]">
-                    Запрос на удаление:
-                  </span>{' '}
-                  {fmt(archiveRequestedAt ?? null)}
-                  {archiveRequestReason ? (
-                    <span className="ml-2 text-[#8D96B5]">{archiveRequestReason}</span>
-                  ) : null}
-                </>
-              )}
-            </div>
-
-            {archivedAt ? (
-              <button
-                type="button"
-                className="btn btn-dark rounded-full px-5 py-2 text-sm"
-                onClick={onRestore}
-                disabled={restoreUser.isPending}
-              >
-                Восстановить
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-danger rounded-full px-5 py-2 text-sm"
-                onClick={onArchive}
-                disabled={archiveUser.isPending}
-              >
-                Архивировать
-              </button>
-            )}
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="btn dashboard-v2-action dashboard-v2-action-primary"
+              onClick={onSave}
+              disabled={mutation.isPending}
+            >
+              Сохранить
+            </button>
+            <button
+              className="btn dashboard-v2-action dashboard-v2-action-secondary"
+              onClick={onCancel}
+              disabled={mutation.isPending}
+            >
+              Отмена
+            </button>
           </div>
         )}
+      </div>
 
-        {/* Основной контент */}
+      <div className="grid gap-5 lg:grid-cols-[168px_minmax(0,1fr)]">
+        <div className="flex items-center justify-center rounded-[16px] bg-[var(--color-blue-soft)] p-4">
+          <AvatarDisplay
+            src={avatarUrl}
+            alt={displayFullName || email}
+            w="w-[132px]"
+            h="h-[132px]"
+            editable
+            onClick={() => setIsAvatarOpen(true)}
+          />
+        </div>
+
         {!edit ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-            <Meta label="Имя" value={displayFullName || '—'} />
-            <Meta label="Имя (латиницей)" value={displayFullNameLatin || '—'} />
+          <div className="grid grid-cols-1 gap-x-8 gap-y-3 rounded-[16px] bg-white p-4 text-[15px] md:grid-cols-2">
+            <Meta label="ФИО" value={displayFullName || '—'} />
+            <Meta label="ФИО латиницей" value={displayFullNameLatin || '—'} />
             <Meta label="Email" value={email} />
             <Meta label="N ЦСПАП" value={registrationNumber || '—'} />
             <Meta label="Телефон" value={phone || '—'} />
             <Meta label="Дата рождения" value={fmt(birthDate)} />
             <Meta label="Город" value={city || '—'} />
             <Meta label="Страна" value={country || '—'} />
-            <Meta
-              label="Роль"
-              value={
-                <span
-                  className="rounded-full px-2 py-0.5 text-xs"
-                  style={{
-                    color: 'var(--color-white)',
-                    background:
-                      role === 'ADMIN' ? 'var(--color-green-brand)' : 'var(--color-blue-dark)',
-                  }}
-                >
-                  {roleMap[role]}
-                </span>
-              }
-            />
+            <Meta label="Роль" value={roleMap[role]} />
             <Meta label="Основная группа" value={groupName || '—'} />
             <Meta label="Зарегистрирован" value={fmt(createdAt)} />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* ФИО (рус.) */}
-            <Field label="Фамилия (рус.)">
+          <div className="grid grid-cols-1 gap-4 rounded-[16px] bg-white p-4 md:grid-cols-2">
+            <Field label="Фамилия">
               <input
                 className="input w-full"
                 autoComplete="family-name"
@@ -443,7 +276,7 @@ export default function UserBasicBlock(props: Props) {
                 onChange={(e) => setForm({ ...form, lastName: e.target.value })}
               />
             </Field>
-            <Field label="Имя (рус.)">
+            <Field label="Имя">
               <input
                 className="input w-full"
                 autoComplete="given-name"
@@ -451,7 +284,7 @@ export default function UserBasicBlock(props: Props) {
                 onChange={(e) => setForm({ ...form, firstName: e.target.value })}
               />
             </Field>
-            <Field label="Отчество (рус., если есть)">
+            <Field label="Отчество">
               <input
                 className="input w-full"
                 autoComplete="additional-name"
@@ -459,21 +292,16 @@ export default function UserBasicBlock(props: Props) {
                 onChange={(e) => setForm({ ...form, middleName: e.target.value })}
               />
             </Field>
+            <div className="hidden md:block" />
 
-            {/* разделитель */}
-            <div className="col-span-full text-xs text-gray-500 text-center mt-2">
-              ФИО латиницей — как в загранпаспорте
-            </div>
-
-            {/* ФИО (лат.) */}
-            <Field label="Фамилия (лат.)">
+            <Field label="Фамилия ENG">
               <input
                 className="input w-full"
                 value={form.lastNameLatin}
                 onChange={(e) => setForm({ ...form, lastNameLatin: e.target.value })}
               />
             </Field>
-            <Field label="Имя (лат.)">
+            <Field label="Имя ENG">
               <input
                 className="input w-full"
                 value={form.firstNameLatin}
@@ -508,7 +336,6 @@ export default function UserBasicBlock(props: Props) {
               />
             </Field>
 
-            {/* Страны + города (общий компонент) */}
             <UserLocationFields
               countries={form.countries}
               cities={form.cities}
@@ -516,39 +343,37 @@ export default function UserBasicBlock(props: Props) {
                 setForm((prev) => ({ ...prev, countries, cities }))
               }
             />
-
-            <div className="col-span-full grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Field label="Email">
-                <div>{email}</div>
-              </Field>
-              <Field label="Роль">
-                <div>{roleMap[role]}</div>
-              </Field>
-              <Field label="Основная группа">
-                <div>{groupName || '—'}</div>
-              </Field>
-            </div>
           </div>
         )}
       </div>
+
+      {isAvatarOpen ? (
+        <AvatarUploadModal
+          userId={userId}
+          onClose={() => setIsAvatarOpen(false)}
+          currentAvatarUrl={avatarUrl}
+          hint={AVATAR_UPLOAD_HINT}
+          targetUserId={userId}
+        />
+      ) : null}
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <label className="block text-sm mb-1 text-blue-dark">{label}</label>
+      <label className="dashboard-v2-label mb-1 block">{label}</label>
       {children}
     </div>
   );
 }
 
-function Meta({ label, value }: { label: string; value: React.ReactNode }) {
+function Meta({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-baseline gap-2">
-      <div className="text-blue-dark">{label}:</div>
-      <div>{value}</div>
+      <div className="dashboard-v2-caption min-w-[128px]">{label}:</div>
+      <div className="dashboard-v2-text font-semibold">{value}</div>
     </div>
   );
 }

@@ -67,7 +67,13 @@ export function UserInfo() {
           />
         </div>
 
-        {avatarOpen && <AvatarUploadModal userId={user.id} onClose={() => setAvatarOpen(false)} />}
+        {avatarOpen && (
+          <AvatarUploadModal
+            userId={user.id}
+            currentAvatarUrl={user.avatarUrl}
+            onClose={() => setAvatarOpen(false)}
+          />
+        )}
 
         <UserSelfProfileBlock user={user} />
 

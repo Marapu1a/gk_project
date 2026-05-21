@@ -1,6 +1,7 @@
 // /handlers/admin/userRoleHandler.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { logAdminUserAction } from '../../utils/adminUserActionLog';
 
 interface ToggleUserRoleRoute extends RouteGenericInterface {
   Params: {
@@ -28,6 +29,13 @@ export async function toggleUserRoleHandler(
   const updated = await prisma.user.update({
     where: { id: userId },
     data: { role: newRole },
+  });
+
+  await logAdminUserAction({
+    userId,
+    adminId: req.user.userId,
+    action: newRole === 'ADMIN' ? 'Назначил администратором' : 'Снял права администратора',
+    details: `Роль изменена: ${user.role} -> ${newRole}`,
   });
 
   return reply.send(updated);

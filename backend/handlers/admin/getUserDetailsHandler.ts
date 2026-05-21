@@ -1,6 +1,7 @@
 // src/handlers/user/getUserFullDetails.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { buildExamReadiness } from '../examApplications/readiness';
 
 // Локальная нормализация: старые значения → новые логические категории
 function normalizeLevel(type: string): string {
@@ -196,6 +197,8 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
       .slice()
       .sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime())[0] ?? null;
 
+  const examReadiness = await buildExamReadiness(user.id);
+
   return reply.send({
     ...user,
     groups,
@@ -203,6 +206,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
     activeCycle,
     activeCycleExamApplication,
     latestCertificate,
+    examReadiness,
     targetLevel: user.targetLevel,
     targetLockRank: user.targetLockRank,
   });

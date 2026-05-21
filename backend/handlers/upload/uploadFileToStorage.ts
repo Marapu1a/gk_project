@@ -37,13 +37,34 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
   }
 
   const category = String((req.query as any).category ?? 'misc').toLowerCase();
+  const targetUserIdRaw = (req.query as any).targetUserId;
+  const targetUserId =
+    typeof targetUserIdRaw === 'string' && targetUserIdRaw.trim()
+      ? targetUserIdRaw.trim()
+      : null;
+  const ownerUserId =
+    targetUserId && category === 'avatar' && user.role === 'ADMIN'
+      ? targetUserId
+      : user.userId;
 
   if (!/^[a-z0-9_-]+$/i.test(category))
     return reply.code(400).send({ error: 'Недопустимая категория файлов' });
 
+  if (targetUserId && (category !== 'avatar' || user.role !== 'ADMIN')) {
+    return reply.code(403).send({ error: 'Нельзя загружать файл за другого пользователя' });
+  }
+
+  if (targetUserId && category === 'avatar') {
+    const targetUser = await prisma.user.findUnique({
+      where: { id: ownerUserId },
+      select: { id: true },
+    });
+    if (!targetUser) return reply.code(404).send({ error: 'Пользователь не найден' });
+  }
+
   if (category === 'documents') {
     const count = await prisma.uploadedFile.count({
-      where: { userId: user.userId, fileId: { contains: '/documents/' } },
+      where: { userId: ownerUserId, fileId: { contains: '/documents/' } },
     });
     if (count >= MAX_FILES)
       return reply.code(400).send({ error: `Можно загрузить максимум ${MAX_FILES} документов` });
@@ -56,7 +77,7 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
     ? path.resolve(UPLOAD_DIR)
     : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
 
-  const dir = path.join(baseDir, String(user.userId), category);
+  const dir = path.join(baseDir, String(ownerUserId), category);
 
   if (category === 'avatar') {
     try {
@@ -64,7 +85,7 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
       await Promise.all(files.map(x => fs.unlink(path.join(dir, x)).catch(() => { })));
 
       await prisma.uploadedFile.deleteMany({
-        where: { userId: user.userId, fileId: { startsWith: `${user.userId}/avatar/` } },
+        where: { userId: ownerUserId, fileId: { startsWith: `${ownerUserId}/avatar/` } },
       });
     } catch { }
   }
@@ -72,10 +93,10 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, fileName), await data.toBuffer());
 
-  const fileId = `${user.userId}/${category}/${fileName}`;
+  const fileId = `${ownerUserId}/${category}/${fileName}`;
 
   const uploaded = await prisma.uploadedFile.create({
-    data: { userId: user.userId, fileId, name: data.filename, mimeType: data.mimetype },
+    data: { userId: ownerUserId, fileId, name: data.filename, mimeType: data.mimetype },
   });
 
   return reply.code(201).send(uploaded);

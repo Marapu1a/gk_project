@@ -51,6 +51,41 @@ export async function getUserDetails(id: string) {
       } | null;
     } | null;
 
+    examReadiness: {
+      ready: boolean;
+      missing: string[];
+      ceu: {
+        ready: boolean;
+        current: { ethics: number; cultDiver: number; supervision: number; general: number; total: number };
+        required: { ethics: number; cultDiver: number; supervision: number; general: number; total: number } | null;
+      };
+      supervision: {
+        ready: boolean;
+        current: { practice: number; supervision: number; mentor: number };
+        required: { practice: number; supervision: number; supervisor: number } | null;
+      };
+      documents: {
+        ready: boolean;
+        request: {
+          id: string;
+          status: string;
+          submittedAt: string;
+          reviewedAt: string | null;
+          adminUrl: string;
+        } | null;
+      };
+      payments: {
+        ready: boolean;
+        items: {
+          type: string;
+          label: string;
+          paid: boolean;
+          requestedAt: string | null;
+          confirmedAt: string | null;
+        }[];
+      };
+    } | null;
+
     latestCertificate: {
       id: string;
       number: string;

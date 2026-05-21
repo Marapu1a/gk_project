@@ -20,11 +20,15 @@ export function useToggleUserRole() {
         qc.setQueryData(['admin', 'user', userId], (old: any) =>
           old ? { ...old, role: updated.role } : old
         );
+        qc.setQueryData(['admin', 'user', 'details', userId], (old: any) =>
+          old ? { ...old, role: updated.role } : old
+        );
       }
 
       // на всякий — точный рефетч
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
       qc.invalidateQueries({ queryKey: ['admin', 'user', userId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
     },
   });
 }

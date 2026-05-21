@@ -118,6 +118,8 @@ export function AdminDocumentReviewDetails() {
     request.user?.groups
       ?.map((item: any) => item.group)
       ?.sort((a: any, b: any) => b.rank - a.rank)?.[0] ?? null;
+  const requestTitleName =
+    request.user?.fullName?.trim() || request.user?.email?.trim() || request.id.slice(0, 6);
 
   const canConfirmWithoutPayment =
     activeCycle?.type === 'RENEWAL' &&
@@ -205,7 +207,7 @@ export function AdminDocumentReviewDetails() {
         <header className="flex items-center justify-between gap-4 border-b border-[var(--color-blue-soft)] px-6 py-5">
           <div>
             <h1 className="text-[24px] font-extrabold leading-tight">
-              Заявка {request.id.slice(0, 6)}
+              Заявка {requestTitleName}
             </h1>
             <p className="mt-1 text-[13px] text-[#8D96B5]">
               Подана: {formatDate(request.submittedAt)}

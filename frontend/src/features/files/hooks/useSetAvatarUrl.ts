@@ -15,6 +15,7 @@ export function useSetAvatarUrl(userId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['me'] });
       qc.invalidateQueries({ queryKey: ['admin', 'user', userId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
       qc.invalidateQueries({ queryKey: ['registry'] });              // ← важно
       qc.invalidateQueries({ queryKey: ['registry-profile', userId] }); // если есть деталь
     },

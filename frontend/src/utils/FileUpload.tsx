@@ -25,6 +25,8 @@ interface FileUploadProps {
   helperText?: string;
   resetKey?: number | string | boolean;
   onError?: (err: unknown) => void;
+  targetUserId?: string;
+  persistKey?: string | false;
 }
 
 export function FileUpload({
@@ -36,6 +38,8 @@ export function FileUpload({
   helperText,
   resetKey,
   onError,
+  targetUserId,
+  persistKey,
 }: FileUploadProps) {
   const [file, setFile] = useState<UploadedFile | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -43,6 +47,7 @@ export function FileUpload({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null); // локальное превью для image/*
 
   const objectUrlRef = useRef<string | null>(null);
+  const storageKey = persistKey === false ? null : persistKey ?? `file:${category}`;
   const makeObjectPreview = (blob?: File | null) => {
     if (objectUrlRef.current) {
       URL.revokeObjectURL(objectUrlRef.current);
@@ -59,21 +64,23 @@ export function FileUpload({
 
   // подтягиваем сохранённый файл при монтировании
   useEffect(() => {
-    const saved = localStorage.getItem(`file:${category}`);
-    if (saved) {
-      try {
-        const parsed: UploadedFile = JSON.parse(saved);
-        setFile(parsed);
-        onChange(parsed);
-      } catch {
-        localStorage.removeItem(`file:${category}`);
+    if (storageKey) {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          const parsed: UploadedFile = JSON.parse(saved);
+          setFile(parsed);
+          onChange(parsed);
+        } catch {
+          localStorage.removeItem(storageKey);
+        }
       }
     }
     return () => {
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category]);
+  }, [storageKey]);
 
   // внешний сброс
   useEffect(() => {
@@ -81,10 +88,10 @@ export function FileUpload({
     setFile(null);
     setError(null);
     makeObjectPreview(null);
-    localStorage.removeItem(`file:${category}`);
+    if (storageKey) localStorage.removeItem(storageKey);
     onChange(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetKey]);
+  }, [resetKey, storageKey]);
 
   const handleDrop = async (accepted: File[]) => {
     if (!accepted.length || disabled) return;
@@ -122,10 +129,10 @@ export function FileUpload({
     setError(null);
     makeObjectPreview(f); // мгновенное локальное превью для изображений
     try {
-      const uploaded = await uploadFile(f, category);
+      const uploaded = await uploadFile(f, category, targetUserId);
       setFile(uploaded);
       onChange(uploaded);
-      localStorage.setItem(`file:${category}`, JSON.stringify(uploaded));
+      if (storageKey) localStorage.setItem(storageKey, JSON.stringify(uploaded));
     } catch (err) {
       // откатываем превью при реальном фейле
       makeObjectPreview(null);
@@ -144,7 +151,7 @@ export function FileUpload({
       await deleteFile(file.id);
       setFile(null);
       onChange(null);
-      localStorage.removeItem(`file:${category}`);
+      if (storageKey) localStorage.removeItem(storageKey);
     } catch (err) {
       setError('Ошибка удаления файла');
       onError?.(err);

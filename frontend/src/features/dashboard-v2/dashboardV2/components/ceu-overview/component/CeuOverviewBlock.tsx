@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { DashboardHelpTooltip } from '@/components/DashboardHelpTooltip';
 import { useCeuSummary } from '@/features/ceu/hooks/useCeuSummary';
 import type { Level } from '@/features/ceu/api/getCeuSummary';
 
@@ -19,16 +20,6 @@ const CATEGORIES: Array<{ key: CategoryKey; label: string }> = [
 function formatNumber(value: number | null | undefined) {
   if (value == null) return '0';
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
-function HelpBadge({ title }: { title: string }) {
-  return (
-    <span
-      className="dashboard-v2-help"
-      title={title}
-      aria-label={title}
-    />
-  );
 }
 
 function CeuMetricCard({
@@ -87,7 +78,7 @@ export function CeuOverviewBlock({ level = null, showActions = true }: CeuOvervi
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <h3 className="dashboard-v2-title">CEU-Баллы</h3>
-          <HelpBadge title="Подтвержденные CEU-баллы в текущем активном цикле." />
+          <DashboardHelpTooltip content="Подтвержденные CEU-баллы в текущем активном цикле." />
         </div>
 
         {showActions ? (

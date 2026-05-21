@@ -177,6 +177,8 @@ model User {
   confirmedCertificates    Certificate[]     @relation("CertificateConfirmedBy")
   reviewedDocumentFiles    DocumentReviewFile[] @relation("ReviewedDocumentFile")
   deletedDocumentFiles     DocumentReviewFile[] @relation("DeletedDocumentFile")
+  adminActionLogs          AdminUserActionLog[] @relation("AdminActionTarget")
+  performedAdminActions    AdminUserActionLog[] @relation("AdminActionActor")
 
   documentReviewRequests DocumentReviewRequest[]
 
@@ -195,6 +197,20 @@ model User {
 
   @@index([archivedAt])
   @@index([archiveRequestedAt])
+}
+
+model AdminUserActionLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("AdminActionTarget", fields: [userId], references: [id], onDelete: Cascade)
+  adminId   String?
+  admin     User?    @relation("AdminActionActor", fields: [adminId], references: [id], onDelete: SetNull)
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([adminId])
 }
 
 model UserConsent {

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { DashboardHelpTooltip } from '@/components/DashboardHelpTooltip';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
 
 function formatNumber(value: number | null | undefined) {
@@ -11,22 +12,12 @@ function getProgressPercent(current: number, required: number) {
   return Math.max(0, Math.min(100, (current / required) * 100));
 }
 
-function HelpBadge({ title }: { title: string }) {
-  return (
-    <span
-      className="dashboard-v2-help"
-      title={title}
-      aria-label={title}
-    />
-  );
-}
-
 function MetricCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-[14px] bg-[var(--color-blue-soft)] px-3 py-2.5">
       <div className="mb-1.5 flex items-start justify-between gap-2">
         <span className="dashboard-v2-metric-label text-[#1F305E]">{label}</span>
-        {hint ? <HelpBadge title={hint} /> : null}
+        {hint ? <DashboardHelpTooltip content={hint} align="right" /> : null}
       </div>
       <div className="dashboard-v2-metric-value text-[#1F305E]">{value}</div>
     </div>
@@ -151,7 +142,7 @@ export function HoursOverviewBlock({
         <div className="mb-3 flex items-start justify-between gap-4">
           <div className="flex items-center gap-2">
             <h3 className="dashboard-v2-title">Часы менторства</h3>
-            <HelpBadge title="Подтвержденные часы менторства в текущем активном цикле." />
+            <DashboardHelpTooltip content="Подтвержденные часы менторства в текущем активном цикле." />
           </div>
 
           {showActions ? (
@@ -227,7 +218,7 @@ export function HoursOverviewBlock({
             }`}
           >
             <h3 className="dashboard-v2-title">Часы практики</h3>
-            <HelpBadge title="Подтвержденные часы практики в текущем активном цикле." />
+            <DashboardHelpTooltip content="Подтвержденные часы практики в текущем активном цикле." />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)]">
@@ -262,7 +253,7 @@ export function HoursOverviewBlock({
           <div className="mb-3 flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
               <h3 className="dashboard-v2-title">Часы супервизии</h3>
-              <HelpBadge title="Распределите подтипы часов супервизии, чтобы увидеть разбивку по наблюдению и формату работы." />
+              <DashboardHelpTooltip content="Распределите подтипы часов супервизии, чтобы увидеть разбивку по наблюдению и формату работы." />
             </div>
 
             {showActions ? (

@@ -1,3 +1,4 @@
+import { DashboardHelpTooltip } from '@/components/DashboardHelpTooltip';
 import type { ReviewerCandidateDetailsResponse } from '../../api/getReviewerCandidateDetails';
 
 type CandidateHoursOverviewCardProps = {
@@ -15,16 +16,6 @@ function getProgressPercent(current: number, required: number) {
   return Math.max(0, Math.min(100, (current / required) * 100));
 }
 
-function HelpBadge({ title }: { title: string }) {
-  return (
-    <span
-      className="dashboard-v2-help"
-      title={title}
-      aria-label={title}
-    />
-  );
-}
-
 function MetricCard({
   label,
   value,
@@ -38,7 +29,7 @@ function MetricCard({
     <div className="rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-3">
       <div className="mb-2 flex items-start justify-between gap-2">
         <span className="dashboard-v2-metric-label text-[#1F305E]">{label}</span>
-        {hint ? <HelpBadge title={hint} /> : null}
+        {hint ? <DashboardHelpTooltip content={hint} align="right" /> : null}
       </div>
       <div className="dashboard-v2-metric-value-lg text-[#1F305E]">{value}</div>
     </div>
@@ -121,7 +112,7 @@ export function CandidateHoursOverviewCard({
       <section className="mt-5 overflow-hidden rounded-[22px] bg-white px-6 py-6 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
         <div className="mb-8 flex items-center gap-2">
           <h3 className="dashboard-v2-title">Часы менторства</h3>
-          <HelpBadge title="Подтвержденные часы менторства кандидата в активном цикле." />
+          <DashboardHelpTooltip content="Подтвержденные часы менторства кандидата в активном цикле." />
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[178px_minmax(0,1fr)]">
@@ -171,7 +162,7 @@ export function CandidateHoursOverviewCard({
         <div className="min-w-0">
           <div className="mb-8 flex items-center gap-2">
             <h3 className="dashboard-v2-title">Часы практики</h3>
-            <HelpBadge title="Подтвержденные часы практики кандидата в активном цикле." />
+            <DashboardHelpTooltip content="Подтвержденные часы практики кандидата в активном цикле." />
           </div>
 
           <div className="grid gap-5 sm:grid-cols-[178px_minmax(0,1fr)]">
@@ -202,7 +193,7 @@ export function CandidateHoursOverviewCard({
         >
           <div className="mb-8 flex items-center gap-2">
             <h3 className="dashboard-v2-title">Часы супервизии</h3>
-            <HelpBadge title="Распределение подтвержденных часов супервизии кандидата." />
+            <DashboardHelpTooltip content="Распределение подтвержденных часов супервизии кандидата." />
           </div>
 
           <div className="grid gap-5 lg:grid-cols-[178px_minmax(0,1fr)]">

@@ -484,19 +484,112 @@ select:disabled,
   line-height: 1;
 }
 
+.dashboard-v2-help-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
 /* Интерактивный знак вопроса для подсказок в карточках дашборда v2. */
 .dashboard-v2-help {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 18px;
   height: 18px;
   flex-shrink: 0;
+  padding: 0;
   cursor: pointer;
   border: 0;
+  appearance: none;
   background-color: transparent;
   background-image: url('/dashboard-v2/button_question.svg');
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
+}
+
+.dashboard-v2-help:focus-visible {
+  border-radius: 999px;
+  outline: 2px solid rgba(31, 48, 94, 0.28);
+  outline-offset: 3px;
+}
+
+.dashboard-v2-tooltip {
+  position: absolute;
+  top: calc(100% + 12px);
+  z-index: 60;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 13px 16px;
+  border-radius: 14px;
+  background: var(--color-white);
+  box-shadow: 0 10px 28px rgba(31, 48, 94, 0.18);
+  color: var(--color-blue-dark);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease,
+    visibility 0.14s ease;
+}
+
+.dashboard-v2-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--color-white);
+  transform: rotate(45deg);
+}
+
+.dashboard-v2-tooltip-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dashboard-v2-tooltip-center {
+  left: 50%;
+  transform: translate(-50%, -4px);
+}
+
+.dashboard-v2-tooltip-center::before {
+  left: 50%;
+  margin-left: -9px;
+}
+
+.dashboard-v2-tooltip-center.dashboard-v2-tooltip-visible {
+  transform: translate(-50%, 0);
+}
+
+.dashboard-v2-tooltip-left {
+  left: -2px;
+  transform: translateY(-4px);
+}
+
+.dashboard-v2-tooltip-left::before {
+  left: 10px;
+}
+
+.dashboard-v2-tooltip-left.dashboard-v2-tooltip-visible,
+.dashboard-v2-tooltip-right.dashboard-v2-tooltip-visible {
+  transform: translateY(0);
+}
+
+.dashboard-v2-tooltip-right {
+  right: -2px;
+  transform: translateY(-4px);
+}
+
+.dashboard-v2-tooltip-right::before {
+  right: 10px;
 }
 
 /* Верхние action-кнопки карточек v2: одинаковая высота, радиус и типографика. */

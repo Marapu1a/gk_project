@@ -1,4 +1,57 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { prisma } from '../../lib/prisma';
+
+const UPLOADS_PREFIX = '/uploads/';
+const UPLOAD_DIR = process.env.UPLOAD_DIR;
+
+function avatarFileIdFromUrl(avatarUrl: string | null | undefined): string | null {
+  if (typeof avatarUrl !== 'string') return null;
+
+  const value = avatarUrl.trim();
+  if (!value.startsWith(UPLOADS_PREFIX)) return null;
+
+  const fileId = value.slice(UPLOADS_PREFIX.length).trim();
+  return fileId || null;
+}
+
+function safeAvatarUrl(avatarUrl: string | null | undefined, existingAvatarFileIds: Set<string>) {
+  const fileId = avatarFileIdFromUrl(avatarUrl);
+  return fileId && existingAvatarFileIds.has(fileId) ? avatarUrl : null;
+}
+
+function uploadsBaseDir() {
+  return UPLOAD_DIR
+    ? path.resolve(UPLOAD_DIR)
+    : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+}
+
+async function physicalFileExists(fileId: string) {
+  try {
+    await fs.access(path.join(uploadsBaseDir(), fileId));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function existingAvatarFileIdsFromDbAndDisk(fileIds: string[]) {
+  if (!fileIds.length) return new Set<string>();
+
+  const files = await prisma.uploadedFile.findMany({
+    where: { fileId: { in: fileIds } },
+    select: { fileId: true },
+  });
+
+  const existingPairs = await Promise.all(
+    files.map(async (file) => ({
+      fileId: file.fileId,
+      exists: await physicalFileExists(file.fileId),
+    })),
+  );
+
+  return new Set(existingPairs.filter((file) => file.exists).map((file) => file.fileId));
+}
 
 /** Активный = expiresAt >= now(). Последний по issuedAt активный сертификат или null. */
 export async function getActiveCertificate(userId: string) {
@@ -80,6 +133,12 @@ export async function getRegistryList({
     },
   });
 
+  const avatarFileIds = Array.from(
+    new Set(users.map((u) => avatarFileIdFromUrl(u.avatarUrl)).filter(Boolean) as string[]),
+  );
+
+  const existingAvatarFileIds = await existingAvatarFileIdsFromDbAndDisk(avatarFileIds);
+
   const items = users.map((u) => {
     const top = u.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank)[0];
     const activeCert = u.certificates[0] || null;
@@ -91,7 +150,7 @@ export async function getRegistryList({
       fullNameLatin: u.fullNameLatin,
       country: u.country,
       city: u.city,
-      avatarUrl: u.avatarUrl,
+      avatarUrl: safeAvatarUrl(u.avatarUrl, existingAvatarFileIds),
       bio: u.bio,
       groupName: top?.name ?? null,
       groupRank: top?.rank ?? null,
@@ -141,6 +200,11 @@ export async function getRegistryProfile(userId: string) {
   if (!user) return null;
   if ((user as any).archivedAt) return null;
 
+  const avatarFileId = avatarFileIdFromUrl(user.avatarUrl);
+  const existingAvatarFileIds = await existingAvatarFileIdsFromDbAndDisk(
+    avatarFileId ? [avatarFileId] : [],
+  );
+
   const top = user.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank)[0];
   const c = user.certificates[0] || null;
 
@@ -150,7 +214,7 @@ export async function getRegistryProfile(userId: string) {
     fullNameLatin: user.fullNameLatin,
     country: user.country,
     city: user.city,
-    avatarUrl: user.avatarUrl,
+    avatarUrl: safeAvatarUrl(user.avatarUrl, existingAvatarFileIds),
     createdAt: user.createdAt,
     bio: user.bio,
     groupName: top?.name ?? null,

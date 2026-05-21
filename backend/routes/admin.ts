@@ -9,6 +9,7 @@ import { updateUserPasswordAdminHandler } from '../handlers/admin/updateUserPass
 import { getUsersExportXlsxHandler } from "../handlers/admin/getUsersExportXlsxHandler";
 import { updateUserVisibilityHandler } from '../handlers/admin/updateUserVisibility';
 import { archiveUserHandler, restoreUserHandler } from '../handlers/admin/archiveUserHandler';
+import { getUserActionLogHandler } from '../handlers/admin/getUserActionLogHandler';
 
 // CEU god-mode
 import { getUserCEUMatrixAdminHandler } from '../handlers/admin/ceu/getUserCEUMatrixAdminHandler';
@@ -32,6 +33,7 @@ import { updateTargetLevelHandler } from '../handlers/admin/updateTargetLevel';
 export async function usersRoutes(app: FastifyInstance) {
   app.patch('/admin/users/:id/role', { preHandler: verifyToken }, toggleUserRoleHandler);
   app.get('/admin/users/:id/details', { preHandler: verifyToken }, getUserFullDetailsHandler);
+  app.get('/admin/users/:id/action-log', { preHandler: verifyToken }, getUserActionLogHandler);
   app.get('/admin/users', { preHandler: verifyToken }, getUsersHandler);
   app.patch('/admin/users/:id', { preHandler: verifyToken }, updateUserBasicInfoHandler);
   app.patch('/admin/users/:id/visibility', { preHandler: verifyToken }, updateUserVisibilityHandler);

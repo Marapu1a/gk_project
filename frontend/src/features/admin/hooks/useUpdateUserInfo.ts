@@ -7,6 +7,7 @@ export function useUpdateUserInfo(userId: string) {
     mutationFn: (data: UpdateUserInfoPayload) => updateUserInfo(userId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'user', userId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
     },
   });

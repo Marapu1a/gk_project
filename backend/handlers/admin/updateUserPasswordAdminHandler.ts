@@ -3,6 +3,7 @@ import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
+import { logAdminUserAction } from '../../utils/adminUserActionLog';
 
 interface Route extends RouteGenericInterface {
   Params: { id: string };
@@ -41,6 +42,12 @@ export async function updateUserPasswordAdminHandler(
     data: {
       password: hash,
     },
+  });
+
+  await logAdminUserAction({
+    userId: id,
+    adminId: req.user.userId,
+    action: 'Сменил пароль',
   });
 
   return reply.send({ ok: true });

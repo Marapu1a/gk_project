@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { logAdminUserAction } from '../../utils/adminUserActionLog';
 
 type Params = { id: string };
 type Body = { reason?: string };
@@ -52,6 +53,13 @@ export async function archiveUserHandler(req: FastifyRequest, reply: FastifyRepl
     },
   });
 
+  await logAdminUserAction({
+    userId: id,
+    adminId: actorId,
+    action: 'Архивировал профиль',
+    details: reason,
+  });
+
   return reply.send({ success: true, user: updated });
 }
 
@@ -85,6 +93,12 @@ export async function restoreUserHandler(req: FastifyRequest, reply: FastifyRepl
       archiveRequestedAt: true,
       archiveRequestReason: true,
     },
+  });
+
+  await logAdminUserAction({
+    userId: id,
+    adminId: req.user?.userId,
+    action: 'Восстановил профиль из архива',
   });
 
   return reply.send({ success: true, user: updated });
