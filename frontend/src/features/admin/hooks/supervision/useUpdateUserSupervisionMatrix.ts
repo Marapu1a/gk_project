@@ -13,6 +13,8 @@ export function useUpdateUserSupervisionMatrix(userId: string) {
     mutationFn: (data) => updateUserSupervisionMatrix(userId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'supervision-matrix', userId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'hours-review'] });
     },
   });
 }

@@ -21,6 +21,13 @@ interface Route extends RouteGenericInterface {
 }
 
 type SupervisionSummary = { practice: number; supervision: number; supervisor: number };
+type PracticeAgg = { legacy: number; implementing: number; programming: number; supervisor: number };
+type Distribution = {
+  directIndividual: number;
+  directGroup: number;
+  nonObservingIndividual: number;
+  nonObservingGroup: number;
+};
 
 export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<Route>, reply: FastifyReply) {
   if (req.user.role !== 'ADMIN') return reply.code(403).send({ error: 'Только администратор' });
@@ -49,14 +56,39 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
   if (!activeCycle) return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
 
   // ===== matrix aggregation (ТОЛЬКО ACTIVE cycle) =====
-  const grouped = await prisma.supervisionHour.groupBy({
-    by: ['type', 'status'],
-    where: {
-      record: { userId, cycleId: activeCycle.id },
-      status: { in: STATUSES },
-    },
-    _sum: { value: true },
-  });
+  const [grouped, confirmedHours, distributionRecords] = await Promise.all([
+    prisma.supervisionHour.groupBy({
+      by: ['type', 'status'],
+      where: {
+        record: { userId, cycleId: activeCycle.id },
+        status: { in: STATUSES },
+      },
+      _sum: { value: true },
+    }),
+    prisma.supervisionHour.findMany({
+      where: {
+        record: { userId, cycleId: activeCycle.id },
+        status: RecordStatus.CONFIRMED,
+      },
+      select: { type: true, value: true },
+    }),
+    prisma.supervisionRecord.findMany({
+      where: {
+        userId,
+        cycleId: activeCycle.id,
+        hours: {
+          some: {},
+          every: { status: RecordStatus.CONFIRMED },
+        },
+      },
+      select: {
+        draftDirectIndividual: true,
+        draftDirectGroup: true,
+        draftNonObservingIndividual: true,
+        draftNonObservingGroup: true,
+      },
+    }),
+  ]);
 
   const matrix = matrixEmpty();
   for (const g of grouped) {
@@ -81,6 +113,24 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
   };
 
   const isBasicSupervisor = current === 'Супервизор';
+  const confirmedAgg = aggregate(confirmedHours);
+  const recordDistribution = roundDistribution(
+    distributionRecords.reduce<Distribution>(
+      (acc, record) => ({
+        directIndividual: acc.directIndividual + (record.draftDirectIndividual ?? 0),
+        directGroup: acc.directGroup + (record.draftDirectGroup ?? 0),
+        nonObservingIndividual:
+          acc.nonObservingIndividual + (record.draftNonObservingIndividual ?? 0),
+        nonObservingGroup: acc.nonObservingGroup + (record.draftNonObservingGroup ?? 0),
+      }),
+      {
+        directIndividual: 0,
+        directGroup: 0,
+        nonObservingIndividual: 0,
+        nonObservingGroup: 0,
+      },
+    ),
+  );
 
   // если по каким-то причинам required нет — отдаём только статистику
   if (!current || !targetRu || !required) {
@@ -94,6 +144,8 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
         usable: usableRaw,
         pending: pendingRaw,
         mentor: isBasicSupervisor ? mentor(usableRaw, pendingRaw) : null,
+        practiceBreakdown: practiceBreakdown(confirmedAgg, 0),
+        supervisionBreakdown: supervisionBreakdown(0, recordDistribution),
       },
     });
   }
@@ -173,6 +225,8 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
       pending,
       bonus: bonusPractice > 0 ? { practice: bonusPractice, fromCycleId: bonusSourceCycleId } : null,
       mentor: isBasicSupervisor ? mentor(usableRaw, pendingRaw) : null,
+      practiceBreakdown: practiceBreakdown(confirmedAgg, bonusPractice),
+      supervisionBreakdown: supervisionBreakdown(usable.supervision, recordDistribution),
     },
   });
 }
@@ -210,6 +264,60 @@ function matrixEmpty(): Record<Level, Record<RecordStatus, number>> {
 
 function emptySummary(): SupervisionSummary {
   return { practice: 0, supervision: 0, supervisor: 0 };
+}
+
+function aggregate(rows: Array<{ type: PracticeLevel; value: number }>): PracticeAgg {
+  const result: PracticeAgg = { legacy: 0, implementing: 0, programming: 0, supervisor: 0 };
+
+  for (const row of rows) {
+    if (row.type === PracticeLevel.PRACTICE) result.legacy += row.value;
+    if (row.type === PracticeLevel.IMPLEMENTING) result.implementing += row.value;
+    if (row.type === PracticeLevel.PROGRAMMING) result.programming += row.value;
+    if (row.type === PracticeLevel.SUPERVISOR) result.supervisor += row.value;
+  }
+
+  return result;
+}
+
+function round2(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function roundDistribution(distribution: Distribution): Distribution {
+  return {
+    directIndividual: round2(distribution.directIndividual),
+    directGroup: round2(distribution.directGroup),
+    nonObservingIndividual: round2(distribution.nonObservingIndividual),
+    nonObservingGroup: round2(distribution.nonObservingGroup),
+  };
+}
+
+function practiceBreakdown(agg: PracticeAgg, bonus: number) {
+  return {
+    total: round2(agg.legacy + agg.implementing + agg.programming + bonus),
+    legacy: round2(agg.legacy),
+    implementing: round2(agg.implementing),
+    programming: round2(agg.programming),
+    bonus: round2(bonus),
+  };
+}
+
+function supervisionBreakdown(total: number, distribution: Distribution) {
+  const direct = round2(distribution.directIndividual + distribution.directGroup);
+  const nonObserving = round2(distribution.nonObservingIndividual + distribution.nonObservingGroup);
+  const distributedTotal = round2(direct + nonObserving);
+
+  return {
+    total: round2(total),
+    direct,
+    nonObserving,
+    directIndividual: distribution.directIndividual,
+    directGroup: distribution.directGroup,
+    nonObservingIndividual: distribution.nonObservingIndividual,
+    nonObservingGroup: distribution.nonObservingGroup,
+    distributedTotal,
+    remaining: Math.max(0, round2(total - distributedTotal)),
+  };
 }
 
 function mentor(u: SupervisionSummary, p: SupervisionSummary) {

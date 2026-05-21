@@ -1,195 +1,540 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { useUserSupervisionMatrix } from '../hooks/supervision/useUserSupervisionMatrix';
 import { useUpdateUserSupervisionMatrix } from '../hooks/supervision/useUpdateUserSupervisionMatrix';
-import type {
-  SupervisionLevel,
-  SupervisionStatus,
-} from '../api/supervision/getUserSupervisionMatrix';
-import { toast } from 'sonner';
 
 type Props = {
   userId: string;
-  isSupervisor: boolean;
+  activeGroupName: string | null;
 };
 
-const LEVEL_LABELS: Record<SupervisionLevel, string> = {
-  PRACTICE: 'Практика',
-  SUPERVISION: 'Супервизия',
-  SUPERVISOR: 'Менторские',
-};
+const hoursInputPattern = /^\d*(?:[.]\d{0,2})?$/;
 
-const STATUS_LABELS: Record<SupervisionStatus, string> = {
-  CONFIRMED: 'Подтверждено',
-  UNCONFIRMED: 'На проверке',
-};
+function round2(value: number) {
+  return Math.round(value * 100) / 100;
+}
 
-export default function UserSupervisionMatrix({ userId, isSupervisor }: Props) {
+function formatNumber(value: number | null | undefined) {
+  if (value == null) return '0';
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function sanitizeHoursInput(rawValue: string) {
+  const value = rawValue.replace(/\s/g, '').replace(',', '.');
+  return hoursInputPattern.test(value) ? value : null;
+}
+
+function normalizeHoursInput(value: string) {
+  const sanitized = sanitizeHoursInput(value);
+  if (!sanitized || sanitized === '.') return '0';
+
+  const parsed = Number(sanitized);
+  if (!Number.isFinite(parsed) || parsed < 0) return '0';
+
+  return String(round2(parsed));
+}
+
+function parseHours(value: string) {
+  const normalized = value.replace(',', '.').trim();
+  if (!normalized) return 0;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+}
+
+function getPracticeRuleError(implementingValue: number, programmingValue: number) {
+  const total = implementingValue + programmingValue;
+  if (total <= 0) return null;
+
+  const minEachType = total * 0.4;
+  if (implementingValue < minEachType || programmingValue < minEachType) {
+    return 'Часы полевой практики и работы с информацией должны быть в пропорции 40/40. Оставшиеся 20% можно отдать любому из двух типов.';
+  }
+
+  return null;
+}
+
+function getDistributionRuleError(params: {
+  expectedSupervision: number;
+  distributionTotal: number;
+  groupTotal: number;
+  distributionRemaining: number;
+}) {
+  const { expectedSupervision, distributionTotal, groupTotal, distributionRemaining } = params;
+
+  if (expectedSupervision <= 0) {
+    if (distributionTotal > 0) {
+      return 'Пока расчетная супервизия равна 0, распределять часы супервизии нельзя.';
+    }
+    return null;
+  }
+
+  if (Math.abs(distributionRemaining) >= 0.01) {
+    return 'Сумма распределенных часов должна совпадать с расчетной супервизией.';
+  }
+
+  if (groupTotal > expectedSupervision * 0.5) {
+    return 'Часов в группе может быть не более 50% от всех часов супервизии.';
+  }
+
+  return null;
+}
+
+export default function UserSupervisionMatrix({ userId, activeGroupName }: Props) {
   const { data, isLoading, error } = useUserSupervisionMatrix(userId);
   const mutation = useUpdateUserSupervisionMatrix(userId);
+  const { confirm } = useConfirm();
 
-  const [editing, setEditing] = useState<{
-    level: SupervisionLevel;
-    status: SupervisionStatus;
-  } | null>(null);
-  const [value, setValue] = useState<string>('');
+  const [practiceLocked, setPracticeLocked] = useState(false);
+  const [implementing, setImplementing] = useState('0');
+  const [programming, setProgramming] = useState('0');
+  const [directIndividual, setDirectIndividual] = useState('0');
+  const [directGroup, setDirectGroup] = useState('0');
+  const [nonObservingIndividual, setNonObservingIndividual] = useState('0');
+  const [nonObservingGroup, setNonObservingGroup] = useState('0');
+  const [mentorshipHours, setMentorshipHours] = useState('0');
 
-  if (isLoading) return <p className="text-blue-dark">Загрузка часов…</p>;
-  if (error || !data) return <p className="text-error">Ошибка загрузки часов</p>;
+  const required = data?.summary.required ?? null;
+  const mentor = data?.summary.mentor ?? null;
+  const isMentorshipMode = Boolean(mentor && mentor.required > 0 && activeGroupName === 'Супервизор');
+  const canEditPractice = Boolean(required && (required.practice > 0 || required.supervision > 0));
 
-  const displayMatrix: Record<SupervisionLevel, Record<SupervisionStatus, number>> = {
-    PRACTICE: {
-      CONFIRMED: data.summary.usable.practice,
-      UNCONFIRMED: data.summary.pending.practice,
-    },
-    SUPERVISION: {
-      CONFIRMED: data.summary.usable.supervision,
-      UNCONFIRMED: data.summary.pending.supervision,
-    },
-    SUPERVISOR: {
-      CONFIRMED: data.summary.usable.supervisor,
-      UNCONFIRMED: data.summary.pending.supervisor,
-    },
-  };
+  useEffect(() => {
+    if (!data) return;
 
-  const requiredByLevel: Partial<Record<SupervisionLevel, number | null>> = {
-    PRACTICE: data.summary.required?.practice ?? null,
-    SUPERVISION: data.summary.required?.supervision ?? null,
-    SUPERVISOR: data.summary.mentor?.required ?? null,
-  };
+    const breakdown = data.summary.practiceBreakdown;
+    const distribution = data.summary.supervisionBreakdown;
 
-  const formatDisplayValue = (level: SupervisionLevel, status: SupervisionStatus, value: number) => {
-    if (status !== 'CONFIRMED') return String(value);
+    setImplementing(formatNumber((breakdown?.implementing ?? 0) + (breakdown?.legacy ?? 0)));
+    setProgramming(formatNumber(breakdown?.programming ?? 0));
+    setDirectIndividual(formatNumber(distribution?.directIndividual ?? 0));
+    setDirectGroup(formatNumber(distribution?.directGroup ?? 0));
+    setNonObservingIndividual(formatNumber(distribution?.nonObservingIndividual ?? 0));
+    setNonObservingGroup(formatNumber(distribution?.nonObservingGroup ?? 0));
+    setMentorshipHours(formatNumber(data.summary.mentor?.total ?? data.summary.usable.supervisor ?? 0));
+    setPracticeLocked(false);
+  }, [data]);
 
-    const required = requiredByLevel[level];
-    if (required == null || required <= 0) return String(value);
+  const values = useMemo(() => {
+    const implementingValue = parseHours(implementing);
+    const programmingValue = parseHours(programming);
+    const practiceTotalWithoutBonus = round2(implementingValue + programmingValue);
+    const bonusPractice = data?.summary.practiceBreakdown?.bonus ?? data?.summary.bonus?.practice ?? 0;
+    const practiceTotal = round2(practiceTotalWithoutBonus + bonusPractice);
+    const ratio =
+      required && required.practice > 0 && required.supervision > 0
+        ? required.practice / required.supervision
+        : null;
+    const expectedSupervision = ratio ? Math.floor(practiceTotal / ratio) : 0;
 
-    return `${value} / ${required}`;
-  };
+    const distribution = {
+      directIndividual: parseHours(directIndividual),
+      directGroup: parseHours(directGroup),
+      nonObservingIndividual: parseHours(nonObservingIndividual),
+      nonObservingGroup: parseHours(nonObservingGroup),
+    };
+    const directTotal = round2(distribution.directIndividual + distribution.directGroup);
+    const nonObservingTotal = round2(
+      distribution.nonObservingIndividual + distribution.nonObservingGroup,
+    );
+    const distributionTotal = round2(directTotal + nonObservingTotal);
+    const groupTotal = round2(distribution.directGroup + distribution.nonObservingGroup);
+    const distributionRemaining = round2(expectedSupervision - distributionTotal);
 
-  const isReadonlyLevel = (level: SupervisionLevel) => {
-    if (level === 'SUPERVISION') return true;
-    if (level === 'PRACTICE' && isSupervisor) return true;
-    if (level === 'SUPERVISOR' && !isSupervisor) return true;
-    return false;
-  };
+    return {
+      implementingValue,
+      programmingValue,
+      practiceTotalWithoutBonus,
+      practiceTotal,
+      bonusPractice,
+      expectedSupervision,
+      distribution,
+      directTotal,
+      nonObservingTotal,
+      distributionTotal,
+      groupTotal,
+      distributionRemaining,
+      mentorshipValue: parseHours(mentorshipHours),
+    };
+  }, [
+    data?.summary.bonus?.practice,
+    data?.summary.practiceBreakdown?.bonus,
+    directGroup,
+    directIndividual,
+    implementing,
+    mentorshipHours,
+    nonObservingGroup,
+    nonObservingIndividual,
+    programming,
+    required,
+  ]);
 
-  const startEdit = (level: SupervisionLevel, status: SupervisionStatus, current: number) => {
-    if (status !== 'CONFIRMED') return;
-    if (isReadonlyLevel(level)) return;
+  const practiceRuleError = getPracticeRuleError(values.implementingValue, values.programmingValue);
+  const distributionRuleError = getDistributionRuleError({
+    expectedSupervision: values.expectedSupervision,
+    distributionTotal: values.distributionTotal,
+    groupTotal: values.groupTotal,
+    distributionRemaining: values.distributionRemaining,
+  });
 
-    setEditing({ level, status });
-    setValue(String(current));
-  };
-
-  const cancelEdit = () => {
-    setEditing(null);
-    setValue('');
-  };
-
-  const saveEdit = async () => {
-    if (!editing) return;
-
-    const next = parseFloat(value.replace(',', '.'));
-    if (Number.isNaN(next) || next < 0) {
-      toast.error('Введите корректное число');
+  const lockPractice = () => {
+    if (values.practiceTotalWithoutBonus <= 0) {
+      toast.error('Укажите часы полевой практики или работы с информацией.');
       return;
     }
 
+    if (practiceRuleError) {
+      toast.error(practiceRuleError);
+      return;
+    }
+
+    setPracticeLocked(true);
+  };
+
+  const savePractice = async (notifyUser: boolean) => {
+    if (!practiceLocked) {
+      toast.error('Сначала подтвердите левую часть с часами практики');
+      return;
+    }
+
+    if (practiceRuleError) {
+      toast.error(practiceRuleError);
+      return;
+    }
+
+    if (distributionRuleError) {
+      toast.error(distributionRuleError);
+      return;
+    }
+
+    const ok = await confirm({
+      title: 'Сохранить часы?',
+      message: notifyUser
+        ? 'Сохранить корректировку часов и отправить пользователю уведомление?'
+        : 'Сохранить корректировку часов без уведомления пользователя?',
+      confirmLabel: notifyUser ? 'Сохранить и уведомить' : 'Сохранить тихо',
+      variant: notifyUser ? 'primary' : 'danger',
+    });
+    if (!ok) return;
+
     try {
       await mutation.mutateAsync({
-        level: editing.level,
-        status: editing.status,
-        value: next,
+        mode: 'PRACTICE',
+        implementing: values.implementingValue,
+        programming: values.programmingValue,
+        distribution: values.distribution,
+        notifyUser,
       });
-      toast.success('Часы обновлены');
-      cancelEdit();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Ошибка обновления');
+      toast.success(notifyUser ? 'Часы сохранены, уведомление отправлено' : 'Часы сохранены тихо');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Не удалось сохранить часы');
     }
   };
 
+  const saveMentorship = async (notifyUser: boolean) => {
+    if (values.mentorshipValue < 0) {
+      toast.error('Введите корректное количество часов менторства');
+      return;
+    }
+
+    const ok = await confirm({
+      title: 'Сохранить менторство?',
+      message: notifyUser
+        ? 'Сохранить часы менторства и отправить пользователю уведомление?'
+        : 'Сохранить часы менторства без уведомления пользователя?',
+      confirmLabel: notifyUser ? 'Сохранить и уведомить' : 'Сохранить тихо',
+      variant: notifyUser ? 'primary' : 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      await mutation.mutateAsync({
+        mode: 'MENTORSHIP',
+        value: values.mentorshipValue,
+        notifyUser,
+      });
+      toast.success(
+        notifyUser ? 'Часы менторства сохранены, уведомление отправлено' : 'Часы менторства сохранены тихо',
+      );
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Не удалось сохранить часы менторства');
+    }
+  };
+
+  if (isLoading) return <p className="dashboard-v2-text text-[#6B7894]">Загрузка часов...</p>;
+  if (error || !data) {
+    return (
+      <div className="rounded-[12px] bg-[rgba(255,83,100,0.08)] px-4 py-3 dashboard-v2-text text-[var(--color-danger)]">
+        Не удалось загрузить часы. Возможно, у пользователя нет активного цикла.
+      </div>
+    );
+  }
+
+  if (isMentorshipMode) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h2 className="dashboard-v2-title">Корректировка часов менторства</h2>
+          <p className="dashboard-v2-caption mt-1 text-[#6B7894]">
+            Ручная правка подтвержденных часов менторства активного цикла.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <MetricCard label="Требуется" value={mentor?.required ?? 0} />
+          <label className="flex min-h-[86px] items-center justify-between gap-5 rounded-[10px] bg-[var(--color-blue-soft)] px-5 py-4">
+            <span className="min-w-0 text-[16px] font-extrabold leading-[1.2] text-[#1F305E]">
+              Подтверждено
+            </span>
+            <NumberInput
+              value={mentorshipHours}
+              onChange={setMentorshipHours}
+              disabled={mutation.isPending || (mentor?.required ?? 0) <= 0}
+              large
+            />
+          </label>
+        </div>
+
+        <SaveActions
+          disabled={mutation.isPending || (mentor?.required ?? 0) <= 0}
+          onSilent={() => void saveMentorship(false)}
+          onNotify={() => void saveMentorship(true)}
+        />
+      </div>
+    );
+  }
+
+  if (!canEditPractice) {
+    return (
+      <div className="rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-3 dashboard-v2-text text-[#1F305E]">
+        Для текущего цикла нет часов практики или супервизии, которые нужно корректировать.
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-blue-dark">Часы</h2>
+    <div className="space-y-5">
+      <div>
+        <h2 className="dashboard-v2-title">Корректировка часов практики и супервизии</h2>
+        <p className="dashboard-v2-caption mt-1 text-[#6B7894]">
+          Сначала заполните и подтвердите практику, затем распределите рассчитанные часы супервизии.
+        </p>
+      </div>
 
-      <div
-        className="overflow-x-auto rounded-2xl border header-shadow"
-        style={{ borderColor: 'var(--color-green-light)' }}
-      >
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-blue-dark" style={{ background: 'var(--color-blue-soft)' }}>
-              <th className="py-2 px-3 text-left">Категория</th>
-              {(Object.keys(STATUS_LABELS) as SupervisionStatus[]).map((st) => (
-                <th key={st} className="py-2 px-3 text-left">
-                  {STATUS_LABELS[st]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {(Object.keys(LEVEL_LABELS) as SupervisionLevel[]).map((lvl) => (
-              <tr
-                key={lvl}
-                className="border-t"
-                style={{ borderColor: 'var(--color-green-light)' }}
-              >
-                <td className="py-2 px-3 font-medium">{LEVEL_LABELS[lvl]}</td>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <section className={practiceLocked ? 'space-y-4 opacity-70' : 'space-y-4'}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <MetricCard
+              label="Всего практики"
+              value={values.practiceTotal}
+              required={required?.practice ?? 0}
+              note={values.bonusPractice > 0 ? `с учетом бонуса ${formatNumber(values.bonusPractice)}` : undefined}
+            />
+            <MetricCard
+              label="Расчетная супервизия"
+              value={values.expectedSupervision}
+              required={required?.supervision ?? 0}
+            />
+          </div>
 
-                {(Object.keys(STATUS_LABELS) as SupervisionStatus[]).map((st) => {
-                  const current = displayMatrix[lvl][st];
-                  const rawCurrent = data.matrix[lvl][st];
-                  const isEditing = editing?.level === lvl && editing?.status === st;
-                  const isEditable = st === 'CONFIRMED' && !isReadonlyLevel(lvl);
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Полевая практика">
+              <NumberInput
+                value={implementing}
+                onChange={setImplementing}
+                disabled={practiceLocked || mutation.isPending}
+              />
+            </Field>
+            <Field label="Работа с информацией">
+              <NumberInput
+                value={programming}
+                onChange={setProgramming}
+                disabled={practiceLocked || mutation.isPending}
+              />
+            </Field>
+          </div>
 
-                  return (
-                    <td key={st} className="py-2 px-3">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            className="input w-24"
-                            value={value}
-                            onChange={(e) => setValue(e.target.value)}
-                            disabled={mutation.isPending}
-                          />
-                          <button
-                            className="btn btn-brand"
-                            onClick={saveEdit}
-                            disabled={mutation.isPending}
-                          >
-                            Сохранить
-                          </button>
-                          <button
-                            className="btn"
-                            onClick={cancelEdit}
-                            disabled={mutation.isPending}
-                          >
-                            Отмена
-                          </button>
-                        </div>
-                      ) : isEditable ? (
-                        <button
-                          className="btn btn-ghost"
-                          onClick={() => startEdit(lvl, st, rawCurrent)}
-                          disabled={mutation.isPending}
-                          style={{
-                            fontWeight: 600,
-                            borderBottom: '1px dashed var(--color-blue-dark)',
-                          }}
-                        >
-                          {formatDisplayValue(lvl, st, current)}
-                        </button>
-                      ) : (
-                        <span>{formatDisplayValue(lvl, st, current)}</span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          {practiceRuleError ? (
+            <p className="dashboard-v2-caption font-semibold text-[var(--color-danger)]">
+              {practiceRuleError}
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={practiceLocked ? () => setPracticeLocked(false) : lockPractice}
+            className="btn dashboard-v2-action dashboard-v2-action-secondary"
+            disabled={mutation.isPending}
+          >
+            {practiceLocked ? 'Изменить практику' : 'Подтвердить практику'}
+          </button>
+        </section>
+
+        <section className={!practiceLocked ? 'pointer-events-none space-y-4 opacity-50' : 'space-y-4'}>
+          <div className="rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-3 dashboard-v2-text text-[#1F305E]">
+            Распределите <strong>{formatNumber(values.expectedSupervision)}</strong> часов
+            супервизии. Осталось:{' '}
+            <strong className={values.distributionRemaining === 0 ? undefined : 'text-[var(--color-danger)]'}>
+              {formatNumber(values.distributionRemaining)}
+            </strong>
+            .
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-4 sm:border-r sm:border-[#DCE3EF] sm:pr-4">
+              <Field label="С наблюдением">
+                <input className="input-design h-[32px]" value={formatNumber(values.directTotal)} disabled />
+              </Field>
+              <Field label="Индивидуально">
+                <NumberInput value={directIndividual} onChange={setDirectIndividual} disabled={mutation.isPending} />
+              </Field>
+              <Field label="В группе">
+                <NumberInput value={directGroup} onChange={setDirectGroup} disabled={mutation.isPending} />
+              </Field>
+            </div>
+
+            <div className="space-y-4">
+              <Field label="Без наблюдения">
+                <input className="input-design h-[32px]" value={formatNumber(values.nonObservingTotal)} disabled />
+              </Field>
+              <Field label="Индивидуально">
+                <NumberInput
+                  value={nonObservingIndividual}
+                  onChange={setNonObservingIndividual}
+                  disabled={mutation.isPending}
+                />
+              </Field>
+              <Field label="В группе">
+                <NumberInput value={nonObservingGroup} onChange={setNonObservingGroup} disabled={mutation.isPending} />
+              </Field>
+            </div>
+          </div>
+
+          {distributionRuleError ? (
+            <div className="rounded-[10px] bg-[#FFF5F6] px-4 py-3 dashboard-v2-caption text-[var(--color-danger)]">
+              {distributionRuleError}
+            </div>
+          ) : null}
+        </section>
+      </div>
+
+      <SaveActions
+        disabled={mutation.isPending || !practiceLocked || Boolean(practiceRuleError || distributionRuleError)}
+        onSilent={() => void savePractice(false)}
+        onNotify={() => void savePractice(true)}
+      />
+    </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block text-[13px] font-semibold text-[#1F305E]">
+      <span className="mb-1 block">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function NumberInput({
+  value,
+  onChange,
+  disabled,
+  large = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  large?: boolean;
+}) {
+  return (
+    <input
+      className={
+        large
+          ? 'h-[38px] w-[96px] rounded-[10px] border border-[#B8C4D8] bg-white px-2 text-right text-[24px] font-extrabold leading-none text-[#1F305E] outline-none transition focus:border-[var(--color-blue-dark)] focus:shadow-[0_0_0_2px_rgba(31,48,94,0.12)] disabled:cursor-not-allowed disabled:border-[#D7DCE7] disabled:bg-[#EEF0F4] disabled:text-[#8D96B5]'
+          : 'input-design h-[32px]'
+      }
+      inputMode="decimal"
+      value={value}
+      onFocus={() => {
+        if (value === '0') onChange('');
+      }}
+      onBlur={() => onChange(normalizeHoursInput(value))}
+      onChange={(event) => {
+        const nextValue = sanitizeHoursInput(event.target.value);
+        if (nextValue !== null) onChange(nextValue);
+      }}
+      disabled={disabled}
+    />
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  required,
+  note,
+}: {
+  label: string;
+  value: number;
+  required?: number;
+  note?: string;
+}) {
+  return (
+    <div className="flex min-h-[86px] items-center justify-between gap-5 rounded-[10px] bg-[var(--color-blue-soft)] px-5 py-4">
+      <span className="min-w-0 text-[16px] font-extrabold leading-[1.2] text-[#1F305E]">
+        {label}
+        {note ? <span className="mt-1 block text-[12px] font-semibold text-[#7F8AA3]">{note}</span> : null}
+      </span>
+      <span className="shrink-0 whitespace-nowrap text-[26px] font-extrabold leading-none text-[#1F305E]">
+        {formatNumber(value)}
+        {required != null ? (
+          <span className="ml-1 text-[14px] font-semibold text-[#7F8AA3]">
+            /{formatNumber(required)}
+          </span>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
+function SaveActions({
+  disabled,
+  onSilent,
+  onNotify,
+}: {
+  disabled: boolean;
+  onSilent: () => void;
+  onNotify: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-[#DCE8EC] pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="dashboard-v2-caption text-[#6B7894]">
+        Сохранение заменяет подтвержденные часы активного цикла служебной корректировкой.
+      </p>
+      <div className="flex flex-wrap justify-end gap-3">
+        <button
+          type="button"
+          className="btn dashboard-v2-action dashboard-v2-action-secondary"
+          disabled={disabled}
+          onClick={onSilent}
+        >
+          Сохранить тихо
+        </button>
+        <button
+          type="button"
+          className="btn dashboard-v2-action dashboard-v2-action-primary"
+          disabled={disabled}
+          onClick={onNotify}
+        >
+          Сохранить и уведомить
+        </button>
       </div>
     </div>
   );

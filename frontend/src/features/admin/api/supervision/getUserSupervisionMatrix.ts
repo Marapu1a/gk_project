@@ -11,6 +11,24 @@ export type AdminSupervisionSummary = {
   pending: { practice: number; supervision: number; supervisor: number };
   mentor: { total: number; required: number; percent: number; pending: number } | null;
   bonus?: { practice: number; fromCycleId: string | null } | null;
+  practiceBreakdown?: {
+    total: number;
+    legacy: number;
+    implementing: number;
+    programming: number;
+    bonus: number;
+  };
+  supervisionBreakdown?: {
+    total: number;
+    direct: number;
+    nonObserving: number;
+    directIndividual: number;
+    directGroup: number;
+    nonObservingIndividual: number;
+    nonObservingGroup: number;
+    distributedTotal: number;
+    remaining: number;
+  };
 };
 
 export type SupervisionMatrixResponse = {

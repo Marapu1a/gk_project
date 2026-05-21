@@ -6,6 +6,21 @@ export type UpdateUserSupervisionMatrixBody = {
   level: SupervisionLevel; // PRACTICE | SUPERVISION | SUPERVISOR
   status: SupervisionStatus; // CONFIRMED | UNCONFIRMED
   value: number;
+} | {
+  mode: 'PRACTICE';
+  implementing: number;
+  programming: number;
+  distribution: {
+    directIndividual: number;
+    directGroup: number;
+    nonObservingIndividual: number;
+    nonObservingGroup: number;
+  };
+  notifyUser?: boolean;
+} | {
+  mode: 'MENTORSHIP';
+  value: number;
+  notifyUser?: boolean;
 };
 
 export type UpdateUserSupervisionMatrixResponse = {

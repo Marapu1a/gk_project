@@ -108,7 +108,7 @@ export default function UserDetails() {
         >
           <UserSupervisionMatrix
             userId={data.id}
-            isSupervisor={activeGroup === 'Супервизор' || activeGroup === 'Опытный Супервизор'}
+            activeGroupName={activeGroup}
           />
         </AdminUserSection>
 
