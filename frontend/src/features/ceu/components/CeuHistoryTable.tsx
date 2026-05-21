@@ -1,4 +1,5 @@
 import { useCeuHistory } from '@/features/ceu/hooks/useCeuHistory';
+import { displayCeuEventName } from '@/features/ceu/utils/displayCeuEventName';
 import { format } from 'date-fns';
 
 export function CeuHistoryTable() {
@@ -52,7 +53,7 @@ export function CeuHistoryTable() {
           <tbody>
             {data.map((entry) => (
               <tr key={entry.id} className="border-t border-gray-100 hover:bg-gray-50">
-                <td className="p-2">{entry.eventName}</td>
+                <td className="p-2">{displayCeuEventName(entry.eventName)}</td>
                 <td className="p-2 text-center">
                   {format(new Date(entry.eventDate), 'dd.MM.yyyy')}
                 </td>

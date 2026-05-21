@@ -14,6 +14,7 @@ import {
   type AdminCeuStatus,
 } from '@/features/admin/api/ceu/getAdminCeuHistory';
 import { useUpdateCEUEntry } from '@/features/ceu/hooks/useUpdateCeuEntry';
+import { displayCeuEventName } from '@/features/ceu/utils/displayCeuEventName';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { ceuCategoryLabels, recordStatusLabels } from '@/utils/labels';
 
@@ -519,7 +520,10 @@ function AdminCeuDetailsModal({
           </div>
 
           <div className="space-y-5">
-            <ReadOnlyField label="Название или ведущий тренинга" value={row.eventName || '-'} />
+            <ReadOnlyField
+              label="Название или ведущий тренинга"
+              value={displayCeuEventName(row.eventName)}
+            />
 
             <ReadOnlyPlain
               label="Тип CEU"

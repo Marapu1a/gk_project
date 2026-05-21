@@ -6,10 +6,8 @@ import AdminCEUMatrixBlock from './AdminCEUMatrixBlock';
 import UserSupervisionMatrix from './UserSupervisionMatrix';
 import PaymentsBlock from './PaymentsBlock';
 import DetailBlock from './DetailBlock';
-import ActiveCertificateBlock from './ActiveCertificateBlock';
 import AdminUserGroupsBlock from '@/features/admin/components/AdminUserGroupsBlock';
 import { PageNav } from '@/components/PageNav';
-import AdminExamApplicationBlock from './AdminExamApplicationBlock';
 import { AdminCandidateSummaryBlock } from './AdminCandidateSummaryBlock';
 import { AdminUserSection } from './AdminUserSection';
 import { AdminAccountActionsBlock } from './AdminAccountActionsBlock';
@@ -18,8 +16,6 @@ type SectionId =
   | 'actions'
   | 'account'
   | 'groups'
-  | 'certificate'
-  | 'exam'
   | 'ceu'
   | 'supervision'
   | 'payments'
@@ -95,33 +91,13 @@ export default function UserDetails() {
         </AdminUserSection>
 
         <AdminUserSection
-          title="Активный сертификат"
-          isOpen={openSection === 'certificate'}
-          onToggle={() => toggleSection('certificate')}
-        >
-          <ActiveCertificateBlock userId={data.id} certificates={data.certificates} />
-        </AdminUserSection>
-
-        <AdminUserSection
-          title="Заявка на экзамен"
-          isOpen={openSection === 'exam'}
-          onToggle={() => toggleSection('exam')}
-        >
-          <AdminExamApplicationBlock
-            userId={data.id}
-            activeCycle={data.activeCycle}
-            examApplication={data.activeCycleExamApplication}
-          />
-        </AdminUserSection>
-
-        <AdminUserSection
           title="CEU-баллы"
           isOpen={openSection === 'ceu'}
           onToggle={() => toggleSection('ceu')}
         >
           <AdminCEUMatrixBlock
             userId={data.id}
-            isSupervisor={activeGroup === 'Супервизор' || activeGroup === 'Опытный Супервизор'}
+            required={data.examReadiness?.ceu.required}
           />
         </AdminUserSection>
 

@@ -6,6 +6,7 @@ export type UpdateUserCEUMatrixBody = {
   category: CEUCategory;
   status: CEUStatus;
   value: number;
+  notifyUser?: boolean;
 };
 
 export type UpdateUserCEUMatrixResponse = {
@@ -13,6 +14,7 @@ export type UpdateUserCEUMatrixResponse = {
   category: CEUCategory;
   status: CEUStatus;
   newValue: number;
+  notified?: boolean;
 };
 
 export async function updateUserCEUMatrix(

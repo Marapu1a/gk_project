@@ -9,6 +9,7 @@ import {
   useDeleteNotification,
   useMarkNotificationRead,
 } from '@/features/notifications/hooks/useNotifications';
+import { NotificationMessage } from '@/features/notifications/components/NotificationMessage';
 import type { Notification } from '@/features/notifications/api/notifications';
 import {
   NOTIFICATION_TYPE_LABELS,
@@ -319,7 +320,11 @@ function NotificationRow({ notification }: { notification: Notification }) {
             />
           ) : null}
         </div>
-        <p className="dashboard-v2-text mt-1 truncate text-[#222]">{notification.message}</p>
+        <NotificationMessage
+          message={notification.message}
+          className="dashboard-v2-text mt-1 text-[#222]"
+          truncate
+        />
       </div>
 
       <div className="dashboard-v2-caption text-right text-[#8D96B5]">

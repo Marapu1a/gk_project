@@ -1,7 +1,6 @@
 // src/handlers/admin/ceu/updateUserCEUMatrixAdminHandler.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../../lib/prisma';
-import { labelCEUCategory, labelCEUStatus } from '../../../utils/labels';
 import { z } from 'zod';
 import { CycleStatus } from '@prisma/client';
 
@@ -14,6 +13,7 @@ interface UpdateUserCEUMatrixRoute extends RouteGenericInterface {
     category: CEUCategory;
     status: CEUStatus;
     value: number; // новое целевое значение суммы
+    notifyUser?: boolean;
   };
 }
 
@@ -21,6 +21,7 @@ const bodySchema = z.object({
   category: z.enum(['ETHICS', 'CULTURAL_DIVERSITY', 'SUPERVISION', 'GENERAL']),
   status: z.enum(['CONFIRMED', 'SPENT', 'REJECTED']),
   value: z.number().min(0),
+  notifyUser: z.boolean().optional().default(false),
 });
 
 export async function updateUserCEUMatrixAdminHandler(
@@ -37,7 +38,7 @@ export async function updateUserCEUMatrixAdminHandler(
   }
 
   const { userId } = req.params;
-  const { category, status, value } = parsed.data;
+  const { category, status, value, notifyUser } = parsed.data;
 
   // ACTIVE cycle обязателен: правим CEU только в рамках активного цикла
   const activeCycle = await prisma.certificationCycle.findFirst({
@@ -77,7 +78,7 @@ export async function updateUserCEUMatrixAdminHandler(
         data: {
           userId,
           cycleId: activeCycle.id,
-          eventName: 'God-mode update',
+          eventName: 'Корректировка CEU-баллов',
           eventDate: new Date(),
         },
       });
@@ -95,15 +96,16 @@ export async function updateUserCEUMatrixAdminHandler(
     });
   }
 
-  // уведомление
-  await prisma.notification.create({
-    data: {
-      userId,
-      type: 'CEU',
-      message: `Ваши CEU-баллы (${labelCEUCategory(category)}, ${labelCEUStatus(status)}) были изменены администратором.`,
-      link: '/ceu/points?panel=history',
-    },
-  });
+  if (notifyUser) {
+    await prisma.notification.create({
+      data: {
+        userId,
+        type: 'CEU',
+        message: 'Ваши CEU-баллы были скорректированы администратором.',
+        link: '/ceu/points?panel=history',
+      },
+    });
+  }
 
-  return reply.send({ ok: true, category, status, newValue: value, cycleId: activeCycle.id });
+  return reply.send({ ok: true, category, status, newValue: value, cycleId: activeCycle.id, notified: notifyUser });
 }

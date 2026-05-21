@@ -31,8 +31,15 @@ export function useUpdateUserGroups(userId: string, isSelf = false) {
         ]);
       }
 
-      if (data.upgraded) {
-        toast.success(`Повышение применено. Списано CEU: ${data.burned}.`);
+      if (data.groupsChanged) {
+        toast.success(
+          data.closedCycleCount
+            ? 'Статус обновлен, текущий цикл закрыт.'
+            : 'Статус пользователя обновлен.',
+        );
+      } else if (data.upgraded) {
+        const burned = typeof data.burned === 'number' ? data.burned : 0;
+        toast.success(`Повышение применено. Списано CEU: ${burned}.`);
 
         const d: any = data;
 
@@ -52,7 +59,7 @@ export function useUpdateUserGroups(userId: string, isSelf = false) {
           toast.info(`Оплата экзамена сброшена${text ? ` до ${text}` : ''}${cnt}.`);
         }
       } else {
-        toast.success('Группы обновлены.');
+        toast.success('Статус пользователя сохранен.');
       }
     },
 

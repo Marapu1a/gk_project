@@ -18,6 +18,7 @@ import {
   type NotificationTone,
 } from '@/utils/notificationDictionary';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { NotificationMessage } from './NotificationMessage';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const ARROW_ICON = '/dashboard-v2/button_X_mini.svg';
@@ -198,9 +199,10 @@ function NotificationRow({
     >
       <div className="min-w-0 self-start">
         <NotificationBadge tone={tone}>{label}</NotificationBadge>
-        <p className="mt-3 whitespace-pre-line text-[26px] leading-[1.18] text-[#222]">
-          {notification.message}
-        </p>
+        <NotificationMessage
+          message={notification.message}
+          className="mt-3 text-[26px] leading-[1.18] text-[#222]"
+        />
       </div>
 
       <div className="text-right text-[24px] leading-[1.45] text-[#8D96B5]">

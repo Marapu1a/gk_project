@@ -4,12 +4,15 @@ import { api } from '@/lib/axios';
 export type UpdateUserGroupsResponse = {
   success: true;
   upgraded: boolean;
-  burned: number;
+  burned?: number;
   oldMaxRank: number;
   newMaxRank: number;
-  examReset: boolean;
-  examPaymentReset: boolean;
-  examPaymentResetCount: number;
+  groupsChanged?: boolean;
+  closedCycleCount?: number;
+  targetReset?: boolean;
+  examReset?: boolean;
+  examPaymentReset?: boolean;
+  examPaymentResetCount?: number;
 };
 
 export async function updateUserGroups(

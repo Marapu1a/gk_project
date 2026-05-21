@@ -9,6 +9,8 @@ export function useDeleteCertificate(userId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['certificates', 'user', userId] });
       qc.invalidateQueries({ queryKey: ['certificates', 'me'] }); // на всякий
+      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'user-certificates', userId] });
     },
   });
 }

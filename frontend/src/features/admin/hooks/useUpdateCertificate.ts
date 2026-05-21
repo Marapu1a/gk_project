@@ -22,9 +22,14 @@ export function useUpdateCertificate(userId: string) {
     mutationFn: ({ certificateId, payload }) =>
       updateCertificate(certificateId, payload),
     onSuccess: () => {
-      // подстрой под свой ключ, если он у тебя другой
       queryClient.invalidateQueries({
         queryKey: ['admin', 'user-certificates', userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'user', 'details', userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['certificates', 'user', userId],
       });
     },
   });

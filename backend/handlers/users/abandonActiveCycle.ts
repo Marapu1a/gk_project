@@ -98,6 +98,17 @@ export async function abandonActiveCycleHandler(req: FastifyRequest, reply: Fast
       },
     });
 
+    if (user.userId !== id) {
+      await tx.notification.create({
+        data: {
+          userId: id,
+          type: 'USER',
+          message: `Текущий цикл сертификации отменён администратором. Причина: ${abandonedReason}`,
+          link: '/dashboard-v2',
+        },
+      });
+    }
+
     if (adminIds.length) {
       const message =
         `Администратор отменил активный цикл пользователя ` +

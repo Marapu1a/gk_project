@@ -31,6 +31,11 @@ export async function updateUserGroupsHandler(
 
   const oldMaxRank =
     user.groups.length ? Math.max(...user.groups.map((g) => g.group.rank)) : -Infinity;
+  const oldGroupIds = user.groups.map((g) => g.groupId).sort();
+  const nextGroupIds = [...groupIds].sort();
+  const groupsChanged =
+    oldGroupIds.length !== nextGroupIds.length ||
+    oldGroupIds.some((groupId, index) => groupId !== nextGroupIds[index]);
 
   const result = await prisma.$transaction(async (tx) => {
     // 1) Перепривязка групп
@@ -53,8 +58,22 @@ export async function updateUserGroupsHandler(
 
     const upgraded = newMaxRank > oldMaxRank;
 
-    // 3) ВАЖНО: cycles/target/ceu/hours тут не трогаем вообще.
-    // Если админ хочет сбросить цель/цикл — отдельные ручки.
+    // 3) Смена группы означает смену текущего статуса пользователя.
+    // Поэтому активный цикл закрываем, а целевой уровень сбрасываем.
+    let closedCycleCount = 0;
+
+    if (groupsChanged) {
+      const closedCycles = await tx.certificationCycle.updateMany({
+        where: { userId, status: 'ACTIVE' },
+        data: {
+          status: 'ABANDONED',
+          endedAt: new Date(),
+          abandonedReason: 'Смена группы пользователя администратором',
+        },
+      });
+
+      closedCycleCount = closedCycles.count;
+    }
 
     // 4) Авто-роль (REVIEWER если есть группа "Супервизор", иначе STUDENT), админа не трогаем
     const supervisorGroup = await tx.group.findFirst({ where: { name: 'Супервизор' } });
@@ -67,13 +86,31 @@ export async function updateUserGroupsHandler(
       const newRole = isReviewerNow ? 'REVIEWER' : 'STUDENT';
 
       if (newRole !== user.role) {
-        await tx.user.update({ where: { id: userId }, data: { role: newRole } });
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            role: newRole,
+            ...(groupsChanged ? { targetLevel: null, targetLockRank: null } : {}),
+          },
+        });
         roleChanged = true;
         roleAfter = newRole;
       } else {
+        if (groupsChanged) {
+          await tx.user.update({
+            where: { id: userId },
+            data: { targetLevel: null, targetLockRank: null },
+          });
+        }
         roleAfter = user.role;
       }
     } else {
+      if (groupsChanged) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { targetLevel: null, targetLockRank: null },
+        });
+      }
       roleAfter = user.role;
     }
 
@@ -82,6 +119,9 @@ export async function updateUserGroupsHandler(
       upgraded,
       oldMaxRank,
       newMaxRank,
+      groupsChanged,
+      closedCycleCount,
+      targetReset: groupsChanged,
       roleChanged,
       roleAfter,
     };

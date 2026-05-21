@@ -13,6 +13,9 @@ export function useUpdateUserCEUMatrix(userId: string) {
     mutationFn: (data) => updateUserCEUMatrix(userId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-ceu-matrix', userId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'ceu-history'] });
+      qc.invalidateQueries({ queryKey: ['ceuSummary'] });
     },
   });
 }

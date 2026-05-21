@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { useCeuHistory } from '../hooks/useCeuHistory';
 import type { CeuHistoryItem } from '../api/getCeuHistory';
+import { displayCeuEventName } from '../utils/displayCeuEventName';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
@@ -82,8 +83,8 @@ export function CeuPointsHistoryBlock() {
               {records.map((record) => (
                 <tr key={record.id} className="border-b border-[#DCE8EC] last:border-b-0">
                   <td className="max-w-[360px] px-4 py-4">
-                    <div className="truncate" title={record.eventName}>
-                      {record.eventName}
+                    <div className="truncate" title={displayCeuEventName(record.eventName)}>
+                      {displayCeuEventName(record.eventName)}
                     </div>
                   </td>
                   <td className="px-4 py-4 text-center font-extrabold">
@@ -158,7 +159,10 @@ function CeuDetailsModal({
           </div>
 
           <div className="space-y-5">
-            <ReadOnlyField label="Название или ведущий тренинга" value={record.eventName} />
+            <ReadOnlyField
+              label="Название или ведущий тренинга"
+              value={displayCeuEventName(record.eventName)}
+            />
 
             <ReadOnlyPlain
               label="Тип CEU"

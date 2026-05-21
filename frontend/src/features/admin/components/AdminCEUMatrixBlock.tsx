@@ -1,162 +1,238 @@
-// src/features/admin/components/AdminCEUMatrixBlock.tsx
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { useUserCEUMatrix } from '../hooks/ceu/useUserCEUMatrix';
 import { useUpdateUserCEUMatrix } from '../hooks/ceu/useUpdateUserCEUMatrix';
-import type { CEUCategory, CEUStatus } from '../api/ceu/getUserCEUMatrix';
-import { toast } from 'sonner';
+import type { CEUCategory } from '../api/ceu/getUserCEUMatrix';
 
-const categoryLabels: Record<CEUCategory, string> = {
-  ETHICS: 'Этика',
-  CULTURAL_DIVERSITY: 'Культурное разнообразие',
-  SUPERVISION: 'Супервизия',
-  GENERAL: 'Общие',
-};
+const CATEGORIES: Array<{ key: CEUCategory; label: string; requiredKey: RequiredKey }> = [
+  { key: 'ETHICS', label: 'Этика', requiredKey: 'ethics' },
+  { key: 'SUPERVISION', label: 'Супервизия', requiredKey: 'supervision' },
+  { key: 'CULTURAL_DIVERSITY', label: 'Культурное разнообразие', requiredKey: 'cultDiver' },
+  { key: 'GENERAL', label: 'Общие баллы', requiredKey: 'general' },
+];
 
-const statusLabels: Record<CEUStatus, string> = {
-  CONFIRMED: 'Подтверждено',
-  SPENT: 'Потрачено',
-  REJECTED: 'Отклонено',
-};
+type RequiredKey = 'ethics' | 'supervision' | 'cultDiver' | 'general';
+
+type RequiredSummary = Partial<Record<RequiredKey, number>> | null | undefined;
 
 type Props = {
   userId: string;
-  isSupervisor: boolean;
+  required?: RequiredSummary;
 };
 
-export default function AdminCEUMatrixBlock({ userId }: Props) {
+function formatNumber(value: number | null | undefined) {
+  if (value == null) return '0';
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function normalizeCeuInput(value: string) {
+  const cleaned = value.replace(',', '.').replace(/[^\d.]/g, '');
+  const firstDot = cleaned.indexOf('.');
+  if (firstDot === -1) return cleaned.slice(0, 4);
+
+  const before = cleaned.slice(0, firstDot).slice(0, 4);
+  const after = cleaned.slice(firstDot + 1).replace(/\./g, '').slice(0, 1);
+  return `${before}.${after}`;
+}
+
+function normalizeCeuInputOnBlur(value: string) {
+  const parsed = parseValue(value);
+  if (parsed === null) return '0';
+  return formatNumber(parsed);
+}
+
+function parseValue(value: string) {
+  const parsed = Number(value.replace(',', '.'));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+export default function AdminCEUMatrixBlock({ userId, required }: Props) {
   const { data, isLoading, error } = useUserCEUMatrix(userId);
   const mutation = useUpdateUserCEUMatrix(userId);
+  const { confirm } = useConfirm();
 
-  const [editing, setEditing] = useState<{ category: CEUCategory; status: CEUStatus } | null>(null);
-  const [value, setValue] = useState<string>('');
+  const [draft, setDraft] = useState<Partial<Record<CEUCategory, string>>>({});
 
-  if (isLoading) return <p className="text-blue-dark">Загрузка CEU-баллов…</p>;
-  if (error || !data) return <p className="text-error">Ошибка загрузки CEU-баллов</p>;
+  const values = useMemo(() => {
+    const matrix = data?.matrix;
 
-  const startEdit = (category: CEUCategory, status: CEUStatus, current: number) => {
-    if (status !== 'CONFIRMED') return;
-    setEditing({ category, status });
-    setValue(String(current));
-  };
+    return CATEGORIES.reduce(
+      (acc, category) => {
+        const current = matrix?.[category.key]?.CONFIRMED ?? 0;
+        acc[category.key] = {
+          current,
+          draft: draft[category.key] ?? formatNumber(current),
+          required: required?.[category.requiredKey] ?? 0,
+        };
+        return acc;
+      },
+      {} as Record<CEUCategory, { current: number; draft: string; required: number }>,
+    );
+  }, [data?.matrix, draft, required]);
 
-  const cancelEdit = () => {
-    setEditing(null);
-    setValue('');
-  };
+  const hasChanges = CATEGORIES.some((category) => {
+    if (values[category.key].required <= 0) return false;
+    const parsed = parseValue(values[category.key].draft);
+    return parsed !== null && parsed !== values[category.key].current;
+  });
 
-  const saveEdit = async () => {
-    if (!editing) return;
+  const save = async (notifyUser: boolean) => {
+    const editableCategories = CATEGORIES.filter((category) => values[category.key].required > 0);
+    const changed = editableCategories.map((category) => {
+      const parsed = parseValue(values[category.key].draft);
+      return {
+        category: category.key,
+        value: parsed,
+        current: values[category.key].current,
+      };
+    }).filter((item) => item.value !== null && item.value !== item.current);
 
-    const next = parseFloat(value.replace(',', '.'));
-    if (Number.isNaN(next) || next < 0) {
-      toast.error('Введите корректное число');
+    if (!changed.length) {
+      toast.info('Нет изменений для сохранения');
       return;
     }
 
+    const invalid = editableCategories.some(
+      (category) => parseValue(values[category.key].draft) === null,
+    );
+    if (invalid) {
+      toast.error('Проверьте значения CEU-баллов');
+      return;
+    }
+
+    const ok = await confirm({
+      title: 'Сохранить CEU-баллы?',
+      message: notifyUser
+        ? 'Сохранить изменения и отправить пользователю уведомление?'
+        : 'Сохранить изменения без уведомления пользователя?',
+      confirmLabel: notifyUser ? 'Сохранить и уведомить' : 'Сохранить тихо',
+      variant: notifyUser ? 'primary' : 'danger',
+    });
+    if (!ok) return;
+
     try {
-      await mutation.mutateAsync({
-        category: editing.category,
-        status: editing.status,
-        value: next,
+      for (let index = 0; index < changed.length; index += 1) {
+        const item = changed[index];
+        await mutation.mutateAsync({
+          category: item.category,
+          status: 'CONFIRMED',
+          value: item.value ?? 0,
+          notifyUser: notifyUser && index === 0,
+        });
+      }
+
+      setDraft({
+        ETHICS: undefined,
+        SUPERVISION: undefined,
+        CULTURAL_DIVERSITY: undefined,
+        GENERAL: undefined,
       });
-      toast.success('Баллы обновлены');
-      cancelEdit();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Ошибка обновления');
+      toast.success(notifyUser ? 'CEU-баллы сохранены, уведомление отправлено' : 'CEU-баллы сохранены тихо');
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.error === 'NO_ACTIVE_CYCLE'
+          ? 'У пользователя нет активного цикла'
+          : err?.response?.data?.error || 'Не удалось сохранить CEU-баллы';
+      toast.error(message);
     }
   };
 
+  if (isLoading) {
+    return <p className="dashboard-v2-text text-[#6B7894]">Загрузка CEU-баллов...</p>;
+  }
+
+  if (error || !data) {
+    return (
+      <div className="rounded-[12px] bg-[rgba(255,83,100,0.08)] px-4 py-3 dashboard-v2-text text-[var(--color-danger)]">
+        Не удалось загрузить CEU-баллы. Возможно, у пользователя нет активного цикла.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-blue-dark">CEU-баллы</h2>
+      <div>
+        <h2 className="dashboard-v2-title">Корректировка CEU-баллов</h2>
+        <p className="dashboard-v2-caption mt-1 text-[#6B7894]">
+          Ручная правка итоговых подтвержденных баллов активного цикла. Обычная проверка заявок
+          выполняется в разделе «Проверка CEU».
+        </p>
+      </div>
 
-      <div
-        className="overflow-x-auto rounded-2xl border header-shadow"
-        style={{ borderColor: 'var(--color-green-light)' }}
-      >
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: 'var(--color-blue-soft)' }} className="text-blue-dark">
-              <th className="py-2 px-3 text-left">Категория</th>
-              {Object.entries(statusLabels).map(([key, label]) => (
-                <th key={key} className="py-2 px-3 text-left">
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
+      <div className="grid gap-4 md:grid-cols-2">
+        {CATEGORIES.map((category) => {
+          const item = values[category.key];
+          const isEditable = item.required > 0;
 
-          <tbody>
-            {Object.entries(categoryLabels).map(([cat, catLabel]) => {
-              const row = data.matrix[cat as CEUCategory] as
-                | Partial<Record<CEUStatus, number>>
-                | undefined;
+          return (
+            <label
+              key={category.key}
+              className="flex min-h-[86px] items-center justify-between gap-5 rounded-[10px] bg-[var(--color-blue-soft)] px-5 py-4"
+            >
+              <span className="min-w-0 text-[16px] font-extrabold leading-[1.2] text-[#1F305E]">
+                {category.label}
+              </span>
 
-              return (
-                <tr
-                  key={cat}
-                  className="border-t"
-                  style={{ borderColor: 'var(--color-green-light)' }}
-                >
-                  <td className="py-2 px-3 font-medium">{catLabel}</td>
+              <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
+                <input
+                  value={item.draft}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      [category.key]: normalizeCeuInput(event.target.value),
+                    }))
+                  }
+                  onFocus={(event) => {
+                    if (event.target.value === '0') {
+                      setDraft((current) => ({ ...current, [category.key]: '' }));
+                    }
+                  }}
+                  onBlur={() => {
+                    setDraft((current) => ({
+                      ...current,
+                      [category.key]: normalizeCeuInputOnBlur(current[category.key] ?? item.draft),
+                    }));
+                  }}
+                  inputMode="decimal"
+                  className="h-[38px] w-[82px] rounded-[10px] border border-[#B8C4D8] bg-white px-2 text-right text-[24px] font-extrabold leading-none text-[#1F305E] outline-none transition focus:border-[var(--color-blue-dark)] focus:shadow-[0_0_0_2px_rgba(31,48,94,0.12)] disabled:cursor-not-allowed disabled:border-[#D7DCE7] disabled:bg-[#EEF0F4] disabled:text-[#8D96B5]"
+                  disabled={mutation.isPending || !isEditable}
+                  aria-label={`${category.label}: подтвержденные CEU-баллы`}
+                  title={isEditable ? undefined : 'Для этой категории баллы не требуются'}
+                />
+                <span className="text-[14px] font-semibold text-[#7F8AA3]">
+                  /{formatNumber(item.required)}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
 
-                  {Object.keys(statusLabels).map((st) => {
-                    const status = st as CEUStatus;
-                    const isEditing = editing?.category === cat && editing?.status === status;
-                    const current = row?.[status] ?? 0;
-                    const isEditable = status === 'CONFIRMED';
+      <div className="flex flex-col gap-3 border-t border-[#DCE8EC] pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="dashboard-v2-caption text-[#6B7894]">
+          При сохранении старые подтвержденные CEU этой категории в активном цикле заменяются одной
+          служебной записью.
+        </p>
 
-                    return (
-                      <td key={st} className="py-2 px-3">
-                        {isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              className="input w-24"
-                              value={value}
-                              onChange={(e) => setValue(e.target.value)}
-                              disabled={mutation.isPending}
-                            />
-                            <button
-                              className="btn btn-brand"
-                              onClick={saveEdit}
-                              disabled={mutation.isPending}
-                            >
-                              Сохранить
-                            </button>
-                            <button
-                              className="btn"
-                              onClick={cancelEdit}
-                              disabled={mutation.isPending}
-                            >
-                              Отмена
-                            </button>
-                          </div>
-                        ) : isEditable ? (
-                          <button
-                            className="btn btn-ghost"
-                            onClick={() =>
-                              startEdit(cat as CEUCategory, status as CEUStatus, current)
-                            }
-                            disabled={mutation.isPending}
-                            style={{
-                              fontWeight: 600,
-                              borderBottom: '1px dashed var(--color-blue-dark)',
-                            }}
-                          >
-                            {current}
-                          </button>
-                        ) : (
-                          <span>{current}</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="flex flex-wrap justify-end gap-3">
+          <button
+            type="button"
+            className="btn dashboard-v2-action dashboard-v2-action-secondary"
+            disabled={mutation.isPending || !hasChanges}
+            onClick={() => void save(false)}
+          >
+            Сохранить тихо
+          </button>
+          <button
+            type="button"
+            className="btn dashboard-v2-action dashboard-v2-action-primary"
+            disabled={mutation.isPending || !hasChanges}
+            onClick={() => void save(true)}
+          >
+            Сохранить и уведомить
+          </button>
+        </div>
       </div>
     </div>
   );

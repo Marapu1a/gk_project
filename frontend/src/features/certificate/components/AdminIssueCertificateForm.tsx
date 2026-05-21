@@ -7,14 +7,27 @@ import { uploadFile } from '@/features/files/api/uploadFile';
 import { deleteFile } from '@/features/files/api/deleteFile';
 import { toast } from 'sonner';
 import { useUsers } from '@/features/admin/hooks/useUsers';
+import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_CERTIFICATE_FILE_MB = 20;
-const CERTIFICATE_GROUP_OPTIONS = ['Инструктор ПАП', 'Куратор ПАП', 'Супервизор ПАП'];
 const CERTIFICATE_NUMBER_PREFIX = 'РОСС RU.04ЦВА0.';
 const normalizeCertificateNumberSuffix = (value: string) =>
   value.replace(/[^\d.]/g, '').slice(0, 8);
+
+function resolveCertificateTitle(cycle?: {
+  type: 'CERTIFICATION' | 'RENEWAL';
+  targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+} | null) {
+  if (!cycle) return '';
+  if (cycle.targetLevel === 'INSTRUCTOR') return 'Инструктор ПАП';
+  if (cycle.targetLevel === 'CURATOR') return 'Куратор ПАП';
+  if (cycle.type === 'RENEWAL' && cycle.targetLevel === 'SUPERVISOR') {
+    return 'Опытный супервизор ПАП';
+  }
+  return 'Супервизор ПАП';
+}
 
 // нормализуем под сравнение (как в UsersTable)
 const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
@@ -83,8 +96,16 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
   }, [allUsers, userSearchInput]);
 
   const hasResolvedUser = Boolean(selectedUserId || exactMatchedUser);
+  const resolvedUserId = selectedUserId || exactMatchedUser?.id || null;
   const hasUnresolvedUserInput =
     Boolean(userSearchInput.trim()) && !isUsersLoading && !hasResolvedUser;
+
+  const { data: certificateUserDetails } = useUserDetails(resolvedUserId ?? '');
+  const certificateTitle = resolveCertificateTitle(certificateUserDetails?.activeCycle);
+
+  useEffect(() => {
+    setTitle(certificateTitle);
+  }, [certificateTitle]);
 
   const matchedUsers = useMemo(() => {
     const tokens = tokenize(userSearchInput);
@@ -344,15 +365,19 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="input-design h-[32px]"
+            disabled
             required
           >
-            <option value="">Выберите группу</option>
-            {CERTIFICATE_GROUP_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
+            <option value="">
+              {hasResolvedUser ? 'Нет активного цикла' : 'Сначала выберите пользователя'}
+            </option>
+            {certificateTitle ? <option value={certificateTitle}>{certificateTitle}</option> : null}
           </select>
+          {hasResolvedUser && !certificateTitle ? (
+            <p className="mt-1 text-[12px] font-semibold text-[var(--color-danger)]">
+              Сертификат можно выдать только по текущему циклу пользователя.
+            </p>
+          ) : null}
         </div>
 
         <div>
