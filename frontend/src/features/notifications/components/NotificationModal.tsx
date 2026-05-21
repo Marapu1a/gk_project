@@ -109,14 +109,14 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-8 top-8 z-10 flex h-[42px] w-[42px] cursor-pointer items-center justify-center opacity-80 transition hover:opacity-100"
+          className="absolute right-8 top-8 z-10 flex h-[34px] w-[34px] cursor-pointer items-center justify-center opacity-80 transition hover:opacity-100"
           aria-label="Закрыть уведомления"
         >
-          <img src={EXIT_ICON} alt="" className="h-[38px] w-[38px]" />
+          <img src={EXIT_ICON} alt="" className="h-[30px] w-[30px]" />
         </button>
 
-        <header className="px-8 pb-6 pt-10 text-center">
-          <h2 className="text-[40px] font-extrabold leading-none text-[var(--color-blue-dark)]">
+        <header className="px-8 pb-5 pt-9 text-center">
+          <h2 className="text-[28px] font-extrabold leading-tight text-[var(--color-blue-dark)]">
             Уведомления
           </h2>
         </header>
@@ -139,12 +139,12 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
               ))}
             </div>
 
-            <footer className="flex shrink-0 items-center justify-between gap-4 bg-white/95 px-8 py-6 shadow-[0_-8px_20px_rgba(31,48,94,0.08)]">
+            <footer className="flex shrink-0 items-center justify-between gap-4 bg-white/95 px-8 py-5 shadow-[0_-8px_20px_rgba(31,48,94,0.08)]">
               <button
                 type="button"
                 onClick={handleMarkAllRead}
                 disabled={!unread.length || markRead.isPending}
-                className="btn flex h-[34px] cursor-pointer text-[24px] font-medium text-[#8D96B5] transition hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
+                className="btn flex h-[30px] cursor-pointer text-[15px] font-medium text-[#8D96B5] transition hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 Отметить все прочитанным
               </button>
@@ -153,7 +153,7 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
                 type="button"
                 onClick={handleDeleteAll}
                 disabled={!data.length || deleteAllNotif.isPending}
-                className="btn flex h-[34px] cursor-pointer text-[24px] font-medium text-[var(--color-danger)] transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-45"
+                className="btn flex h-[30px] cursor-pointer text-[15px] font-medium text-[var(--color-danger)] transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 Удалить все уведомления
               </button>
@@ -193,7 +193,7 @@ function NotificationRow({
 
   return (
     <article
-      className={`grid min-h-[114px] grid-cols-[minmax(0,1fr)_140px_64px_42px] items-center gap-4 border-b-[3px] border-[var(--color-blue-soft)] px-4 py-4 transition ${
+      className={`grid min-h-[92px] grid-cols-[minmax(0,1fr)_108px_48px_32px] items-center gap-4 border-b border-[var(--color-blue-soft)] px-4 py-3 transition ${
         notification.isRead ? 'bg-white' : 'bg-[#F4FAFB]'
       }`}
     >
@@ -201,11 +201,11 @@ function NotificationRow({
         <NotificationBadge tone={tone}>{label}</NotificationBadge>
         <NotificationMessage
           message={notification.message}
-          className="mt-3 text-[26px] leading-[1.18] text-[#222]"
+          className="mt-2 text-[17px] leading-[1.22] text-[var(--color-blue-dark)]"
         />
       </div>
 
-      <div className="text-right text-[24px] leading-[1.45] text-[#8D96B5]">
+      <div className="text-right text-[15px] leading-[1.35] text-[#8D96B5]">
         <div>{date}</div>
         <div>{time}</div>
       </div>
@@ -214,7 +214,7 @@ function NotificationRow({
         type="button"
         onClick={onOpen}
         disabled={!normalizedLink && notification.isRead}
-        className={`notification-arrow h-[53px] w-[53px] cursor-pointer rounded-[19px] transition disabled:cursor-default ${
+        className={`notification-arrow h-[40px] w-[40px] cursor-pointer rounded-[14px] transition disabled:cursor-default ${
           notification.isRead ? 'opacity-45' : 'opacity-100'
         }`}
         aria-label={normalizedLink ? 'Открыть уведомление' : 'Отметить прочитанным'}
@@ -226,10 +226,10 @@ function NotificationRow({
         type="button"
         onClick={onDelete}
         disabled={deleting}
-        className="flex h-[38px] w-[38px] cursor-pointer items-center justify-center opacity-45 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
+        className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center opacity-45 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30"
         aria-label="Удалить уведомление"
       >
-        <img src={EXIT_ICON} alt="" className="h-[26px] w-[26px]" />
+        <img src={EXIT_ICON} alt="" className="h-[20px] w-[20px]" />
       </button>
     </article>
   );
@@ -245,7 +245,7 @@ function NotificationBadge({ tone, children }: { tone: NotificationTone; childre
 
   return (
     <span
-      className={`inline-flex h-[40px] items-center rounded-full px-4 text-[26px] font-medium leading-none ${className}`}
+      className={`inline-flex h-[26px] items-center rounded-full px-3 text-[14px] font-medium leading-none ${className}`}
     >
       {children}
     </span>
@@ -255,8 +255,8 @@ function NotificationBadge({ tone, children }: { tone: NotificationTone; childre
 function EmptyState() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center pb-20">
-      <img src={EMPTY_ICON} alt="" className="h-[173px] w-[140px]" />
-      <p className="mt-[110px] text-[28px] font-extrabold text-[#C0C5D2]">Новых событий нет</p>
+      <img src={EMPTY_ICON} alt="" className="h-[132px] w-[106px]" />
+      <p className="mt-12 text-[18px] font-extrabold text-[#C0C5D2]">Новых событий нет</p>
     </div>
   );
 }
