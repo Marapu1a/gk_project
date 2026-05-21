@@ -171,6 +171,20 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
           link: '/dashboard-v2',
         });
       }
+
+      if (user.role === 'ADMIN' && status === 'UNPAID' && dbPayment.status !== 'UNPAID') {
+        const baseMessage =
+          dbPayment.type === PaymentType.FULL_PACKAGE
+            ? 'Пакетная оплата отменена'
+            : `Оплата отменена: ${paymentTypeLabel(dbPayment.type)}`;
+
+        await createNotification({
+          userId: dbPayment.userId,
+          type: NotificationType.PAYMENT,
+          message: comment ? `${baseMessage}. Комментарий: ${comment}` : baseMessage,
+          link: '/dashboard-v2',
+        });
+      }
     } catch (err) {
       req.log.error(err, 'PAYMENT_STATUS notification failed');
     }

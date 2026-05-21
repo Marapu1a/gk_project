@@ -13,7 +13,7 @@ export async function logAdminUserAction({
   action,
   details,
 }: AdminUserActionInput) {
-  await prisma.adminUserActionLog.create({
+  return prisma.adminUserActionLog.create({
     data: {
       userId,
       adminId: adminId ?? null,

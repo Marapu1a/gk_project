@@ -5,7 +5,6 @@ import UserBasicBlock from './UserBasicBlock';
 import AdminCEUMatrixBlock from './AdminCEUMatrixBlock';
 import UserSupervisionMatrix from './UserSupervisionMatrix';
 import PaymentsBlock from './PaymentsBlock';
-import DetailBlock from './DetailBlock';
 import AdminUserGroupsBlock from '@/features/admin/components/AdminUserGroupsBlock';
 import { PageNav } from '@/components/PageNav';
 import { AdminCandidateSummaryBlock } from './AdminCandidateSummaryBlock';
@@ -18,8 +17,7 @@ type SectionId =
   | 'groups'
   | 'ceu'
   | 'supervision'
-  | 'payments'
-  | 'files';
+  | 'payments';
 
 export default function UserDetails() {
   const { id } = useParams<{ id: string }>();
@@ -117,16 +115,14 @@ export default function UserDetails() {
           isOpen={openSection === 'payments'}
           onToggle={() => toggleSection('payments')}
         >
-          <PaymentsBlock payments={data.payments} userId={data.id} activeGroupName={activeGroup} />
+          <PaymentsBlock
+            payments={data.payments}
+            userId={data.id}
+            activeGroupName={activeGroup}
+            activeCycle={data.activeCycle}
+          />
         </AdminUserSection>
 
-        <AdminUserSection
-          title="Загруженные файлы"
-          isOpen={openSection === 'files'}
-          onToggle={() => toggleSection('files')}
-        >
-          <DetailBlock title="Загруженные файлы" items={data.uploadedFiles} userId={data.id} />
-        </AdminUserSection>
       </div>
     </div>
   );

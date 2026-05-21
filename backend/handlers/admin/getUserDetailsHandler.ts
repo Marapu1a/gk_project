@@ -109,6 +109,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
       supervisionRecords: {
         select: {
           id: true,
+          cycleId: true,
           fileId: true,
           createdAt: true,
           hours: {

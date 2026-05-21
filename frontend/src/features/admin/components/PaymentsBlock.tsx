@@ -17,10 +17,17 @@ type Payment = {
   targetLevel?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
 };
 
+type ActiveCycle = {
+  id: string;
+  type: 'CERTIFICATION' | 'RENEWAL';
+  targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+} | null;
+
 type Props = {
   payments: Payment[];
   userId: string;
   activeGroupName?: string | null;
+  activeCycle?: ActiveCycle;
 };
 
 const TYPE_ORDER: Record<string, number> = {
@@ -37,7 +44,25 @@ const TARGET_LEVEL_ORDER: Record<NonNullable<Payment['targetLevel']>, number> = 
   SUPERVISOR: 2,
 };
 
-export default function PaymentsBlock({ payments, userId, activeGroupName }: Props) {
+const CERTIFICATION_PAYMENT_TYPES = [
+  'FULL_PACKAGE',
+  'REGISTRATION',
+  'DOCUMENT_REVIEW',
+  'EXAM_ACCESS',
+];
+
+const SUPERVISOR_CERTIFICATION_PAYMENT_TYPES = [
+  'FULL_PACKAGE',
+  'DOCUMENT_REVIEW',
+  'EXAM_ACCESS',
+];
+
+export default function PaymentsBlock({
+  payments,
+  userId,
+  activeGroupName,
+  activeCycle = null,
+}: Props) {
   const mutate = useUpdatePaymentStatus(userId);
   const qc = useQueryClient();
   const { confirm } = useConfirm();
@@ -58,7 +83,25 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
     ]);
   };
 
-  const fullPackage = payments.find((p) => p.type === 'FULL_PACKAGE');
+  const visiblePayments = useMemo(() => {
+    if (!activeCycle) return [];
+
+    if (activeCycle.type === 'RENEWAL') {
+      return payments.filter(
+        (payment) =>
+          payment.type === 'RENEWAL' && payment.targetLevel === activeCycle.targetLevel,
+      );
+    }
+
+    const visibleTypes =
+      activeCycle.targetLevel === 'SUPERVISOR'
+        ? SUPERVISOR_CERTIFICATION_PAYMENT_TYPES
+        : CERTIFICATION_PAYMENT_TYPES;
+
+    return payments.filter((payment) => visibleTypes.includes(payment.type));
+  }, [activeCycle, payments]);
+
+  const fullPackage = visiblePayments.find((p) => p.type === 'FULL_PACKAGE');
   const isFullPackagePending = fullPackage?.status === 'PENDING';
 
   const getDisplayStatus = (payment: Payment) => {
@@ -89,7 +132,7 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
   };
 
   const sortedPayments = useMemo(() => {
-    return [...payments].sort((a, b) => {
+    return [...visiblePayments].sort((a, b) => {
       const typeDiff = (TYPE_ORDER[a.type] ?? 999) - (TYPE_ORDER[b.type] ?? 999);
       if (typeDiff !== 0) return typeDiff;
 
@@ -105,7 +148,7 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
 
       return a.id.localeCompare(b.id);
     });
-  }, [payments]);
+  }, [visiblePayments]);
 
   const getRowStyle = (payment: Payment): React.CSSProperties => {
     if (isFullPackagePending && payment.type !== 'FULL_PACKAGE' && payment.status === 'UNPAID') {
@@ -147,19 +190,31 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
     return 'text-gray-700';
   };
 
-  const confirmPay = async (id: string, type: string) => {
+  const confirmPay = async (id: string, type: string, notify: boolean) => {
     const ok = await confirm({
-      message: type === 'FULL_PACKAGE' ? 'Подтвердить пакетную оплату?' : 'Подтвердить оплату?',
-      confirmLabel: 'Подтвердить',
+      message: notify
+        ? type === 'FULL_PACKAGE'
+          ? 'Подтвердить пакетную оплату и отправить уведомление пользователю?'
+          : 'Подтвердить оплату и отправить уведомление пользователю?'
+        : type === 'FULL_PACKAGE'
+          ? 'Подтвердить пакетную оплату без уведомления пользователя?'
+          : 'Подтвердить оплату без уведомления пользователя?',
+      confirmLabel: notify ? 'Подтвердить и уведомить' : 'Подтвердить тихо',
     });
     if (!ok) return;
 
     try {
-      await mutate.mutateAsync({ id, status: 'PAID' });
+      await mutate.mutateAsync({ id, status: 'PAID', notify });
 
       await invalidate();
       toast.success(
-        type === 'FULL_PACKAGE' ? 'Пакетная оплата подтверждена' : 'Оплата подтверждена',
+        notify
+          ? type === 'FULL_PACKAGE'
+            ? 'Пакетная оплата подтверждена, уведомление отправлено'
+            : 'Оплата подтверждена, уведомление отправлено'
+          : type === 'FULL_PACKAGE'
+            ? 'Пакетная оплата подтверждена тихо'
+            : 'Оплата подтверждена тихо',
       );
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Не удалось подтвердить оплату');
@@ -171,21 +226,40 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
     setCancelComment('');
   };
 
-  const submitCancel = async (type: string) => {
+  const submitCancel = async (type: string, notify: boolean) => {
     if (!cancelId) return;
 
     const ok = await confirm({
-      message: type === 'FULL_PACKAGE' ? 'Отменить пакетную оплату?' : 'Отменить оплату?',
-      confirmLabel: 'Отменить',
+      message: notify
+        ? type === 'FULL_PACKAGE'
+          ? 'Отменить пакетную оплату и отправить уведомление пользователю?'
+          : 'Отменить оплату и отправить уведомление пользователю?'
+        : type === 'FULL_PACKAGE'
+          ? 'Отменить пакетную оплату без уведомления пользователя?'
+          : 'Отменить оплату без уведомления пользователя?',
+      confirmLabel: notify ? 'Отменить и уведомить' : 'Отменить тихо',
       variant: 'danger',
     });
     if (!ok) return;
 
     try {
-      await mutate.mutateAsync({ id: cancelId, status: 'UNPAID', comment: cancelComment });
+      await mutate.mutateAsync({
+        id: cancelId,
+        status: 'UNPAID',
+        comment: cancelComment,
+        notify,
+      });
 
       await invalidate();
-      toast.success(type === 'FULL_PACKAGE' ? 'Пакетная оплата отменена' : 'Оплата отменена');
+      toast.success(
+        notify
+          ? type === 'FULL_PACKAGE'
+            ? 'Пакетная оплата отменена, уведомление отправлено'
+            : 'Оплата отменена, уведомление отправлено'
+          : type === 'FULL_PACKAGE'
+            ? 'Пакетная оплата отменена тихо'
+            : 'Оплата отменена тихо',
+      );
       setCancelId(null);
       setCancelComment('');
     } catch (e: any) {
@@ -198,7 +272,9 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
     setCancelComment('');
   };
 
-  if (!payments.length) return null;
+  const emptyText = !activeCycle
+    ? 'Нет активного цикла сертификации или ресертификации.'
+    : 'Для активного цикла нет доступных платежей.';
 
   return (
     <div className="space-y-3">
@@ -220,6 +296,14 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
             </tr>
           </thead>
           <tbody>
+            {!sortedPayments.length ? (
+              <tr>
+                <td className="py-4 px-3 text-[#8D96B5]" colSpan={6}>
+                  {emptyText}
+                </td>
+              </tr>
+            ) : null}
+
             {sortedPayments.map((p) => {
               const humanStatus = getDisplayStatus(p);
               const isThisCancel = cancelId === p.id;
@@ -249,13 +333,22 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
                     {!isThisCancel ? (
                       <div className="flex flex-wrap gap-2">
                         {p.status !== 'PAID' && (
-                          <button
-                            className="btn btn-brand disabled:opacity-50"
-                            onClick={() => confirmPay(p.id, p.type)}
-                            disabled={mutate.isPending}
-                          >
-                            Подтвердить
-                          </button>
+                          <>
+                            <button
+                              className="btn disabled:opacity-50"
+                              onClick={() => confirmPay(p.id, p.type, false)}
+                              disabled={mutate.isPending}
+                            >
+                              Подтвердить тихо
+                            </button>
+                            <button
+                              className="btn btn-brand disabled:opacity-50"
+                              onClick={() => confirmPay(p.id, p.type, true)}
+                              disabled={mutate.isPending}
+                            >
+                              Подтвердить и уведомить
+                            </button>
+                          </>
                         )}
 
                         <button
@@ -279,17 +372,24 @@ export default function PaymentsBlock({ payments, userId, activeGroupName }: Pro
                         <div className="flex gap-2">
                           <button
                             className="btn btn-danger disabled:opacity-50"
-                            onClick={() => submitCancel(p.type)}
+                            onClick={() => submitCancel(p.type, false)}
                             disabled={mutate.isPending}
                           >
-                            Подтвердить
+                            Отменить тихо
+                          </button>
+                          <button
+                            className="btn btn-danger disabled:opacity-50"
+                            onClick={() => submitCancel(p.type, true)}
+                            disabled={mutate.isPending}
+                          >
+                            Отменить и уведомить
                           </button>
                           <button
                             className="btn disabled:opacity-50"
                             onClick={cancelCancel}
                             disabled={mutate.isPending}
                           >
-                            Отменить
+                            Закрыть
                           </button>
                         </div>
                       </div>

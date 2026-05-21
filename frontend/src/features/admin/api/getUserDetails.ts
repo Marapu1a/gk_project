@@ -142,6 +142,7 @@ export async function getUserDetails(id: string) {
 
     supervisionRecords: {
       id: string;
+      cycleId: string | null;
       fileId: string | null;
       createdAt: string;
       hours: {
