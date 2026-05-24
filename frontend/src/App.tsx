@@ -28,7 +28,6 @@ import ReviewerCandidateDetailsPage from './pages/ReviewerCandidateDetailsPage';
 import ProfileEditPage from './pages/ProfileEditPage';
 import AdminUserBannerPage from './pages/AdminUserBannerPage';
 import AdminSupervisionCandidatesPage from './pages/AdminSupervisionCandidatesPage';
-import AdminReviewerCandidateDetailsPage from './pages/AdminReviewerCandidateDetailsPage';
 
 const queryClient = new QueryClient();
 
@@ -59,7 +58,6 @@ const router = createBrowserRouter([
       { path: 'admin/document-review/:id', element: <AdminDocumentReviewDetailsPage /> },
       { path: 'admin/user-banner', element: <AdminUserBannerPage /> },
       { path: 'admin/supervision-candidates', element: <AdminSupervisionCandidatesPage /> },
-      { path: 'admin/supervision-candidates/:kind/:relationId', element: <AdminReviewerCandidateDetailsPage /> },
       { path: 'users', element: <UsersPage /> },
       { path: 'admin/users/:id', element: <UserDetailsPage /> },
       { path: 'exam-applications', element: <ExamApplicationsPage /> },

@@ -8,7 +8,7 @@ type RequestRow = {
   status: string;
   comment?: string | null;
   submittedAt: string;
-  user?: { email?: string | null; fullName?: string | null } | null;
+  user?: { id?: string | null; email?: string | null; fullName?: string | null } | null;
   documents?: unknown[];
   documentFiles?: { id: string; status: string; deletionRequestedAt?: string | null }[];
 };
@@ -147,7 +147,16 @@ export function AdminDocumentReviewList() {
                           {request.user?.email || '—'}
                         </td>
                         <td className="border-b border-[var(--color-blue-soft)] px-4 py-4">
-                          {request.user?.fullName || '—'}
+                          {request.user?.id ? (
+                            <Link
+                              to={`/admin/users/${request.user.id}`}
+                              className="font-medium text-[var(--color-blue-dark)] underline decoration-transparent underline-offset-4 transition hover:decoration-current"
+                            >
+                              {request.user?.fullName || request.user?.email || 'Профиль пользователя'}
+                            </Link>
+                          ) : (
+                            request.user?.fullName || '—'
+                          )}
                         </td>
                         <td className="border-b border-[var(--color-blue-soft)] px-4 py-4">
                           <span

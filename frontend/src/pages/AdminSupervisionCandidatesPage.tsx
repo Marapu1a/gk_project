@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { PageNav } from '@/components/PageNav';
 import { Button } from '@/components/Button';
+import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 import { useAdminReviewerCandidates } from '@/features/admin/hooks/supervision/useAdminReviewerCandidates';
 import type {
   AdminReviewerCandidateKind,
@@ -92,7 +92,6 @@ function hourStateClass(tone: HourStateTone) {
 }
 
 function AdminSupervisionCandidatesContent() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const rawKind = searchParams.get('kind');
@@ -116,7 +115,7 @@ function AdminSupervisionCandidatesContent() {
     : 'createdAt';
   const sortDir: AdminReviewerCandidateSortDir = rawSortDir === 'asc' ? 'asc' : 'desc';
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
-  const perPage = [50, 100, 250, 500].includes(Number(searchParams.get('perPage')))
+  const perPage = [20, 50, 100, 250, 500].includes(Number(searchParams.get('perPage')))
     ? Number(searchParams.get('perPage'))
     : 100;
 
@@ -279,19 +278,13 @@ function AdminSupervisionCandidatesContent() {
             </select>
           </label>
 
-          <label className="dashboard-v2-small block text-[#1F305E]">
-            Строк
-            <select
+          <div className="flex items-end">
+            <PageSizeSelect
               value={perPage}
-              onChange={(event) => updateQuery({ perPage: event.target.value })}
-              className="input-design mt-1"
-            >
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={250}>250</option>
-              <option value={500}>500</option>
-            </select>
-          </label>
+              onChange={(value) => updateQuery({ perPage: value })}
+              className="h-[38px]"
+            />
+          </div>
 
           <div className="flex items-end">
             <Button type="button" variant="ghost" className="h-[38px] w-full" onClick={resetFilters}>
@@ -310,11 +303,10 @@ function AdminSupervisionCandidatesContent() {
           <p className="dashboard-v2-text p-6 text-[#6B7894]">Отправок не найдено.</p>
         ) : (
           <div className="overflow-x-auto p-5">
-            <table className="dashboard-v2-text w-full min-w-[1120px] text-[#1F305E]">
+            <table className="dashboard-v2-text w-full min-w-[1040px] text-[#1F305E]">
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
-                  <th className="rounded-l-[8px] px-4 py-3 font-medium"> </th>
-                  <th className="px-4 py-3 font-medium">
+                  <th className="rounded-l-[8px] px-4 py-3 font-medium">
                     <button type="button" onClick={() => setSort('candidate')} className="font-medium">
                       ФИО {sortBy === 'candidate' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
@@ -344,7 +336,6 @@ function AdminSupervisionCandidatesContent() {
 
               <tbody>
                 {rows.map((row) => {
-                  const canOpen = row.relationStatus !== 'REJECTED';
                   const date = row.latestPendingRequestAt ?? row.latestRequestAt;
                   const state = hourState(row);
 
@@ -355,26 +346,6 @@ function AdminSupervisionCandidatesContent() {
                         row.relationStatus === 'REJECTED' ? 'text-[#8D96B5]' : ''
                       }`}
                     >
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (canOpen) {
-                              navigate(
-                                `/admin/supervision-candidates/${kind}/${row.relationId}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`,
-                              );
-                            }
-                          }}
-                          disabled={!canOpen}
-                          className={`flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-blue-darker)] ${
-                            canOpen ? 'cursor-pointer' : 'cursor-default opacity-45'
-                          }`}
-                          title={canOpen ? 'Открыть детали кандидата' : 'Связь отклонена'}
-                          aria-label={canOpen ? 'Открыть детали кандидата' : 'Связь отклонена'}
-                        >
-                          <ArrowRight size={18} />
-                        </button>
-                      </td>
                       <td className="px-4 py-3 font-extrabold">
                         {candidateName(row.candidate.fullName, row.candidate.email)}
                       </td>
@@ -400,28 +371,12 @@ function AdminSupervisionCandidatesContent() {
         )}
       </section>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="dashboard-v2-text text-[#6B7894]">
-          Страница {Math.min(page, totalPages)} из {totalPages}
-        </div>
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={page <= 1}
-            onClick={() => updateQuery({ page: Math.max(1, page - 1) }, { resetPage: false })}
-          >
-            Назад
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={page >= totalPages}
-            onClick={() => updateQuery({ page: Math.min(totalPages, page + 1) }, { resetPage: false })}
-          >
-            Вперёд
-          </Button>
-        </div>
+      <div className="mt-5">
+        <DashboardPagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={(nextPage) => updateQuery({ page: nextPage }, { resetPage: false })}
+        />
       </div>
     </div>
   );

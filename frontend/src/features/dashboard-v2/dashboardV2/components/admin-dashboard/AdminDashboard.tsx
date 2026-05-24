@@ -18,11 +18,9 @@ import {
   type NotificationTone,
 } from '@/utils/notificationDictionary';
 import { useAllDocReviewRequests } from '@/features/documentReviewAdmin/hooks/useAllDocReviewRequests';
-import { useAdminCeuHistory } from '@/features/admin/hooks/ceu/useAdminCeuHistory';
-import { useAdminReviewerCandidates } from '@/features/admin/hooks/supervision/useAdminReviewerCandidates';
-import { useExamApps } from '@/features/exam/hooks/useExamApps';
 import { useDownloadUsersExport } from '@/features/admin/hooks/useDownloadUsersExport';
 import { useCreateDbBackup } from '@/features/backup/hooks/useCreateDbBackup';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 type AdminDashboardProps = {
   user: {
@@ -49,30 +47,6 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
 
   const { data: notifications = [] } = useNotifications();
   const { data: documentRequests = [] } = useAllDocReviewRequests();
-  const ceuHistory = useAdminCeuHistory({
-    status: 'UNCONFIRMED',
-    page: 1,
-    perPage: 1,
-    sortBy: 'createdAt',
-    sortDir: 'desc',
-  });
-  const supervisionCandidates = useAdminReviewerCandidates({
-    kind: 'supervision',
-    attention: true,
-    page: 1,
-    perPage: 1,
-    sortBy: 'createdAt',
-    sortDir: 'desc',
-  });
-  const mentorshipCandidates = useAdminReviewerCandidates({
-    kind: 'mentorship',
-    attention: true,
-    page: 1,
-    perPage: 1,
-    sortBy: 'createdAt',
-    sortDir: 'desc',
-  });
-  const examApps = useExamApps();
   const exportUsers = useDownloadUsersExport();
   const backupDb = useCreateDbBackup();
 
@@ -84,22 +58,14 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
     return hasActiveStatus || hasDeletionRequest;
   }).length;
 
-  const ceuCount = ceuHistory.data?.total ?? null;
-  const supervisionHoursCount =
-    supervisionCandidates.data && mentorshipCandidates.data
-      ? supervisionCandidates.data.total + mentorshipCandidates.data.total
-      : null;
-  const examCount =
-    examApps.data?.filter((application) => application.status === 'PENDING').length ?? null;
-
   const tasks: TaskItem[] = [
     { label: 'Управление пользователями', to: '/users' },
     { label: 'Баннер для пользователей', to: '/admin/user-banner' },
     { label: 'Проверка документов', to: '/admin/document-review', count: documentCount },
-    { label: 'Проверка CEU', to: '/review/ceu', count: ceuCount },
-    { label: 'Проверка часов', to: '/admin/supervision-candidates', count: supervisionHoursCount },
+    { label: 'Проверка CEU', to: '/review/ceu' },
+    { label: 'Проверка часов', to: '/admin/supervision-candidates' },
     { label: 'Выдача сертификата', to: '/certificate' },
-    { label: 'Заявки на экзамен', to: '/exam-applications', count: examCount },
+    { label: 'Заявки на экзамен', to: '/exam-applications' },
   ];
 
   const onExportUsers = async () => {
@@ -271,6 +237,7 @@ function NotificationRow({ notification }: { notification: Notification }) {
   const navigate = useNavigate();
   const deleteNotification = useDeleteNotification();
   const markRead = useMarkNotificationRead();
+  const { confirm } = useConfirm();
 
   const createdAt = new Date(notification.createdAt);
   const date = Number.isNaN(createdAt.getTime()) ? '—' : createdAt.toLocaleDateString('ru-RU');
@@ -296,6 +263,14 @@ function NotificationRow({ notification }: { notification: Notification }) {
   };
 
   const onDelete = async () => {
+    const ok = await confirm({
+      message: 'Удалить уведомление?',
+      confirmLabel: 'Удалить',
+      variant: 'danger',
+    });
+
+    if (!ok) return;
+
     try {
       await deleteNotification.mutateAsync(notification.id);
       toast.success('Уведомление удалено');

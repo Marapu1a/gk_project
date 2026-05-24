@@ -4,6 +4,11 @@ type Params = {
   search?: string;
   page?: number;
   perPage?: number;
+  role?: string;
+  group?: string;
+  registeredFrom?: string;
+  registeredTo?: string;
+  status?: 'ACTIVE' | 'ARCHIVE_REQUESTED' | 'ARCHIVED' | 'ALL';
 
   // режим подбора ревьюера для часов
   // practice — часы практики (супервизор / опытный / админ)
@@ -33,7 +38,7 @@ export async function getUsers(params: Params) {
       archivedAt?: string | null;
       archiveRequestedAt?: string | null;
       archiveRequestReason?: string | null;
-      groups: { id: string; name: string }[];
+      groups: { id: string; name: string; rank?: number | null }[];
     }[];
   };
 }

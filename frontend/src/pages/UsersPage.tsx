@@ -4,19 +4,13 @@ import { PageNav } from '@/components/PageNav';
 
 export default function UsersPage() {
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-blue-dark">Управление пользователями</h1>
-      <p className="text-sm text-gray-600">
-        Здесь вы можете просматривать всех пользователей, изменять их роли и смотреть детали.
-      </p>
-
-      {/* Верхняя панель кнопок */}
-      <PageNav />
-
+    <div className="min-h-screen bg-[#F0F0F0] px-4 py-6 text-[var(--color-blue-dark)]">
+      <header className="mx-auto mb-5 grid max-w-[1180px] grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <PageNav />
+        <h1 className="dashboard-v2-page-title text-center">Управление пользователями</h1>
+        <div />
+      </header>
       <UsersTable />
-
-      {/* Нижняя панель кнопок */}
-      <PageNav className="border-t border-gray-200 pt-4" />
     </div>
   );
 }

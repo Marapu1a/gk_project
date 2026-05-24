@@ -1,28 +1,41 @@
 // src/features/admin/components/UsersTable.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Search } from 'lucide-react';
 import { useUsers } from '../hooks/useUsers';
-import { useArchiveUser, useRestoreUser } from '../hooks/useArchiveUser';
-import { Button } from '@/components/Button';
-import { toast } from 'sonner';
-import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 
 type Role = 'ADMIN' | 'STUDENT' | 'REVIEWER';
+type UserStatus = 'ACTIVE' | 'ARCHIVE_REQUESTED' | 'ARCHIVED' | 'ALL';
+
 type UserRow = {
   id: string;
   fullName: string;
   email: string;
   registrationNumber?: string | null;
-  phone?: string | null;
   role: Role;
   createdAt: string;
   lastActiveAt?: string | null;
-  groups: { id: string; name: string }[];
-  avatarUrl?: string | null; // 👈 аватар
+  groups: { id: string; name: string; rank?: number | null }[];
+  avatarUrl?: string | null;
   archivedAt?: string | null;
   archiveRequestedAt?: string | null;
-  archiveRequestReason?: string | null;
 };
+
+const GROUP_OPTIONS = [
+  'Соискатель',
+  'Инструктор',
+  'Куратор',
+  'Супервизор',
+  'Опытный Супервизор',
+];
+
+const STATUS_OPTIONS: Array<{ value: UserStatus; label: string }> = [
+  { value: 'ACTIVE', label: 'Активные' },
+  { value: 'ARCHIVE_REQUESTED', label: 'Запрос на удаление' },
+  { value: 'ARCHIVED', label: 'Архив' },
+  { value: 'ALL', label: 'Все статусы' },
+];
 
 const roleMap: Record<Role, string> = {
   ADMIN: 'Администратор',
@@ -30,362 +43,282 @@ const roleMap: Record<Role, string> = {
   REVIEWER: 'Проверяющий',
 };
 
-// нормализуем под сравнение
-const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
-const tokenize = (s: string) =>
-  norm(s)
-    .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
-    .filter(Boolean);
+function formatDate(value?: string | null) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru-RU');
+}
+
+function currentGroup(user: UserRow) {
+  const group = [...(user.groups ?? [])].sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0))[0];
+  return group?.name || roleMap[user.role] || user.role;
+}
+
+function splitFullName(value?: string | null) {
+  const parts = (value ?? '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return { lastName: '—', restName: '' };
+  return {
+    lastName: parts[0],
+    restName: parts.slice(1).join(' '),
+  };
+}
+
+function userStatus(user: UserRow) {
+  if (user.archivedAt) return 'Архив';
+  if (user.archiveRequestedAt) return 'Запрос на удаление';
+  return 'Активен';
+}
+
+function csvCell(value: unknown) {
+  const text = String(value ?? '').replace(/\r?\n/g, ' ');
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(users: UserRow[]) {
+  const rows = [
+    ['№', 'ФИО', 'Email', 'Роль', 'Регистрация', 'Активность', 'Статус'],
+    ...users.map((user) => [
+      user.registrationNumber || '',
+      user.fullName || '',
+      user.email || '',
+      currentGroup(user),
+      formatDate(user.createdAt),
+      formatDate(user.lastActiveAt),
+      userStatus(user),
+    ]),
+  ];
+
+  const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(';')).join('\r\n')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `users_page_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 export function UsersTable() {
   const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState(''); // уходит на сервер (debounced)
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [archiveMode, setArchiveMode] = useState<'active' | 'only'>('active');
-
-  // серверная пагинация
+  const [search, setSearch] = useState('');
+  const [registeredFrom, setRegisteredFrom] = useState('');
+  const [registeredTo, setRegisteredTo] = useState('');
+  const [group, setGroup] = useState('');
+  const [status, setStatus] = useState<UserStatus>('ACTIVE');
   const [page, setPage] = useState(1);
-  const perPage = 20;
+  const [perPage, setPerPage] = useState(100);
 
-  // дергаем сервер с дебаунсом
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timeout = window.setTimeout(() => {
       setPage(1);
       setSearch(searchInput.trim());
     }, 250);
-    return () => clearTimeout(t);
+    return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
-  const { data, isLoading, error } = useUsers({ search, page, perPage, archived: archiveMode });
-  const archiveUser = useArchiveUser();
-  const restoreUser = useRestoreUser();
-  const { confirm } = useConfirm();
+  const params = useMemo(
+    () => ({
+      search,
+      page,
+      perPage,
+      group,
+      registeredFrom,
+      registeredTo,
+      status,
+      archived: status === 'ALL' ? 'with' as const : 'active' as const,
+    }),
+    [group, page, perPage, registeredFrom, registeredTo, search, status],
+  );
 
-  // локальные копии для оптимистичного удаления
-  const [localUsers, setLocalUsers] = useState<UserRow[]>([]);
-  const [localTotal, setLocalTotal] = useState(0);
+  const { data, isLoading, error, isFetching } = useUsers(params);
 
-  useEffect(() => {
-    setLocalUsers((data?.users as UserRow[]) ?? []);
-    setLocalTotal(data?.total ?? 0);
-  }, [data]);
-
-  // ⚡ Мгновенный фильтр на клиенте: токены + AND
-  const clientFilteredUsers = useMemo(() => {
-    const tokens = tokenize(searchInput);
-    if (tokens.length === 0) return localUsers;
-
-    return localUsers.filter((u) => {
-      // собираем “сено” для поиска
-      const hayParts = [
-        u.fullName,
-        u.email,
-        u.phone ?? '',
-        u.registrationNumber ?? '',
-        roleMap[u.role] || u.role, // русская роль
-        u.role, // и enum на всякий
-        ...u.groups.map((g) => g.name),
-      ];
-      const hay = norm(hayParts.filter(Boolean).join(' '));
-      // каждый токен должен встретиться
-      return tokens.every((t) => hay.includes(t));
-    });
-  }, [localUsers, searchInput]);
-
-  const onArchive = async (u: UserRow) => {
-    const ok = await confirm({
-      message: `Архивировать пользователя ${u.email}?`,
-      description: 'Он не сможет войти и исчезнет из рабочих списков.',
-      confirmLabel: 'Архивировать',
-      variant: 'danger',
-    });
-    if (!ok) return;
-
-    setPendingId(u.id);
-    const prevUsers = localUsers;
-    const prevTotal = localTotal;
-    setLocalUsers((list) => list.filter((x) => x.id !== u.id));
-    setLocalTotal((t) => Math.max(0, t - 1));
-
-    try {
-      await archiveUser.mutateAsync({ userId: u.id });
-      toast.success('Пользователь отправлен в архив');
-      if (prevUsers.length === 1 && page > 1) setPage((p) => p - 1);
-    } catch (e: any) {
-      setLocalUsers(prevUsers);
-      setLocalTotal(prevTotal);
-      toast.error(e?.response?.data?.error || 'Не удалось архивировать пользователя');
-    } finally {
-      setPendingId(null);
-    }
-  };
-
-  const onRestore = async (u: UserRow) => {
-    const ok = await confirm({
-      message: `Восстановить пользователя ${u.email} из архива?`,
-      confirmLabel: 'Восстановить',
-    });
-    if (!ok) return;
-
-    setPendingId(u.id);
-    const prevUsers = localUsers;
-    const prevTotal = localTotal;
-    setLocalUsers((list) => list.filter((x) => x.id !== u.id));
-    setLocalTotal((t) => Math.max(0, t - 1));
-
-    try {
-      await restoreUser.mutateAsync(u.id);
-      toast.success('Пользователь восстановлен');
-      if (prevUsers.length === 1 && page > 1) setPage((p) => p - 1);
-    } catch (e: any) {
-      setLocalUsers(prevUsers);
-      setLocalTotal(prevTotal);
-      toast.error(e?.response?.data?.error || 'Не удалось восстановить пользователя');
-    } finally {
-      setPendingId(null);
-    }
-  };
-
-  if (isLoading && !data)
-    return <p className="text-sm text-blue-dark p-4">Загрузка пользователей…</p>;
-  if (error) return <p className="text-error p-4">Ошибка загрузки пользователей</p>;
-
-  const users: UserRow[] = clientFilteredUsers; // показываем мгновенно отфильтрованное
-  const total = localTotal; // общее с сервера (по server-side фильтру)
-  const shown = users.length; // показано на странице после клиентского фильтра
+  const users = (data?.users as UserRow[]) ?? [];
+  const total = data?.total ?? 0;
   const currentPage = data?.page ?? page;
   const currentPerPage = data?.perPage ?? perPage;
   const totalPages = Math.max(1, Math.ceil(total / currentPerPage));
 
-  return (
-    <div
-      className="rounded-2xl border header-shadow bg-white overflow-hidden"
-      style={{ borderColor: 'var(--color-green-light)' }}
-    >
-      {/* Header */}
-      <div
-        className="px-6 py-4 border-b flex items-center justify-between gap-3"
-        style={{ borderColor: 'var(--color-green-light)' }}
-      >
-        <h2 className="text-xl font-semibold text-blue-dark">
-          Пользователи ({shown}/{total})
-        </h2>
+  const resetPage = (action: () => void) => {
+    setPage(1);
+    action();
+  };
 
-        {/* Живой фильтр */}
-        <div className="flex items-end gap-2">
+  return (
+    <div className="mx-auto max-w-[1180px] space-y-4">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <div className="dashboard-v2-caption text-[#6B7894]">
+          Всего: <span className="font-extrabold text-[var(--color-blue-dark)]">{total}</span>
+          {isFetching && !isLoading ? <span className="ml-2">обновляю...</span> : null}
+        </div>
+
+        <label className="relative block w-full max-w-[360px]">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="ФИО, Name, Email"
+            className="input-design h-[34px] rounded-full pl-4 pr-10"
+          />
+          <Search
+            size={17}
+            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#8D96B5]"
+          />
+        </label>
+
+        <div className="flex items-center justify-end gap-3">
           <button
             type="button"
-            className={`btn h-[38px] rounded-full px-4 text-sm ${
-              archiveMode === 'only' ? 'btn-dark' : 'border border-blue-dark text-blue-dark'
-            }`}
-            onClick={() => {
-              setPage(1);
-              setArchiveMode((mode) => (mode === 'only' ? 'active' : 'only'));
-            }}
+            onClick={() => downloadCsv(users)}
+            disabled={!users.length}
+            className="btn h-[34px] rounded-full border border-[var(--color-blue-dark)] px-4 text-[13px] font-medium text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
           >
-            {archiveMode === 'only' ? 'Активные' : 'Архив'}
+            CSV текущей страницы
           </button>
-          <div className="relative">
-            <label className="block mb-1 text-sm text-blue-dark">Фильтр</label>
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="ФИО, email, телефон, номер, группа, роль"
-              className="input w-80 pr-8"
-            />
-            {searchInput && (
-              <button
-                type="button"
-                className="absolute right-2 bottom-2 text-blue-dark/60 hover:text-blue-dark"
-                onClick={() => setSearchInput('')}
-                title="Очистить"
-              >
-                ×
-              </button>
-            )}
-          </div>
-          {isLoading && <span className="text-xs text-blue-dark">обновляю…</span>}
+          <PageSizeSelect value={perPage} onChange={(value) => resetPage(() => setPerPage(value))} />
         </div>
       </div>
 
-      {/* Body */}
-      <div className="p-6">
-        {users.length === 0 ? (
-          <p className="text-sm text-blue-dark">
-            Ничего не найдено{searchInput ? ` по «${searchInput}»` : ''}.
+      <section className="card-section grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <label className="dashboard-v2-small block">
+          Регистрация с
+          <input
+            type="date"
+            value={registeredFrom}
+            onChange={(event) => resetPage(() => setRegisteredFrom(event.target.value))}
+            className="input-design mt-1"
+          />
+        </label>
+
+        <label className="dashboard-v2-small block">
+          Регистрация по
+          <input
+            type="date"
+            value={registeredTo}
+            onChange={(event) => resetPage(() => setRegisteredTo(event.target.value))}
+            className="input-design mt-1"
+          />
+        </label>
+
+        <label className="dashboard-v2-small block">
+          Роль
+          <select
+            value={group}
+            onChange={(event) => resetPage(() => setGroup(event.target.value))}
+            className="input-design mt-1"
+          >
+            <option value="">Все роли</option>
+            {GROUP_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="dashboard-v2-small block">
+          Статус
+          <select
+            value={status}
+            onChange={(event) => resetPage(() => setStatus(event.target.value as UserStatus))}
+            className="input-design mt-1"
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </section>
+
+      <section className="card-section overflow-hidden p-0">
+        {isLoading && !data ? (
+          <p className="dashboard-v2-text p-6 text-[#6B7894]">Загрузка пользователей...</p>
+        ) : error ? (
+          <p className="dashboard-v2-text p-6 text-[var(--color-danger)]">
+            Ошибка загрузки пользователей
           </p>
+        ) : users.length === 0 ? (
+          <p className="dashboard-v2-text p-6 text-[#6B7894]">Пользователей не найдено.</p>
         ) : (
-          <>
-            <div
-              className="overflow-x-auto rounded-2xl border"
-              style={{ borderColor: 'var(--color-green-light)' }}
-            >
-              <table className="w-full text-sm table-auto">
-                <thead>
-                  <tr className="text-blue-dark" style={{ background: 'var(--color-blue-soft)' }}>
-                    <th className="p-3 text-left w-24">N</th>
-                    <th className="p-3 text-left w-64">ФИО</th>
-                    <th className="p-3 text-left w-56">Email</th>
-                    <th className="p-3 text-left w-32">Роль</th>
-                    <th className="p-3 text-left w-56">Группы</th>
-                    <th className="p-3 text-left w-32">Создан</th>
-                    <th className="p-3 text-left w-36">Активность</th>
-                    <th className="p-3 text-left w-40">Архив</th>
-                    <th className="p-3 text-center w-40">Действия</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u, idx) => {
-                    const isAdmin = u.role === 'ADMIN';
-                    const isRowPending = pendingId === u.id;
-                    const avatarSrc = u.avatarUrl || '/avatar_placeholder.svg';
+          <div className="p-5">
+            <p className="dashboard-v2-caption mb-3 text-[#8D96B5]">
+              Клик по ФИО открывает детальную карточку пользователя.
+            </p>
+            <table className="dashboard-v2-text w-full table-fixed text-[var(--color-blue-dark)]">
+              <colgroup>
+                <col className="w-[7%]" />
+                <col className="w-[31%]" />
+                <col className="w-[25%]" />
+                <col className="w-[17%]" />
+                <col className="w-[10%]" />
+                <col className="w-[9%]" />
+              </colgroup>
+              <thead>
+                <tr className="bg-[var(--color-blue-soft)] text-left">
+                  <th className="rounded-l-[8px] px-3 py-3 font-medium">№</th>
+                  <th className="px-3 py-3 font-medium">ФИО</th>
+                  <th className="px-3 py-3 font-medium">Email</th>
+                  <th className="px-3 py-3 text-center font-medium">Роль</th>
+                  <th className="px-3 py-3 text-center font-medium">Регистрация</th>
+                  <th className="rounded-r-[8px] px-3 py-3 text-center font-medium">Активность</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => {
+                  const avatarSrc = user.avatarUrl || '/avatar_placeholder.svg';
+                  const groupName = currentGroup(user);
+                  const name = splitFullName(user.fullName);
 
-                    return (
-                      <tr
-                        key={u.id}
-                        className="border-t align-top"
-                        style={{ borderColor: 'var(--color-green-light)' }}
-                      >
-                        <td className="p-4 font-semibold text-blue-dark">
-                          {u.registrationNumber || '—'}
-                        </td>
-
-                        <td className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-10 h-10 rounded-full overflow-hidden shrink-0 border"
-                              style={{
-                                borderColor: 'var(--color-green-light)',
-                                background: 'var(--color-blue-soft)',
+                  return (
+                    <tr key={user.id} className="border-b border-[#DCE8EC] last:border-b-0">
+                      <td className="px-3 py-3">{user.registrationNumber || '—'}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="h-[34px] w-[34px] shrink-0 overflow-hidden rounded-full border border-[#B8C4D8] bg-[#E7E9EF]">
+                            <img
+                              src={avatarSrc}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              onError={(event) => {
+                                event.currentTarget.src = '/avatar_placeholder.svg';
                               }}
-                            >
-                              <img
-                                src={avatarSrc}
-                                alt={u.fullName || 'Аватар'}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="whitespace-normal wrap-break-word" title={u.fullName}>
-                              {u.fullName || '—'}
-                            </div>
+                            />
                           </div>
-                        </td>
-
-                        <td className="p-4 truncate" title={u.email}>
-                          {u.email}
-                        </td>
-
-                        <td className="p-4">
-                          <span
-                            className="rounded-full px-2 py-0.5 text-xs"
-                            style={{
-                              color: 'var(--color-white)',
-                              background: isAdmin
-                                ? 'var(--color-green-brand)'
-                                : 'var(--color-blue-dark)',
-                            }}
-                          >
-                            {roleMap[u.role] || u.role}
-                          </span>
-                        </td>
-
-                        <td className="p-4">
-                          <div
-                            className="whitespace-normal wrap-break-word"
-                            title={u.groups.map((g) => g.name).join(', ')}
-                          >
-                            {u.groups.map((g) => g.name).join(', ') || '—'}
-                          </div>
-                        </td>
-
-                        <td className="p-4">
-                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString('ru-RU') : '—'}
-                        </td>
-
-                        <td className="p-4">
-                          {u.lastActiveAt
-                            ? new Date(u.lastActiveAt).toLocaleDateString('ru-RU')
-                            : '—'}
-                        </td>
-
-                        <td className="p-4 text-xs">
-                          {u.archivedAt ? (
-                            <span className="text-[#8D96B5]">
-                              Архив: {new Date(u.archivedAt).toLocaleDateString('ru-RU')}
-                            </span>
-                          ) : u.archiveRequestedAt ? (
-                            <span
-                              className="rounded-full bg-[rgba(255,83,100,0.18)] px-2 py-1 text-[var(--color-danger)]"
-                              title={u.archiveRequestReason || undefined}
+                          <div className="min-w-0">
+                            <Link
+                              to={`/admin/users/${user.id}`}
+                              className="block overflow-hidden break-words leading-[1.15] underline decoration-transparent underline-offset-4 transition hover:decoration-current"
+                              title={user.fullName || ''}
                             >
-                              Запрос на удаление
-                            </span>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-
-                        <td className="p-4">
-                          <div className="flex flex-wrap items-center justify-center gap-2">
-                            <Link to={`/admin/users/${u.id}`} className="btn btn-brand">
-                              Детали
+                              <span className="block font-extrabold">{name.lastName}</span>
+                              {name.restName ? <span className="block">{name.restName}</span> : null}
                             </Link>
-                            {archiveMode === 'only' ? (
-                              <button
-                                onClick={() => onRestore(u)}
-                                className="btn btn-dark rounded-full px-4 py-2 text-xs"
-                                disabled={isRowPending}
-                                title="Восстановить пользователя"
-                              >
-                                {isRowPending ? '...' : 'Вернуть'}
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => onArchive(u)}
-                                className="btn btn-ghost rounded-full border border-blue-dark px-4 py-2 text-xs"
-                                disabled={isRowPending}
-                                title="Архивировать пользователя"
-                              >
-                                {isRowPending ? '...' : 'Архив'}
-                              </button>
-                            )}
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination controls */}
-            {totalPages > 1 && (
-              <div className="flex justify-center mt-4 gap-2">
-                <Button
-                  variant="accent"
-                  size="sm"
-                  disabled={currentPage === 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Назад
-                </Button>
-                <span className="px-2 text-sm text-blue-dark">
-                  Стр. {currentPage} из {totalPages}
-                </span>
-                <Button
-                  variant="accent"
-                  size="sm"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  Вперёд
-                </Button>
-              </div>
-            )}
-          </>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3" title={user.email}>
+                        <div className="truncate">{user.email}</div>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className="inline-flex min-h-[28px] w-[150px] max-w-full items-center justify-center rounded-full bg-[var(--color-blue-soft)] px-3 text-center text-[12px] font-extrabold leading-[1.15]">
+                          {groupName}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-center text-[13px]">{formatDate(user.createdAt)}</td>
+                      <td className="px-3 py-3 text-center text-[13px]">{formatDate(user.lastActiveAt)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </section>
+
+      <DashboardPagination page={currentPage} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

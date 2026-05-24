@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PageNav } from '@/components/PageNav';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
@@ -204,7 +204,18 @@ export function AdminDocumentReviewDetails() {
       <section className="mx-auto max-w-[1040px] overflow-hidden rounded-[18px] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
         <header className="flex items-center justify-between gap-4 border-b border-[var(--color-blue-soft)] px-6 py-5">
           <div>
-            <h1 className="text-[24px] font-extrabold leading-tight">Заявка {requestTitleName}</h1>
+            <h1 className="text-[24px] font-extrabold leading-tight">
+              {request.user?.id ? (
+                <Link
+                  to={`/admin/users/${request.user.id}`}
+                  className="underline decoration-transparent underline-offset-4 transition hover:decoration-current"
+                >
+                  {requestTitleName}
+                </Link>
+              ) : (
+                requestTitleName
+              )}
+            </h1>
             <p className="mt-1 text-[13px] text-[#8D96B5]">
               Подана: {formatDate(request.submittedAt)}
             </p>

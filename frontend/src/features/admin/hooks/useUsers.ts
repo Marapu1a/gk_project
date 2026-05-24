@@ -13,7 +13,7 @@ type UserRow = {
   role: Role;
   createdAt: string;
   lastActiveAt?: string | null;
-  groups: { id: string; name: string }[];
+  groups: { id: string; name: string; rank?: number | null }[];
   avatarUrl?: string | null;
   fullNameLatin?: string | null;
   archivedAt?: string | null;
@@ -34,6 +34,9 @@ type Params = {
   perPage?: number;
   role?: string;
   group?: string;
+  registeredFrom?: string;
+  registeredTo?: string;
+  status?: 'ACTIVE' | 'ARCHIVE_REQUESTED' | 'ARCHIVED' | 'ALL';
 
   // режим подбора для часов
   // practice — практика → супервизоры, опытные, админы
@@ -49,12 +52,27 @@ export function useUsers(params: Params) {
     perPage = 20,
     role,
     group,
+    registeredFrom = '',
+    registeredTo = '',
+    status,
     supervision,
     archived = 'active',
   } = params;
 
   return useQuery<UsersResponse, Error>({
-    queryKey: ['users', search, page, perPage, role ?? '', group ?? '', supervision ?? '', archived],
+    queryKey: [
+      'users',
+      search,
+      page,
+      perPage,
+      role ?? '',
+      group ?? '',
+      registeredFrom,
+      registeredTo,
+      status ?? '',
+      supervision ?? '',
+      archived,
+    ],
     queryFn: async () => {
       const { data } = await api.get('/admin/users', {
         params: {
@@ -63,6 +81,9 @@ export function useUsers(params: Params) {
           perPage,
           role,
           group,
+          registeredFrom,
+          registeredTo,
+          status,
           supervision,
           archived,
         },

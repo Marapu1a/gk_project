@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useRegistry } from '../hooks/useRegistry';
 import type { RegistryCard as RegistryCardType } from '../api/getRegistry';
 import { RegistryCard } from '../components/RegistryCard';
-import { Button } from '@/components/Button';
+import { DashboardPagination } from '@/components/DashboardPagination';
 import { smartDefaultSort, userSort, type SortKey, type SortDir } from '@/utils/sortRegistry';
 
 type Props = { onOpenProfile?: (userId: string) => void; pageSize?: number };
@@ -407,21 +407,7 @@ export function RegistryList({ onOpenProfile, pageSize = 20 }: Props) {
         </div>
       )}
 
-      {/* Пагинация */}
-      <div className="flex items-center justify-between">
-        <Button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-          Назад
-        </Button>
-        <div className="text-sm text-gray-600">
-          Стр. {page} из {totalPages} • Всего: {totalFiltered}
-        </div>
-        <Button
-          disabled={page >= totalPages}
-          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-        >
-          Вперёд
-        </Button>
-      </div>
+      <DashboardPagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

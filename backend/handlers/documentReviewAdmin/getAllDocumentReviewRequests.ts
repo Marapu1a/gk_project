@@ -21,7 +21,7 @@ export async function getAllDocumentReviewRequests(req: FastifyRequest, reply: F
     } : {},
     orderBy: { submittedAt: 'desc' },
     include: {
-      user: { select: { email: true, fullName: true } },
+      user: { select: { id: true, email: true, fullName: true } },
       documents: true,
       documentFiles: { select: { id: true, status: true, deletionRequestedAt: true } },
     },

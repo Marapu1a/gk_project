@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { PageNav } from '@/components/PageNav';
+import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 import { useAdminCeuHistory } from '@/features/admin/hooks/ceu/useAdminCeuHistory';
 import {
   downloadAdminCeuHistoryCsv,
@@ -113,7 +114,7 @@ export default function CeuReviewPage() {
     : 'createdAt';
   const sortDir: AdminCeuSortDir = rawSortDir === 'asc' ? 'asc' : 'desc';
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
-  const perPage = [50, 100, 250, 500].includes(Number(searchParams.get('perPage')))
+  const perPage = [20, 50, 100, 250, 500].includes(Number(searchParams.get('perPage')))
     ? Number(searchParams.get('perPage'))
     : 100;
 
@@ -285,19 +286,13 @@ export default function CeuReviewPage() {
             </select>
           </label>
 
-          <label className="dashboard-v2-small block text-[#1F305E]">
-            Строк
-            <select
+          <div className="flex items-end">
+            <PageSizeSelect
               value={perPage}
-              onChange={(event) => updateQuery({ perPage: event.target.value })}
-              className="input-design mt-1"
-            >
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={250}>250</option>
-              <option value={500}>500</option>
-            </select>
-          </label>
+              onChange={(value) => updateQuery({ perPage: value })}
+              className="h-[38px]"
+            />
+          </div>
 
           <div className="flex items-end">
             <Button type="button" variant="ghost" className="h-[38px] w-full" onClick={resetFilters}>
@@ -415,28 +410,12 @@ export default function CeuReviewPage() {
         )}
       </section>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="dashboard-v2-text text-[#6B7894]">
-          Страница {Math.min(page, totalPages)} из {totalPages}
-        </div>
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={page <= 1}
-            onClick={() => updateQuery({ page: Math.max(1, page - 1) }, { resetPage: false })}
-          >
-            Назад
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={page >= totalPages}
-            onClick={() => updateQuery({ page: Math.min(totalPages, page + 1) }, { resetPage: false })}
-          >
-            Вперёд
-          </Button>
-        </div>
+      <div className="mt-5">
+        <DashboardPagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={(nextPage) => updateQuery({ page: nextPage }, { resetPage: false })}
+        />
       </div>
 
       {selectedRow ? (

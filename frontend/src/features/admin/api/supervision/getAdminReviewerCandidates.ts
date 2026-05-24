@@ -1,5 +1,4 @@
 import { api } from '@/lib/axios';
-import type { ReviewerCandidateDetailsResponse } from '@/features/supervision/api/getReviewerCandidateDetails';
 
 export type AdminReviewerCandidateKind = 'supervision' | 'mentorship';
 export type AdminReviewerCandidateStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
@@ -69,15 +68,6 @@ export async function getAdminReviewerCandidates(
   const { data } = await api.get<AdminReviewerCandidatesResponse>(
     '/admin/supervision/reviewer-candidates',
     { params },
-  );
-  return data;
-}
-
-export async function getAdminReviewerCandidateDetails(
-  relationId: string,
-): Promise<ReviewerCandidateDetailsResponse> {
-  const { data } = await api.get<ReviewerCandidateDetailsResponse>(
-    `/admin/supervision/reviewer-candidates/${relationId}`,
   );
   return data;
 }
