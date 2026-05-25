@@ -19,6 +19,11 @@ function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function capToRequired(value: number, required: number) {
+  if (required <= 0) return Math.max(0, value);
+  return Math.min(Math.max(0, value), required);
+}
+
 export function CandidateCeuCard({ summary }: CandidateCeuCardProps) {
   const rows = [
     ['Этика', summary.usable.ethics, summary.required?.ethics ?? 0],
@@ -35,7 +40,8 @@ export function CandidateCeuCard({ summary }: CandidateCeuCardProps) {
 
       <div className="space-y-0 text-[#1F305E]">
         {rows.map(([label, value, required]) => {
-          const isEmpty = value <= 0 && required <= 0;
+          const displayValue = capToRequired(value, required);
+          const isEmpty = displayValue <= 0 && required <= 0;
 
           return (
             <div
@@ -48,7 +54,7 @@ export function CandidateCeuCard({ summary }: CandidateCeuCardProps) {
                   isEmpty ? 'text-[#A7B1C7]' : 'text-[#1F305E]'
                 }`}
               >
-                {formatNumber(value)}
+                {formatNumber(displayValue)}
                 <span className="dashboard-v2-label ml-1 text-[#7F8AA3]">
                   /{formatNumber(required)}
                 </span>

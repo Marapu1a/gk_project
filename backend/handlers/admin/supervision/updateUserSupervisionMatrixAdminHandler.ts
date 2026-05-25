@@ -6,6 +6,8 @@ import { CycleStatus, CycleType, NotificationType, PracticeLevel, RecordStatus, 
 import {
   calcAutoRenewalSupervisionHours,
   calcAutoSupervisionHours,
+  renewalSupervisionRequirementsByGroup,
+  supervisionRequirementsByGroup,
 } from '../../../utils/supervisionRequirements';
 
 // Принимаем legacy-уровни, но внутри работаем только с новыми.
@@ -77,6 +79,13 @@ function mapTargetLevel(level: TargetLevel) {
   if (level === TargetLevel.INSTRUCTOR) return 'Инструктор';
   if (level === TargetLevel.CURATOR) return 'Куратор';
   return 'Супервизор';
+}
+
+function getRequirements(activeCycle: { targetLevel: TargetLevel; type: CycleType }) {
+  const groupName = mapTargetLevel(activeCycle.targetLevel);
+  return activeCycle.type === CycleType.RENEWAL
+    ? renewalSupervisionRequirementsByGroup[groupName]
+    : supervisionRequirementsByGroup[groupName];
 }
 
 async function getBonusPracticeHours(userId: string, activeCycle: { targetLevel: TargetLevel; type: CycleType }) {
@@ -200,18 +209,30 @@ export async function updateUserSupervisionMatrixAdminHandler(
     const implementing = round2(incoming.implementing);
     const programming = round2(incoming.programming);
     const practiceTotal = round2(implementing + programming);
+    const requirements = getRequirements(activeCycle);
     const practiceRuleError = getPracticeRuleError(implementing, programming);
     if (practiceRuleError) return reply.code(400).send({ error: practiceRuleError });
 
     const groupName = mapTargetLevel(activeCycle.targetLevel);
     const bonusPractice = await getBonusPracticeHours(userId, activeCycle);
     const practiceHoursForSupervision = round2(practiceTotal + bonusPractice);
+    if (requirements && requirements.practice > 0 && practiceHoursForSupervision > requirements.practice) {
+      return reply.code(400).send({
+        error: `Нельзя указать больше ${requirements.practice} часов практики для текущего цикла`,
+        maxValue: requirements.practice,
+      });
+    }
+
     const expectedSupervision =
       activeCycle.type === CycleType.RENEWAL
         ? calcAutoRenewalSupervisionHours({ groupName, practiceHours: practiceHoursForSupervision })
         : calcAutoSupervisionHours({ groupName, practiceHours: practiceHoursForSupervision });
+    const cappedExpectedSupervision =
+      requirements && requirements.supervision > 0
+        ? Math.min(expectedSupervision, requirements.supervision)
+        : expectedSupervision;
     const distributionRuleError = getDistributionRuleError({
-      expectedSupervision,
+      expectedSupervision: cappedExpectedSupervision,
       distribution: incoming.distribution,
     });
     if (distributionRuleError) return reply.code(400).send({ error: distributionRuleError });
@@ -286,7 +307,7 @@ export async function updateUserSupervisionMatrixAdminHandler(
       mode: incoming.mode,
       implementing,
       programming,
-      expectedSupervision,
+      expectedSupervision: cappedExpectedSupervision,
       notified: incoming.notifyUser,
       cycleId: activeCycle.id,
     });
@@ -298,6 +319,15 @@ export async function updateUserSupervisionMatrixAdminHandler(
     }
 
     const value = round2(incoming.value);
+    const requirements = getRequirements(activeCycle);
+    const maxValue = requirements?.supervisor ?? 0;
+
+    if (maxValue > 0 && value > maxValue) {
+      return reply.code(400).send({
+        error: `Нельзя указать больше ${maxValue} часов менторства`,
+        maxValue,
+      });
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.supervisionHour.deleteMany({
@@ -377,6 +407,19 @@ export async function updateUserSupervisionMatrixAdminHandler(
   }
   if (isSupervisorUser && level === 'PRACTICE') {
     return reply.code(403).send({ error: 'Часы практики у супервизоров не редактируются агрегатами' });
+  }
+
+  const requirements = getRequirements(activeCycle);
+  const maxValue =
+    level === 'SUPERVISOR' ? (requirements?.supervisor ?? 0) : (requirements?.practice ?? 0);
+  if (status === RecordStatus.CONFIRMED && maxValue > 0 && value > maxValue) {
+    return reply.code(400).send({
+      error:
+        level === 'SUPERVISOR'
+          ? `Нельзя указать больше ${maxValue} часов менторства`
+          : `Нельзя указать больше ${maxValue} часов практики для текущего цикла`,
+      maxValue,
+    });
   }
 
   // --- текущая сумма в ячейке (ТОЛЬКО ACTIVE cycle)

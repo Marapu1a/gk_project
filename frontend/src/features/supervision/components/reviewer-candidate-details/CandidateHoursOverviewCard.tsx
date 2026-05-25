@@ -16,6 +16,12 @@ function getProgressPercent(current: number, required: number) {
   return Math.max(0, Math.min(100, (current / required) * 100));
 }
 
+function capToRequired(value: number, required?: number | null) {
+  const current = Math.max(0, value);
+  if (required == null || required <= 0) return current;
+  return Math.min(current, required);
+}
+
 function MetricCard({
   label,
   value,
@@ -107,6 +113,7 @@ export function CandidateHoursOverviewCard({
   if (mode === 'mentorship') {
     const mentor = summary.mentor ?? { total: 0, required: 24, percent: 0, pending: 0 };
     const remaining = Math.max(0, mentor.required - mentor.total - mentor.pending);
+    const mentorDisplayTotal = capToRequired(mentor.total, mentor.required);
 
     return (
       <section className="mt-5 overflow-hidden rounded-[22px] bg-white px-6 py-6 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
@@ -118,7 +125,7 @@ export function CandidateHoursOverviewCard({
         <div className="grid gap-5 lg:grid-cols-[178px_minmax(0,1fr)]">
           <TotalCircle
             label="Всего"
-            value={formatNumber(mentor.total)}
+            value={formatNumber(mentorDisplayTotal)}
             progress={mentor.percent}
           />
 
@@ -155,6 +162,14 @@ export function CandidateHoursOverviewCard({
 
   const fieldPractice = summary.practiceBreakdown.legacy + summary.practiceBreakdown.implementing;
   const infoPractice = summary.practiceBreakdown.programming;
+  const practiceDisplayTotal = capToRequired(
+    summary.practiceBreakdown.total,
+    summary.required?.practice,
+  );
+  const supervisionDisplayTotal = capToRequired(
+    summary.supervisionBreakdown.total,
+    summary.required?.supervision,
+  );
 
   return (
     <section className="mt-5 overflow-hidden rounded-[22px] bg-white px-6 py-6 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
@@ -168,7 +183,7 @@ export function CandidateHoursOverviewCard({
           <div className="grid gap-5 sm:grid-cols-[178px_minmax(0,1fr)]">
             <TotalCircle
               label="Всего"
-              value={formatNumber(summary.practiceBreakdown.total)}
+              value={formatNumber(practiceDisplayTotal)}
               progress={practiceProgress}
             />
 
@@ -199,7 +214,7 @@ export function CandidateHoursOverviewCard({
           <div className="grid gap-5 lg:grid-cols-[178px_minmax(0,1fr)]">
             <TotalCircle
               label="Всего"
-              value={formatNumber(summary.supervisionBreakdown.total)}
+              value={formatNumber(supervisionDisplayTotal)}
               progress={supervisionProgress}
             />
 

@@ -6,10 +6,59 @@ import {
   RecordStatus,
   PracticeLevel,
   CycleStatus,
+  CycleType,
   NotificationType,
   ReviewerCandidateKind,
+  TargetLevel,
 } from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
+import {
+  renewalSupervisionRequirementsByGroup,
+  supervisionRequirementsByGroup,
+} from '../../utils/supervisionRequirements';
+import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
+
+function mapTargetLevel(level: TargetLevel) {
+  if (level === TargetLevel.INSTRUCTOR) return 'Инструктор';
+  if (level === TargetLevel.CURATOR) return 'Куратор';
+  return 'Супервизор';
+}
+
+function getRequirements(activeCycle: { targetLevel: TargetLevel; type: CycleType }) {
+  const groupName = mapTargetLevel(activeCycle.targetLevel);
+  return activeCycle.type === CycleType.RENEWAL
+    ? renewalSupervisionRequirementsByGroup[groupName]
+    : supervisionRequirementsByGroup[groupName];
+}
+
+async function getBonusPracticeHours(userId: string, activeCycle: { targetLevel: TargetLevel; type: CycleType }) {
+  if (activeCycle.type === CycleType.RENEWAL || activeCycle.targetLevel !== TargetLevel.SUPERVISOR) {
+    return 0;
+  }
+
+  const lastCompletedCurator = await prisma.certificationCycle.findFirst({
+    where: {
+      userId,
+      status: CycleStatus.COMPLETED,
+      targetLevel: TargetLevel.CURATOR,
+    },
+    orderBy: { endedAt: 'desc' },
+    select: { id: true },
+  });
+
+  if (!lastCompletedCurator) return 0;
+
+  const bonusAgg = await prisma.supervisionHour.aggregate({
+    where: {
+      status: RecordStatus.CONFIRMED,
+      type: { in: [PracticeLevel.PRACTICE, PracticeLevel.IMPLEMENTING, PracticeLevel.PROGRAMMING] },
+      record: { cycleId: lastCompletedCurator.id },
+    },
+    _sum: { value: true },
+  });
+
+  return bonusAgg._sum.value ?? 0;
+}
 
 export async function createSupervisionHandler(req: FastifyRequest, reply: FastifyReply) {
   const userId = req.user?.userId;
@@ -47,7 +96,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
 
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId, status: CycleStatus.ACTIVE },
-    select: { id: true },
+    select: { id: true, targetLevel: true, type: true },
   });
   if (!activeCycle) {
     return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
@@ -157,6 +206,40 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   const relationKind = isAuthorSimpleSupervisor
     ? ReviewerCandidateKind.MENTORSHIP
     : ReviewerCandidateKind.SUPERVISION;
+
+  const requirements = getRequirements(activeCycle);
+  const incomingTotal = normalized.reduce((sum, entry) => sum + entry.value, 0);
+  if (isAuthorSimpleSupervisor) {
+    const mentorCurrent = await prisma.supervisionHour.aggregate({
+      where: {
+        record: { userId, cycleId: activeCycle.id },
+        type: PracticeLevel.SUPERVISOR,
+        status: { in: [RecordStatus.CONFIRMED, RecordStatus.UNCONFIRMED] },
+      },
+      _sum: { value: true },
+    });
+    const remaining = Math.max(0, (requirements?.supervisor ?? 0) - (mentorCurrent._sum.value ?? 0));
+    if (incomingTotal > remaining) {
+      return reply.code(400).send({
+        error: `Можно добавить не более ${remaining} часов менторства.`,
+        remaining,
+      });
+    }
+  } else {
+    const bonusPractice = await getBonusPracticeHours(userId, activeCycle);
+    const cycleTotals = await getCycleSupervisionTotals(
+      activeCycle.id,
+      activeCycle.targetLevel,
+      bonusPractice,
+    );
+    const remaining = Math.max(0, (requirements?.practice ?? 0) - cycleTotals.practiceTotalWithPending);
+    if (incomingTotal > remaining) {
+      return reply.code(400).send({
+        error: `Можно добавить не более ${remaining} часов практики для текущего цикла.`,
+        remaining,
+      });
+    }
+  }
 
   const record = await prisma.$transaction(async (tx) => {
     if (!currentUser.supervisionEthicsAcceptedAt && ethicsAccepted) {

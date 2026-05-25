@@ -28,6 +28,13 @@ function formatNumber(value?: number | null) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function capToRequired(value?: number | null, required?: number | null) {
+  const current = Math.max(0, Number(value ?? 0));
+  const max = Number(required ?? 0);
+  if (max <= 0) return current;
+  return Math.min(current, max);
+}
+
 function statusText(status: ExamStatus) {
   return examStatusLabels[status] ?? status;
 }
@@ -155,12 +162,12 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
                 <div className="rounded-[10px] bg-white px-4 py-4 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
                   <h4 className="dashboard-v2-title mb-3">Готовность к экзамену</h4>
                   <CheckLine ok={summary.ceu.ready} label="CEU-баллы">
-                    {formatNumber(summary.ceu.current.total)} / {formatNumber(summary.ceu.required?.total)}
+                    {formatNumber(capToRequired(summary.ceu.current.total, summary.ceu.required?.total))} / {formatNumber(summary.ceu.required?.total)}
                   </CheckLine>
                   <CheckLine ok={summary.supervision.ready} label="Часы">
                     {summary.supervision.required?.supervisor
-                      ? `${formatNumber(summary.supervision.current.mentor)} / ${formatNumber(summary.supervision.required.supervisor)} менторство`
-                      : `${formatNumber(summary.supervision.current.practice)} / ${formatNumber(summary.supervision.required?.practice)} практика, ${formatNumber(summary.supervision.current.supervision)} / ${formatNumber(summary.supervision.required?.supervision)} супервизия`}
+                      ? `${formatNumber(capToRequired(summary.supervision.current.mentor, summary.supervision.required.supervisor))} / ${formatNumber(summary.supervision.required.supervisor)} менторство`
+                      : `${formatNumber(capToRequired(summary.supervision.current.practice, summary.supervision.required?.practice))} / ${formatNumber(summary.supervision.required?.practice)} практика, ${formatNumber(capToRequired(summary.supervision.current.supervision, summary.supervision.required?.supervision))} / ${formatNumber(summary.supervision.required?.supervision)} супервизия`}
                   </CheckLine>
                   <CheckLine ok={summary.documents.ready} label="Документы">
                     {summary.documents.request ? (

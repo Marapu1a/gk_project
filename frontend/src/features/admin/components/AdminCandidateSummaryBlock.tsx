@@ -29,6 +29,18 @@ function formatNumber(value?: number | null) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function capToRequired(current?: number | null, required?: number | null) {
+  const currentValue = Number(current ?? 0);
+  const requiredValue = Number(required ?? 0);
+
+  if (requiredValue <= 0) return Math.max(0, currentValue);
+  return Math.min(Math.max(0, currentValue), requiredValue);
+}
+
+function progressText(current?: number | null, required?: number | null) {
+  return `${formatNumber(capToRequired(current, required))} / ${formatNumber(required)}`;
+}
+
 function resolveTargetLabel(user: any) {
   const activeCycle = user.activeCycle;
   const targetLevel = activeCycle?.targetLevel ?? user.targetLevel;
@@ -213,7 +225,7 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
     if ((supervisionRequired?.practice ?? 0) > 0) {
       lines.push({
         label: 'Часы практики',
-        value: `${formatNumber(supervisionCurrent?.practice)} / ${formatNumber(supervisionRequired?.practice)}`,
+        value: progressText(supervisionCurrent?.practice, supervisionRequired?.practice),
         tone:
           (supervisionCurrent?.practice ?? 0) >= (supervisionRequired?.practice ?? 0)
             ? 'good'
@@ -224,7 +236,7 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
     if ((supervisionRequired?.supervision ?? 0) > 0) {
       lines.push({
         label: 'Часы супервизии',
-        value: `${formatNumber(supervisionCurrent?.supervision)} / ${formatNumber(supervisionRequired?.supervision)}`,
+        value: progressText(supervisionCurrent?.supervision, supervisionRequired?.supervision),
         tone:
           (supervisionCurrent?.supervision ?? 0) >= (supervisionRequired?.supervision ?? 0)
             ? 'good'
@@ -240,7 +252,7 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
     if ((supervisionRequired?.supervisor ?? 0) > 0) {
       lines.push({
         label: 'Часы менторства',
-        value: `${formatNumber(supervisionCurrent?.mentor)} / ${formatNumber(supervisionRequired?.supervisor)}`,
+        value: progressText(supervisionCurrent?.mentor, supervisionRequired?.supervisor),
         tone:
           (supervisionCurrent?.mentor ?? 0) >= (supervisionRequired?.supervisor ?? 0)
             ? 'good'
@@ -256,7 +268,7 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
     if ((ceuRequired?.total ?? 0) > 0) {
       lines.push({
         label: 'CEU-баллы',
-        value: `${formatNumber(ceuCurrent?.total)} / ${formatNumber(ceuRequired?.total)}`,
+        value: progressText(ceuCurrent?.total, ceuRequired?.total),
         tone: readiness?.ceu?.ready ? 'good' : 'bad',
       });
     }

@@ -22,6 +22,11 @@ function formatNumber(value: number | null | undefined) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function capToRequired(value: number, required: number) {
+  if (required <= 0) return Math.max(0, value);
+  return Math.min(Math.max(0, value), required);
+}
+
 function CeuMetricCard({
   label,
   value,
@@ -31,7 +36,8 @@ function CeuMetricCard({
   value: number;
   required: number;
 }) {
-  const isEmpty = value <= 0 && required <= 0;
+  const displayValue = capToRequired(value, required);
+  const isEmpty = displayValue <= 0 && required <= 0;
 
   return (
     <div className="flex min-h-[86px] items-center justify-between gap-5 rounded-[10px] bg-[var(--color-blue-soft)] px-5 py-4">
@@ -44,7 +50,7 @@ function CeuMetricCard({
           isEmpty ? 'text-[#A7B1C7]' : 'text-[#1F305E]'
         }`}
       >
-        {formatNumber(value)}
+        {formatNumber(displayValue)}
         <span className="ml-1 text-[14px] font-semibold text-[#7F8AA3]">/{formatNumber(required)}</span>
       </span>
     </div>

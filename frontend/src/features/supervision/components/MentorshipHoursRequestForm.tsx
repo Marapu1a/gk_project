@@ -39,14 +39,15 @@ function sanitizeHoursInput(rawValue: string) {
   return hoursInputSchema.safeParse(value).success ? value : null;
 }
 
-function normalizeHoursInput(value: string) {
+function normalizeHoursInput(value: string, max?: number | null) {
   const sanitized = sanitizeHoursInput(value);
   if (!sanitized || sanitized === '.') return '0';
 
   const parsed = Number(sanitized);
   if (!Number.isFinite(parsed) || parsed < 0) return '0';
 
-  return String(round2(parsed));
+  const capped = max != null ? Math.min(parsed, Math.max(0, max)) : parsed;
+  return String(round2(capped));
 }
 
 function parseHours(value: string) {
@@ -236,7 +237,11 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
                   </Field>
 
                   <Field label="Количество часов менторства">
-                    <NumberInput value={mentorshipHours} onChange={setMentorshipHours} />
+                    <NumberInput
+                      value={mentorshipHours}
+                      onChange={setMentorshipHours}
+                      max={effectiveLimit}
+                    />
                   </Field>
                 </div>
 
@@ -406,9 +411,11 @@ function Field({
 function NumberInput({
   value,
   onChange,
+  max,
 }: {
   value: string;
   onChange: (value: string) => void;
+  max?: number | null;
 }) {
   return (
     <input
@@ -418,11 +425,15 @@ function NumberInput({
       onFocus={() => {
         if (value === '0') onChange('');
       }}
-      onBlur={() => onChange(normalizeHoursInput(value))}
+      onBlur={() => onChange(normalizeHoursInput(value, max))}
       onChange={(event) => {
         const nextValue = sanitizeHoursInput(event.target.value);
-        if (nextValue !== null) onChange(nextValue);
+        if (nextValue !== null) {
+          const parsed = parseHours(nextValue);
+          onChange(max != null && parsed > max ? String(Math.max(0, max)) : nextValue);
+        }
       }}
+      max={max ?? undefined}
     />
   );
 }

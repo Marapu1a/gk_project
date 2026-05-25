@@ -15,6 +15,62 @@ function round2(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+function clampToMax(value: number, max?: number | null) {
+  const normalized = Math.max(0, value);
+  if (max == null || max <= 0) return normalized;
+  return Math.min(normalized, max);
+}
+
+function scalePairToMax(left: number, right: number, max: number) {
+  const total = round2(left + right);
+  if (max <= 0) return { left: 0, right: 0 };
+  if (total <= max) return { left, right };
+
+  const ratio = max / total;
+  const scaledLeft = round2(left * ratio);
+  return { left: scaledLeft, right: round2(max - scaledLeft) };
+}
+
+function scaleDistributionToMax(
+  distribution: {
+    directIndividual: number;
+    directGroup: number;
+    nonObservingIndividual: number;
+    nonObservingGroup: number;
+  },
+  max: number,
+) {
+  const total = round2(
+    distribution.directIndividual +
+      distribution.directGroup +
+      distribution.nonObservingIndividual +
+      distribution.nonObservingGroup,
+  );
+
+  if (max <= 0) {
+    return {
+      directIndividual: 0,
+      directGroup: 0,
+      nonObservingIndividual: 0,
+      nonObservingGroup: 0,
+    };
+  }
+
+  if (total <= max) return distribution;
+
+  const ratio = max / total;
+  const directIndividual = round2(distribution.directIndividual * ratio);
+  const directGroup = round2(distribution.directGroup * ratio);
+  const nonObservingIndividual = round2(distribution.nonObservingIndividual * ratio);
+
+  return {
+    directIndividual,
+    directGroup,
+    nonObservingIndividual,
+    nonObservingGroup: round2(max - directIndividual - directGroup - nonObservingIndividual),
+  };
+}
+
 function formatNumber(value: number | null | undefined) {
   if (value == null) return '0';
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
@@ -25,12 +81,16 @@ function sanitizeHoursInput(rawValue: string) {
   return hoursInputPattern.test(value) ? value : null;
 }
 
-function normalizeHoursInput(value: string) {
+function normalizeHoursInput(value: string, max?: number | null) {
   const sanitized = sanitizeHoursInput(value);
   if (!sanitized || sanitized === '.') return '0';
 
   const parsed = Number(sanitized);
   if (!Number.isFinite(parsed) || parsed < 0) return '0';
+
+  if (max != null) {
+    return String(round2(Math.min(parsed, Math.max(0, max))));
+  }
 
   return String(round2(parsed));
 }
@@ -104,14 +164,32 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
 
     const breakdown = data.summary.practiceBreakdown;
     const distribution = data.summary.supervisionBreakdown;
+    const manualPracticeLimit = Math.max(
+      0,
+      (data.summary.required?.practice ?? 0) - (breakdown?.bonus ?? data.summary.bonus?.practice ?? 0),
+    );
+    const practicePair = scalePairToMax(
+      (breakdown?.implementing ?? 0) + (breakdown?.legacy ?? 0),
+      breakdown?.programming ?? 0,
+      manualPracticeLimit,
+    );
+    const cappedDistribution = scaleDistributionToMax(
+      {
+        directIndividual: distribution?.directIndividual ?? 0,
+        directGroup: distribution?.directGroup ?? 0,
+        nonObservingIndividual: distribution?.nonObservingIndividual ?? 0,
+        nonObservingGroup: distribution?.nonObservingGroup ?? 0,
+      },
+      data.summary.required?.supervision ?? 0,
+    );
 
-    setImplementing(formatNumber((breakdown?.implementing ?? 0) + (breakdown?.legacy ?? 0)));
-    setProgramming(formatNumber(breakdown?.programming ?? 0));
-    setDirectIndividual(formatNumber(distribution?.directIndividual ?? 0));
-    setDirectGroup(formatNumber(distribution?.directGroup ?? 0));
-    setNonObservingIndividual(formatNumber(distribution?.nonObservingIndividual ?? 0));
-    setNonObservingGroup(formatNumber(distribution?.nonObservingGroup ?? 0));
-    setMentorshipHours(formatNumber(data.summary.mentor?.total ?? data.summary.usable.supervisor ?? 0));
+    setImplementing(formatNumber(practicePair.left));
+    setProgramming(formatNumber(practicePair.right));
+    setDirectIndividual(formatNumber(cappedDistribution.directIndividual));
+    setDirectGroup(formatNumber(cappedDistribution.directGroup));
+    setNonObservingIndividual(formatNumber(cappedDistribution.nonObservingIndividual));
+    setNonObservingGroup(formatNumber(cappedDistribution.nonObservingGroup));
+    setMentorshipHours(formatNumber(clampToMax(data.summary.mentor?.total ?? data.summary.usable.supervisor ?? 0, data.summary.mentor?.required)));
     setPracticeLocked(false);
   }, [data]);
 
@@ -125,7 +203,8 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       required && required.practice > 0 && required.supervision > 0
         ? required.practice / required.supervision
         : null;
-    const expectedSupervision = ratio ? Math.floor(practiceTotal / ratio) : 0;
+    const rawExpectedSupervision = ratio ? Math.floor(practiceTotal / ratio) : 0;
+    const expectedSupervision = clampToMax(rawExpectedSupervision, required?.supervision ?? null);
 
     const distribution = {
       directIndividual: parseHours(directIndividual),
@@ -170,6 +249,11 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
   ]);
 
   const practiceRuleError = getPracticeRuleError(values.implementingValue, values.programmingValue);
+  const practiceLimit = required?.practice ?? 0;
+  const practiceLimitError =
+    practiceLimit > 0 && values.practiceTotal > practiceLimit
+      ? `Нельзя указать больше ${formatNumber(practiceLimit)} часов практики для текущего цикла.`
+      : null;
   const distributionRuleError = getDistributionRuleError({
     expectedSupervision: values.expectedSupervision,
     distributionTotal: values.distributionTotal,
@@ -183,8 +267,8 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       return;
     }
 
-    if (practiceRuleError) {
-      toast.error(practiceRuleError);
+    if (practiceRuleError || practiceLimitError) {
+      toast.error(practiceRuleError || practiceLimitError);
       return;
     }
 
@@ -197,8 +281,8 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       return;
     }
 
-    if (practiceRuleError) {
-      toast.error(practiceRuleError);
+    if (practiceRuleError || practiceLimitError) {
+      toast.error(practiceRuleError || practiceLimitError);
       return;
     }
 
@@ -234,6 +318,11 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
   const saveMentorship = async (notifyUser: boolean) => {
     if (values.mentorshipValue < 0) {
       toast.error('Введите корректное количество часов менторства');
+      return;
+    }
+
+    if ((mentor?.required ?? 0) > 0 && values.mentorshipValue > (mentor?.required ?? 0)) {
+      toast.error(`Нельзя указать больше ${formatNumber(mentor?.required)} часов менторства`);
       return;
     }
 
@@ -290,6 +379,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
               value={mentorshipHours}
               onChange={setMentorshipHours}
               disabled={mutation.isPending || (mentor?.required ?? 0) <= 0}
+              max={mentor?.required ?? 0}
               large
             />
           </label>
@@ -343,6 +433,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
                 value={implementing}
                 onChange={setImplementing}
                 disabled={practiceLocked || mutation.isPending}
+                max={Math.max(0, (required?.practice ?? 0) - values.bonusPractice)}
               />
             </Field>
             <Field label="Работа с информацией">
@@ -350,13 +441,14 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
                 value={programming}
                 onChange={setProgramming}
                 disabled={practiceLocked || mutation.isPending}
+                max={Math.max(0, (required?.practice ?? 0) - values.bonusPractice)}
               />
             </Field>
           </div>
 
-          {practiceRuleError ? (
+          {practiceRuleError || practiceLimitError ? (
             <p className="dashboard-v2-caption font-semibold text-[var(--color-danger)]">
-              {practiceRuleError}
+              {practiceRuleError || practiceLimitError}
             </p>
           ) : null}
 
@@ -386,10 +478,20 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
                 <input className="input-design h-[32px]" value={formatNumber(values.directTotal)} disabled />
               </Field>
               <Field label="Индивидуально">
-                <NumberInput value={directIndividual} onChange={setDirectIndividual} disabled={mutation.isPending} />
+                <NumberInput
+                  value={directIndividual}
+                  onChange={setDirectIndividual}
+                  disabled={mutation.isPending}
+                  max={values.expectedSupervision}
+                />
               </Field>
               <Field label="В группе">
-                <NumberInput value={directGroup} onChange={setDirectGroup} disabled={mutation.isPending} />
+                <NumberInput
+                  value={directGroup}
+                  onChange={setDirectGroup}
+                  disabled={mutation.isPending}
+                  max={values.expectedSupervision}
+                />
               </Field>
             </div>
 
@@ -402,10 +504,16 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
                   value={nonObservingIndividual}
                   onChange={setNonObservingIndividual}
                   disabled={mutation.isPending}
+                  max={values.expectedSupervision}
                 />
               </Field>
               <Field label="В группе">
-                <NumberInput value={nonObservingGroup} onChange={setNonObservingGroup} disabled={mutation.isPending} />
+                <NumberInput
+                  value={nonObservingGroup}
+                  onChange={setNonObservingGroup}
+                  disabled={mutation.isPending}
+                  max={values.expectedSupervision}
+                />
               </Field>
             </div>
           </div>
@@ -419,7 +527,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       </div>
 
       <SaveActions
-        disabled={mutation.isPending || !practiceLocked || Boolean(practiceRuleError || distributionRuleError)}
+        disabled={mutation.isPending || !practiceLocked || Boolean(practiceRuleError || practiceLimitError || distributionRuleError)}
         onSilent={() => void savePractice(false)}
         onNotify={() => void savePractice(true)}
       />
@@ -447,11 +555,13 @@ function NumberInput({
   onChange,
   disabled,
   large = false,
+  max,
 }: {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   large?: boolean;
+  max?: number | null;
 }) {
   return (
     <input
@@ -465,12 +575,16 @@ function NumberInput({
       onFocus={() => {
         if (value === '0') onChange('');
       }}
-      onBlur={() => onChange(normalizeHoursInput(value))}
+      onBlur={() => onChange(normalizeHoursInput(value, max))}
       onChange={(event) => {
         const nextValue = sanitizeHoursInput(event.target.value);
-        if (nextValue !== null) onChange(nextValue);
+        if (nextValue !== null) {
+          const parsed = parseHours(nextValue);
+          onChange(max != null && parsed > max ? formatNumber(Math.max(0, max)) : nextValue);
+        }
       }}
       disabled={disabled}
+      max={max ?? undefined}
     />
   );
 }
@@ -486,6 +600,8 @@ function MetricCard({
   required?: number;
   note?: string;
 }) {
+  const displayValue = required != null ? clampToMax(value, required) : value;
+
   return (
     <div className="flex min-h-[86px] items-center justify-between gap-5 rounded-[10px] bg-[var(--color-blue-soft)] px-5 py-4">
       <span className="min-w-0 text-[16px] font-extrabold leading-[1.2] text-[#1F305E]">
@@ -493,7 +609,7 @@ function MetricCard({
         {note ? <span className="mt-1 block text-[12px] font-semibold text-[#7F8AA3]">{note}</span> : null}
       </span>
       <span className="shrink-0 whitespace-nowrap text-[26px] font-extrabold leading-none text-[#1F305E]">
-        {formatNumber(value)}
+        {formatNumber(displayValue)}
         {required != null ? (
           <span className="ml-1 text-[14px] font-semibold text-[#7F8AA3]">
             /{formatNumber(required)}

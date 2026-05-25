@@ -2,7 +2,12 @@
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../../lib/prisma';
 import { z } from 'zod';
-import { CycleStatus } from '@prisma/client';
+import { CycleStatus, CycleType, TargetLevel } from '@prisma/client';
+import {
+  ceuRequirementsByGroup,
+  renewalCeuRequirementsByGroup,
+  type CEUSummary,
+} from '../../../utils/ceuRequirements';
 
 type CEUCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
 type CEUStatus = 'CONFIRMED' | 'SPENT' | 'REJECTED';
@@ -24,6 +29,19 @@ const bodySchema = z.object({
   notifyUser: z.boolean().optional().default(false),
 });
 
+const RU_BY_LEVEL: Record<TargetLevel, 'Инструктор' | 'Куратор' | 'Супервизор'> = {
+  INSTRUCTOR: 'Инструктор',
+  CURATOR: 'Куратор',
+  SUPERVISOR: 'Супервизор',
+};
+
+const REQUIRED_KEY_BY_CATEGORY: Record<CEUCategory, keyof Omit<CEUSummary, 'total'>> = {
+  ETHICS: 'ethics',
+  CULTURAL_DIVERSITY: 'cultDiver',
+  SUPERVISION: 'supervision',
+  GENERAL: 'general',
+};
+
 export async function updateUserCEUMatrixAdminHandler(
   req: FastifyRequest<UpdateUserCEUMatrixRoute>,
   reply: FastifyReply
@@ -43,10 +61,23 @@ export async function updateUserCEUMatrixAdminHandler(
   // ACTIVE cycle обязателен: правим CEU только в рамках активного цикла
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId, status: CycleStatus.ACTIVE },
-    select: { id: true },
+    select: { id: true, targetLevel: true, type: true },
   });
   if (!activeCycle) {
     return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
+  }
+
+  const groupName = RU_BY_LEVEL[activeCycle.targetLevel];
+  const requirements =
+    activeCycle.type === CycleType.RENEWAL
+      ? renewalCeuRequirementsByGroup[groupName]
+      : ceuRequirementsByGroup[groupName];
+  const maxValue = requirements?.[REQUIRED_KEY_BY_CATEGORY[category]] ?? 0;
+  if (value > maxValue) {
+    return reply.code(400).send({
+      error: `Нельзя сохранить больше ${maxValue} CEU-баллов для этой категории`,
+      maxValue,
+    });
   }
 
   // посчитаем текущую сумму (ТОЛЬКО ACTIVE cycle)

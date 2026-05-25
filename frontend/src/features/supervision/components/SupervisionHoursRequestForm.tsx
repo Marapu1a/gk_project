@@ -33,19 +33,25 @@ function round2(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+function formatNumber(value: number | null | undefined) {
+  if (value == null) return '0';
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
 function sanitizeHoursInput(rawValue: string) {
   const value = rawValue.replace(/\s/g, '').replace(',', '.');
   return hoursInputSchema.safeParse(value).success ? value : null;
 }
 
-function normalizeHoursInput(value: string) {
+function normalizeHoursInput(value: string, max?: number | null) {
   const sanitized = sanitizeHoursInput(value);
   if (!sanitized || sanitized === '.') return '0';
 
   const parsed = Number(sanitized);
   if (!Number.isFinite(parsed) || parsed < 0) return '0';
 
-  return String(round2(parsed));
+  const capped = max != null ? Math.min(parsed, Math.max(0, max)) : parsed;
+  return String(round2(capped));
 }
 
 function todayInputValue() {
@@ -177,14 +183,25 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   const practiceTotal = round2(implementingValue + programmingValue);
 
   const practiceBase = (summary?.usable.practice ?? 0) + (summary?.pending.practice ?? 0);
+  const practiceLimit =
+    summary?.required?.practice != null
+      ? Math.max(0, round2(summary.required.practice - practiceBase))
+      : null;
+  const supervisionBase = (summary?.usable.supervision ?? 0) + (summary?.pending.supervision ?? 0);
+  const supervisionLimit =
+    summary?.required?.supervision != null
+      ? Math.max(0, round2(summary.required.supervision - supervisionBase))
+      : null;
   const ratio =
     summary?.required && summary.required.supervision > 0
       ? summary.required.practice / summary.required.supervision
       : null;
 
-  const expectedSupervision = ratio
+  const rawExpectedSupervision = ratio
     ? Math.max(0, Math.floor((practiceBase + practiceTotal) / ratio) - Math.floor(practiceBase / ratio))
     : 0;
+  const expectedSupervision =
+    supervisionLimit != null ? Math.min(rawExpectedSupervision, supervisionLimit) : rawExpectedSupervision;
 
   const distribution = {
     directIndividual: parseHours(directIndividual),
@@ -201,6 +218,10 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   const groupTotal = round2(distribution.directGroup + distribution.nonObservingGroup);
   const distributionRemaining = round2(expectedSupervision - distributionTotal);
   const practiceRuleError = getPracticeRuleError(implementingValue, programmingValue);
+  const practiceLimitError =
+    practiceLimit != null && practiceTotal > practiceLimit
+      ? `Можно добавить не более ${formatNumber(practiceLimit)} часов практики для текущего цикла.`
+      : null;
   const distributionRuleError = getDistributionRuleError({
     expectedSupervision,
     distributionTotal,
@@ -212,6 +233,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     practiceLocked &&
     practiceTotal > 0 &&
     !practiceRuleError &&
+    !practiceLimitError &&
     isDistributionValid &&
     supervisorEmail.trim().length > 0 &&
     ethicsAccepted &&
@@ -228,8 +250,8 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
       return;
     }
 
-    if (practiceRuleError) {
-      toast.error(practiceRuleError);
+    if (practiceRuleError || practiceLimitError) {
+      toast.error(practiceRuleError || practiceLimitError);
       return;
     }
 
@@ -278,8 +300,8 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   };
 
   const submit = async () => {
-    if (practiceRuleError) {
-      toast.error(practiceRuleError);
+    if (practiceRuleError || practiceLimitError) {
+      toast.error(practiceRuleError || practiceLimitError);
       return;
     }
 
@@ -405,17 +427,19 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <Field label="Полевая практика">
-                <NumberInput
+              <NumberInput
                   value={implementing}
                   onChange={setImplementing}
                   disabled={practiceLocked}
+                  max={practiceLimit}
                 />
               </Field>
               <Field label="Работа с информацией">
-                <NumberInput
+              <NumberInput
                   value={programming}
                   onChange={setProgramming}
                   disabled={practiceLocked}
+                  max={practiceLimit}
                 />
               </Field>
             </div>
@@ -425,8 +449,10 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
               <strong>{expectedSupervision}</strong>.
             </div>
 
-            {practiceRuleError ? (
-              <p className="mt-2 text-[13px] font-semibold text-[#FF5364]">{practiceRuleError}</p>
+            {practiceRuleError || practiceLimitError ? (
+              <p className="mt-2 text-[13px] font-semibold text-[#FF5364]">
+                {practiceRuleError || practiceLimitError}
+              </p>
             ) : null}
 
             <div className="mt-4">
@@ -466,11 +492,15 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                 </Field>
 
                 <Field label="Индивидуально">
-                  <NumberInput value={directIndividual} onChange={setDirectIndividual} />
+                  <NumberInput
+                    value={directIndividual}
+                    onChange={setDirectIndividual}
+                    max={expectedSupervision}
+                  />
                 </Field>
 
                 <Field label="В группе">
-                  <NumberInput value={directGroup} onChange={setDirectGroup} />
+                  <NumberInput value={directGroup} onChange={setDirectGroup} max={expectedSupervision} />
                 </Field>
               </div>
 
@@ -483,11 +513,16 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                   <NumberInput
                     value={nonObservingIndividual}
                     onChange={setNonObservingIndividual}
+                    max={expectedSupervision}
                   />
                 </Field>
 
                 <Field label="В группе">
-                  <NumberInput value={nonObservingGroup} onChange={setNonObservingGroup} />
+                  <NumberInput
+                    value={nonObservingGroup}
+                    onChange={setNonObservingGroup}
+                    max={expectedSupervision}
+                  />
                 </Field>
               </div>
             </div>
@@ -781,10 +816,12 @@ function NumberInput({
   value,
   onChange,
   disabled,
+  max,
 }: {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  max?: number | null;
 }) {
   return (
     <input
@@ -794,12 +831,16 @@ function NumberInput({
       onFocus={() => {
         if (value === '0') onChange('');
       }}
-      onBlur={() => onChange(normalizeHoursInput(value))}
+      onBlur={() => onChange(normalizeHoursInput(value, max))}
       onChange={(event) => {
         const nextValue = sanitizeHoursInput(event.target.value);
-        if (nextValue !== null) onChange(nextValue);
+        if (nextValue !== null) {
+          const parsed = parseHours(nextValue);
+          onChange(max != null && parsed > max ? formatNumber(Math.max(0, max)) : nextValue);
+        }
       }}
       disabled={disabled}
+      max={max ?? undefined}
     />
   );
 }

@@ -12,6 +12,12 @@ function getProgressPercent(current: number, required: number) {
   return Math.max(0, Math.min(100, (current / required) * 100));
 }
 
+function capToRequired(value: number, required?: number | null) {
+  const current = Math.max(0, value);
+  if (required == null || required <= 0) return current;
+  return Math.min(current, required);
+}
+
 function MetricCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-[14px] bg-[var(--color-blue-soft)] px-3 py-2.5">
@@ -136,6 +142,7 @@ export function HoursOverviewBlock({
   if (hasMentorTrack && (forceMentorship || (!hasPracticeTrack && !hasSupervisionTrack))) {
     const mentor = summary.mentor ?? { total: 0, required: 24, percent: 0, pending: 0 };
     const mentorRemaining = Math.max(0, mentor.required - mentor.total - mentor.pending);
+    const mentorDisplayTotal = capToRequired(mentor.total, mentor.required);
 
     return (
       <section className="card-section overflow-hidden px-5 py-5">
@@ -169,7 +176,7 @@ export function HoursOverviewBlock({
         <div className="grid gap-3 lg:grid-cols-[150px_minmax(0,1fr)]">
           <TotalCircle
             label="Всего"
-            value={formatNumber(mentor.total)}
+            value={formatNumber(mentorDisplayTotal)}
             progress={mentor.percent}
           />
 
@@ -207,6 +214,14 @@ export function HoursOverviewBlock({
     summary.supervisionBreakdown.total,
     summary.required?.supervision ?? 0,
   );
+  const practiceDisplayTotal = capToRequired(
+    summary.practiceBreakdown.total,
+    summary.required?.practice,
+  );
+  const supervisionDisplayTotal = capToRequired(
+    summary.supervisionBreakdown.total,
+    summary.required?.supervision,
+  );
 
   return (
     <section className="card-section overflow-hidden px-5 py-5">
@@ -225,7 +240,7 @@ export function HoursOverviewBlock({
             <div>
               <TotalCircle
                 label="Всего"
-                value={formatNumber(summary.practiceBreakdown.total)}
+                value={formatNumber(practiceDisplayTotal)}
                 progress={practiceProgress}
               />
             </div>
@@ -281,7 +296,7 @@ export function HoursOverviewBlock({
             <div>
               <TotalCircle
                 label="Всего"
-                value={formatNumber(summary.supervisionBreakdown.total)}
+                value={formatNumber(supervisionDisplayTotal)}
                 progress={supervisionProgress}
               />
             </div>

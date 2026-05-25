@@ -131,6 +131,11 @@ function getDisplayTargetLabel(
   return TARGET_LEVEL_LABELS[targetLevel];
 }
 
+function capToRequired(value: number, required: number) {
+  if (required <= 0) return Math.max(0, value);
+  return Math.min(Math.max(0, value), required);
+}
+
 export function CertificationBlock({ user }: Props) {
   const setTarget = useSetTargetLevel(user.id);
   const { data: certificates = [], isLoading: certificatesLoading } = useMyCertificates();
@@ -255,6 +260,8 @@ export function CertificationBlock({ user }: Props) {
   const supervisionRequired = isMentorshipTarget
     ? Number(supervisionSummary?.mentor?.required ?? 24)
     : Number(supervisionSummary?.required?.supervision ?? 0);
+  const ceuDisplay = capToRequired(ceuCurrent, ceuRequired);
+  const supervisionDisplay = capToRequired(supervisionCurrent, supervisionRequired);
   const supervisionLabel = isMentorshipTarget ? 'Часы менторства' : 'Часы супервизии';
 
   const examApp = examAppQuery.data;
@@ -449,14 +456,14 @@ export function CertificationBlock({ user }: Props) {
         <StatusRow
           ok={!!progress.ceuReady}
           label="CEU-Баллы"
-          value={`${formatNumber(ceuCurrent)} / ${formatNumber(ceuRequired)}`}
+          value={`${formatNumber(ceuDisplay)} / ${formatNumber(ceuRequired)}`}
         />
 
         {!isExperiencedSupervisor ? (
           <StatusRow
             ok={!!progress.supervisionReady}
             label={supervisionLabel}
-            value={`${formatNumber(supervisionCurrent)} / ${formatNumber(supervisionRequired)}`}
+            value={`${formatNumber(supervisionDisplay)} / ${formatNumber(supervisionRequired)}`}
           />
         ) : null}
 

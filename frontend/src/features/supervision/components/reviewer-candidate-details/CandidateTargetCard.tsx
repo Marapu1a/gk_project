@@ -18,6 +18,11 @@ function isReady(current: number, required: number) {
   return required > 0 && current >= required;
 }
 
+function capToRequired(current: number, required: number) {
+  if (required <= 0) return Math.max(0, current);
+  return Math.min(Math.max(0, current), required);
+}
+
 export function CandidateTargetCard({
   targetLabel,
   ceuCurrent,
@@ -27,6 +32,9 @@ export function CandidateTargetCard({
   supervisionLabel = 'Часы супервизии',
   documentsReady = false,
 }: CandidateTargetCardProps) {
+  const ceuDisplay = capToRequired(ceuCurrent, ceuRequired);
+  const supervisionDisplay = capToRequired(supervisionCurrent, supervisionRequired);
+
   return (
     <section className="flex min-h-[230px] flex-col rounded-[22px] bg-white px-5 py-5 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
       <h2 className="dashboard-v2-title mb-7 text-center">
@@ -41,12 +49,12 @@ export function CandidateTargetCard({
         <StatusRow
           ok={isReady(ceuCurrent, ceuRequired)}
           label="CEU-Баллы"
-          value={`${formatNumber(ceuCurrent)} / ${formatNumber(ceuRequired)}`}
+          value={`${formatNumber(ceuDisplay)} / ${formatNumber(ceuRequired)}`}
         />
         <StatusRow
           ok={isReady(supervisionCurrent, supervisionRequired)}
           label={supervisionLabel}
-          value={`${formatNumber(supervisionCurrent)} / ${formatNumber(supervisionRequired)}`}
+          value={`${formatNumber(supervisionDisplay)} / ${formatNumber(supervisionRequired)}`}
         />
         <StatusRow
           ok={documentsReady}
