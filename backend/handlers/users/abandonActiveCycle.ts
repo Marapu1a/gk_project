@@ -39,7 +39,9 @@ export async function abandonActiveCycleHandler(req: FastifyRequest, reply: Fast
     where: { role: 'ADMIN' },
     select: { id: true },
   });
-  const adminIds = adminList.map((a) => a.id);
+  const adminIds = adminList
+    .map((a) => a.id)
+    .filter((adminId) => adminId !== user.userId);
 
   const result = await prisma.$transaction(async (tx) => {
     const activeCycle = await tx.certificationCycle.findFirst({
@@ -89,11 +91,12 @@ export async function abandonActiveCycleHandler(req: FastifyRequest, reply: Fast
       where: {
         userId: id,
         type: { in: ['DOCUMENT_REVIEW', 'EXAM_ACCESS', 'REGISTRATION', 'FULL_PACKAGE'] },
-        status: { in: ['PENDING', 'PAID'] },
       },
       data: {
         status: 'UNPAID',
+        targetLevel: null,
         confirmedAt: null,
+        requestedAt: null,
         comment: 'Сброшено: цикл отменён администратором',
       },
     });

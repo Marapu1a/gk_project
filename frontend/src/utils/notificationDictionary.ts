@@ -42,6 +42,7 @@ export function normalizeNotificationLink(
   if (!link) return null;
 
   if (link === '/dashboard') return '/dashboard-v2';
+  if (link === '/supervision-hours') return '/supervision/hours?panel=history';
   if (link === '/history') {
     return type === 'CEU' ? '/ceu/points?panel=history' : '/supervision/hours?panel=history';
   }

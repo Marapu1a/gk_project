@@ -268,7 +268,9 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     where: { role: 'ADMIN' },
     select: { id: true },
   });
-  const adminIds = adminList.map((a) => a.id);
+  const adminIds = adminList
+    .map((a) => a.id)
+    .filter((adminId) => adminId !== user.userId);
 
   // 1) Сброс на "нет цели"
   if (targetLevel === null) {
@@ -305,11 +307,12 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
         where: {
           userId: id,
           type: { in: ['DOCUMENT_REVIEW', 'EXAM_ACCESS', 'REGISTRATION', 'FULL_PACKAGE'] },
-          status: { in: ['PENDING', 'PAID'] },
         },
         data: {
           status: 'UNPAID',
+          targetLevel: null,
           confirmedAt: null,
+          requestedAt: null,
           comment: 'Сброшено: возврат к выбору цели',
         },
       });
@@ -399,11 +402,12 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
       where: {
         userId: id,
         type: { in: ['DOCUMENT_REVIEW', 'REGISTRATION', 'EXAM_ACCESS', 'FULL_PACKAGE'] },
-        status: { in: ['PENDING', 'PAID'] },
       },
       data: {
         status: 'UNPAID',
+        targetLevel,
         confirmedAt: null,
+        requestedAt: null,
         comment: `Сброшено из-за смены цели на ${modeRu}: ${targetLevel}`,
       },
     });

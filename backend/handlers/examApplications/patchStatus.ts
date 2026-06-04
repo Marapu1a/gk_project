@@ -24,7 +24,7 @@ const PAYMENT_LABELS: Record<PaymentType, string> = {
 
 export async function patchExamAppStatusHandler(req: FastifyRequest, reply: FastifyReply) {
   const { userId } = req.params as { userId: string };
-  const { status: next, applicationId, comment = '', manual = false } = req.body as Body;
+  const { status: next, applicationId, comment = '', notify = true, manual = false } = req.body as Body;
 
   if (!req.user?.userId) return reply.code(401).send({ error: 'Не авторизован' });
 
@@ -125,7 +125,7 @@ export async function patchExamAppStatusHandler(req: FastifyRequest, reply: Fast
       });
     }
 
-    if (isAdminActor) {
+    if (isAdminActor && notify) {
       const message =
         next === 'APPROVED'
           ? 'Заявка на экзамен одобрена'

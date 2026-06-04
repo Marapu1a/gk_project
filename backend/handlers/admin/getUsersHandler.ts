@@ -66,7 +66,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
     supervision,
     archived = 'active',
   } = req.query as Q;
-  const actorRole = (req as any).user?.role ?? (req as any).user?.role;
+  const actorRole = req.user?.role;
 
   if (!actorRole) {
     return reply.code(401).send({ error: 'Не авторизован' });
@@ -110,9 +110,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
     where.archivedAt = null;
   }
 
-  // 1) фильтр по роли — БЕЗ форсированного "только ADMIN" для не-админов.
-  // Если явно передали role — применяем (и админ, и не-админ могут этим пользоваться),
-  // иначе не ограничиваем по роли вообще.
+  // 1) фильтр по роли: применяем только если админ явно передал role.
   if (role && ['ADMIN', 'REVIEWER', 'STUDENT'].includes(role)) {
     where.role = role;
   }

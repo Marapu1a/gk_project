@@ -297,7 +297,7 @@ export async function updateUserSupervisionMatrixAdminHandler(
           userId,
           type: NotificationType.SUPERVISION,
           message: 'Ваши часы практики и супервизии были скорректированы администратором.',
-          link: '/supervision-hours',
+          link: '/supervision/hours?panel=history',
         },
       });
     }
@@ -368,7 +368,7 @@ export async function updateUserSupervisionMatrixAdminHandler(
           userId,
           type: NotificationType.MENTORSHIP,
           message: 'Ваши часы менторства были скорректированы администратором.',
-          link: '/supervision-hours',
+          link: '/supervision/hours?panel=history',
         },
       });
     }
@@ -439,30 +439,30 @@ export async function updateUserSupervisionMatrixAdminHandler(
     return reply.send({ ok: true, unchanged: true, current, cycleId: activeCycle.id });
   }
 
-  // --- очистка старых часов в этой ячейке (ТОЛЬКО ACTIVE cycle)
-  await prisma.supervisionHour.deleteMany({
-    where: {
-      record: { userId, cycleId: activeCycle.id },
-      type: level as PracticeLevel,
-      status,
-    },
-  });
+  await prisma.$transaction(async (tx) => {
+    await tx.supervisionHour.deleteMany({
+      where: {
+        record: { userId, cycleId: activeCycle.id },
+        type: level as PracticeLevel,
+        status,
+      },
+    });
 
-  // --- создаём агрегат единственной записью при value > 0
-  if (value > 0) {
-    let record = await prisma.supervisionRecord.findFirst({
+    if (value <= 0) return;
+
+    let record = await tx.supervisionRecord.findFirst({
       where: { userId, cycleId: activeCycle.id },
       orderBy: { createdAt: 'desc' },
     });
     if (!record) {
-      record = await prisma.supervisionRecord.create({
+      record = await tx.supervisionRecord.create({
         data: { userId, cycleId: activeCycle.id },
       });
     }
 
     const isConfirmed = status === 'CONFIRMED';
 
-    await prisma.supervisionHour.create({
+    await tx.supervisionHour.create({
       data: {
         recordId: record.id,
         type: level as PracticeLevel,
@@ -473,7 +473,7 @@ export async function updateUserSupervisionMatrixAdminHandler(
         rejectedReason: null,
       },
     });
-  }
+  });
 
   return reply.send({ ok: true, level, status, newValue: value, cycleId: activeCycle.id });
 }

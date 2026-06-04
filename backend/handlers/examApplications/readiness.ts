@@ -185,9 +185,18 @@ export async function buildExamReadiness(userId: string) {
             PaymentType.EXAM_ACCESS,
           ],
         },
+        OR: [{ targetLevel: activeCycle.targetLevel }, { targetLevel: null }],
       },
       orderBy: { confirmedAt: 'desc' },
-      select: { id: true, type: true, status: true, requestedAt: true, confirmedAt: true, comment: true },
+      select: {
+        id: true,
+        type: true,
+        targetLevel: true,
+        status: true,
+        requestedAt: true,
+        confirmedAt: true,
+        comment: true,
+      },
     }),
     prisma.documentReviewRequest.findMany({
       where: {

@@ -19,6 +19,10 @@ export async function toggleUserRoleHandler(
     return reply.code(403).send({ error: 'Недостаточно прав для изменения ролей' });
   }
 
+  if (req.user.userId === userId) {
+    return reply.code(400).send({ error: 'Нельзя изменить права администратора у самого себя' });
+  }
+
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
     return reply.code(404).send({ error: 'Пользователь не найден' });

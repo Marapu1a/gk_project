@@ -79,15 +79,17 @@ function toInt(value: unknown, fallback: number) {
 
 function parseDateStart(value?: string) {
   if (!value) return undefined;
-  const date = new Date(`${value.slice(0, 10)}T00:00:00.000Z`);
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  const date = new Date(year, (month ?? 1) - 1, day ?? 1);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function parseDateEndExclusive(value?: string) {
   if (!value) return undefined;
-  const date = new Date(`${value.slice(0, 10)}T00:00:00.000Z`);
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  const date = new Date(year, (month ?? 1) - 1, day ?? 1);
   if (Number.isNaN(date.getTime())) return null;
-  date.setUTCDate(date.getUTCDate() + 1);
+  date.setDate(date.getDate() + 1);
   return date;
 }
 

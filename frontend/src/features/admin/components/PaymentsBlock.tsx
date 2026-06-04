@@ -86,6 +86,9 @@ export default function PaymentsBlock({
   const visiblePayments = useMemo(() => {
     if (!activeCycle) return [];
 
+    const belongsToActiveLevel = (payment: Payment) =>
+      !payment.targetLevel || payment.targetLevel === activeCycle.targetLevel;
+
     if (activeCycle.type === 'RENEWAL') {
       return payments.filter(
         (payment) =>
@@ -98,7 +101,26 @@ export default function PaymentsBlock({
         ? SUPERVISOR_CERTIFICATION_PAYMENT_TYPES
         : CERTIFICATION_PAYMENT_TYPES;
 
-    return payments.filter((payment) => visibleTypes.includes(payment.type));
+    const matchingPayments = payments.filter(
+      (payment) => visibleTypes.includes(payment.type) && belongsToActiveLevel(payment),
+    );
+
+    return visibleTypes
+      .map((type) =>
+        matchingPayments
+          .filter((payment) => payment.type === type)
+          .sort((a, b) => {
+            if (a.targetLevel === activeCycle.targetLevel && b.targetLevel !== activeCycle.targetLevel) {
+              return -1;
+            }
+            if (b.targetLevel === activeCycle.targetLevel && a.targetLevel !== activeCycle.targetLevel) {
+              return 1;
+            }
+
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          })[0] ?? null,
+      )
+      .filter((payment): payment is Payment => Boolean(payment));
   }, [activeCycle, payments]);
 
   const fullPackage = visiblePayments.find((p) => p.type === 'FULL_PACKAGE');

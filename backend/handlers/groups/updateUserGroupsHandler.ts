@@ -2,6 +2,7 @@
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { updateUserGroupsSchema } from '../../schemas/updateUserGroups';
+import { logAdminUserAction } from '../../utils/adminUserActionLog';
 
 interface UpdateUserGroupsRoute extends RouteGenericInterface {
   Params: { id: string };
@@ -32,6 +33,9 @@ export async function updateUserGroupsHandler(
   const oldMaxRank =
     user.groups.length ? Math.max(...user.groups.map((g) => g.group.rank)) : -Infinity;
   const oldGroupIds = user.groups.map((g) => g.groupId).sort();
+  const oldGroupNames = user.groups
+    .map((g) => g.group.name)
+    .sort((a, b) => a.localeCompare(b, 'ru'));
   const nextGroupIds = [...groupIds].sort();
   const groupsChanged =
     oldGroupIds.length !== nextGroupIds.length ||
@@ -75,14 +79,18 @@ export async function updateUserGroupsHandler(
       closedCycleCount = closedCycles.count;
     }
 
-    // 4) Авто-роль (REVIEWER если есть группа "Супервизор", иначе STUDENT), админа не трогаем
-    const supervisorGroup = await tx.group.findFirst({ where: { name: 'Супервизор' } });
+    // 4) Авто-роль (REVIEWER если есть группа "Супервизор" или "Опытный Супервизор"), админа не трогаем
+    const reviewerGroups = await tx.group.findMany({
+      where: { name: { in: ['Супервизор', 'Опытный Супервизор'] } },
+      select: { id: true },
+    });
+    const reviewerGroupIds = new Set(reviewerGroups.map((group) => group.id));
 
     let roleChanged = false;
     let roleAfter: string | null = null;
 
-    if (user.role !== 'ADMIN' && supervisorGroup) {
-      const isReviewerNow = newGroups.some((g) => g.groupId === supervisorGroup.id);
+    if (user.role !== 'ADMIN' && reviewerGroupIds.size) {
+      const isReviewerNow = newGroups.some((g) => reviewerGroupIds.has(g.groupId));
       const newRole = isReviewerNow ? 'REVIEWER' : 'STUDENT';
 
       if (newRole !== user.role) {
@@ -119,6 +127,10 @@ export async function updateUserGroupsHandler(
       upgraded,
       oldMaxRank,
       newMaxRank,
+      groupsBefore: oldGroupNames,
+      groupsAfter: newGroups
+        .map((g) => g.group.name)
+        .sort((a, b) => a.localeCompare(b, 'ru')),
       groupsChanged,
       closedCycleCount,
       targetReset: groupsChanged,
@@ -126,6 +138,22 @@ export async function updateUserGroupsHandler(
       roleAfter,
     };
   });
+
+  if (result.groupsChanged) {
+    await logAdminUserAction({
+      userId,
+      adminId: req.user.userId,
+      action: 'Изменил статус пользователя',
+      details: [
+        `Группы: ${result.groupsBefore.join(', ') || 'нет'} -> ${result.groupsAfter.join(', ') || 'нет'}`,
+        result.closedCycleCount ? `закрыто активных циклов: ${result.closedCycleCount}` : null,
+        result.targetReset ? 'целевой уровень сброшен' : null,
+        result.roleChanged ? `роль изменена на ${result.roleAfter}` : null,
+      ]
+        .filter(Boolean)
+        .join('; '),
+    });
+  }
 
   return reply.send(result);
 }

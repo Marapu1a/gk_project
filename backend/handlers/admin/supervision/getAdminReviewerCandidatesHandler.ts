@@ -82,15 +82,17 @@ function toInt(value: unknown, fallback: number) {
 
 function parseDateStart(value?: string) {
   if (!value) return undefined;
-  const date = new Date(`${value.slice(0, 10)}T00:00:00.000Z`);
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  const date = new Date(year, (month ?? 1) - 1, day ?? 1);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function parseDateEndExclusive(value?: string) {
   if (!value) return undefined;
-  const date = new Date(`${value.slice(0, 10)}T00:00:00.000Z`);
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+  const date = new Date(year, (month ?? 1) - 1, day ?? 1);
   if (Number.isNaN(date.getTime())) return null;
-  date.setUTCDate(date.getUTCDate() + 1);
+  date.setDate(date.getDate() + 1);
   return date;
 }
 
@@ -231,38 +233,85 @@ export async function getAdminReviewerCandidatesHandler(
     },
   });
 
-  const rows = await Promise.all(
-    relations.map(async (relation: RelationRow) => {
-      const records = await prisma.supervisionRecord.findMany({
-        where: {
-          userId: relation.candidateId,
-          cycleId: relation.cycle.id,
-          hours: {
-            some: {
-              reviewerId: relation.reviewerId,
-              type: { in: typesForKind(normalizedKind) },
-            },
+  const candidateIds = Array.from(new Set(relations.map((relation) => relation.candidateId)));
+  const cycleIds = Array.from(new Set(relations.map((relation) => relation.cycle.id)));
+  const reviewerIds = Array.from(new Set(relations.map((relation) => relation.reviewerId)));
+  const recordsByRelationKey = new Map<
+    string,
+    Array<{
+      id: string;
+      createdAt: Date;
+      hours: Array<{
+        status: RecordStatus;
+        reviewedAt: Date | null;
+        rejectedReason: string | null;
+        reviewer: { id: string; email: string; fullName: string | null } | null;
+        reviewedBy: { id: string; email: string; fullName: string | null } | null;
+      }>;
+    }>
+  >();
+
+  if (relations.length) {
+    const records = await prisma.supervisionRecord.findMany({
+      where: {
+        userId: { in: candidateIds },
+        cycleId: { in: cycleIds },
+        hours: {
+          some: {
+            reviewerId: { in: reviewerIds },
+            type: { in: typesForKind(normalizedKind) },
           },
         },
-        select: {
-          id: true,
-          createdAt: true,
-          hours: {
-            where: {
-              reviewerId: relation.reviewerId,
-              type: { in: typesForKind(normalizedKind) },
-            },
-            select: {
-              status: true,
-              reviewedAt: true,
-              rejectedReason: true,
-              reviewer: { select: { id: true, email: true, fullName: true } },
-              reviewedBy: { select: { id: true, email: true, fullName: true } },
-            },
+      },
+      select: {
+        id: true,
+        userId: true,
+        cycleId: true,
+        createdAt: true,
+        hours: {
+          where: {
+            reviewerId: { in: reviewerIds },
+            type: { in: typesForKind(normalizedKind) },
+          },
+          select: {
+            reviewerId: true,
+            status: true,
+            reviewedAt: true,
+            rejectedReason: true,
+            reviewer: { select: { id: true, email: true, fullName: true } },
+            reviewedBy: { select: { id: true, email: true, fullName: true } },
           },
         },
-        orderBy: { createdAt: 'desc' },
-      });
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    for (const record of records) {
+      const hoursByReviewer = new Map<string, typeof record.hours>();
+      for (const hour of record.hours) {
+        if (!hour.reviewerId) continue;
+        const list = hoursByReviewer.get(hour.reviewerId) ?? [];
+        list.push(hour);
+        hoursByReviewer.set(hour.reviewerId, list);
+      }
+
+      for (const [reviewerId, hours] of hoursByReviewer.entries()) {
+        const key = `${record.userId}:${record.cycleId}:${reviewerId}`;
+        const list = recordsByRelationKey.get(key) ?? [];
+        list.push({
+          id: record.id,
+          createdAt: record.createdAt,
+          hours,
+        });
+        recordsByRelationKey.set(key, list);
+      }
+    }
+  }
+
+  const rows = relations.map((relation: RelationRow) => {
+      const records =
+        recordsByRelationKey.get(`${relation.candidateId}:${relation.cycle.id}:${relation.reviewerId}`) ??
+        [];
 
       const pendingRecords = records.filter((record) =>
         record.hours.some((hour) => hour.status === RecordStatus.UNCONFIRMED),
@@ -306,8 +355,7 @@ export async function getAdminReviewerCandidatesHandler(
         pendingCount,
         sortRank: hourStateRank(resolvedHourState),
       };
-    }),
-  );
+    });
 
   const filteredRows = rows.filter((row) => {
     const date = rowTimestamp(row);

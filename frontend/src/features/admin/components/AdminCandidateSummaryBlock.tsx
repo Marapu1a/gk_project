@@ -1,12 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
 import { docReviewStatusLabels, examStatusLabels, targetLevelLabels } from '@/utils/labels';
-import { useUserActionLog } from '../hooks/useUserActionLog';
-import { useCreateUserNote } from '../hooks/useCreateUserNote';
-import { useDeleteUserNote } from '../hooks/useDeleteUserNote';
-import { LONG_TEXT_MAX_LENGTH } from '@/utils/formLimits';
-import { useConfirm } from '@/components/confirm/ConfirmProvider';
 
 type Props = {
   user: any;
@@ -171,12 +165,6 @@ function SummaryLine({
 }
 
 export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
-  const { data: actionLog = [] } = useUserActionLog(user.id);
-  const createNote = useCreateUserNote(user.id);
-  const deleteNote = useDeleteUserNote(user.id);
-  const { confirm } = useConfirm();
-  const [noteText, setNoteText] = useState('');
-
   const readiness = user.examReadiness;
   const docs = documentStatus(user);
   const latestCertificate = user.latestCertificate;
@@ -193,15 +181,6 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
 
   const pendingSupervision = countPendingHours(user, 'supervision');
   const pendingMentorship = countPendingHours(user, 'mentorship');
-
-  const notes = useMemo(
-    () =>
-      actionLog
-        .filter((log) => log.action === 'Заметка администратора' && log.details)
-        .slice()
-        .reverse(),
-    [actionLog],
-  );
 
   const summaryLines = useMemo(() => {
     if (!activeCycle) return [];
@@ -332,38 +311,6 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
   const requiresAttention =
     !activeCycle || summaryLines.some((line) => line.tone === 'bad' || line.tone === 'warn');
 
-  const saveNote = async () => {
-    const text = noteText.trim();
-    if (!text) {
-      toast.info('Напишите текст заметки');
-      return;
-    }
-
-    try {
-      await createNote.mutateAsync(text);
-      setNoteText('');
-      toast.success('Заметка сохранена');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось сохранить заметку');
-    }
-  };
-
-  const removeNote = async (noteId: string) => {
-    const ok = await confirm({
-      message: 'Удалить заметку администратора?',
-      confirmLabel: 'Удалить',
-      variant: 'danger',
-    });
-    if (!ok) return;
-
-    try {
-      await deleteNote.mutateAsync(noteId);
-      toast.success('Заметка удалена');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось удалить заметку');
-    }
-  };
-
   return (
     <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
@@ -411,57 +358,6 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
         </div>
       </div>
 
-      <div className="mt-4 rounded-[16px] bg-[#F7F8FA] p-4">
-        <div className="mb-2 text-[14px] font-extrabold text-[#1F305E]">Заметки администратора</div>
-        <textarea
-          className="input-design min-h-[72px] resize-y py-2"
-          placeholder="Напишите служебную заметку"
-          value={noteText}
-          onChange={(event) => setNoteText(event.target.value)}
-          maxLength={LONG_TEXT_MAX_LENGTH}
-          disabled={createNote.isPending}
-        />
-        <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            className="btn dashboard-v2-action dashboard-v2-action-primary"
-            onClick={saveNote}
-            disabled={createNote.isPending || !noteText.trim()}
-          >
-            Сохранить
-          </button>
-        </div>
-
-        {notes.length ? (
-          <ol className="mt-4 space-y-2">
-            {notes.map((note, index) => (
-              <li
-                key={note.id}
-                className="grid gap-3 rounded-[12px] bg-white px-4 py-3 text-[14px] text-[#1F305E] sm:grid-cols-[minmax(0,1fr)_auto]"
-              >
-                <div className="min-w-0">
-                  <div className="font-semibold">
-                    {index + 1}. {note.details}
-                  </div>
-                  <div className="mt-1 text-[12px] font-semibold text-[#8D96B5]">
-                    {formatDate(note.createdAt)} · {note.adminEmail}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-danger self-start px-3 py-1 text-xs"
-                  onClick={() => removeNote(note.id)}
-                  disabled={deleteNote.isPending}
-                >
-                  Удалить
-                </button>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="mt-3 text-[13px] font-semibold text-[#8D96B5]">Заметок пока нет.</p>
-        )}
-      </div>
     </section>
   );
 }

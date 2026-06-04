@@ -95,6 +95,7 @@ export async function getMissingExamPaymentTypes(userId: string): Promise<Paymen
     where: {
       userId,
       status: PaymentStatus.PAID,
+      OR: [{ targetLevel: activeCycle.targetLevel }, { targetLevel: null }],
       type: {
         in: [
           PaymentType.FULL_PACKAGE,

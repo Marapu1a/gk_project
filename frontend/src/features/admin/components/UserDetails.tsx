@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import UserBasicBlock from './UserBasicBlock';
 import AdminCEUMatrixBlock from './AdminCEUMatrixBlock';
@@ -10,10 +10,10 @@ import { PageNav } from '@/components/PageNav';
 import { AdminCandidateSummaryBlock } from './AdminCandidateSummaryBlock';
 import { AdminUserSection } from './AdminUserSection';
 import { AdminAccountActionsBlock } from './AdminAccountActionsBlock';
+import { AdminUserNotesModal } from './AdminUserNotesModal';
+import { useUserActionLog } from '../hooks/useUserActionLog';
 
 type SectionId =
-  | 'actions'
-  | 'account'
   | 'groups'
   | 'ceu'
   | 'supervision'
@@ -23,6 +23,17 @@ export default function UserDetails() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading, error } = useUserDetails(id ?? '');
   const [openSection, setOpenSection] = useState<SectionId | null>(null);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [isUserDataOpen, setIsUserDataOpen] = useState(false);
+  const { data: actionLog = [], isLoading: notesLoading } = useUserActionLog(id ?? '');
+  const notes = useMemo(
+    () =>
+      actionLog
+        .filter((log) => log.action === 'Заметка администратора' && log.details)
+        .slice()
+        .reverse(),
+    [actionLog],
+  );
 
   if (isLoading) return <p className="text-sm text-blue-dark p-6">Загрузка…</p>;
   if (error || !data) return <p className="text-error p-6">Ошибка загрузки пользователя</p>;
@@ -38,47 +49,37 @@ export default function UserDetails() {
     <div className="mx-auto max-w-[1180px] space-y-5 px-4 py-5 text-[var(--color-blue-dark)]">
       <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4">
         <PageNav />
-        <h1 className="dashboard-v2-page-title text-center">Панель администрирования</h1>
-        <div className="hidden min-w-[150px] md:block" aria-hidden="true" />
+        <h1 className="dashboard-v2-page-title text-center">Детали кандидата</h1>
+        <button
+          type="button"
+          className="inline-flex min-h-[38px] cursor-pointer items-center gap-2 justify-self-end rounded-full border border-[#8D96B5] bg-white px-3 text-[16px] font-extrabold text-[#6B7894] transition hover:bg-[var(--color-blue-soft)]"
+          onClick={() => setIsNotesOpen(true)}
+        >
+          <span>Заметки</span>
+          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-[#8D96B5] px-2 text-white">
+            {notes.length}
+          </span>
+        </button>
       </header>
 
       <AdminCandidateSummaryBlock user={data} activeGroupName={activeGroup} />
 
       <div className="space-y-4">
-        <AdminUserSection
-          title="Действия с аккаунтом"
-          isOpen={openSection === 'actions'}
-          onToggle={() => toggleSection('actions')}
-        >
+        <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="dashboard-v2-title">Действия с аккаунтом</h2>
+            <p className="text-[13px] font-semibold text-[#8D96B5]">
+              Данные пользователя открываются отдельным окном.
+            </p>
+          </div>
           <AdminAccountActionsBlock
             userId={data.id}
             role={data.role}
             isProfileVisible={data.isProfileVisible}
             archivedAt={data.archivedAt}
+            onOpenUserData={() => setIsUserDataOpen(true)}
           />
-        </AdminUserSection>
-
-        <AdminUserSection
-          title="Данные пользователя"
-          isOpen={openSection === 'account'}
-          onToggle={() => toggleSection('account')}
-        >
-          <UserBasicBlock
-            userId={data.id}
-            registrationNumber={data.registrationNumber}
-            fullName={data.fullName}
-            fullNameLatin={data.fullNameLatin}
-            email={data.email}
-            phone={data.phone}
-            birthDate={data.birthDate}
-            country={data.country}
-            city={data.city}
-            avatarUrl={data.avatarUrl}
-            role={data.role}
-            createdAt={data.createdAt}
-            groupName={activeGroup}
-          />
-        </AdminUserSection>
+        </section>
 
         <AdminUserSection
           title="Целевой уровень сертификации и группы"
@@ -124,6 +125,47 @@ export default function UserDetails() {
         </AdminUserSection>
 
       </div>
+
+      {isNotesOpen ? (
+        <AdminUserNotesModal
+          userId={data.id}
+          notes={notes}
+          isLoading={notesLoading}
+          onClose={() => setIsNotesOpen(false)}
+        />
+      ) : null}
+
+      {isUserDataOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
+          <div className="max-h-[90vh] w-full max-w-[960px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h3 className="dashboard-v2-title">Данные пользователя</h3>
+              <button
+                type="button"
+                className="btn dashboard-v2-action dashboard-v2-action-secondary"
+                onClick={() => setIsUserDataOpen(false)}
+              >
+                Закрыть
+              </button>
+            </div>
+            <UserBasicBlock
+              userId={data.id}
+              registrationNumber={data.registrationNumber}
+              fullName={data.fullName}
+              fullNameLatin={data.fullNameLatin}
+              email={data.email}
+              phone={data.phone}
+              birthDate={data.birthDate}
+              country={data.country}
+              city={data.city}
+              avatarUrl={data.avatarUrl}
+              role={data.role}
+              createdAt={data.createdAt}
+              groupName={activeGroup}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

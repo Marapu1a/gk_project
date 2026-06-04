@@ -101,10 +101,14 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
         where: {
           userId: dbPayment.userId,
           type: { in: bundledTypes },
+          OR: dbPayment.targetLevel
+            ? [{ targetLevel: dbPayment.targetLevel }, { targetLevel: null }]
+            : [{ targetLevel: null }],
           status: { not: 'PAID' },
         },
         data: {
           status: 'PAID',
+          targetLevel: dbPayment.targetLevel,
           requestedAt: dbPayment.requestedAt ?? now,
           confirmedAt: now,
           comment: 'Активировано пакетной оплатой',
@@ -122,10 +126,14 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
         where: {
           userId: dbPayment.userId,
           type: { in: bundledTypes },
+          OR: dbPayment.targetLevel
+            ? [{ targetLevel: dbPayment.targetLevel }, { targetLevel: null }]
+            : [{ targetLevel: null }],
           status: { not: 'PAID' },
         },
         data: {
           status,
+          targetLevel: dbPayment.targetLevel,
           requestedAt: status === 'PENDING' ? now : null,
           confirmedAt: null,
           comment:

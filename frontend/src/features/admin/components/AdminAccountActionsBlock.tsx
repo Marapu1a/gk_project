@@ -15,6 +15,7 @@ type Props = {
   role: 'ADMIN' | 'REVIEWER' | 'STUDENT';
   isProfileVisible: boolean;
   archivedAt?: string | null;
+  onOpenUserData?: () => void;
 };
 
 const ACTION_LABELS: Record<ActionKey, string> = {
@@ -34,6 +35,7 @@ export function AdminAccountActionsBlock({
   role,
   isProfileVisible,
   archivedAt,
+  onOpenUserData,
 }: Props) {
   const { confirm } = useConfirm();
   const queryClient = useQueryClient();
@@ -171,6 +173,16 @@ export function AdminAccountActionsBlock({
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-3">
+            {onOpenUserData ? (
+              <button
+                type="button"
+                className="btn dashboard-v2-action dashboard-v2-action-secondary"
+                onClick={onOpenUserData}
+              >
+                Данные пользователя
+              </button>
+            ) : null}
+
             <button
               type="button"
               className="btn dashboard-v2-action dashboard-v2-action-secondary"

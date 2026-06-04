@@ -57,6 +57,9 @@ export async function updateUserCEUMatrixAdminHandler(
 
   const { userId } = req.params;
   const { category, status, value, notifyUser } = parsed.data;
+  if (status !== 'CONFIRMED') {
+    return reply.code(400).send({ error: 'Админская корректировка доступна только для подтвержденных CEU-баллов' });
+  }
 
   // ACTIVE cycle обязателен: правим CEU только в рамках активного цикла
   const activeCycle = await prisma.certificationCycle.findFirst({
@@ -92,20 +95,20 @@ export async function updateUserCEUMatrixAdminHandler(
     return reply.send({ ok: true, unchanged: true, current, cycleId: activeCycle.id });
   }
 
-  // god-mode: удалить старые entry в этой ячейке (ТОЛЬКО ACTIVE cycle)
-  await prisma.cEUEntry.deleteMany({
-    where: { record: { userId, cycleId: activeCycle.id }, category, status },
-  });
+  await prisma.$transaction(async (tx) => {
+    await tx.cEUEntry.deleteMany({
+      where: { record: { userId, cycleId: activeCycle.id }, category, status },
+    });
 
-  if (value > 0) {
-    // CEURecord строго в ACTIVE cycle
-    let record = await prisma.cEURecord.findFirst({
+    if (value <= 0) return;
+
+    let record = await tx.cEURecord.findFirst({
       where: { userId, cycleId: activeCycle.id },
       orderBy: { createdAt: 'desc' },
     });
 
     if (!record) {
-      record = await prisma.cEURecord.create({
+      record = await tx.cEURecord.create({
         data: {
           userId,
           cycleId: activeCycle.id,
@@ -115,7 +118,7 @@ export async function updateUserCEUMatrixAdminHandler(
       });
     }
 
-    await prisma.cEUEntry.create({
+    await tx.cEUEntry.create({
       data: {
         recordId: record.id,
         category,
@@ -125,7 +128,7 @@ export async function updateUserCEUMatrixAdminHandler(
         reviewedAt: new Date(),
       },
     });
-  }
+  });
 
   if (notifyUser) {
     await prisma.notification.create({
