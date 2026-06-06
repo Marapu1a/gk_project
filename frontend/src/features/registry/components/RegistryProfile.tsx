@@ -1,211 +1,444 @@
-// src/features/registry/features/RegistryProfile.tsx
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { CheckCircle, Mail, Printer, Send, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { useRegistryProfile } from '../hooks/useRegistryProfile';
+import type { RegistryCertificate } from '../api/getRegistryProfile';
+
+const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+const COPY_ICON = '/dashboard-v2/icon_copy.svg';
 
 type Props = { userId: string };
 
+function certificateUrl(cert: RegistryCertificate) {
+  return `/uploads/${cert.fileId}`;
+}
+
+function certificateFileName(cert: RegistryCertificate) {
+  const title = cert.title?.trim() || 'certificate';
+  const number = cert.number?.trim() || cert.id;
+  return `${title}-${number}.pdf`.replace(/[\\/:*?"<>|]+/g, '-');
+}
+
+function formatDate(iso?: string | null) {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru-RU');
+}
+
+function isCertificateActive(cert: RegistryCertificate) {
+  const expiresAt = new Date(cert.expiresAt);
+  if (Number.isNaN(expiresAt.getTime())) return false;
+  expiresAt.setHours(23, 59, 59, 999);
+  return expiresAt >= new Date();
+}
+
+async function copyText(value: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(`${label} скопирован`);
+  } catch {
+    toast.error('Не удалось скопировать');
+  }
+}
+
 export function RegistryProfile({ userId }: Props) {
-  const { data: p, isLoading, error } = useRegistryProfile(userId);
-  const [open, setOpen] = useState(false);
+  const { data: profile, isLoading, error } = useRegistryProfile(userId);
+  const [previewCert, setPreviewCert] = useState<RegistryCertificate | null>(null);
+  const [checkCert, setCheckCert] = useState<RegistryCertificate | null>(null);
 
-  if (isLoading) return <div>Загрузка…</div>;
-  if (error || !p) return <div>Профиль не найден</div>;
+  if (isLoading) {
+    return <div className="rounded-[18px] bg-white px-5 py-8 text-center text-[#8D96B5] shadow-soft">Загрузка...</div>;
+  }
 
-  const cert = p.certificate;
-  const certUrl = cert ? `/uploads/${cert.fileId}` : '';
-  const isPdf = /\.pdf($|\?)/i.test(certUrl);
-  const certPreviewUrl = isPdf
-    ? `${certUrl}#page=1&view=FitH&toolbar=0&navpanes=0&scrollbar=0`
-    : certUrl;
+  if (error || !profile) {
+    return <div className="rounded-[18px] bg-white px-5 py-8 text-center text-[#8D96B5] shadow-soft">Профиль не найден</div>;
+  }
 
+  const cert = profile.certificate;
   const avatarPlaceholder = '/avatar_placeholder.svg';
+  const location = [profile.country, profile.city].filter(Boolean).join(', ');
 
-  const fmt = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('ru-RU') : '—');
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Ссылка скопирована');
+    } catch {
+      toast.error('Не удалось скопировать ссылку');
+    }
+  };
 
   return (
-    <div
-      className="rounded-2xl border bg-white p-6 space-y-6 header-shadow"
-      style={{ borderColor: 'var(--color-green-light)' }}
-    >
-      {/* Заголовок */}
-      <div className="min-w-0">
-        <h1 className="text-2xl font-bold text-blue-dark wrap-break-word">{p.fullName}</h1>
-
-        {p.fullNameLatin && (
-          <div className="text-sm text-gray-500 mt-1 wrap-break-word">{p.fullNameLatin}</div>
-        )}
-
-        {p.groupName && (
-          <div className="mt-2">
-            <span
-              className="inline-block rounded-full px-2 py-0.5 text-xs"
-              style={{ color: 'var(--color-white)', background: badgeColor(p.groupName) }}
-            >
-              {p.groupName}
-            </span>
-          </div>
-        )}
-
-        <div className="text-sm text-gray-600 mt-2">
-          {[p.country, p.city].filter(Boolean).join(', ') || '—'}
-        </div>
-      </div>
-
-      {/* О себе */}
-      {p.bio && (
-        <div className="rounded-2xl p-4" style={{ background: 'var(--color-blue-soft)' }}>
-          <div className="text-sm font-semibold text-blue-dark mb-2">О себе</div>
-          <div className="text-sm text-blue-dark whitespace-pre-wrap">{p.bio}</div>
-        </div>
-      )}
-
-      <h2 className="text-xl font-semibold text-blue-dark">Сертификат</h2>
-
-      {/* Основная область: слева аватар, справа сертификат */}
-      <div className="grid gap-6 md:grid-cols-[minmax(220px,280px)_1fr] items-stretch">
-        {/* Левая колонка — аватар */}
-        <div className="hidden md:block">
-          <div className="h-full">
-            <div
-              className="relative w-full h-full min-h-[360px] rounded-2xl bg-white overflow-hidden"
-              style={{ border: '1px solid var(--color-green-light)' }}
-            >
+    <>
+      <section className="rounded-[22px] bg-white px-5 py-5 shadow-soft md:px-6">
+        <div className="grid gap-6 lg:grid-cols-[276px_minmax(0,1fr)_300px]">
+          <div className="space-y-4">
+            <div className="flex h-[276px] w-full items-center justify-center overflow-hidden rounded-[10px] border border-[#B8C1D6] bg-[#E7EAF0]">
               <img
-                src={p.avatarUrl || avatarPlaceholder}
-                alt={p.fullName}
+                src={profile.avatarUrl || avatarPlaceholder}
+                alt={profile.fullName}
                 loading="lazy"
-                className="absolute inset-0 w-full h-full object-contain"
-                onError={(e) => {
-                  const el = e.currentTarget;
-                  if (el.src.endsWith('avatar_placeholder.svg')) return;
-                  el.src = avatarPlaceholder;
+                className="h-full w-full object-cover"
+                onError={(event) => {
+                  const image = event.currentTarget;
+                  if (image.src.endsWith('avatar_placeholder.svg')) return;
+                  image.src = avatarPlaceholder;
                 }}
               />
             </div>
-          </div>
-        </div>
 
-        {/* Правая колонка — сертификат */}
-        {cert && (
-          <div className="space-y-4">
-            <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_520px] items-stretch">
-              {/* Информация о сертификате */}
-              <div>
-                <dl className="text-base leading-6 space-y-4">
-                  <div>
-                    <dt className="text-gray-500">Название</dt>
-                    <dd className="font-medium text-blue-dark wrap-break-word">{cert.title}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">Номер</dt>
-                    <dd className="font-medium wrap-break-word">№ {cert.number}</dd>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <dt className="text-gray-500">Выдан</dt>
-                      <dd className="font-medium">{fmt(cert.issuedAt)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-gray-500">Действителен до</dt>
-                      <dd className="font-medium">{fmt(cert.expiresAt)}</dd>
-                    </div>
-                  </div>
-                </dl>
-              </div>
-
-              {/* Превью сертификата — A4, выглядит как картинка */}
+            <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => setOpen(true)}
-                className="rounded-xl p-3 bg-white hover:bg-gray-50 flex flex-col justify-between md:pl-6"
-                style={{ borderLeft: '1px solid var(--color-green-light)' }}
-                aria-label="Открыть сертификат"
+                onClick={() => toast.info('Связь со специалистом пока не подключена')}
+                className="btn min-h-[44px] rounded-[8px] bg-[var(--color-blue-dark)] px-4 text-[15px] font-extrabold text-white hover:bg-[#16254A]"
               >
-                <div className="relative w-full flex-1 min-h-[260px] rounded-lg overflow-hidden">
-                  <div
-                    className="w-full"
-                    style={{ aspectRatio: '1.414 / 1', position: 'relative' }}
-                  >
-                    {isPdf ? (
-                      <object
-                        data={certPreviewUrl}
-                        type="application/pdf"
-                        className="absolute left-0 right-0 -top-12 h-[calc(100%+48px)] w-full pointer-events-none"
-                      >
-                        <div className="w-full h-full grid place-items-center bg-white">
-                          <div className="text-center text-blue-dark text-sm">
-                            PDF-сертификат
-                            <br />
-                            <span className="text-gray-500">Нажмите, чтобы открыть</span>
-                          </div>
-                        </div>
-                      </object>
-                    ) : (
-                      <img
-                        src={certUrl}
-                        alt="certificate"
-                        className="absolute inset-0 w-full h-full object-contain"
-                        loading="lazy"
-                      />
-                    )}
-                  </div>
-                </div>
-                <div className="mt-3 text-xs text-blue-dark text-center">
-                  Открыть в полном размере
-                </div>
+                Связаться
+              </button>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="btn min-h-[44px] rounded-[8px] border-2 border-[var(--color-blue-dark)] bg-white px-4 text-[15px] font-extrabold text-[var(--color-blue-dark)] hover:bg-[var(--color-blue-soft)]"
+              >
+                Поделиться
               </button>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Модалка A4 (ландшафт) */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
-          <div className="relative bg-white rounded-2xl p-4 w-[min(95vw,1123px)] header-shadow">
-            <div className="relative mx-auto" style={{ width: '100%', aspectRatio: '1.414 / 1' }}>
-              {isPdf ? (
-                <object
-                  data={certUrl}
-                  type="application/pdf"
-                  className="absolute inset-0 w-full h-full"
-                >
-                  <a href={certUrl} target="_blank" rel="noreferrer" className="underline">
-                    Открыть PDF в новой вкладке
-                  </a>
-                </object>
-              ) : (
-                <img
-                  src={certUrl}
-                  alt="certificate-full"
-                  className="absolute inset-0 w-full h-full object-contain"
-                />
-              )}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button className="btn" onClick={() => setOpen(false)}>
-                Закрыть
+            {cert ? (
+              <button
+                type="button"
+                onClick={() => setCheckCert(cert)}
+                className="btn min-h-[44px] w-full rounded-[8px] border-2 border-[var(--color-blue-dark)] bg-white px-4 text-[15px] font-extrabold text-[var(--color-blue-dark)] hover:bg-[var(--color-blue-soft)]"
+              >
+                Проверить сертификат
               </button>
-            </div>
+            ) : null}
+          </div>
+
+          <div className="min-w-0 px-0 py-2 lg:px-1">
+            <h1 className="text-[18px] leading-tight text-[#222]">
+              <strong className="font-extrabold">{profile.fullName.split(' ')[0]}</strong>{' '}
+              {profile.fullName.split(' ').slice(1).join(' ')}
+            </h1>
+
+            {profile.groupName ? (
+              <span className="mt-4 inline-flex min-h-[28px] max-w-full items-center rounded-full bg-[var(--color-blue-soft)] px-3 text-[14px] font-extrabold leading-[1.1] text-[var(--color-blue-dark)]">
+                <span className="truncate">{profile.groupName}</span>
+              </span>
+            ) : null}
+
+            {profile.bio ? (
+              <div className="mt-5 border-l-[6px] border-[var(--color-blue-soft)] pl-3 text-[14px] leading-[1.25] text-[#222] whitespace-pre-wrap">
+                {profile.bio}
+              </div>
+            ) : (
+              <p className="mt-5 text-[14px] leading-[1.35] text-[#8D96B5]">Описание специалиста пока не заполнено.</p>
+            )}
+
+            {location ? <p className="mt-5 text-[14px] font-semibold text-[#8D96B5]">{location}</p> : null}
+          </div>
+
+          <div className="flex flex-col items-center lg:items-end">
+            {cert ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setPreviewCert(cert)}
+                  className="flex h-[320px] w-full max-w-[250px] cursor-pointer items-center justify-center rounded-[4px] bg-white p-1 transition hover:shadow-soft"
+                  aria-label="Открыть сертификат"
+                  title="Открыть сертификат"
+                >
+                  <CertificatePreview cert={cert} className="h-full w-full" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => copyText(cert.number, 'Номер сертификата')}
+                  className="mt-3 inline-flex max-w-full cursor-pointer items-center gap-1.5 text-[13px] font-medium text-[var(--color-blue-dark)] hover:text-[#16254A]"
+                  title="Скопировать номер сертификата"
+                >
+                  <span className="truncate">{cert.number}</span>
+                  <img src={COPY_ICON} alt="" className="h-[14px] w-[14px]" />
+                </button>
+              </>
+            ) : (
+              <div className="flex h-[320px] w-full max-w-[250px] items-center justify-center rounded-[10px] bg-[var(--color-blue-soft)] px-4 text-center text-[14px] font-semibold text-[#8D96B5]">
+                Сертификат не найден
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </section>
+
+      {previewCert ? <CertificateFullscreenModal cert={previewCert} onClose={() => setPreviewCert(null)} /> : null}
+      {checkCert ? (
+        <CertificateCheckModal
+          cert={checkCert}
+          fullName={profile.fullName}
+          onClose={() => setCheckCert(null)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function CertificatePreview({ cert, className = '' }: { cert: RegistryCertificate; className?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [failed, setFailed] = useState(false);
+  const url = certificateUrl(cert);
+
+  useEffect(() => {
+    let cancelled = false;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    async function renderPdf() {
+      try {
+        setFailed(false);
+        const pdfjs = await import('pdfjs-dist');
+        pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+        const loadingTask = pdfjs.getDocument(url);
+        const pdf = await loadingTask.promise;
+        if (cancelled) return;
+
+        const page = await pdf.getPage(1);
+        if (cancelled) return;
+
+        const baseViewport = page.getViewport({ scale: 1 });
+        const targetWidth = 760;
+        const scale = targetWidth / baseViewport.width;
+        const viewport = page.getViewport({ scale });
+        const context = canvas.getContext('2d');
+
+        if (!context) {
+          setFailed(true);
+          return;
+        }
+
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        await page.render({ canvasContext: context, viewport }).promise;
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    }
+
+    renderPdf();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  if (failed) {
+    return (
+      <div className={`flex flex-col items-center justify-center rounded-[8px] border border-[#DCE3EF] bg-[#F4F6FA] px-5 text-center text-[#8D96B5] ${className}`}>
+        <p className="text-[18px] font-extrabold text-[var(--color-blue-dark)]">Сертификат не найден</p>
+        <p className="mt-2 max-w-[260px] text-[14px] font-semibold leading-[1.25]">
+          Тут должен быть файл сертификата, но сейчас он недоступен.
+        </p>
+      </div>
+    );
+  }
+
+  return <canvas ref={canvasRef} className={`object-contain ${className}`} aria-label={cert.title || 'Сертификат'} />;
+}
+
+function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertificate; onClose: () => void }) {
+  const url = certificateUrl(cert);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  const handlePrint = () => {
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+      window.setTimeout(() => iframe.remove(), 1000);
+    };
+  };
+
+  const showTemporaryUnavailable = () => {
+    toast.info('Отправка пока не работает. Скачайте сертификат и отправьте файл вручную.');
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-5">
+      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Закрыть просмотр сертификата" />
+
+      <div className="relative z-10 flex max-h-[96vh] w-full max-w-[760px] flex-col items-center">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-[34px] top-[-34px] flex h-11 w-11 cursor-pointer items-center justify-center opacity-80 transition hover:opacity-100"
+          aria-label="Закрыть"
+          title="Закрыть"
+        >
+          <img src={EXIT_ICON} alt="" className="h-6 w-6 brightness-0 invert" />
+        </button>
+
+        <div className="flex max-h-[calc(96vh-82px)] w-full items-center justify-center">
+          <div className="rounded-[6px] bg-white p-2 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
+            <CertificatePreview cert={cert} className="max-h-[calc(96vh-98px)] max-w-full" />
+          </div>
+        </div>
+
+        <div className="mt-4 flex w-full max-w-[410px] items-center justify-between gap-5">
+          <a
+            href={url}
+            download={certificateFileName(cert)}
+            className="btn h-[44px] min-w-[126px] rounded-[8px] border-2 border-white px-6 text-[14px] font-extrabold text-white hover:bg-white/10"
+          >
+            Скачать
+          </a>
+
+          <div className="flex items-center gap-3">
+            <IconAction title="Отправить по email" onClick={showTemporaryUnavailable}>
+              <Mail size={22} />
+            </IconAction>
+            <IconAction title="Отправить в мессенджере" onClick={showTemporaryUnavailable}>
+              <Send size={22} />
+            </IconAction>
+            <IconAction title="Распечатать" onClick={handlePrint}>
+              <Printer size={22} />
+            </IconAction>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function CertificateCheckModal({
+  cert,
+  fullName,
+  onClose,
+}: {
+  cert: RegistryCertificate;
+  fullName: string;
+  onClose: () => void;
+}) {
+  const active = isCertificateActive(cert);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-5">
+      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Закрыть проверку сертификата" />
+
+      <div className="relative z-10 w-full max-w-[750px] rounded-[22px] bg-white px-7 py-7 shadow-soft">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-5 top-5 flex h-10 w-10 cursor-pointer items-center justify-center opacity-70 transition hover:opacity-100"
+          aria-label="Закрыть"
+        >
+          <img src={EXIT_ICON} alt="" className="h-7 w-7" />
+        </button>
+
+        <h2 className="mb-6 flex items-center justify-center gap-2 text-[30px] font-extrabold leading-none text-[var(--color-blue-dark)]">
+          {active ? (
+            <CheckCircle size={28} className="text-[var(--color-green-brand)]" />
+          ) : (
+            <XCircle size={28} className="text-[var(--color-danger)]" />
+          )}
+          О сертификате
+        </h2>
+
+        <div className="grid gap-7 md:grid-cols-[330px_minmax(0,1fr)]">
+          <div className="flex justify-center">
+            <CertificatePreview cert={cert} className="max-h-[462px] w-full max-w-[330px]" />
+          </div>
+
+          <dl className="space-y-7 text-[#222]">
+            <CertificateField label="ФИО" value={fullName} />
+            <CertificateField label="Уровень" value={cert.title || '—'} />
+            <CertificateField label="Выдан" value={formatDate(cert.issuedAt)} />
+            <CertificateField
+              label="Действует до"
+              value={formatDate(cert.expiresAt)}
+              danger={!active}
+            />
+            <div>
+              <dt className="mb-1 text-[15px] font-semibold text-[#8D96B5]">Номер</dt>
+              <dd>
+                <button
+                  type="button"
+                  onClick={() => copyText(cert.number, 'Номер сертификата')}
+                  className="inline-flex max-w-full cursor-pointer items-center gap-1.5 text-[18px] font-medium text-[var(--color-blue-dark)] hover:text-[#16254A]"
+                >
+                  <span className="truncate">{cert.number}</span>
+                  <img src={COPY_ICON} alt="" className="h-[16px] w-[16px]" />
+                </button>
+              </dd>
+            </div>
+            <CertificateField label="Орган" value="ЦС ПАП" />
+          </dl>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function CertificateField({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
+  return (
+    <div>
+      <dt className="mb-1 text-[15px] font-semibold text-[#8D96B5]">{label}</dt>
+      <dd className={`text-[18px] font-medium ${danger ? 'text-[var(--color-danger)]' : 'text-[#222]'}`}>
+        {value}
+      </dd>
     </div>
   );
 }
 
-function badgeColor(groupName: string) {
-  switch (groupName.toLowerCase()) {
-    case 'инструктор':
-      return '#a16207'; // янтарный
-    case 'куратор':
-      return '#6d28d9'; // фиолетовый
-    case 'супервизор':
-      return '#1f355e'; // тёмно-синий
-    case 'опытный супервизор':
-      return '#0f766e'; // тил
-    default:
-      return 'var(--color-blue-dark)';
-  }
+function IconAction({
+  title,
+  onClick,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="btn h-[36px] w-[36px] rounded-[8px] border-2 border-white text-white hover:bg-white/10"
+    >
+      {children}
+    </button>
+  );
 }

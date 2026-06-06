@@ -130,6 +130,17 @@ export async function getRegistryList({
         take: 1,
         select: { id: true },
       },
+      cycles: {
+        where: { status: 'ACTIVE' },
+        orderBy: { startedAt: 'desc' },
+        take: 1,
+        select: {
+          id: true,
+          type: true,
+          targetLevel: true,
+          startedAt: true,
+        },
+      },
     },
   });
 
@@ -142,6 +153,7 @@ export async function getRegistryList({
   const items = users.map((u) => {
     const top = u.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank)[0];
     const activeCert = u.certificates[0] || null;
+    const activeCycle = u.cycles[0] || null;
 
     return {
       id: u.id,
@@ -155,6 +167,15 @@ export async function getRegistryList({
       groupName: top?.name ?? null,
       groupRank: top?.rank ?? null,
       isCertified: !!activeCert,
+      hasActiveCycle: !!activeCycle,
+      activeCycle: activeCycle
+        ? {
+          id: activeCycle.id,
+          type: activeCycle.type,
+          targetLevel: activeCycle.targetLevel,
+          startedAt: activeCycle.startedAt,
+        }
+        : null,
     };
   });
 
@@ -165,7 +186,6 @@ export async function getRegistryList({
 
 export async function getRegistryProfile(userId: string) {
   if (!userId) return null;
-  const now = new Date();
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -182,7 +202,6 @@ export async function getRegistryProfile(userId: string) {
       // активная группа
       groups: { include: { group: { select: { name: true, rank: true } } } },
       certificates: {
-        where: { expiresAt: { gte: now } },
         orderBy: { issuedAt: 'desc' },
         take: 1,
         select: {

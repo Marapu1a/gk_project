@@ -7,8 +7,8 @@ export default function RegistryPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Единый реестр поведенческих аналитиков в России</h1>
+    <div className="mx-auto max-w-[1220px] px-4 py-6 space-y-6">
+      <h1 className="text-center text-[24px] font-extrabold text-[var(--color-blue-dark)]">Реестр</h1>
 
       <div className="rounded-[20px] bg-[#1F305E] px-6 py-5 text-white shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,0.85fr)_auto] lg:items-center">

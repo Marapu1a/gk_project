@@ -13,6 +13,13 @@ export type RegistryCard = {
   groupName?: string | null;
   groupRank?: number | null;
   isCertified: boolean;
+  hasActiveCycle: boolean;
+  activeCycle?: {
+    id: string;
+    type: string;
+    targetLevel: string;
+    startedAt: string;
+  } | null;
 };
 
 export type RegistryListResponse = {

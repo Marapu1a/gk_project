@@ -407,6 +407,11 @@ select:disabled,
   box-shadow: 0 10px 15px 0 var(--color-shadow-soft);
 }
 
+.registry-card-mail-hover {
+  background-color: var(--color-white) !important;
+  box-shadow: 0 10px 15px 0 var(--color-shadow-soft) !important;
+}
+
 .shadow-strong {
   box-shadow: 0 12px 24px 0 var(--color-shadow-strong);
 }
