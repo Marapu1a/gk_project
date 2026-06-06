@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAllDocReviewRequests } from '../hooks/useAllDocReviewRequests';
 import { documentReviewStatusLabels } from '@/utils/documentReviewStatusLabels';
 
@@ -41,14 +41,26 @@ function statusClass(status: string) {
 }
 
 export function AdminDocumentReviewList() {
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [mode, setMode] = useState<'active' | 'history'>('active');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') ?? searchParams.get('email') ?? '';
+  const urlMode = searchParams.get('mode') === 'history' ? 'history' : 'active';
+  const [searchInput, setSearchInput] = useState(urlSearch);
+  const [search, setSearch] = useState(urlSearch.trim());
+  const [mode, setMode] = useState<'active' | 'history'>(urlMode);
 
   const { data: requests = [], isLoading, error } = useAllDocReviewRequests(search);
 
+  useEffect(() => {
+    setSearchInput(urlSearch);
+    setSearch(urlSearch.trim());
+  }, [urlSearch]);
+
+  useEffect(() => {
+    setMode(urlMode);
+  }, [urlMode]);
+
   const rows = useMemo(() => {
-    const tokens = tokenize(searchInput);
+    const tokens = tokenize(search);
 
     return (requests as RequestRow[])
       .filter((request) => {
@@ -66,11 +78,31 @@ export function AdminDocumentReviewList() {
         if (weightDiff !== 0) return weightDiff;
         return new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime();
       });
-  }, [mode, requests, searchInput]);
+  }, [mode, requests, search]);
 
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    setSearch(searchInput.trim());
+    const nextSearch = searchInput.trim();
+    const next = new URLSearchParams(searchParams);
+    next.delete('email');
+    if (nextSearch) {
+      next.set('search', nextSearch);
+    } else {
+      next.delete('search');
+    }
+    setSearch(nextSearch);
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleModeChange = (nextMode: 'active' | 'history') => {
+    setMode(nextMode);
+    const next = new URLSearchParams(searchParams);
+    if (nextMode === 'active') {
+      next.delete('mode');
+    } else {
+      next.set('mode', nextMode);
+    }
+    setSearchParams(next, { replace: true });
   };
 
   return (
@@ -82,10 +114,10 @@ export function AdminDocumentReviewList() {
               Заявки на проверку документов ({rows.length}/{(requests as RequestRow[]).length})
             </h1>
             <div className="mt-4 inline-flex rounded-[10px] bg-[#F0F0F0] p-1">
-              <ModeButton active={mode === 'active'} onClick={() => setMode('active')}>
+              <ModeButton active={mode === 'active'} onClick={() => handleModeChange('active')}>
                 Активные
               </ModeButton>
-              <ModeButton active={mode === 'history'} onClick={() => setMode('history')}>
+              <ModeButton active={mode === 'history'} onClick={() => handleModeChange('history')}>
                 История
               </ModeButton>
             </div>

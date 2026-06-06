@@ -1,6 +1,7 @@
 // /handlers/documentReviewAdmin/getAllDocumentReviewRequests.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { withResolvedDocumentReviewRequestStatus } from './documentReviewFileStatusUtils';
 
 export async function getAllDocumentReviewRequests(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -27,5 +28,5 @@ export async function getAllDocumentReviewRequests(req: FastifyRequest, reply: F
     },
   });
 
-  return reply.send(requests);
+  return reply.send(requests.map(withResolvedDocumentReviewRequestStatus));
 }

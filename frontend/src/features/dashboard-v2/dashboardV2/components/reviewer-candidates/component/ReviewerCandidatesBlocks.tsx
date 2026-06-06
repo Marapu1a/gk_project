@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { useReviewerCandidates } from '@/features/supervision/hooks/useReviewerCandidates';
 import { useUpdateReviewerCandidateRelation } from '@/features/supervision/hooks/useUpdateReviewerCandidateRelation';
 import type { ReviewerCandidate } from '@/features/supervision/api/getReviewerCandidates';
@@ -154,17 +155,14 @@ function CandidatesTable({
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <button
-                          type="button"
+                        <ActionArrowButton
                           onClick={() => {
                             if (canOpenDetails) {
                               navigate(`/reviewer/candidates/${kind}/${candidate.userId}`);
                             }
                           }}
                           disabled={!canOpenDetails}
-                          className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full ${
-                            canOpenDetails ? 'cursor-pointer' : 'cursor-default opacity-60'
-                          }`}
+                          size={30}
                           aria-label={
                             canOpenDetails
                               ? 'Открыть детали кандидата'
@@ -175,13 +173,7 @@ function CandidatesTable({
                               ? 'Открыть детали кандидата'
                               : 'Детали будут доступны после принятия кандидата'
                           }
-                        >
-                          <img
-                            src="/dashboard-v2/button_X_mini.svg"
-                            alt=""
-                            className="h-[30px] w-[30px]"
-                          />
-                        </button>
+                        />
 
                         <div className="min-w-0 leading-[1.15]">
                           <div className="font-extrabold">{nameLines[0]}</div>

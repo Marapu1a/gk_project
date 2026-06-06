@@ -241,7 +241,18 @@ export async function getAdminReviewerCandidatesHandler(
     Array<{
       id: string;
       createdAt: Date;
+      periodStartedAt: Date | null;
+      periodEndedAt: Date | null;
+      treatmentSetting: string | null;
+      description: string | null;
+      draftDirectIndividual: number | null;
+      draftDirectGroup: number | null;
+      draftNonObservingIndividual: number | null;
+      draftNonObservingGroup: number | null;
       hours: Array<{
+        id: string;
+        type: PracticeLevel;
+        value: number;
         status: RecordStatus;
         reviewedAt: Date | null;
         rejectedReason: string | null;
@@ -268,13 +279,24 @@ export async function getAdminReviewerCandidatesHandler(
         userId: true,
         cycleId: true,
         createdAt: true,
+        periodStartedAt: true,
+        periodEndedAt: true,
+        treatmentSetting: true,
+        description: true,
+        draftDirectIndividual: true,
+        draftDirectGroup: true,
+        draftNonObservingIndividual: true,
+        draftNonObservingGroup: true,
         hours: {
           where: {
             reviewerId: { in: reviewerIds },
             type: { in: typesForKind(normalizedKind) },
           },
           select: {
+            id: true,
             reviewerId: true,
+            type: true,
+            value: true,
             status: true,
             reviewedAt: true,
             rejectedReason: true,
@@ -301,6 +323,14 @@ export async function getAdminReviewerCandidatesHandler(
         list.push({
           id: record.id,
           createdAt: record.createdAt,
+          periodStartedAt: record.periodStartedAt,
+          periodEndedAt: record.periodEndedAt,
+          treatmentSetting: record.treatmentSetting,
+          description: record.description,
+          draftDirectIndividual: record.draftDirectIndividual,
+          draftDirectGroup: record.draftDirectGroup,
+          draftNonObservingIndividual: record.draftNonObservingIndividual,
+          draftNonObservingGroup: record.draftNonObservingGroup,
           hours,
         });
         recordsByRelationKey.set(key, list);
@@ -350,6 +380,27 @@ export async function getAdminReviewerCandidatesHandler(
         latestPendingRequestAt,
         latestReview,
         hourState: resolvedHourState,
+        pendingRequests: pendingRecords.map((record) => ({
+          id: record.id,
+          createdAt: record.createdAt,
+          periodStartedAt: record.periodStartedAt,
+          periodEndedAt: record.periodEndedAt,
+          treatmentSetting: record.treatmentSetting,
+          description: record.description,
+          distribution: {
+            directIndividual: record.draftDirectIndividual ?? 0,
+            directGroup: record.draftDirectGroup ?? 0,
+            nonObservingIndividual: record.draftNonObservingIndividual ?? 0,
+            nonObservingGroup: record.draftNonObservingGroup ?? 0,
+          },
+          hours: record.hours
+            .filter((hour) => hour.status === RecordStatus.UNCONFIRMED)
+            .map((hour) => ({
+              id: hour.id,
+              type: hour.type,
+              value: hour.value,
+            })),
+        })),
         relationCreatedAt: relation.createdAt,
         relationUpdatedAt: relation.updatedAt,
         pendingCount,
@@ -397,6 +448,12 @@ export async function getAdminReviewerCandidatesHandler(
             reviewedAt: row.latestReview.reviewedAt?.toISOString() ?? null,
           }
         : null,
+      pendingRequests: row.pendingRequests.map((request) => ({
+        ...request,
+        createdAt: request.createdAt.toISOString(),
+        periodStartedAt: request.periodStartedAt?.toISOString() ?? null,
+        periodEndedAt: request.periodEndedAt?.toISOString() ?? null,
+      })),
       relationCreatedAt: row.relationCreatedAt.toISOString(),
       relationUpdatedAt: row.relationUpdatedAt.toISOString(),
     })),

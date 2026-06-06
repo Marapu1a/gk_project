@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { useUserCEUMatrix } from '../hooks/ceu/useUserCEUMatrix';
 import { useUpdateUserCEUMatrix } from '../hooks/ceu/useUpdateUserCEUMatrix';
 import type { CEUCategory } from '../api/ceu/getUserCEUMatrix';
+import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
 
 const CATEGORIES: Array<{ key: CEUCategory; label: string; requiredKey: RequiredKey }> = [
   { key: 'ETHICS', label: 'Этика', requiredKey: 'ethics' },
@@ -62,9 +62,9 @@ function parseValue(value: string) {
 export default function AdminCEUMatrixBlock({ userId, required }: Props) {
   const { data, isLoading, error } = useUserCEUMatrix(userId);
   const mutation = useUpdateUserCEUMatrix(userId);
-  const { confirm } = useConfirm();
 
   const [draft, setDraft] = useState<Partial<Record<CEUCategory, string>>>({});
+  const [isNotifyChoiceOpen, setIsNotifyChoiceOpen] = useState(false);
 
   const values = useMemo(() => {
     const matrix = data?.matrix;
@@ -123,16 +123,6 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
       return;
     }
 
-    const ok = await confirm({
-      title: 'Сохранить CEU-баллы?',
-      message: notifyUser
-        ? 'Сохранить изменения и отправить пользователю уведомление?'
-        : 'Сохранить изменения без уведомления пользователя?',
-      confirmLabel: notifyUser ? 'Сохранить и уведомить' : 'Сохранить тихо',
-      variant: notifyUser ? 'primary' : 'danger',
-    });
-    if (!ok) return;
-
     try {
       for (let index = 0; index < changed.length; index += 1) {
         const item = changed[index];
@@ -151,9 +141,11 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
         GENERAL: undefined,
       });
       toast.success(notifyUser ? 'CEU-баллы сохранены, уведомление отправлено' : 'CEU-баллы сохранены тихо');
+      setIsNotifyChoiceOpen(false);
     } catch (err: any) {
+      const errorCode = err?.response?.data?.errorCode ?? err?.response?.data?.error;
       const message =
-        err?.response?.data?.error === 'NO_ACTIVE_CYCLE'
+        errorCode === 'NO_ACTIVE_CYCLE'
           ? 'У пользователя нет активного цикла'
           : err?.response?.data?.error || 'Не удалось сохранить CEU-баллы';
       toast.error(message);
@@ -232,31 +224,25 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
         })}
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-[#DCE8EC] pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="dashboard-v2-caption text-[#6B7894]">
-          При сохранении старые подтвержденные CEU этой категории в активном цикле заменяются одной
-          служебной записью.
-        </p>
-
-        <div className="flex flex-wrap justify-end gap-3">
-          <button
-            type="button"
-            className="btn dashboard-v2-action dashboard-v2-action-secondary"
-            disabled={mutation.isPending || !hasChanges}
-            onClick={() => void save(false)}
-          >
-            Сохранить тихо
-          </button>
-          <button
-            type="button"
-            className="btn dashboard-v2-action dashboard-v2-action-primary"
-            disabled={mutation.isPending || !hasChanges}
-            onClick={() => void save(true)}
-          >
-            Сохранить и уведомить
-          </button>
-        </div>
+      <div className="flex justify-end border-t border-[#DCE8EC] pt-4">
+        <button
+          type="button"
+          className="btn dashboard-v2-action dashboard-v2-action-primary"
+          disabled={mutation.isPending || !hasChanges}
+          onClick={() => setIsNotifyChoiceOpen(true)}
+        >
+          Сохранить
+        </button>
       </div>
+
+      {isNotifyChoiceOpen ? (
+        <AdminNotifyChoiceModal
+          title="Сохранить CEU-баллы?"
+          isPending={mutation.isPending}
+          onChoose={(notify) => void save(notify)}
+          onClose={() => setIsNotifyChoiceOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

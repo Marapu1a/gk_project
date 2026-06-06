@@ -8,23 +8,17 @@ import PaymentsBlock from './PaymentsBlock';
 import AdminUserGroupsBlock from '@/features/admin/components/AdminUserGroupsBlock';
 import { PageNav } from '@/components/PageNav';
 import { AdminCandidateSummaryBlock } from './AdminCandidateSummaryBlock';
-import { AdminUserSection } from './AdminUserSection';
 import { AdminAccountActionsBlock } from './AdminAccountActionsBlock';
 import { AdminUserNotesModal } from './AdminUserNotesModal';
 import { useUserActionLog } from '../hooks/useUserActionLog';
-
-type SectionId =
-  | 'groups'
-  | 'ceu'
-  | 'supervision'
-  | 'payments';
+import { ReviewerRelationsOverviewBlock } from './ReviewerRelationsOverviewBlock';
 
 export default function UserDetails() {
   const { id } = useParams<{ id: string }>();
   const { data, isLoading, error } = useUserDetails(id ?? '');
-  const [openSection, setOpenSection] = useState<SectionId | null>(null);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isUserDataOpen, setIsUserDataOpen] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
   const { data: actionLog = [], isLoading: notesLoading } = useUserActionLog(id ?? '');
   const notes = useMemo(
     () =>
@@ -40,10 +34,6 @@ export default function UserDetails() {
 
   const activeGroup =
     data.groups.length > 0 ? [...data.groups].sort((a, b) => b.rank - a.rank)[0].name : null;
-
-  const toggleSection = (section: SectionId) => {
-    setOpenSection((current) => (current === section ? null : section));
-  };
 
   return (
     <div className="mx-auto max-w-[1180px] space-y-5 px-4 py-5 text-[var(--color-blue-dark)]">
@@ -62,9 +52,22 @@ export default function UserDetails() {
         </button>
       </header>
 
-      <AdminCandidateSummaryBlock user={data} activeGroupName={activeGroup} />
+      <AdminCandidateSummaryBlock
+        user={data}
+        activeGroupName={activeGroup}
+        onOpenStatusManagement={() => setIsStatusOpen(true)}
+      />
 
       <div className="space-y-4">
+        <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
+          <PaymentsBlock
+            payments={data.payments}
+            userId={data.id}
+            activeGroupName={activeGroup}
+            activeCycle={data.activeCycle}
+          />
+        </section>
+
         <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="dashboard-v2-title">Действия с аккаунтом</h2>
@@ -81,48 +84,25 @@ export default function UserDetails() {
           />
         </section>
 
-        <AdminUserSection
-          title="Целевой уровень сертификации и группы"
-          isOpen={openSection === 'groups'}
-          onToggle={() => toggleSection('groups')}
-        >
-          <AdminUserGroupsBlock userId={data.id} />
-        </AdminUserSection>
-
-        <AdminUserSection
-          title="CEU-баллы"
-          isOpen={openSection === 'ceu'}
-          onToggle={() => toggleSection('ceu')}
-        >
-          <AdminCEUMatrixBlock
-            userId={data.id}
-            required={data.examReadiness?.ceu.required}
-          />
-        </AdminUserSection>
-
-        <AdminUserSection
-          title="Часы практики и супервизии"
-          isOpen={openSection === 'supervision'}
-          onToggle={() => toggleSection('supervision')}
-        >
+        <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
           <UserSupervisionMatrix
             userId={data.id}
             activeGroupName={activeGroup}
           />
-        </AdminUserSection>
+        </section>
 
-        <AdminUserSection
-          title="Оплаты"
-          isOpen={openSection === 'payments'}
-          onToggle={() => toggleSection('payments')}
-        >
-          <PaymentsBlock
-            payments={data.payments}
+        <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
+          <AdminCEUMatrixBlock
             userId={data.id}
-            activeGroupName={activeGroup}
-            activeCycle={data.activeCycle}
+            required={data.examReadiness?.ceu.required}
           />
-        </AdminUserSection>
+        </section>
+
+        <ReviewerRelationsOverviewBlock
+          reviewerEmail={data.email}
+          activeGroupName={activeGroup}
+          relations={data.reviewerCandidateRelations}
+        />
 
       </div>
 
@@ -163,6 +143,29 @@ export default function UserDetails() {
               createdAt={data.createdAt}
               groupName={activeGroup}
             />
+          </div>
+        </div>
+      ) : null}
+
+      {isStatusOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
+          <div className="max-h-[90vh] w-full max-w-[1040px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <h3 className="dashboard-v2-title">Статус и сертификат</h3>
+                <p className="mt-1 text-[13px] font-semibold text-[#8D96B5]">
+                  Управление группой, активным процессом и сертификатом пользователя.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn dashboard-v2-action dashboard-v2-action-secondary"
+                onClick={() => setIsStatusOpen(false)}
+              >
+                Закрыть
+              </button>
+            </div>
+            <AdminUserGroupsBlock userId={data.id} />
           </div>
         </div>
       ) : null}

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { useUserSupervisionMatrix } from '../hooks/supervision/useUserSupervisionMatrix';
 import { useUpdateUserSupervisionMatrix } from '../hooks/supervision/useUpdateUserSupervisionMatrix';
+import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
 
 type Props = {
   userId: string;
@@ -143,9 +143,9 @@ function getDistributionRuleError(params: {
 export default function UserSupervisionMatrix({ userId, activeGroupName }: Props) {
   const { data, isLoading, error } = useUserSupervisionMatrix(userId);
   const mutation = useUpdateUserSupervisionMatrix(userId);
-  const { confirm } = useConfirm();
 
   const [practiceLocked, setPracticeLocked] = useState(false);
+  const [pendingSaveMode, setPendingSaveMode] = useState<'PRACTICE' | 'MENTORSHIP' | null>(null);
   const [implementing, setImplementing] = useState('0');
   const [programming, setProgramming] = useState('0');
   const [directIndividual, setDirectIndividual] = useState('0');
@@ -291,16 +291,6 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       return;
     }
 
-    const ok = await confirm({
-      title: 'Сохранить часы?',
-      message: notifyUser
-        ? 'Сохранить корректировку часов и отправить пользователю уведомление?'
-        : 'Сохранить корректировку часов без уведомления пользователя?',
-      confirmLabel: notifyUser ? 'Сохранить и уведомить' : 'Сохранить тихо',
-      variant: notifyUser ? 'primary' : 'danger',
-    });
-    if (!ok) return;
-
     try {
       await mutation.mutateAsync({
         mode: 'PRACTICE',
@@ -310,6 +300,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
         notifyUser,
       });
       toast.success(notifyUser ? 'Часы сохранены, уведомление отправлено' : 'Часы сохранены тихо');
+      setPendingSaveMode(null);
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Не удалось сохранить часы');
     }
@@ -326,16 +317,6 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       return;
     }
 
-    const ok = await confirm({
-      title: 'Сохранить менторство?',
-      message: notifyUser
-        ? 'Сохранить часы менторства и отправить пользователю уведомление?'
-        : 'Сохранить часы менторства без уведомления пользователя?',
-      confirmLabel: notifyUser ? 'Сохранить и уведомить' : 'Сохранить тихо',
-      variant: notifyUser ? 'primary' : 'danger',
-    });
-    if (!ok) return;
-
     try {
       await mutation.mutateAsync({
         mode: 'MENTORSHIP',
@@ -345,6 +326,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       toast.success(
         notifyUser ? 'Часы менторства сохранены, уведомление отправлено' : 'Часы менторства сохранены тихо',
       );
+      setPendingSaveMode(null);
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Не удалось сохранить часы менторства');
     }
@@ -387,9 +369,16 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
 
         <SaveActions
           disabled={mutation.isPending || (mentor?.required ?? 0) <= 0}
-          onSilent={() => void saveMentorship(false)}
-          onNotify={() => void saveMentorship(true)}
+          onSave={() => setPendingSaveMode('MENTORSHIP')}
         />
+        {pendingSaveMode === 'MENTORSHIP' ? (
+          <AdminNotifyChoiceModal
+            title="Сохранить менторство?"
+            isPending={mutation.isPending}
+            onChoose={(notify) => void saveMentorship(notify)}
+            onClose={() => setPendingSaveMode(null)}
+          />
+        ) : null}
       </div>
     );
   }
@@ -528,9 +517,16 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
 
       <SaveActions
         disabled={mutation.isPending || !practiceLocked || Boolean(practiceRuleError || practiceLimitError || distributionRuleError)}
-        onSilent={() => void savePractice(false)}
-        onNotify={() => void savePractice(true)}
+        onSave={() => setPendingSaveMode('PRACTICE')}
       />
+      {pendingSaveMode === 'PRACTICE' ? (
+        <AdminNotifyChoiceModal
+          title="Сохранить часы?"
+          isPending={mutation.isPending}
+          onChoose={(notify) => void savePractice(notify)}
+          onClose={() => setPendingSaveMode(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -622,36 +618,21 @@ function MetricCard({
 
 function SaveActions({
   disabled,
-  onSilent,
-  onNotify,
+  onSave,
 }: {
   disabled: boolean;
-  onSilent: () => void;
-  onNotify: () => void;
+  onSave: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-t border-[#DCE8EC] pt-4 sm:flex-row sm:items-center sm:justify-between">
-      <p className="dashboard-v2-caption text-[#6B7894]">
-        Сохранение заменяет подтвержденные часы активного цикла служебной корректировкой.
-      </p>
-      <div className="flex flex-wrap justify-end gap-3">
-        <button
-          type="button"
-          className="btn dashboard-v2-action dashboard-v2-action-secondary"
-          disabled={disabled}
-          onClick={onSilent}
-        >
-          Сохранить тихо
-        </button>
-        <button
-          type="button"
-          className="btn dashboard-v2-action dashboard-v2-action-primary"
-          disabled={disabled}
-          onClick={onNotify}
-        >
-          Сохранить и уведомить
-        </button>
-      </div>
+    <div className="flex justify-end border-t border-[#DCE8EC] pt-4">
+      <button
+        type="button"
+        className="btn dashboard-v2-action dashboard-v2-action-primary"
+        disabled={disabled}
+        onClick={onSave}
+      >
+        Сохранить
+      </button>
     </div>
   );
 }

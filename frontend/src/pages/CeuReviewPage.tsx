@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowRight } from 'lucide-react';
+import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { Button } from '@/components/Button';
 import { PageNav } from '@/components/PageNav';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
@@ -353,15 +353,11 @@ export default function CeuReviewPage() {
                 {rows.map((row) => (
                   <tr key={row.entryId} className="border-b border-[#DCE8EC] align-top last:border-b-0">
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
+                      <ActionArrowButton
                         onClick={() => setSelectedRow(row)}
-                        className="flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-blue-darker)]"
                         title="Открыть детали CEU"
                         aria-label="Открыть детали CEU"
-                      >
-                        <ArrowRight size={18} />
-                      </button>
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div>{formatDateTime(row.recordCreatedAt)}</div>
@@ -433,10 +429,11 @@ function AdminCeuDetailsModal({
   onClose: () => void;
 }) {
   const mutation = useUpdateCEUEntry(row.userId, row.email);
-  const [rejectMode, setRejectMode] = useState(row.status === 'REJECTED');
   const [rejectedReason, setRejectedReason] = useState(row.rejectedReason ?? '');
   const [deleteFile, setDeleteFile] = useState(false);
   const isSpent = row.status === 'SPENT';
+  const canConfirm = row.status === 'REJECTED';
+  const canReject = !isSpent && !canConfirm;
 
   const confirm = async () => {
     try {
@@ -525,13 +522,13 @@ function AdminCeuDetailsModal({
               </div>
             ) : null}
 
-            {row.rejectedReason && !rejectMode ? (
+            {row.rejectedReason && !canReject ? (
               <div className="dashboard-v2-text rounded-[10px] bg-white px-4 py-3 text-[var(--color-danger)] shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
                 {row.rejectedReason}
               </div>
             ) : null}
 
-            {rejectMode ? (
+            {canReject ? (
               <div className="space-y-4">
                 <label className="block">
                   <span className="dashboard-v2-small mb-1 block text-[#1F305E]">
@@ -570,7 +567,7 @@ function AdminCeuDetailsModal({
 
         <div className="mt-6 flex flex-wrap justify-end gap-3">
           {!isSpent ? (
-            <>
+            canConfirm ? (
               <button
                 type="button"
                 onClick={confirm}
@@ -579,26 +576,16 @@ function AdminCeuDetailsModal({
               >
                 Подтвердить
               </button>
-              {rejectMode ? (
-                <button
-                  type="button"
-                  onClick={reject}
-                  disabled={mutation.isPending}
-                  className="btn dashboard-v2-label h-[42px] min-w-[150px] rounded-full border-2 border-[#1F305E] px-6 text-[#1F305E] disabled:opacity-50"
-                >
-                  Отправить отказ
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setRejectMode(true)}
-                  disabled={mutation.isPending}
-                  className="btn dashboard-v2-label h-[42px] min-w-[140px] rounded-full border-2 border-[#1F305E] px-6 text-[#1F305E] disabled:opacity-50"
-                >
-                  Отклонить
-                </button>
-              )}
-            </>
+            ) : (
+              <button
+                type="button"
+                onClick={reject}
+                disabled={mutation.isPending}
+                className="btn btn-dark dashboard-v2-label h-[42px] min-w-[150px] rounded-full px-6 disabled:bg-[#B7BFCE]"
+              >
+                Отклонить
+              </button>
+            )
           ) : (
             <Button type="button" onClick={onClose}>
               Закрыть

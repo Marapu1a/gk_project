@@ -273,7 +273,10 @@ export function UsersTable() {
                   const name = splitFullName(user.fullName);
 
                   return (
-                    <tr key={user.id} className="border-b border-[#DCE8EC] last:border-b-0">
+                    <tr
+                      key={user.id}
+                      className="group border-b border-[#DCE8EC] transition-colors hover:bg-white/70 last:border-b-0"
+                    >
                       <td className="px-3 py-3">{user.registrationNumber || '—'}</td>
                       <td className="px-3 py-3">
                         <div className="flex min-w-0 items-center gap-3">
@@ -290,7 +293,7 @@ export function UsersTable() {
                           <div className="min-w-0">
                             <Link
                               to={`/admin/users/${user.id}`}
-                              className="block overflow-hidden break-words leading-[1.15] underline decoration-transparent underline-offset-4 transition hover:decoration-current"
+                              className="block cursor-pointer overflow-hidden break-words leading-[1.15] transition-colors group-hover:text-[var(--color-blue-darker)]"
                               title={user.fullName || ''}
                             >
                               <span className="block font-extrabold">{name.lastName}</span>

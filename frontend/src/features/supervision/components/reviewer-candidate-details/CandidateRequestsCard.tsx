@@ -4,6 +4,7 @@ import type {
   ReviewerCandidateKind,
   ReviewerCandidateRequest,
 } from '../../api/getReviewerCandidateDetails';
+import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { CandidateRequestDetailsModal } from './CandidateRequestDetailsModal';
 
 type CandidateRequestsCardProps = {
@@ -86,19 +87,12 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                   >
                     <td className="px-3 py-4">
                       <div className="grid grid-cols-[30px_minmax(0,1fr)] items-center gap-4">
-                        <button
-                          type="button"
+                        <ActionArrowButton
                           onClick={() => setSelectedRequest(request)}
-                          className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-full"
+                          size={30}
                           title="Открыть детали отправки"
                           aria-label="Открыть детали отправки"
-                        >
-                          <img
-                            src="/dashboard-v2/button_X_mini.svg"
-                            alt=""
-                            className="h-[30px] w-[30px]"
-                          />
-                        </button>
+                        />
 
                         <span>{formatDate(request.createdAt)}</span>
                       </div>

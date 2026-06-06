@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { withResolvedDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
 
 export async function getDocReviewReq(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -7,7 +8,13 @@ export async function getDocReviewReq(req: FastifyRequest, reply: FastifyReply) 
     return reply.code(401).send({ error: 'Не авторизован' });
   }
 
-  const request = await prisma.documentReviewRequest.findFirst({
+  const activeCycle = await prisma.certificationCycle.findFirst({
+    where: { userId: user.userId, status: 'ACTIVE' },
+    orderBy: { startedAt: 'desc' },
+    select: { id: true },
+  });
+
+  const requests = await prisma.documentReviewRequest.findMany({
     where: { userId: user.userId },
     include: {
       documents: true,
@@ -21,7 +28,16 @@ export async function getDocReviewReq(req: FastifyRequest, reply: FastifyReply) 
       },
     },
     orderBy: { submittedAt: 'desc' },
+    take: 10,
   });
 
-  return reply.send(request);
+  const request =
+    (activeCycle
+      ? requests.find((item) => item.cycleId === activeCycle.id)
+      : null) ??
+    requests.find((item) => !item.cycleId) ??
+    requests[0] ??
+    null;
+
+  return reply.send(request ? withResolvedDocumentReviewRequestStatus(request) : null);
 }

@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { ReactNode } from 'react';
-import { ArrowRight, DatabaseBackup, Download, LogOut, Settings, Trash2, X } from 'lucide-react';
+import { DatabaseBackup, Download, LogOut, Settings, Trash2, X } from 'lucide-react';
 
+import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { useLogout } from '@/features/dashboard/hooks/useLogout';
 import {
   useNotifications,
@@ -307,15 +308,12 @@ function NotificationRow({ notification }: { notification: Notification }) {
         <div>{time}</div>
       </div>
 
-      <button
-        type="button"
+      <ActionArrowButton
         onClick={onOpen}
-        className="flex h-[32px] w-[32px] items-center justify-center rounded-full bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-blue-darker)] disabled:opacity-45"
+        size={32}
         disabled={!normalizedLink && notification.isRead}
         aria-label={normalizedLink ? 'Открыть уведомление' : 'Отметить прочитанным'}
-      >
-        <ArrowRight size={18} />
-      </button>
+      />
 
       <button
         type="button"

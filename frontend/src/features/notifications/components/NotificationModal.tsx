@@ -17,11 +17,11 @@ import {
   normalizeNotificationLink,
   type NotificationTone,
 } from '@/utils/notificationDictionary';
+import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { NotificationMessage } from './NotificationMessage';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
-const ARROW_ICON = '/dashboard-v2/button_X_mini.svg';
 const EMPTY_ICON = '/dashboard-v2/icon_notification_bell.svg';
 
 export function NotificationModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -210,17 +210,13 @@ function NotificationRow({
         <div>{time}</div>
       </div>
 
-      <button
-        type="button"
+      <ActionArrowButton
         onClick={onOpen}
         disabled={!normalizedLink && notification.isRead}
-        className={`notification-arrow h-[40px] w-[40px] cursor-pointer rounded-[14px] transition disabled:cursor-default ${
-          notification.isRead ? 'opacity-45' : 'opacity-100'
-        }`}
+        size={40}
+        className="notification-arrow"
         aria-label={normalizedLink ? 'Открыть уведомление' : 'Отметить прочитанным'}
-      >
-        <img src={ARROW_ICON} alt="" className="h-full w-full" />
-      </button>
+      />
 
       <button
         type="button"

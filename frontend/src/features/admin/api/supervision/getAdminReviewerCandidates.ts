@@ -49,6 +49,25 @@ export type AdminReviewerCandidateRow = {
     reviewedBy: { id: string; email: string; fullName: string | null } | null;
     reviewedByAdmin: boolean;
   } | null;
+  pendingRequests: Array<{
+    id: string;
+    createdAt: string;
+    periodStartedAt: string | null;
+    periodEndedAt: string | null;
+    treatmentSetting: string | null;
+    description: string | null;
+    distribution: {
+      directIndividual: number;
+      directGroup: number;
+      nonObservingIndividual: number;
+      nonObservingGroup: number;
+    };
+    hours: Array<{
+      id: string;
+      type: string;
+      value: number;
+    }>;
+  }>;
   relationCreatedAt: string;
   relationUpdatedAt: string;
   pendingCount: number;

@@ -19,6 +19,7 @@ export interface PaymentItem {
   targetLevel: PaymentTargetLevel;
   status: PaymentStatus;
   comment: string | null;
+  requestedAt: string | null;
   confirmedAt: string | null;
   createdAt: string;
 }

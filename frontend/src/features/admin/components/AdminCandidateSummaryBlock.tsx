@@ -1,10 +1,12 @@
 import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 import { docReviewStatusLabels, examStatusLabels, targetLevelLabels } from '@/utils/labels';
 
 type Props = {
   user: any;
   activeGroupName: string | null;
+  onOpenStatusManagement?: () => void;
 };
 
 const cycleTypeLabels: Record<string, string> = {
@@ -35,6 +37,18 @@ function progressText(current?: number | null, required?: number | null) {
   return `${formatNumber(capToRequired(current, required))} / ${formatNumber(required)}`;
 }
 
+function buildUrl(path: string, params: Record<string, string | number | null | undefined>) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value == null || value === '') return;
+    searchParams.set(key, String(value));
+  });
+
+  const query = searchParams.toString();
+  return query ? `${path}?${query}` : path;
+}
+
 function resolveTargetLabel(user: any) {
   const activeCycle = user.activeCycle;
   const targetLevel = activeCycle?.targetLevel ?? user.targetLevel;
@@ -61,6 +75,30 @@ function resolveProcessLabel(user: any, activeGroupName: string | null) {
       : (targetLevelLabels[cycle.targetLevel] ?? cycle.targetLevel);
 
   return `${cycleTypeLabels[cycle.type] ?? cycle.type} — ${baseLevel} · с ${formatDate(cycle.startedAt)}`;
+}
+
+function resolveAfterCertificateLabel(user: any, activeGroupName: string | null) {
+  const cycle = user.activeCycle;
+  const targetLevel = cycle?.targetLevel ?? user.targetLevel;
+
+  if (!targetLevel) return '—';
+  if (
+    cycle?.type === 'RENEWAL' &&
+    targetLevel === 'SUPERVISOR' &&
+    activeGroupName === 'Опытный Супервизор'
+  ) {
+    return 'Опытный супервизор';
+  }
+
+  return targetLevelLabels[targetLevel] ?? targetLevel;
+}
+
+function latestCertificateText(certificate: any) {
+  if (!certificate) return 'нет';
+
+  const group = certificate.group?.name ?? certificate.title ?? 'Сертификат';
+  const expiresAt = certificate.expiresAt ? `до ${formatDate(certificate.expiresAt)}` : 'бессрочно';
+  return `${group} · ${expiresAt}`;
 }
 
 function countPendingHours(user: any, mode: 'supervision' | 'mentorship') {
@@ -95,7 +133,7 @@ function documentStatus(user: any) {
   const latestRequest = readiness?.request ?? user.documentReviewRequests?.[0] ?? null;
 
   if (readiness?.ready)
-    return { label: 'Принято', tone: 'good' as const, to: latestRequest?.adminUrl };
+    return { label: 'Принято', tone: 'good' as const, to: latestRequest?.adminUrl, mode: 'history' as const };
   if (latestRequest) {
     const label =
       latestRequest.status === 'CONFIRMED'
@@ -108,10 +146,14 @@ function documentStatus(user: any) {
       label: docReviewStatusLabels[latestRequest.status] ?? label,
       tone: latestRequest.status === 'REJECTED' ? ('bad' as const) : ('warn' as const),
       to: latestRequest.adminUrl ?? `/admin/document-review/${latestRequest.id}`,
+      mode:
+        latestRequest.status === 'UNCONFIRMED' || latestRequest.status === 'PARTIALLY_CONFIRMED'
+          ? ('active' as const)
+          : ('history' as const),
     };
   }
 
-  return { label: 'Нет заявки', tone: 'bad' as const, to: null };
+  return { label: 'Нет заявки', tone: 'bad' as const, to: null, mode: 'active' as const };
 }
 
 function StatusPill({
@@ -150,21 +192,39 @@ function SummaryLine({
   tone?: 'good' | 'warn' | 'bad' | 'soft';
   to?: string | null;
 }) {
+  const rowClass = to
+    ? 'group -mx-2 flex items-center justify-between gap-3 rounded-[10px] border-b border-white/70 px-2 py-2 transition hover:bg-white/60 last:border-b-0'
+    : 'flex items-center justify-between gap-3 border-b border-white/70 py-2 last:border-b-0';
+
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-white/70 py-2 last:border-b-0">
-      <span className="text-[14px] font-semibold text-[#1F305E]">{label}</span>
+    <div className={rowClass}>
       {to ? (
-        <Link to={to} className="shrink-0 underline decoration-[#1F305E]/35 underline-offset-4">
-          <StatusPill tone={tone}>{value}</StatusPill>
+        <Link
+          to={to}
+          className="inline-flex min-w-0 cursor-pointer items-center gap-1 text-[14px] font-semibold text-[#1F305E] transition group-hover:text-[var(--color-blue-darker)]"
+          title={`Открыть раздел: ${label}`}
+        >
+          <span className="truncate">{label}</span>
+          <ChevronRight
+            size={15}
+            strokeWidth={2.4}
+            className="shrink-0 opacity-45 transition group-hover:translate-x-0.5 group-hover:opacity-100"
+            aria-hidden="true"
+          />
         </Link>
       ) : (
-        <StatusPill tone={tone}>{value}</StatusPill>
+        <span className="text-[14px] font-semibold text-[#1F305E]">{label}</span>
       )}
+      <StatusPill tone={tone}>{value}</StatusPill>
     </div>
   );
 }
 
-export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
+export function AdminCandidateSummaryBlock({
+  user,
+  activeGroupName,
+  onOpenStatusManagement,
+}: Props) {
   const readiness = user.examReadiness;
   const docs = documentStatus(user);
   const latestCertificate = user.latestCertificate;
@@ -178,9 +238,38 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
   const renewalPayment = getRenewalPayment(user);
 
   const activeCycleText = resolveProcessLabel(user, activeGroupName);
+  const afterCertificateText = resolveAfterCertificateLabel(user, activeGroupName);
 
   const pendingSupervision = countPendingHours(user, 'supervision');
   const pendingMentorship = countPendingHours(user, 'mentorship');
+  const userSearch = user.email || user.fullName || '';
+  const documentReviewUrl = buildUrl('/admin/document-review', {
+    search: userSearch,
+    mode: docs.mode,
+  });
+  const supervisionUrl = buildUrl('/admin/supervision-candidates', {
+    kind: 'supervision',
+    search: userSearch,
+  });
+  const supervisionNeedsReviewUrl = buildUrl('/admin/supervision-candidates', {
+    kind: 'supervision',
+    search: userSearch,
+    hourState: 'NEEDS_REVIEW',
+  });
+  const mentorshipUrl = buildUrl('/admin/supervision-candidates', {
+    kind: 'mentorship',
+    search: userSearch,
+  });
+  const mentorshipNeedsReviewUrl = buildUrl('/admin/supervision-candidates', {
+    kind: 'mentorship',
+    search: userSearch,
+    hourState: 'NEEDS_REVIEW',
+  });
+  const ceuReviewUrl = buildUrl('/review/ceu', { search: userSearch });
+  const examApplicationsUrl = buildUrl('/exam-applications', {
+    search: userSearch,
+    status: 'ALL',
+  });
 
   const summaryLines = useMemo(() => {
     if (!activeCycle) return [];
@@ -197,7 +286,7 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
         label: 'Документы',
         value: docs.label,
         tone: docs.tone,
-        to: docs.to,
+        to: documentReviewUrl,
       });
     }
 
@@ -209,6 +298,7 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
           (supervisionCurrent?.practice ?? 0) >= (supervisionRequired?.practice ?? 0)
             ? 'good'
             : 'bad',
+        to: supervisionUrl,
       });
     }
 
@@ -220,11 +310,13 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
           (supervisionCurrent?.supervision ?? 0) >= (supervisionRequired?.supervision ?? 0)
             ? 'good'
             : 'bad',
+        to: supervisionUrl,
       });
       lines.push({
         label: 'Часы на проверке',
         value: pendingSupervision,
         tone: pendingSupervision > 0 ? 'warn' : 'good',
+        to: supervisionNeedsReviewUrl,
       });
     }
 
@@ -236,11 +328,13 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
           (supervisionCurrent?.mentor ?? 0) >= (supervisionRequired?.supervisor ?? 0)
             ? 'good'
             : 'bad',
+        to: mentorshipUrl,
       });
       lines.push({
         label: 'Менторство на проверке',
         value: pendingMentorship,
         tone: pendingMentorship > 0 ? 'warn' : 'good',
+        to: mentorshipNeedsReviewUrl,
       });
     }
 
@@ -249,6 +343,7 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
         label: 'CEU-баллы',
         value: progressText(ceuCurrent?.total, ceuRequired?.total),
         tone: readiness?.ceu?.ready ? 'good' : 'bad',
+        to: ceuReviewUrl,
       });
     }
 
@@ -282,6 +377,7 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
         ? (examStatusLabels[examApplication.status] ?? examApplication.status)
         : 'Не подана',
       tone: examApplication?.status === 'APPROVED' ? 'good' : examApplication ? 'warn' : 'bad',
+      to: examApplicationsUrl,
     });
 
     return lines;
@@ -289,11 +385,16 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
     activeCycle,
     ceuCurrent?.total,
     ceuRequired?.total,
+    ceuReviewUrl,
+    documentReviewUrl,
     docs.label,
-    docs.to,
+    docs.mode,
     docs.tone,
     examApplication,
+    examApplicationsUrl,
     isRenewal,
+    mentorshipNeedsReviewUrl,
+    mentorshipUrl,
     pendingMentorship,
     pendingSupervision,
     readiness?.ceu?.ready,
@@ -303,9 +404,11 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
     supervisionCurrent?.mentor,
     supervisionCurrent?.practice,
     supervisionCurrent?.supervision,
+    supervisionNeedsReviewUrl,
     supervisionRequired?.practice,
     supervisionRequired?.supervision,
     supervisionRequired?.supervisor,
+    supervisionUrl,
   ]);
 
   const requiresAttention =
@@ -332,10 +435,23 @@ export function AdminCandidateSummaryBlock({ user, activeGroupName }: Props) {
             <Meta label="ФИО" value={user.fullName || '—'} />
             <Meta label="Email" value={user.email || '—'} />
             <Meta label="Группа" value={activeGroupName || '—'} />
-            <Meta label="Сертификат до" value={formatDate(latestCertificate?.expiresAt)} />
+            <Meta label="Последний сертификат" value={latestCertificateText(latestCertificate)} />
             <Meta label="Целевой уровень" value={resolveTargetLabel(user)} />
             <Meta label="Активный процесс" value={activeCycleText} />
+            <Meta label="После выдачи сертификата" value={afterCertificateText} />
           </div>
+
+          {onOpenStatusManagement ? (
+            <div className="mt-4 flex justify-end border-t border-white/70 pt-4">
+              <button
+                type="button"
+                className="btn dashboard-v2-action dashboard-v2-action-secondary"
+                onClick={onOpenStatusManagement}
+              >
+                Статус и сертификат
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="rounded-[16px] bg-[var(--color-blue-soft)] p-4">

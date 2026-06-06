@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { withResolvedDocumentReviewRequestStatus } from './documentReviewFileStatusUtils';
 
 export async function getDocumentReviewRequestById(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -51,5 +52,5 @@ export async function getDocumentReviewRequestById(req: FastifyRequest, reply: F
     return reply.code(404).send({ error: 'Заявка не найдена' });
   }
 
-  return reply.send(request);
+  return reply.send(withResolvedDocumentReviewRequestStatus(request));
 }

@@ -13,9 +13,13 @@ export function useAbandonActiveCycle(userId: string) {
 
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin-ceu-matrix', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'supervision-matrix', userId] }),
         qc.invalidateQueries({ queryKey: ['groups', 'user', userId] }),
         qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
         qc.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'ceu-history'] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'supervision', 'reviewerCandidates'] }),
       ]);
     },
 

@@ -224,7 +224,8 @@ export function CertificationBlock({ user }: Props) {
   const currentTargetLevel = user.targetLevel as ApiTargetLevel | null;
   const currentGoalMode = activeCycleType;
 
-  const serverErr = (setTarget.error as any)?.response?.data?.error as string | undefined;
+  const serverErr = ((setTarget.error as any)?.response?.data?.errorCode ??
+    (setTarget.error as any)?.response?.data?.error) as string | undefined;
 
   const errorMessage =
     serverErr === 'TARGET_LOCKED'

@@ -20,6 +20,7 @@ import {
   type SupervisionRequirement,
 } from '../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
+import { resolveDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
 
 const RU_BY_LEVEL: Record<TargetLevel, 'Инструктор' | 'Куратор' | 'Супервизор'> = {
   INSTRUCTOR: 'Инструктор',
@@ -228,6 +229,9 @@ export async function buildExamReadiness(userId: string) {
     documentRequests.find((request) => request.cycleId === activeCycle.id) ??
     documentRequests.find((request) => !request.cycleId) ??
     null;
+  const documentRequestStatus = documentRequest
+    ? resolveDocumentReviewRequestStatus(documentRequest)
+    : null;
 
   const ceuCurrent = aggregateCeu(ceuEntries);
   const ceuReady = isCeuReady(ceuCurrent, ceuRequired);
@@ -288,7 +292,7 @@ export async function buildExamReadiness(userId: string) {
     );
   }
 
-  const documentsReady = documentRequest?.status === RecordStatus.CONFIRMED;
+  const documentsReady = documentRequestStatus === RecordStatus.CONFIRMED;
   if (!documentsReady) missing.push('Документы не подтверждены');
 
   const fullPackage = payments.find(
@@ -323,6 +327,7 @@ export async function buildExamReadiness(userId: string) {
       request: documentRequest
         ? {
             ...documentRequest,
+            status: documentRequestStatus,
             adminUrl: `/admin/document-review/${documentRequest.id}`,
           }
         : null,

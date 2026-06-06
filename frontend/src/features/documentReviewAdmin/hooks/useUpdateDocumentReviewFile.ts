@@ -10,7 +10,9 @@ function invalidateDocumentReviewQueries(queryClient: ReturnType<typeof useQuery
     queryClient.invalidateQueries({ queryKey: ['admin', 'docReviewRequest', requestId] });
   }
   queryClient.invalidateQueries({ queryKey: ['admin', 'docReviewRequests'] });
+  queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'details'] });
   queryClient.invalidateQueries({ queryKey: ['docReviewReq'] });
+  queryClient.invalidateQueries({ queryKey: ['exam'] });
 }
 
 export function useUpdateDocumentReviewFile(requestId?: string) {

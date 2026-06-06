@@ -101,6 +101,24 @@ export async function getUserDetails(id: string) {
 
     groups: { id: string; name: string; rank: number }[];
 
+    reviewerCandidateRelations: {
+      id: string;
+      kind: 'SUPERVISION' | 'MENTORSHIP';
+      status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+      createdAt: string;
+      updatedAt: string;
+      candidate: {
+        id: string;
+        email: string;
+        fullName: string | null;
+      };
+      cycle: {
+        id: string;
+        targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
+        startedAt: string;
+      };
+    }[];
+
     certificates: {
       id: string;
       number: string;
@@ -121,6 +139,7 @@ export async function getUserDetails(id: string) {
       status: string;
       comment: string | null;
       createdAt: string;
+      requestedAt: string | null;
       confirmedAt: string | null;
     }[];
 

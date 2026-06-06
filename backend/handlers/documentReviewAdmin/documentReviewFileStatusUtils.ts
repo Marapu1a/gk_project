@@ -2,6 +2,11 @@ import { DocumentReviewFileStatus, Prisma, RecordStatus } from '@prisma/client';
 
 type Tx = Prisma.TransactionClient;
 
+type RequestWithDocumentFiles = {
+  status: RecordStatus;
+  documentFiles?: Array<{ status: DocumentReviewFileStatus }> | null;
+};
+
 export function resolveRequestStatus(
   files: Array<{ status: DocumentReviewFileStatus }>
 ): RecordStatus {
@@ -20,6 +25,25 @@ export function resolveRequestStatus(
   if (confirmed > 0) return RecordStatus.PARTIALLY_CONFIRMED;
 
   return RecordStatus.REJECTED;
+}
+
+export function resolveDocumentReviewRequestStatus<T extends RequestWithDocumentFiles>(
+  request: T,
+): RecordStatus {
+  if (!request.documentFiles?.length) {
+    return request.status;
+  }
+
+  return resolveRequestStatus(request.documentFiles);
+}
+
+export function withResolvedDocumentReviewRequestStatus<T extends RequestWithDocumentFiles>(
+  request: T,
+): T {
+  return {
+    ...request,
+    status: resolveDocumentReviewRequestStatus(request),
+  };
 }
 
 export async function recalculateDocumentReviewRequestStatus(tx: Tx, requestId: string) {

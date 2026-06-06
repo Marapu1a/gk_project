@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import { NotificationType, PaymentType } from '@prisma/client';
 import { updatePaymentSchema } from '../../schemas/updatePaymentSchema';
 import { createNotification, notifyAdmins } from '../../utils/notifications';
+import { logAdminUserAction } from '../../utils/adminUserActionLog';
 
 type AuthUser = {
   userId: string;
@@ -111,7 +112,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
           targetLevel: dbPayment.targetLevel,
           requestedAt: dbPayment.requestedAt ?? now,
           confirmedAt: now,
-          comment: 'Активировано пакетной оплатой',
+          comment: null,
         },
       });
 
@@ -136,10 +137,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
           targetLevel: dbPayment.targetLevel,
           requestedAt: status === 'PENDING' ? now : null,
           confirmedAt: null,
-          comment:
-            status === 'PENDING'
-              ? 'Ожидает подтверждения вместе с пакетной оплатой'
-              : 'Сброшено после отмены пакетной оплаты',
+          comment: null,
         },
       });
 
@@ -148,6 +146,29 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
 
     return { updated, activated, synced };
   });
+
+  if (user.role === 'ADMIN' && dbPayment.status !== status) {
+    const action =
+      status === 'PAID'
+        ? 'Подтвердил оплату'
+        : status === 'UNPAID'
+          ? 'Отменил оплату'
+          : 'Изменил статус оплаты';
+
+    await logAdminUserAction({
+      userId: dbPayment.userId,
+      adminId: user.userId,
+      action,
+      details: [
+        paymentTypeLabel(dbPayment.type),
+        notify ? 'с уведомлением' : 'без уведомления',
+        result.activated ? `активировано платежей пакета: ${result.activated}` : null,
+        result.synced ? `синхронизировано платежей пакета: ${result.synced}` : null,
+      ]
+        .filter(Boolean)
+        .join('; '),
+    });
+  }
 
   if (notify) {
     try {

@@ -5,7 +5,6 @@ import {
   CycleStatus,
   NotificationType,
   ReviewerCandidateKind,
-  ReviewerCandidateStatus,
 } from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
 
@@ -60,6 +59,10 @@ export async function updateSupervisionHourHandler(
     return reply.code(400).send({ error: 'Недопустимый статус' });
   }
 
+  if (actorRole === 'ADMIN') {
+    return reply.code(403).send({ error: 'Администратор не проверяет часы в этой форме' });
+  }
+
   const rejectedReason = rejectedReasonRaw.trim();
   if (desiredStatus === 'REJECTED' && !rejectedReason) {
     return reply.code(400).send({ error: 'Причина отклонения обязательна' });
@@ -79,11 +82,10 @@ export async function updateSupervisionHourHandler(
 
   if (!existing) return reply.code(404).send({ error: 'Заявка не найдена' });
 
-  const isAdmin = actorRole === 'ADMIN';
   const isAssignedReviewer = existing.reviewerId === actorId;
   const recordOwnerId = existing.record.userId;
 
-  if (!isAdmin && recordOwnerId === actorId) {
+  if (recordOwnerId === actorId) {
     return reply.code(403).send({ error: 'Нельзя проверять собственные часы' });
   }
 
@@ -127,13 +129,11 @@ export async function updateSupervisionHourHandler(
 
   const isMentorHour = existing.type === PracticeLevel.SUPERVISOR;
 
-  const canUseAssigned = isAssignedReviewer && (isAdmin || isActorSupervisor);
+  const canUseAssigned = isAssignedReviewer && isActorSupervisor;
 
   let canReview = false;
 
-  if (isAdmin) {
-    canReview = true;
-  } else if (canUseAssigned) {
+  if (canUseAssigned) {
     canReview = true;
   } else if (isMentorHour) {
     canReview = isActorExperiencedSupervisor;
@@ -146,7 +146,7 @@ export async function updateSupervisionHourHandler(
   }
 
   const isFinal = existing.status === 'CONFIRMED' || existing.status === 'REJECTED';
-  if (isFinal && !isAdmin) {
+  if (isFinal) {
     return reply.code(400).send({ error: 'Статус уже установлен и не может быть изменён' });
   }
 
@@ -159,7 +159,7 @@ export async function updateSupervisionHourHandler(
   });
 
   const finalHour = reviewableHours.find((hour) => hour.status === 'CONFIRMED' || hour.status === 'REJECTED');
-  if (finalHour && !isAdmin) {
+  if (finalHour) {
     return reply.code(400).send({ error: 'Статус уже установлен и не может быть изменён' });
   }
 
@@ -177,19 +177,6 @@ export async function updateSupervisionHourHandler(
         reviewedById: actorId,
       },
     });
-
-    if (isAdmin && existing.reviewerId && existing.record.cycleId) {
-      await tx.reviewerCandidateRelation.updateMany({
-        where: {
-          reviewerId: existing.reviewerId,
-          candidateId: recordOwnerId,
-          cycleId: existing.record.cycleId,
-          kind: relationKindForHour(existing.type),
-          status: ReviewerCandidateStatus.PENDING,
-        },
-        data: { status: ReviewerCandidateStatus.ACCEPTED },
-      });
-    }
 
     return tx.supervisionHour.findMany({
       where: { recordId: existing.recordId },

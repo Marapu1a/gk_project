@@ -78,6 +78,39 @@ function normalizeReviewFiles(request: any): ReviewFile[] {
   }));
 }
 
+function statusConfirmOptions(status: DocumentReviewFileStatus) {
+  if (status === 'CONFIRMED') {
+    return {
+      message: 'Принять документ?',
+      description: 'Статус заявки пересчитается автоматически.',
+      confirmLabel: 'Принять',
+    };
+  }
+
+  if (status === 'REJECTED') {
+    return {
+      message: 'Отклонить документ?',
+      description: 'Пользователь увидит комментарий администратора.',
+      confirmLabel: 'Отклонить',
+      variant: 'danger' as const,
+    };
+  }
+
+  if (status === 'DELETED') {
+    return {
+      message: 'Удалить файл из хранилища?',
+      description: 'Запись останется в заявке со статусом "Удалено".',
+      confirmLabel: 'Удалить',
+      variant: 'danger' as const,
+    };
+  }
+
+  return {
+    message: 'Изменить статус документа?',
+    confirmLabel: 'Подтвердить',
+  };
+}
+
 export function AdminDocumentReviewDetails() {
   const { id } = useParams<{ id: string }>();
   const { data: request, isLoading, error } = useGetDocReviewRequestById(id);
@@ -151,15 +184,8 @@ export function AdminDocumentReviewDetails() {
       return;
     }
 
-    if (status === 'DELETED') {
-      const ok = await confirm({
-        message: 'Удалить файл из хранилища?',
-        description: 'Запись останется в заявке со статусом "Удалено".',
-        confirmLabel: 'Удалить',
-        variant: 'danger',
-      });
-      if (!ok) return;
-    }
+    const ok = await confirm(statusConfirmOptions(status));
+    if (!ok) return;
 
     try {
       await updateFile.mutateAsync({
@@ -318,6 +344,9 @@ function DocumentFileCard({
 }) {
   const fileAvailable = item.status !== 'DELETED';
   const hasDeletionRequest = Boolean(item.deletionRequestedAt) && item.status !== 'DELETED';
+  const canAccept = item.status !== 'CONFIRMED' && item.status !== 'DELETED';
+  const canReject = item.status !== 'REJECTED' && item.status !== 'DELETED';
+  const canSoftDelete = item.status !== 'DELETED';
 
   return (
     <article
@@ -437,30 +466,36 @@ function DocumentFileCard({
           </button>
         ) : (
           <>
-            <button
-              type="button"
-              onClick={() => onStatus('CONFIRMED')}
-              disabled={disabled}
-              className="btn h-[36px] rounded-full bg-[var(--color-blue-dark)] px-4 text-[13px] font-extrabold text-white disabled:cursor-not-allowed disabled:bg-[#B8C4D8]"
-            >
-              Принять
-            </button>
-            <button
-              type="button"
-              onClick={() => onStatus('REJECTED')}
-              disabled={disabled}
-              className="btn h-[36px] rounded-full border-2 border-[var(--color-blue-dark)] px-4 text-[13px] font-extrabold text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              Отклонить
-            </button>
-            <button
-              type="button"
-              onClick={() => onStatus('DELETED')}
-              disabled={disabled}
-              className="btn h-[36px] rounded-full border-2 border-[var(--color-danger)] px-4 text-[13px] font-extrabold text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              Удалить
-            </button>
+            {canAccept ? (
+              <button
+                type="button"
+                onClick={() => onStatus('CONFIRMED')}
+                disabled={disabled}
+                className="btn h-[36px] rounded-full bg-[var(--color-blue-dark)] px-4 text-[13px] font-extrabold text-white disabled:cursor-not-allowed disabled:bg-[#B8C4D8]"
+              >
+                Принять
+              </button>
+            ) : null}
+            {canReject ? (
+              <button
+                type="button"
+                onClick={() => onStatus('REJECTED')}
+                disabled={disabled}
+                className="btn h-[36px] rounded-full border-2 border-[var(--color-blue-dark)] px-4 text-[13px] font-extrabold text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Отклонить
+              </button>
+            ) : null}
+            {canSoftDelete ? (
+              <button
+                type="button"
+                onClick={() => onStatus('DELETED')}
+                disabled={disabled}
+                className="btn h-[36px] rounded-full border-2 border-[var(--color-danger)] px-4 text-[13px] font-extrabold text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Удалить
+              </button>
+            ) : null}
           </>
         )}
       </div>

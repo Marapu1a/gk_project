@@ -1,11 +1,9 @@
-// src/features/admin/components/PaymentsBlock.tsx
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { paymentStatusLabels, paymentTypeLabels } from '@/utils/labels';
 import { useUpdatePaymentStatus } from '@/features/payment/hooks/useUpdatePaymentStatus';
-import { toast } from 'sonner';
-import { useConfirm } from '@/components/confirm/ConfirmProvider';
-import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
+import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
 
 type Payment = {
   id: string;
@@ -13,6 +11,7 @@ type Payment = {
   status: string;
   comment: string | null;
   createdAt: string;
+  requestedAt: string | null;
   confirmedAt: string | null;
   targetLevel?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
 };
@@ -29,6 +28,11 @@ type Props = {
   activeGroupName?: string | null;
   activeCycle?: ActiveCycle;
 };
+
+type PaymentAction = {
+  payment: Payment;
+  nextStatus: 'PAID' | 'UNPAID';
+} | null;
 
 const TYPE_ORDER: Record<string, number> = {
   FULL_PACKAGE: 0,
@@ -57,6 +61,27 @@ const SUPERVISOR_CERTIFICATION_PAYMENT_TYPES = [
   'EXAM_ACCESS',
 ];
 
+function formatDateTime(value?: string | null) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function statusToneClass(status: string, inheritedPending: boolean) {
+  if (inheritedPending) return 'bg-[#FFF0C2] text-[#8A6200]';
+  if (status === 'PAID') return 'bg-[rgba(165,203,55,0.25)] text-[var(--color-blue-dark)]';
+  if (status === 'PENDING') return 'bg-[#FFF0C2] text-[#8A6200]';
+  return 'bg-[rgba(255,83,100,0.14)] text-[var(--color-danger)]';
+}
+
 export default function PaymentsBlock({
   payments,
   userId,
@@ -64,22 +89,18 @@ export default function PaymentsBlock({
   activeCycle = null,
 }: Props) {
   const mutate = useUpdatePaymentStatus(userId);
-  const qc = useQueryClient();
-  const { confirm } = useConfirm();
-
-  const [cancelId, setCancelId] = useState<string | null>(null);
-  const [cancelComment, setCancelComment] = useState('');
-
-  const formatDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
+  const queryClient = useQueryClient();
+  const [pendingAction, setPendingAction] = useState<PaymentAction>(null);
 
   const invalidate = async () => {
     await Promise.all([
-      qc.invalidateQueries({ queryKey: ['payments'] }),
-      qc.invalidateQueries({ queryKey: ['payments', 'me'] }),
-      qc.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
-      qc.invalidateQueries({ queryKey: ['admin', 'user', userId] }),
-      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
-      qc.invalidateQueries({ queryKey: ['me'] }),
+      queryClient.invalidateQueries({ queryKey: ['payments'] }),
+      queryClient.invalidateQueries({ queryKey: ['payments', 'me'] }),
+      queryClient.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', userId] }),
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] }),
+      queryClient.invalidateQueries({ queryKey: ['me'] }),
     ]);
   };
 
@@ -123,36 +144,6 @@ export default function PaymentsBlock({
       .filter((payment): payment is Payment => Boolean(payment));
   }, [activeCycle, payments]);
 
-  const fullPackage = visiblePayments.find((p) => p.type === 'FULL_PACKAGE');
-  const isFullPackagePending = fullPackage?.status === 'PENDING';
-
-  const getDisplayStatus = (payment: Payment) => {
-    if (isFullPackagePending && payment.type !== 'FULL_PACKAGE' && payment.status === 'UNPAID') {
-      return 'Ожидает подтверждения пакетной оплаты';
-    }
-
-    return paymentStatusLabels[payment.status] || payment.status;
-  };
-
-  const getPaymentLabel = (payment: Payment) => {
-    if (payment.type === 'RENEWAL') {
-      if (payment.targetLevel === 'INSTRUCTOR') return 'Ресертификация — Инструктор';
-      if (payment.targetLevel === 'CURATOR') return 'Ресертификация — Куратор';
-
-      if (payment.targetLevel === 'SUPERVISOR') {
-        if (activeGroupName === 'Опытный Супервизор') {
-          return 'Ресертификация — Опытный супервизор';
-        }
-
-        return 'Ресертификация — Супервизор';
-      }
-
-      return 'Ресертификация';
-    }
-
-    return paymentTypeLabels[payment.type] || payment.type;
-  };
-
   const sortedPayments = useMemo(() => {
     return [...visiblePayments].sort((a, b) => {
       const typeDiff = (TYPE_ORDER[a.type] ?? 999) - (TYPE_ORDER[b.type] ?? 999);
@@ -172,126 +163,59 @@ export default function PaymentsBlock({
     });
   }, [visiblePayments]);
 
-  const getRowStyle = (payment: Payment): React.CSSProperties => {
+  const fullPackage = visiblePayments.find((payment) => payment.type === 'FULL_PACKAGE');
+  const isFullPackagePending = fullPackage?.status === 'PENDING';
+
+  const getDisplayStatus = (payment: Payment) => {
     if (isFullPackagePending && payment.type !== 'FULL_PACKAGE' && payment.status === 'UNPAID') {
-      return {
-        background: 'rgba(255, 248, 220, 0.55)',
-      };
+      return 'Ожидает пакет';
     }
 
-    if (payment.status === 'PENDING') {
-      return {
-        background: 'rgba(255, 244, 204, 0.95)',
-      };
-    }
-
-    if (payment.status === 'PAID') {
-      return {
-        background: 'rgba(214, 239, 139, 0.28)',
-      };
-    }
-
-    return {
-      background: 'transparent',
-    };
+    return paymentStatusLabels[payment.status] || payment.status;
   };
 
-  const getStatusToneClass = (payment: Payment) => {
-    if (isFullPackagePending && payment.type !== 'FULL_PACKAGE' && payment.status === 'UNPAID') {
-      return 'text-amber-700 font-medium';
+  const getPaymentLabel = (payment: Payment) => {
+    if (payment.type === 'RENEWAL') {
+      if (payment.targetLevel === 'INSTRUCTOR') return 'Ресертификация - Инструктор';
+      if (payment.targetLevel === 'CURATOR') return 'Ресертификация - Куратор';
+
+      if (payment.targetLevel === 'SUPERVISOR') {
+        return activeGroupName === 'Опытный Супервизор'
+          ? 'Ресертификация - Опытный супервизор'
+          : 'Ресертификация - Супервизор';
+      }
+
+      return 'Ресертификация';
     }
 
-    if (payment.status === 'PENDING') {
-      return 'text-amber-700 font-semibold';
-    }
-
-    if (payment.status === 'PAID') {
-      return 'text-green-700 font-medium';
-    }
-
-    return 'text-gray-700';
+    return paymentTypeLabels[payment.type] || payment.type;
   };
 
-  const confirmPay = async (id: string, type: string, notify: boolean) => {
-    const ok = await confirm({
-      message: notify
-        ? type === 'FULL_PACKAGE'
-          ? 'Подтвердить пакетную оплату и отправить уведомление пользователю?'
-          : 'Подтвердить оплату и отправить уведомление пользователю?'
-        : type === 'FULL_PACKAGE'
-          ? 'Подтвердить пакетную оплату без уведомления пользователя?'
-          : 'Подтвердить оплату без уведомления пользователя?',
-      confirmLabel: notify ? 'Подтвердить и уведомить' : 'Подтвердить тихо',
-    });
-    if (!ok) return;
+  const submitAction = async (notify: boolean) => {
+    if (!pendingAction) return;
 
-    try {
-      await mutate.mutateAsync({ id, status: 'PAID', notify });
-
-      await invalidate();
-      toast.success(
-        notify
-          ? type === 'FULL_PACKAGE'
-            ? 'Пакетная оплата подтверждена, уведомление отправлено'
-            : 'Оплата подтверждена, уведомление отправлено'
-          : type === 'FULL_PACKAGE'
-            ? 'Пакетная оплата подтверждена тихо'
-            : 'Оплата подтверждена тихо',
-      );
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось подтвердить оплату');
-    }
-  };
-
-  const startCancel = (id: string) => {
-    setCancelId(id);
-    setCancelComment('');
-  };
-
-  const submitCancel = async (type: string, notify: boolean) => {
-    if (!cancelId) return;
-
-    const ok = await confirm({
-      message: notify
-        ? type === 'FULL_PACKAGE'
-          ? 'Отменить пакетную оплату и отправить уведомление пользователю?'
-          : 'Отменить оплату и отправить уведомление пользователю?'
-        : type === 'FULL_PACKAGE'
-          ? 'Отменить пакетную оплату без уведомления пользователя?'
-          : 'Отменить оплату без уведомления пользователя?',
-      confirmLabel: notify ? 'Отменить и уведомить' : 'Отменить тихо',
-      variant: 'danger',
-    });
-    if (!ok) return;
+    const { payment, nextStatus } = pendingAction;
 
     try {
       await mutate.mutateAsync({
-        id: cancelId,
-        status: 'UNPAID',
-        comment: cancelComment,
+        id: payment.id,
+        status: nextStatus,
         notify,
       });
-
       await invalidate();
+      setPendingAction(null);
       toast.success(
-        notify
-          ? type === 'FULL_PACKAGE'
-            ? 'Пакетная оплата отменена, уведомление отправлено'
-            : 'Оплата отменена, уведомление отправлено'
-          : type === 'FULL_PACKAGE'
-            ? 'Пакетная оплата отменена тихо'
-            : 'Оплата отменена тихо',
+        nextStatus === 'PAID'
+          ? notify
+            ? 'Оплата подтверждена, уведомление отправлено'
+            : 'Оплата подтверждена без уведомления'
+          : notify
+            ? 'Оплата отменена, уведомление отправлено'
+            : 'Оплата отменена без уведомления',
       );
-      setCancelId(null);
-      setCancelComment('');
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось отменить оплату');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Не удалось изменить оплату');
     }
-  };
-
-  const cancelCancel = () => {
-    setCancelId(null);
-    setCancelComment('');
   };
 
   const emptyText = !activeCycle
@@ -299,130 +223,87 @@ export default function PaymentsBlock({
     : 'Для активного цикла нет доступных платежей.';
 
   return (
-    <div className="space-y-3">
-      <h2 className="text-xl font-semibold text-blue-dark">Платежи</h2>
+    <div className="space-y-4">
+      <h2 className="dashboard-v2-title">Платежи</h2>
 
-      <div
-        className="overflow-x-auto rounded-2xl border bg-white header-shadow"
-        style={{ borderColor: 'var(--color-green-light)' }}
-      >
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-blue-dark" style={{ background: 'var(--color-blue-soft)' }}>
-              <th className="py-2 px-3 text-left">Тип</th>
-              <th className="py-2 px-3 text-left">Статус</th>
-              <th className="py-2 px-3 text-left">Комментарий</th>
-              <th className="py-2 px-3 text-left">Создан</th>
-              <th className="py-2 px-3 text-left">Подтверждён</th>
-              <th className="py-2 px-3 text-left w-64">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!sortedPayments.length ? (
-              <tr>
-                <td className="py-4 px-3 text-[#8D96B5]" colSpan={6}>
-                  {emptyText}
-                </td>
-              </tr>
-            ) : null}
+      {!sortedPayments.length ? (
+        <div className="rounded-[16px] bg-[var(--color-blue-soft)] px-4 py-5 dashboard-v2-text text-[#8D96B5]">
+          {emptyText}
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-[18px] border border-[var(--color-blue-soft)] bg-white">
+          {sortedPayments.map((payment, index) => {
+            const isPaid = payment.status === 'PAID';
+            const nextStatus = isPaid ? 'UNPAID' : 'PAID';
+            const inheritedPending =
+              Boolean(isFullPackagePending) && payment.type !== 'FULL_PACKAGE' && payment.status === 'UNPAID';
 
-            {sortedPayments.map((p) => {
-              const humanStatus = getDisplayStatus(p);
-              const isThisCancel = cancelId === p.id;
+            return (
+              <div
+                key={payment.id}
+                className={`grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_280px_180px] lg:items-center ${
+                  index > 0 ? 'border-t border-[var(--color-blue-soft)]' : ''
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="text-[15px] font-extrabold leading-[1.25] text-[#1F305E]">
+                    {getPaymentLabel(payment)}
+                  </div>
+                  <div className="mt-2 inline-flex min-h-[26px] items-center rounded-full px-3 text-[12px] font-extrabold">
+                    <span
+                      className={`inline-flex min-h-[26px] items-center rounded-full px-3 ${statusToneClass(
+                        payment.status,
+                        inheritedPending,
+                      )}`}
+                    >
+                      {getDisplayStatus(payment)}
+                    </span>
+                  </div>
+                </div>
 
-              return (
-                <tr
-                  key={p.id}
-                  className="border-t align-top transition-colors"
-                  style={{
-                    borderColor: 'var(--color-green-light)',
-                    ...getRowStyle(p),
-                  }}
-                >
-                  <td className="py-2 px-3">
-                    <div className="font-medium text-blue-dark">{getPaymentLabel(p)}</div>
-                  </td>
+                <div className="grid grid-cols-2 gap-2">
+                  <DateBox label="Отмечено" value={formatDateTime(payment.requestedAt)} />
+                  <DateBox label="Подтверждено" value={formatDateTime(payment.confirmedAt)} />
+                </div>
 
-                  <td className="py-2 px-3">
-                    <span className={getStatusToneClass(p)}>{humanStatus}</span>
-                  </td>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className={`btn dashboard-v2-action w-full max-w-[180px] ${
+                      isPaid
+                        ? 'dashboard-v2-action-secondary border-[var(--color-danger)] text-[var(--color-danger)]'
+                        : 'dashboard-v2-action-primary'
+                    }`}
+                    onClick={() => setPendingAction({ payment, nextStatus })}
+                    disabled={mutate.isPending}
+                  >
+                    {isPaid ? 'Отменить' : 'Подтвердить'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-                  <td className="py-2 px-3">{p.comment || '—'}</td>
-                  <td className="py-2 px-3">{formatDate(p.createdAt)}</td>
-                  <td className="py-2 px-3">{formatDate(p.confirmedAt)}</td>
+      {pendingAction ? (
+        <AdminNotifyChoiceModal
+          title={pendingAction.nextStatus === 'PAID' ? 'Подтвердить оплату?' : 'Отменить оплату?'}
+          danger={pendingAction.nextStatus === 'UNPAID'}
+          isPending={mutate.isPending}
+          onChoose={(notify) => void submitAction(notify)}
+          onClose={() => setPendingAction(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
 
-                  <td className="py-2 px-3">
-                    {!isThisCancel ? (
-                      <div className="flex flex-wrap gap-2">
-                        {p.status !== 'PAID' && (
-                          <>
-                            <button
-                              className="btn disabled:opacity-50"
-                              onClick={() => confirmPay(p.id, p.type, false)}
-                              disabled={mutate.isPending}
-                            >
-                              Подтвердить тихо
-                            </button>
-                            <button
-                              className="btn btn-brand disabled:opacity-50"
-                              onClick={() => confirmPay(p.id, p.type, true)}
-                              disabled={mutate.isPending}
-                            >
-                              Подтвердить и уведомить
-                            </button>
-                          </>
-                        )}
-
-                        <button
-                          className="btn btn-danger disabled:opacity-50"
-                          onClick={() => startCancel(p.id)}
-                          disabled={mutate.isPending}
-                        >
-                          Отменить
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <input
-                          className="input"
-                          placeholder="Комментарий (по желанию)"
-                          value={cancelComment}
-                          onChange={(e) => setCancelComment(e.target.value)}
-                          maxLength={COMMENT_MAX_LENGTH}
-                          disabled={mutate.isPending}
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            className="btn btn-danger disabled:opacity-50"
-                            onClick={() => submitCancel(p.type, false)}
-                            disabled={mutate.isPending}
-                          >
-                            Отменить тихо
-                          </button>
-                          <button
-                            className="btn btn-danger disabled:opacity-50"
-                            onClick={() => submitCancel(p.type, true)}
-                            disabled={mutate.isPending}
-                          >
-                            Отменить и уведомить
-                          </button>
-                          <button
-                            className="btn disabled:opacity-50"
-                            onClick={cancelCancel}
-                            disabled={mutate.isPending}
-                          >
-                            Закрыть
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+function DateBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[12px] bg-[var(--color-blue-soft)] px-3 py-2">
+      <div className="text-[12px] font-semibold text-[#7F8AA3]">{label}</div>
+      <div className="mt-1 text-[13px] font-bold leading-[1.25] text-[#1F305E]">{value}</div>
     </div>
   );
 }

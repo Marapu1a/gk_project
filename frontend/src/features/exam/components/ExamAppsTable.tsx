@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { useExamApps } from '../hooks/useExamApps';
 import ExamAppModal from './ExamAppModal';
 import type { ExamApp, ExamStatus } from '../api/getMyExamApp';
@@ -10,8 +11,8 @@ const STATUS_OPTIONS: Array<ExamStatus | 'ALL'> = [
   'ALL',
   'APPROVED',
   'REJECTED',
-  'NOT_SUBMITTED',
 ];
+const STATUS_VALUES = new Set<ExamStatus | 'ALL'>(STATUS_OPTIONS);
 
 function formatDate(value?: string | null) {
   if (!value) return '-';
@@ -29,9 +30,26 @@ function statusClass(status: ExamStatus) {
 
 export default function ExamAppsTable() {
   const { data, isLoading, error, isFetching } = useExamApps();
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<ExamStatus | 'ALL'>('PENDING');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState<ExamApp | null>(null);
+  const rawStatus = searchParams.get('status');
+  const query = searchParams.get('search') ?? '';
+  const status: ExamStatus | 'ALL' = STATUS_VALUES.has(rawStatus as ExamStatus | 'ALL')
+    ? (rawStatus as ExamStatus | 'ALL')
+    : 'PENDING';
+
+  const updateQuery = (patch: Record<string, string | null | undefined>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(patch).forEach(([key, value]) => {
+      const stringValue = value == null ? '' : String(value);
+      if (!stringValue || (key === 'status' && stringValue === 'PENDING')) {
+        next.delete(key);
+      } else {
+        next.set(key, stringValue);
+      }
+    });
+    setSearchParams(next, { replace: true });
+  };
 
   const rows = (data as ExamApp[] | undefined) ?? [];
   const filtered = useMemo(() => {
@@ -73,11 +91,11 @@ export default function ExamAppsTable() {
             <select
               className="input-design mt-1"
               value={status}
-              onChange={(event) => setStatus(event.target.value as ExamStatus | 'ALL')}
+              onChange={(event) => updateQuery({ status: event.target.value })}
             >
               {STATUS_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {option === 'ALL' ? 'Все статусы' : examStatusLabels[option]}
+                  {option === 'ALL' ? 'Все заявки' : examStatusLabels[option]}
                 </option>
               ))}
             </select>
@@ -88,7 +106,7 @@ export default function ExamAppsTable() {
             <input
               className="input-design mt-1"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => updateQuery({ search: event.target.value })}
               placeholder="ФИО или email"
             />
           </label>
@@ -117,15 +135,11 @@ export default function ExamAppsTable() {
                 {filtered.map((row) => (
                   <tr key={row.id} className="border-b border-[#DCE8EC] last:border-b-0">
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
+                      <ActionArrowButton
                         onClick={() => setSelected(row)}
-                        className="flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-blue-darker)]"
                         title="Открыть заявку"
                         aria-label="Открыть заявку"
-                      >
-                        <ArrowRight size={18} />
-                      </button>
+                      />
                     </td>
                     <td className="px-4 py-3 font-extrabold">{row.user.fullName || '-'}</td>
                     <td className="px-4 py-3">

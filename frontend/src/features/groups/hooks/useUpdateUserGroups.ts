@@ -18,15 +18,22 @@ export function useUpdateUserGroups(userId: string, isSelf = false) {
         qc.invalidateQueries({ queryKey: ['groups', 'user', userId] }),
         qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
         qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin-ceu-matrix', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'supervision-matrix', userId] }),
         qc.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'ceu-history'] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'supervision', 'reviewerCandidates'] }),
         qc.invalidateQueries({ queryKey: ['exam', 'all'] }),
       ]);
 
       if (isSelf) {
         await Promise.all([
           qc.invalidateQueries({ queryKey: ['current-user'] }),
+          qc.invalidateQueries({ queryKey: ['ceuSummary'] }),
           qc.invalidateQueries({ queryKey: ['ceu', 'summary'] }),
           qc.invalidateQueries({ queryKey: ['ceu', 'history'] }),
+          qc.invalidateQueries({ queryKey: ['supervisionSummary'] }),
+          qc.invalidateQueries({ queryKey: ['supervision', 'summary'] }),
           qc.invalidateQueries({ queryKey: ['exam', 'me'] }),
         ]);
       }

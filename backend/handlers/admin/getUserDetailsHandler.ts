@@ -2,6 +2,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { buildExamReadiness } from '../examApplications/readiness';
+import { withResolvedDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
 
 // Локальная нормализация: старые значения → новые логические категории
 function normalizeLevel(type: string): string {
@@ -45,6 +46,35 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
 
       groups: { select: { group: { select: { id: true, name: true, rank: true } } } },
 
+      reviewerCandidateRelations: {
+        where: {
+          cycle: { status: 'ACTIVE' },
+          candidate: { archivedAt: null },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          kind: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          candidate: {
+            select: {
+              id: true,
+              email: true,
+              fullName: true,
+            },
+          },
+          cycle: {
+            select: {
+              id: true,
+              targetLevel: true,
+              startedAt: true,
+            },
+          },
+        },
+      },
+
       cycles: {
         where: { status: 'ACTIVE' },
         orderBy: { startedAt: 'desc' },
@@ -82,6 +112,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
           status: true,
           comment: true,
           createdAt: true,
+          requestedAt: true,
           confirmedAt: true,
         },
       },
@@ -153,6 +184,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
           reviewedAt: true,
           comment: true,
           documents: { select: { fileId: true, name: true } },
+          documentFiles: { select: { status: true } },
         },
       },
 
@@ -202,6 +234,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
 
   return reply.send({
     ...user,
+    documentReviewRequests: user.documentReviewRequests.map(withResolvedDocumentReviewRequestStatus),
     groups,
     supervisionRecords,
     activeCycle,

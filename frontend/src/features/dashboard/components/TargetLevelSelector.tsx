@@ -140,7 +140,8 @@ export function TargetLevelSelector({ user, isAdmin }: Props) {
     noChange ||
     (selected !== '' && !availableLevels.includes(selected));
 
-  const serverErr = (setTarget.error as any)?.response?.data?.error as string | undefined;
+  const serverErr = ((setTarget.error as any)?.response?.data?.errorCode ??
+    (setTarget.error as any)?.response?.data?.error) as string | undefined;
 
   const lockedMsg =
     serverErr === 'TARGET_LOCKED'

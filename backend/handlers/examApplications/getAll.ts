@@ -9,6 +9,7 @@ export async function getAllExamAppsHandler(req: FastifyRequest, reply: FastifyR
 
   const apps = await prisma.examApplication.findMany({
     where: {
+      status: { not: 'NOT_SUBMITTED' },
       // не показываем заявки пользователей с ролью ADMIN
       user: { role: { not: 'ADMIN' } },
     },

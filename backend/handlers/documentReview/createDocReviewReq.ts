@@ -2,7 +2,10 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { NotificationType, Prisma } from '@prisma/client';
 import { notifyAdmins } from '../../utils/notifications';
-import { recalculateDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
+import {
+  recalculateDocumentReviewRequestStatus,
+  resolveDocumentReviewRequestStatus,
+} from '../documentReviewAdmin/documentReviewFileStatusUtils';
 
 const allowedDocumentTypes = new Set(['HIGHER_EDUCATION', 'ADDITIONAL_EDUCATION', 'OTHER']);
 
@@ -55,11 +58,17 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
     }
   }
 
-  // 1) Ищем последнюю подтверждённую заявку (её будем дополнять при необходимости)
-  const existingConfirmed = await prisma.documentReviewRequest.findFirst({
-    where: { userId: user.userId, status: 'CONFIRMED' },
+  // 1) Ищем последнюю подтверждённую заявку по фактическим статусам файлов.
+  const existingRequests = await prisma.documentReviewRequest.findMany({
+    where: { userId: user.userId },
     orderBy: { submittedAt: 'desc' },
+    include: {
+      documentFiles: { select: { status: true } },
+    },
   });
+  const existingConfirmed =
+    existingRequests.find((request) => resolveDocumentReviewRequestStatus(request) === 'CONFIRMED') ??
+    null;
 
   // 2) Проверка файлов (общая часть)
   const files = await prisma.uploadedFile.findMany({
@@ -173,8 +182,9 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
   }
 
   // 4) Legacy-путь без активного цикла: сохраняем старую защиту от второй активной заявки.
-  const existingUnconfirmed = await prisma.documentReviewRequest.findFirst({
-    where: { userId: user.userId, status: 'UNCONFIRMED' },
+  const existingUnconfirmed = existingRequests.find((request) => {
+    const status = resolveDocumentReviewRequestStatus(request);
+    return status === 'UNCONFIRMED' || status === 'PARTIALLY_CONFIRMED';
   });
 
   if (existingUnconfirmed) {

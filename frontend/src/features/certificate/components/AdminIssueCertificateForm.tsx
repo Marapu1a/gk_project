@@ -146,7 +146,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
   const isBusy = mutation.isPending || isUploadingFile;
 
   const mapError = (err: any) => {
-    const code = err?.response?.data?.error;
+    const code = err?.response?.data?.errorCode ?? err?.response?.data?.error;
     const message = err?.response?.data?.message;
 
     if (typeof message === 'string' && message.trim()) return message;
@@ -158,7 +158,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       return 'Для сертификата можно загрузить только PDF-файл.';
     }
     if (code === 'TARGET_GROUP_NOT_CONFIGURED') return 'Целевая группа не настроена в системе.';
-    return code || err?.message || 'Не удалось выдать сертификат';
+    return err?.response?.data?.error || err?.message || 'Не удалось выдать сертификат';
   };
 
   async function handleSubmit(e: React.FormEvent) {
