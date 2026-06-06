@@ -1,33 +1,34 @@
 // src/App.tsx
+import { lazy, Suspense } from 'react';
 import { Toaster } from 'sonner';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfirmProvider } from '@/components/confirm/ConfirmProvider';
 import MainLayout from './layouts/MainLayout';
-import RegisterPage from './pages/RegisterPage';
-import LoginPage from './pages/LoginPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import CeuReviewPage from './pages/CeuReviewPage';
-// import GroupAssignmentPage from './pages/GroupAssignmentPage';
-import DocumentReviewPage from './pages/DocumentReviewPage';
-import AdminDocumentReviewListPage from './pages/AdminDocumentReviewListPage';
-import AdminDocumentReviewDetailsPage from './pages/AdminDocumentReviewDetailsPage';
-import UsersPage from './pages/UsersPage';
-import ExamApplicationsPage from './pages/ExamApplicationsPage';
-import UserDetailsPage from '@/pages/UserDetailsPage';
-import CertificateIssuePage from '@/pages/CertificateIssuePage';
-import MyCertificatesPage from '@/pages/MyCertificatesPage';
-import RegistryPage from './pages/RegistryPage';
-import RegistryProfilePage from '@/pages/RegistryProfilePage';
-import DashboardPageV2 from './pages/DashboardPageV2';
-import SupervisionHoursPage from './pages/SupervisionHoursPage';
-import CeuPointsPage from './pages/CeuPointsPage';
-import ReviewerCandidatesPage from './pages/ReviewerCandidatesPage';
-import ReviewerCandidateDetailsPage from './pages/ReviewerCandidateDetailsPage';
-import ProfileEditPage from './pages/ProfileEditPage';
-import AdminUserBannerPage from './pages/AdminUserBannerPage';
-import AdminSupervisionCandidatesPage from './pages/AdminSupervisionCandidatesPage';
+
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const CeuReviewPage = lazy(() => import('./pages/CeuReviewPage'));
+const DocumentReviewPage = lazy(() => import('./pages/DocumentReviewPage'));
+const AdminDocumentReviewListPage = lazy(() => import('./pages/AdminDocumentReviewListPage'));
+const AdminDocumentReviewDetailsPage = lazy(() => import('./pages/AdminDocumentReviewDetailsPage'));
+const UsersPage = lazy(() => import('./pages/UsersPage'));
+const ExamApplicationsPage = lazy(() => import('./pages/ExamApplicationsPage'));
+const UserDetailsPage = lazy(() => import('@/pages/UserDetailsPage'));
+const CertificateIssuePage = lazy(() => import('@/pages/CertificateIssuePage'));
+const MyCertificatesPage = lazy(() => import('@/pages/MyCertificatesPage'));
+const RegistryPage = lazy(() => import('./pages/RegistryPage'));
+const RegistryProfilePage = lazy(() => import('@/pages/RegistryProfilePage'));
+const DashboardPageV2 = lazy(() => import('./pages/DashboardPageV2'));
+const SupervisionHoursPage = lazy(() => import('./pages/SupervisionHoursPage'));
+const CeuPointsPage = lazy(() => import('./pages/CeuPointsPage'));
+const ReviewerCandidatesPage = lazy(() => import('./pages/ReviewerCandidatesPage'));
+const ReviewerCandidateDetailsPage = lazy(() => import('./pages/ReviewerCandidateDetailsPage'));
+const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage'));
+const AdminUserBannerPage = lazy(() => import('./pages/AdminUserBannerPage'));
+const AdminSupervisionCandidatesPage = lazy(() => import('./pages/AdminSupervisionCandidatesPage'));
 
 const queryClient = new QueryClient();
 
@@ -69,11 +70,21 @@ const router = createBrowserRouter([
   },
 ]);
 
+function PageFallback() {
+  return (
+    <div className="container-fixed p-6">
+      <p className="dashboard-v2-text text-blue-dark">Загрузка...</p>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ConfirmProvider>
-        <RouterProvider router={router} />
+        <Suspense fallback={<PageFallback />}>
+          <RouterProvider router={router} />
+        </Suspense>
         <Toaster richColors position="top-center" toastOptions={{ duration: 3500 }} />
       </ConfirmProvider>
     </QueryClientProvider>

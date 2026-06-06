@@ -1,4 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
+import { TransborderConsentModal } from '@/features/auth/components/TransborderConsentModal';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { ProfileCard } from './info/profile-card/component/ProfileCard';
 import { PaymentBlock } from './payment/component/PaymentBlock';
@@ -16,7 +19,15 @@ const TARGET_LEVEL_LABELS = {
 } as const;
 
 export function DashboardV2() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: user, isLoading, isError } = useCurrentUser();
+
+  const handleReauth = () => {
+    localStorage.removeItem('token');
+    queryClient.removeQueries();
+    navigate('/login?to=/dashboard-v2', { replace: true });
+  };
 
   if (isLoading) {
     return (
@@ -29,16 +40,42 @@ export function DashboardV2() {
   if (isError || !user) {
     return (
       <div className="container-fixed p-6">
-        <p className="dashboard-v2-text text-error">Не удалось загрузить дашборд</p>
+        <section className="card-section max-w-3xl px-5 py-5 shadow-soft">
+          <button
+            type="button"
+            onClick={handleReauth}
+            className="dashboard-v2-text cursor-pointer text-error underline underline-offset-4 transition hover:opacity-80"
+          >
+            Не удалось загрузить данные. Нажмите, чтобы войти заново.
+          </button>
+        </section>
       </div>
     );
   }
 
-  if (user.role === 'ADMIN') {
-    return <AdminDashboard user={{ email: user.email }} />;
-  }
+  const shouldShowTransborderConsentModal = Boolean(
+    user.transborderConsent?.required && !user.transborderConsent?.accepted,
+  );
 
-  return <UserDashboardV2 user={user} />;
+  const content =
+    user.role === 'ADMIN' ? (
+      <AdminDashboard user={{ email: user.email }} />
+    ) : (
+      <UserDashboardV2 user={user} />
+    );
+
+  return (
+    <>
+      {content}
+
+      <TransborderConsentModal
+        open={shouldShowTransborderConsentModal}
+        source="LEGACY_MODAL"
+        onAccepted={() => {}}
+        onLogout={handleReauth}
+      />
+    </>
+  );
 }
 
 function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurrentUser>['data']> }) {
