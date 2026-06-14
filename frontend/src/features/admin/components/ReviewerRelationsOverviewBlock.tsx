@@ -1,4 +1,5 @@
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { Link, useNavigate } from 'react-router-dom';
 
 type RelationKind = 'SUPERVISION' | 'MENTORSHIP';
@@ -115,8 +116,15 @@ function RelationsCard({
                     aria-label={`Открыть проверку часов: ${relation.candidate.email}`}
                   />
                   <div className="min-w-0">
-                    <div className="font-extrabold leading-tight">{surname}</div>
-                    {restName ? <div className="leading-tight">{restName}</div> : null}
+                    <AdminUserNameLink
+                      userId={relation.candidate.id}
+                      fullName={relation.candidate.fullName}
+                      email={relation.candidate.email}
+                      className="block min-w-0"
+                    >
+                      <span className="block font-extrabold leading-tight">{surname}</span>
+                      {restName ? <span className="block leading-tight">{restName}</span> : null}
+                    </AdminUserNameLink>
                   </div>
                   <div className="min-w-0 truncate" title={relation.candidate.email}>
                     {relation.candidate.email}

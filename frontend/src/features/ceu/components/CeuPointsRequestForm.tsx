@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { submitCeuRequest } from '../api/submitCeuRequest';
-import { useCeuSummary } from '../hooks/useCeuSummary';
 
 type CeuCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
 type CeuActivityType = 'TRAINING_ATTENDANCE' | 'PRESENTATION' | 'PUBLICATION' | 'TEACHING';
@@ -46,13 +45,6 @@ const ACTIVITY_TYPES: Array<{ value: CeuActivityType; label: string }> = [
   },
 ];
 
-const CATEGORY_SUMMARY_KEYS: Record<CeuCategory, 'ethics' | 'cultDiver' | 'supervision' | 'general'> = {
-  ETHICS: 'ethics',
-  CULTURAL_DIVERSITY: 'cultDiver',
-  SUPERVISION: 'supervision',
-  GENERAL: 'general',
-};
-
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -69,15 +61,14 @@ function sanitizeCeuValueInput(rawValue: string) {
   return ceuValueInputSchema.safeParse(value).success ? value : null;
 }
 
-function normalizeCeuValueInput(value: string, max?: number | null) {
+function normalizeCeuValueInput(value: string) {
   const sanitized = sanitizeCeuValueInput(value);
   if (!sanitized || sanitized === '.') return '0';
 
   const parsed = Number(sanitized);
   if (!Number.isFinite(parsed) || parsed < 0) return '0';
 
-  const capped = max != null ? Math.min(parsed, Math.max(0, max)) : parsed;
-  return String(Math.round(capped * 100) / 100);
+  return String(Math.round(parsed * 100) / 100);
 }
 
 function isHalfStep(value: number) {
@@ -90,7 +81,6 @@ type CeuPointsRequestFormProps = {
 
 export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFormProps) {
   const queryClient = useQueryClient();
-  const { data: summary } = useCeuSummary();
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [duration, setDuration] = useState('0');
   const [eventDate, setEventDate] = useState('');
@@ -99,20 +89,6 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
   const [activityType, setActivityType] = useState<CeuActivityType>('TRAINING_ATTENDANCE');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const categoryKey = CATEGORY_SUMMARY_KEYS[category];
-  const categoryRequired = summary?.required?.[categoryKey] ?? null;
-  const categoryUsed = summary?.usable?.[categoryKey] ?? 0;
-  const categoryRemaining =
-    categoryRequired == null ? null : Math.max(0, Math.round((categoryRequired - categoryUsed) * 100) / 100);
-
-  useEffect(() => {
-    if (categoryRemaining == null) return;
-
-    const value = parseCeuValue(duration);
-    if (value > categoryRemaining) {
-      setDuration(String(categoryRemaining));
-    }
-  }, [categoryRemaining, duration]);
 
   const handleDrop = (accepted: File[]) => {
     const file = accepted[0];
@@ -158,11 +134,6 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
 
     if (!isHalfStep(value)) {
       toast.error('Шаг для CEU-баллов должен быть 0,5');
-      return;
-    }
-
-    if (categoryRemaining != null && value > categoryRemaining) {
-      toast.error(`Можно добавить не более ${categoryRemaining} CEU-баллов в выбранной теме`);
       return;
     }
 
@@ -259,20 +230,14 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
                       onFocus={() => {
                         if (duration === '0') setDuration('');
                       }}
-                      onBlur={() => setDuration(normalizeCeuValueInput(duration, categoryRemaining))}
+                      onBlur={() => setDuration(normalizeCeuValueInput(duration))}
                       onChange={(event) => {
                         const nextValue = sanitizeCeuValueInput(event.target.value);
                         if (nextValue !== null) {
-                          const parsed = parseCeuValue(nextValue);
-                          setDuration(
-                            categoryRemaining != null && parsed > categoryRemaining
-                              ? String(categoryRemaining)
-                              : nextValue,
-                          );
+                          setDuration(nextValue);
                         }
                       }}
                       disabled={submitting}
-                      max={categoryRemaining ?? undefined}
                       placeholder="0"
                     />
                   </Field>
@@ -373,7 +338,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
                 <button
                   type="button"
                   onClick={submit}
-                  disabled={submitting || categoryRemaining === 0}
+                  disabled={submitting}
                   className="btn btn-dark mt-4 h-[48px] w-full rounded-[10px] text-[16px] font-extrabold disabled:cursor-not-allowed disabled:bg-[#B7BFCE]"
                 >
                   {submitting ? 'Отправляем...' : 'Отправить'}

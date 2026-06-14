@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { Button } from '@/components/Button';
 import { PageNav } from '@/components/PageNav';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
@@ -351,7 +352,10 @@ export default function CeuReviewPage() {
 
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.entryId} className="border-b border-[#DCE8EC] align-top last:border-b-0">
+                  <tr
+                    key={row.entryId}
+                    className="group border-b border-[#DCE8EC] align-top transition-colors hover:bg-white/70 last:border-b-0"
+                  >
                     <td className="px-4 py-3">
                       <ActionArrowButton
                         onClick={() => setSelectedRow(row)}
@@ -366,7 +370,12 @@ export default function CeuReviewPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="truncate font-extrabold">{row.fullName || row.email}</div>
+                      <AdminUserNameLink
+                        userId={row.userId}
+                        fullName={row.fullName}
+                        email={row.email}
+                        className="block truncate font-extrabold"
+                      />
                       <a
                         href={`mailto:${row.email}`}
                         className="dashboard-v2-caption mt-1 block truncate text-[#1F305E] underline-offset-2 hover:underline"

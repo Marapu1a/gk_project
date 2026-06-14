@@ -1,8 +1,8 @@
 // src/features/admin/components/UsersTable.tsx
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { useUsers } from '../hooks/useUsers';
+import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 
 type Role = 'ADMIN' | 'STUDENT' | 'REVIEWER';
@@ -291,14 +291,15 @@ export function UsersTable() {
                             />
                           </div>
                           <div className="min-w-0">
-                            <Link
-                              to={`/admin/users/${user.id}`}
+                            <AdminUserNameLink
+                              userId={user.id}
+                              fullName={user.fullName}
+                              email={user.email}
                               className="block cursor-pointer overflow-hidden break-words leading-[1.15] transition-colors group-hover:text-[var(--color-blue-darker)]"
-                              title={user.fullName || ''}
                             >
                               <span className="block font-extrabold">{name.lastName}</span>
                               {name.restName ? <span className="block">{name.restName}</span> : null}
-                            </Link>
+                            </AdminUserNameLink>
                           </div>
                         </div>
                       </td>

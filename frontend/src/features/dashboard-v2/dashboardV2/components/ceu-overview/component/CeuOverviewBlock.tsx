@@ -22,11 +22,6 @@ function formatNumber(value: number | null | undefined) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function capToRequired(value: number, required: number) {
-  if (required <= 0) return Math.max(0, value);
-  return Math.min(Math.max(0, value), required);
-}
-
 function CeuMetricCard({
   label,
   value,
@@ -36,7 +31,7 @@ function CeuMetricCard({
   value: number;
   required: number;
 }) {
-  const displayValue = capToRequired(value, required);
+  const displayValue = Math.max(0, value);
   const isEmpty = displayValue <= 0 && required <= 0;
 
   return (

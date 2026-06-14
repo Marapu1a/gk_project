@@ -65,7 +65,6 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
     { label: 'Проверка документов', to: '/admin/document-review', count: documentCount },
     { label: 'Проверка CEU', to: '/review/ceu' },
     { label: 'Проверка часов', to: '/admin/supervision-candidates' },
-    { label: 'Выдача сертификата', to: '/certificate' },
     { label: 'Заявки на экзамен', to: '/exam-applications' },
   ];
 

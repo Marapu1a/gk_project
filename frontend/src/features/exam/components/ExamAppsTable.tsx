@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { useExamApps } from '../hooks/useExamApps';
 import ExamAppModal from './ExamAppModal';
 import type { ExamApp, ExamStatus } from '../api/getMyExamApp';
@@ -121,27 +122,31 @@ export default function ExamAppsTable() {
             <table className="dashboard-v2-text w-full table-fixed text-[#1F305E]">
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
-                  <th className="w-[56px] rounded-l-[8px] px-4 py-3 font-medium" />
-                  <th className="px-4 py-3 font-medium">ФИО</th>
+                  <th className="rounded-l-[8px] px-4 py-3 font-medium">ФИО</th>
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="w-[170px] px-4 py-3 text-center font-medium">Цель</th>
                   <th className="w-[150px] px-4 py-3 text-center font-medium">Дата подачи</th>
-                  <th className="w-[170px] rounded-r-[8px] px-4 py-3 text-center font-medium">
+                  <th className="w-[170px] px-4 py-3 text-center font-medium">
                     Статус
                   </th>
+                  <th className="w-[56px] rounded-r-[8px] px-4 py-3 font-medium" />
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((row) => (
-                  <tr key={row.id} className="border-b border-[#DCE8EC] last:border-b-0">
-                    <td className="px-4 py-3">
-                      <ActionArrowButton
-                        onClick={() => setSelected(row)}
-                        title="Открыть заявку"
-                        aria-label="Открыть заявку"
-                      />
+                  <tr
+                    key={row.id}
+                    className="group border-b border-[#DCE8EC] transition-colors hover:bg-white/70 last:border-b-0"
+                  >
+                    <td className="px-4 py-3 font-extrabold">
+                      <AdminUserNameLink
+                        userId={row.userId}
+                        fullName={row.user.fullName}
+                        email={row.user.email}
+                      >
+                        {row.user.fullName || row.user.email || '-'}
+                      </AdminUserNameLink>
                     </td>
-                    <td className="px-4 py-3 font-extrabold">{row.user.fullName || '-'}</td>
                     <td className="px-4 py-3">
                       <a
                         href={`mailto:${row.user.email}`}
@@ -162,6 +167,13 @@ export default function ExamAppsTable() {
                       >
                         {examStatusLabels[row.status] ?? row.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <ActionArrowButton
+                        onClick={() => setSelected(row)}
+                        title="Открыть заявку"
+                        aria-label="Открыть заявку"
+                      />
                     </td>
                   </tr>
                 ))}

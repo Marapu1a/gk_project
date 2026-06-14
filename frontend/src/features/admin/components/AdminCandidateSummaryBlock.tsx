@@ -33,8 +33,9 @@ function capToRequired(current?: number | null, required?: number | null) {
   return Math.min(Math.max(0, currentValue), requiredValue);
 }
 
-function progressText(current?: number | null, required?: number | null) {
-  return `${formatNumber(capToRequired(current, required))} / ${formatNumber(required)}`;
+function progressText(current?: number | null, required?: number | null, options?: { cap?: boolean }) {
+  const currentValue = options?.cap === false ? Math.max(0, Number(current ?? 0)) : capToRequired(current, required);
+  return `${formatNumber(currentValue)} / ${formatNumber(required)}`;
 }
 
 function buildUrl(path: string, params: Record<string, string | number | null | undefined>) {
@@ -266,6 +267,7 @@ export function AdminCandidateSummaryBlock({
     hourState: 'NEEDS_REVIEW',
   });
   const ceuReviewUrl = buildUrl('/review/ceu', { search: userSearch });
+  const certificateIssueUrl = buildUrl('/certificate', { email: user.email });
   const examApplicationsUrl = buildUrl('/exam-applications', {
     search: userSearch,
     status: 'ALL',
@@ -341,7 +343,7 @@ export function AdminCandidateSummaryBlock({
     if ((ceuRequired?.total ?? 0) > 0) {
       lines.push({
         label: 'CEU-баллы',
-        value: progressText(ceuCurrent?.total, ceuRequired?.total),
+        value: progressText(ceuCurrent?.total, ceuRequired?.total, { cap: false }),
         tone: readiness?.ceu?.ready ? 'good' : 'bad',
         to: ceuReviewUrl,
       });
@@ -441,8 +443,8 @@ export function AdminCandidateSummaryBlock({
             <Meta label="После выдачи сертификата" value={afterCertificateText} />
           </div>
 
-          {onOpenStatusManagement ? (
-            <div className="mt-4 flex justify-end border-t border-white/70 pt-4">
+          <div className="mt-4 flex flex-wrap justify-end gap-3 border-t border-white/70 pt-4">
+            {onOpenStatusManagement ? (
               <button
                 type="button"
                 className="btn dashboard-v2-action dashboard-v2-action-secondary"
@@ -450,8 +452,14 @@ export function AdminCandidateSummaryBlock({
               >
                 Статус и сертификат
               </button>
-            </div>
-          ) : null}
+            ) : null}
+            <Link
+              to={certificateIssueUrl}
+              className="btn dashboard-v2-action bg-[var(--color-blue-dark)] text-white hover:bg-[var(--color-blue-darker)]"
+            >
+              Выдать сертификат
+            </Link>
+          </div>
         </div>
 
         <div className="rounded-[16px] bg-[var(--color-blue-soft)] p-4">

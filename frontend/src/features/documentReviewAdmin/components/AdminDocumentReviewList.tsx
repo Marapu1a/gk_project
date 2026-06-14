@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { useAllDocReviewRequests } from '../hooks/useAllDocReviewRequests';
 import { documentReviewStatusLabels } from '@/utils/documentReviewStatusLabels';
 
@@ -174,18 +175,23 @@ export function AdminDocumentReviewList() {
                       ).length ?? 0;
 
                     return (
-                      <tr key={request.id} className="border-b border-[var(--color-blue-soft)]">
+                      <tr
+                        key={request.id}
+                        className="group border-b border-[var(--color-blue-soft)] transition-colors hover:bg-white/70"
+                      >
                         <td className="border-b border-[var(--color-blue-soft)] px-4 py-4">
                           {request.user?.email || '—'}
                         </td>
                         <td className="border-b border-[var(--color-blue-soft)] px-4 py-4">
                           {request.user?.id ? (
-                            <Link
-                              to={`/admin/users/${request.user.id}`}
-                              className="font-medium text-[var(--color-blue-dark)] underline decoration-transparent underline-offset-4 transition hover:decoration-current"
+                            <AdminUserNameLink
+                              userId={request.user.id}
+                              fullName={request.user.fullName}
+                              email={request.user.email}
+                              className="font-medium text-[var(--color-blue-dark)]"
                             >
                               {request.user?.fullName || request.user?.email || 'Профиль пользователя'}
-                            </Link>
+                            </AdminUserNameLink>
                           ) : (
                             request.user?.fullName || '—'
                           )}

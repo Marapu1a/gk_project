@@ -162,7 +162,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
                 <div className="rounded-[10px] bg-white px-4 py-4 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
                   <h4 className="dashboard-v2-title mb-3">Готовность к экзамену</h4>
                   <CheckLine ok={summary.ceu.ready} label="CEU-баллы">
-                    {formatNumber(capToRequired(summary.ceu.current.total, summary.ceu.required?.total))} / {formatNumber(summary.ceu.required?.total)}
+                    {formatNumber(summary.ceu.current.total)} / {formatNumber(summary.ceu.required?.total)}
                   </CheckLine>
                   <CheckLine ok={summary.supervision.ready} label="Часы">
                     {summary.supervision.required?.supervisor

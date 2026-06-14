@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { PageNav } from '@/components/PageNav';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
@@ -232,12 +233,13 @@ export function AdminDocumentReviewDetails() {
           <div>
             <h1 className="text-[24px] font-extrabold leading-tight">
               {request.user?.id ? (
-                <Link
-                  to={`/admin/users/${request.user.id}`}
-                  className="underline decoration-transparent underline-offset-4 transition hover:decoration-current"
+                <AdminUserNameLink
+                  userId={request.user.id}
+                  fullName={request.user.fullName}
+                  email={request.user.email}
                 >
                   {requestTitleName}
-                </Link>
+                </AdminUserNameLink>
               ) : (
                 requestTitleName
               )}

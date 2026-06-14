@@ -261,7 +261,7 @@ export function CertificationBlock({ user }: Props) {
   const supervisionRequired = isMentorshipTarget
     ? Number(supervisionSummary?.mentor?.required ?? 24)
     : Number(supervisionSummary?.required?.supervision ?? 0);
-  const ceuDisplay = capToRequired(ceuCurrent, ceuRequired);
+  const ceuDisplay = Math.max(0, ceuCurrent);
   const supervisionDisplay = capToRequired(supervisionCurrent, supervisionRequired);
   const supervisionLabel = isMentorshipTarget ? 'Часы менторства' : 'Часы супервизии';
 

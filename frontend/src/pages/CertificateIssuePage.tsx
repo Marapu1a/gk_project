@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { AdminIssueCertificateForm } from '@/features/certificate/components/AdminIssueCertificateForm';
 import { PageNav } from '@/components/PageNav';
 
 export default function CertificateIssuePage() {
+  const [searchParams] = useSearchParams();
+  const defaultEmail = searchParams.get('email') ?? '';
   const { data: me, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: fetchCurrentUser,
@@ -25,6 +28,7 @@ export default function CertificateIssuePage() {
 
         <div className="mt-8">
           <AdminIssueCertificateForm
+            defaultEmail={defaultEmail}
             onSuccess={() => {
               /* при желании: инвалидация/тост */
             }}

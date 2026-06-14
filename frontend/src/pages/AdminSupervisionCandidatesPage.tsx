@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { PageNav } from '@/components/PageNav';
 import { Button } from '@/components/Button';
@@ -352,17 +353,16 @@ function AdminSupervisionCandidatesContent() {
           <div className="p-5">
             <table className="dashboard-v2-text w-full table-fixed text-[#1F305E]">
               <colgroup>
-                <col className="w-[48px]" />
                 <col className="w-[20%]" />
                 <col className="w-[21%]" />
-                <col className="w-[24%]" />
+                <col className="w-[23%]" />
                 <col className="w-[13%]" />
-                <col className="w-[22%]" />
+                <col className="w-[18%]" />
+                <col className="w-[5%]" />
               </colgroup>
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
-                  <th className="rounded-l-[8px] px-3 py-3 font-medium" />
-                  <th className="px-3 py-3 font-medium">
+                  <th className="rounded-l-[8px] px-3 py-3 font-medium">
                     <button type="button" onClick={() => setSort('candidate')} className="font-medium">
                       ФИО {sortBy === 'candidate' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
@@ -382,11 +382,12 @@ function AdminSupervisionCandidatesContent() {
                       Последние добавленные {sortBy === 'createdAt' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="rounded-r-[8px] px-3 py-3 text-center font-medium">
+                  <th className="px-3 py-3 text-center font-medium">
                     <button type="button" onClick={() => setSort('status')} className="font-medium">
                       Состояние часов {sortBy === 'status' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
+                  <th className="rounded-r-[8px] px-3 py-3 text-center font-medium" />
                 </tr>
               </thead>
 
@@ -398,20 +399,18 @@ function AdminSupervisionCandidatesContent() {
                   return (
                     <tr
                       key={row.relationId}
-                      className={`border-b border-[#DCE8EC] last:border-b-0 ${
+                      className={`group border-b border-[#DCE8EC] transition-colors hover:bg-white/70 last:border-b-0 ${
                         row.relationStatus === 'REJECTED' ? 'text-[#8D96B5]' : ''
                       }`}
                     >
-                      <td className="px-3 py-3">
-                        <ActionArrowButton
-                          onClick={() => setSelectedRow(row)}
-                          size={31}
-                          title="Открыть детали отправки"
-                          aria-label="Открыть детали отправки"
-                        />
-                      </td>
                       <td className="break-words px-3 py-3 font-extrabold leading-snug">
-                        {candidateName(row.candidate.fullName, row.candidate.email)}
+                        <AdminUserNameLink
+                          userId={row.candidate.id}
+                          fullName={row.candidate.fullName}
+                          email={row.candidate.email}
+                        >
+                          {candidateName(row.candidate.fullName, row.candidate.email)}
+                        </AdminUserNameLink>
                       </td>
                       <td className="break-all px-3 py-3 leading-snug">{row.candidate.email}</td>
                       <td className="break-all px-3 py-3 leading-snug">
@@ -425,6 +424,14 @@ function AdminSupervisionCandidatesContent() {
                         <span className={`dashboard-v2-caption ${hourStateClass(state.tone)}`}>
                           {state.text}
                         </span>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <ActionArrowButton
+                          onClick={() => setSelectedRow(row)}
+                          size={31}
+                          title="Открыть детали отправки"
+                          aria-label="Открыть детали отправки"
+                        />
                       </td>
                     </tr>
                   );

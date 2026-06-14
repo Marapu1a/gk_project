@@ -26,12 +26,7 @@ function formatNumber(value: number | null | undefined) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function clampToRequired(value: number, required: number) {
-  if (required <= 0) return 0;
-  return Math.min(Math.max(0, value), required);
-}
-
-function normalizeCeuInput(value: string, required?: number) {
+function normalizeCeuInput(value: string) {
   const cleaned = value.replace(',', '.').replace(/[^\d.]/g, '');
   const firstDot = cleaned.indexOf('.');
   const normalized = (() => {
@@ -42,16 +37,13 @@ function normalizeCeuInput(value: string, required?: number) {
     return `${before}.${after}`;
   })();
 
-  const parsed = parseValue(normalized);
-  if (required != null && parsed != null && parsed > required) return formatNumber(required);
-
   return normalized;
 }
 
-function normalizeCeuInputOnBlur(value: string, required: number) {
+function normalizeCeuInputOnBlur(value: string) {
   const parsed = parseValue(value);
   if (parsed === null) return '0';
-  return formatNumber(clampToRequired(parsed, required));
+  return formatNumber(parsed);
 }
 
 function parseValue(value: string) {
@@ -75,7 +67,7 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
         const categoryRequired = required?.[category.requiredKey] ?? 0;
         acc[category.key] = {
           current,
-          draft: draft[category.key] ?? formatNumber(clampToRequired(current, categoryRequired)),
+          draft: draft[category.key] ?? formatNumber(current),
           required: categoryRequired,
         };
         return acc;
@@ -111,15 +103,6 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
     );
     if (invalid) {
       toast.error('Проверьте значения CEU-баллов');
-      return;
-    }
-
-    const overLimit = editableCategories.find((category) => {
-      const parsed = parseValue(values[category.key].draft);
-      return parsed != null && parsed > values[category.key].required;
-    });
-    if (overLimit) {
-      toast.error(`Нельзя сохранить больше ${formatNumber(values[overLimit.key].required)} CEU-баллов`);
       return;
     }
 
@@ -194,7 +177,7 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,
-                      [category.key]: normalizeCeuInput(event.target.value, item.required),
+                      [category.key]: normalizeCeuInput(event.target.value),
                     }))
                   }
                   onFocus={(event) => {
@@ -205,11 +188,10 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
                   onBlur={() => {
                     setDraft((current) => ({
                       ...current,
-                      [category.key]: normalizeCeuInputOnBlur(current[category.key] ?? item.draft, item.required),
+                      [category.key]: normalizeCeuInputOnBlur(current[category.key] ?? item.draft),
                     }));
                   }}
                   inputMode="decimal"
-                  max={item.required}
                   className="h-[38px] w-[82px] rounded-[10px] border border-[#B8C4D8] bg-white px-2 text-right text-[24px] font-extrabold leading-none text-[#1F305E] outline-none transition focus:border-[var(--color-blue-dark)] focus:shadow-[0_0_0_2px_rgba(31,48,94,0.12)] disabled:cursor-not-allowed disabled:border-[#D7DCE7] disabled:bg-[#EEF0F4] disabled:text-[#8D96B5]"
                   disabled={mutation.isPending || !isEditable}
                   aria-label={`${category.label}: подтвержденные CEU-баллы`}
