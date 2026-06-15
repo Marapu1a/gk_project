@@ -12,6 +12,7 @@ import {
   registerCustomCity, // runtime-регистрация
   type LocationOption as Option,
 } from '@/utils/locationDictionary';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type Props = {
   countries: string[];
@@ -109,15 +110,13 @@ export function UserLocationFields({ countries, cities, onChange }: Props) {
     const normalized = normalizeRussianCityName(inputValue);
 
     if (!isValidRussianCityName(normalized)) {
-      toast.error(
-        'Город должен быть на русском: буквы А–Я/Ё, пробелы и дефисы. Без латиницы и цифр.',
-      );
+      toast.error(UI_TOAST_MESSAGES.profile.cityInvalid);
       return;
     }
 
     const codes = selectedCountryOptions.map((c) => c.value);
     if (!codes.length) {
-      toast.error('Сначала выберите страну.');
+      toast.error(UI_TOAST_MESSAGES.profile.countryRequiredForCity);
       return;
     }
 

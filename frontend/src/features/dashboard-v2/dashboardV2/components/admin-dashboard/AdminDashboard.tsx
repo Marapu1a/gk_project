@@ -22,6 +22,7 @@ import { useAllDocReviewRequests } from '@/features/documentReviewAdmin/hooks/us
 import { useDownloadUsersExport } from '@/features/admin/hooks/useDownloadUsersExport';
 import { useCreateDbBackup } from '@/features/backup/hooks/useCreateDbBackup';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type AdminDashboardProps = {
   user: {
@@ -273,9 +274,9 @@ function NotificationRow({ notification }: { notification: Notification }) {
 
     try {
       await deleteNotification.mutateAsync(notification.id);
-      toast.success('Уведомление удалено');
+      toast.success(UI_TOAST_MESSAGES.admin.notificationDeleted);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось удалить уведомление');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.notificationDeleteFailed);
     }
   };
 

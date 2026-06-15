@@ -26,6 +26,26 @@ export const targetLevelLabels: Record<string, string> = {
   SUPERVISOR: 'Супервизор',
 };
 
+export const certificationLevelDisplayLabels: Record<string, string> = {
+  Соискатель: 'Соискатель',
+  Инструктор: 'Инструктор',
+  Куратор: 'Куратор',
+  Супервизор: 'Супервизор',
+  'Опытный Супервизор': 'Опытный супервизор',
+  'Опытный супервизор': 'Опытный супервизор',
+};
+
+export const systemRoleLabels: Record<string, string> = {
+  STUDENT: 'Пользователь',
+  REVIEWER: 'Проверяющий специалист',
+  ADMIN: 'Администратор',
+};
+
+export function formatCertificationLevelName(value?: string | null) {
+  if (!value) return '—';
+  return certificationLevelDisplayLabels[value] ?? value;
+}
+
 // Статусы записей
 export const recordStatusLabels: Record<string, string> = {
   CONFIRMED: 'Подтверждено',

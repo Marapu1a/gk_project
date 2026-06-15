@@ -7,6 +7,7 @@ import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { documentReviewStatusLabels } from '@/utils/documentReviewStatusLabels';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useUserPaymentsById } from '@/features/payment/hooks/useUserPaymentsById';
 import { useGetDocReviewRequestById } from '../hooks/useGetDocReviewRequestById';
 import {
@@ -166,22 +167,22 @@ export function AdminDocumentReviewDetails() {
         fileReviewId: item.id,
         payload: { type },
       });
-      toast.success('Тип документа обновлен');
+      toast.success(UI_TOAST_MESSAGES.documents.typeUpdated);
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Не удалось обновить тип документа');
+      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.documents.updateFailed);
     }
   };
 
   const handleStatus = async (item: ReviewFile, status: DocumentReviewFileStatus) => {
     if (item.id.startsWith('legacy-')) {
-      toast.info('Это старая запись без пофайлового управления');
+      toast.info(UI_TOAST_MESSAGES.documents.legacyRecord);
       return;
     }
 
     const comment = comments[item.id]?.trim() || '';
 
     if ((status === 'REJECTED' || status === 'DELETED') && !comment) {
-      toast.error('Для отклонения или удаления нужен комментарий');
+      toast.error(UI_TOAST_MESSAGES.documents.adminCommentRequired);
       return;
     }
 
@@ -197,15 +198,15 @@ export function AdminDocumentReviewDetails() {
           adminComment: comment || null,
         },
       });
-      toast.success('Документ обновлен');
+      toast.success(UI_TOAST_MESSAGES.documents.updated);
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Не удалось обновить документ');
+      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.documents.updateFailed);
     }
   };
 
   const handleDeleteForever = async (item: ReviewFile) => {
     if (item.id.startsWith('legacy-')) {
-      toast.info('Это старая запись без пофайлового управления');
+      toast.info(UI_TOAST_MESSAGES.documents.legacyRecord);
       return;
     }
 
@@ -220,9 +221,9 @@ export function AdminDocumentReviewDetails() {
 
     try {
       await deleteFileRecord.mutateAsync(item.id);
-      toast.success('Документ удален из заявки');
+      toast.success(UI_TOAST_MESSAGES.documents.deletedFromRequest);
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Не удалось удалить документ');
+      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.documents.deleteFailed);
     }
   };
 

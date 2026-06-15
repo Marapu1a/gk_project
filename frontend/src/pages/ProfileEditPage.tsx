@@ -15,6 +15,7 @@ import {
   splitFullName,
 } from '@/features/user/utils/name';
 import { normalizePhone } from '@/features/user/utils/phone';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 function toDateInput(value?: string | null) {
   return value ? value.slice(0, 10) : '';
@@ -74,23 +75,23 @@ export default function ProfileEditPage() {
     const lastNameLatin = form.lastNameLatin.trim();
 
     if (!firstName || !lastName) {
-      toast.error('Имя и фамилия обязательны');
+      toast.error(UI_TOAST_MESSAGES.profile.shortFullNameRequired);
       return;
     }
 
     if (!form.noMiddleName && !middleName) {
-      toast.error('Укажите отчество или отметьте, что отчества нет');
+      toast.error(UI_TOAST_MESSAGES.profile.middleNameRequired);
       return;
     }
 
     if (!firstNameLatin || !lastNameLatin) {
-      toast.error('Имя и фамилия ENG обязательны');
+      toast.error(UI_TOAST_MESSAGES.profile.latinNameEngRequired);
       return;
     }
 
     const phone = normalizePhone(form.phone);
     if (phone && !isValidPhoneNumber(phone)) {
-      toast.error('Неверный номер телефона');
+      toast.error(UI_TOAST_MESSAGES.profile.phoneInvalid);
       return;
     }
 
@@ -106,10 +107,10 @@ export default function ProfileEditPage() {
         ibaoId: form.ibaoId.trim(),
       });
 
-      toast.success('Данные сохранены');
+      toast.success(UI_TOAST_MESSAGES.profile.dataSaved);
       navigate('/dashboard-v2');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось сохранить данные');
+      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.profile.saveFailed);
     }
   };
 
@@ -124,9 +125,9 @@ export default function ProfileEditPage() {
 
     try {
       await archiveRequest.mutateAsync();
-      toast.success('Запрос на удаление отправлен администраторам');
+      toast.success(UI_TOAST_MESSAGES.profile.deleteRequestSent);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось отправить запрос');
+      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.profile.deleteRequestFailed);
     }
   };
 

@@ -13,7 +13,8 @@ import type { TargetLevel as ApiTargetLevel, GoalMode } from '@/features/user/ap
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { useMyExamApp } from '@/features/exam/hooks/useMyExamApp';
 import { usePatchExamAppStatus } from '@/features/exam/hooks/usePatchExamAppStatus';
-import { examStatusLabels } from '@/utils/labels';
+import { examStatusLabels, formatCertificationLevelName } from '@/utils/labels';
+import { getServerErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { toast } from 'sonner';
 
 type Props = {
@@ -104,7 +105,7 @@ function getRenewalOption(activeGroupName?: string): GoalOption | null {
   if (activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор') {
     return {
       value: 'RENEWAL_SUPERVISOR',
-      label: 'Ресертификация: Опытный Супервизор',
+      label: 'Ресертификация: Опытный супервизор',
       targetLevel: 'SUPERVISOR',
       goalMode: 'RENEWAL',
     };
@@ -125,10 +126,10 @@ function getDisplayTargetLabel(
     targetLevel === 'SUPERVISOR' &&
     (activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор')
   ) {
-    return 'Опытный Супервизор';
+    return 'Опытный супервизор';
   }
 
-  return TARGET_LEVEL_LABELS[targetLevel];
+  return formatCertificationLevelName(TARGET_LEVEL_LABELS[targetLevel]);
 }
 
 function capToRequired(value: number, required: number) {
@@ -227,24 +228,7 @@ export function CertificationBlock({ user }: Props) {
   const serverErr = ((setTarget.error as any)?.response?.data?.errorCode ??
     (setTarget.error as any)?.response?.data?.error) as string | undefined;
 
-  const errorMessage =
-    serverErr === 'TARGET_LOCKED'
-      ? 'Цель уже выбрана. Сменить можно после повышения уровня или через администратора.'
-      : serverErr === 'TARGET_NOT_ALLOWED_FOR_ACTIVE_GROUP'
-        ? 'Эта цель недоступна для вашего текущего уровня.'
-        : serverErr === 'TARGET_BELOW_ACTIVE'
-          ? 'Нельзя выбрать цель ниже уже достигнутого уровня.'
-          : serverErr === 'NO_TARGET_FOR_SUPERVISOR'
-            ? 'Для супервизоров и опытных супервизоров обычная цель больше не требуется.'
-            : serverErr === 'INVALID_GOAL_MODE'
-              ? 'Некорректный режим выбора цели.'
-              : serverErr === 'RENEWAL_NOT_AVAILABLE'
-                ? 'Ресертификация недоступна.'
-                : serverErr === 'TARGET_ALREADY_SELECTED'
-                  ? 'Сначала нужно сбросить текущую цель.'
-                  : serverErr === 'RENEWAL_TARGET_NOT_ALLOWED'
-                    ? 'Ресертификация для текущего уровня недоступна.'
-                    : null;
+  const errorMessage = getServerErrorMessage(serverErr) ?? null;
 
   const ceuSummary = (ceuSummaryQuery.data ?? null) as CeuSummaryLike | null;
   const supervisionSummary = (supervisionSummaryQuery.data ??
@@ -290,13 +274,13 @@ export function CertificationBlock({ user }: Props) {
       { userId: examApp.userId, status: 'PENDING' },
       {
         onSuccess: () => {
-          toast.success('Заявка на экзамен отправлена');
+          toast.success(UI_TOAST_MESSAGES.exam.requestSent);
         },
         onError: (error: any) => {
           toast.error(
             error?.response?.data?.message ||
               error?.response?.data?.error ||
-              'Не удалось отправить заявку на экзамен',
+              UI_TOAST_MESSAGES.exam.statusUpdateFailed,
           );
         },
       },
@@ -378,7 +362,7 @@ export function CertificationBlock({ user }: Props) {
               locked ? 'Сменить можно после повышения уровня или через администратора' : undefined
             }
           >
-            <option value="">Выбрать целевой уровень</option>
+            <option value="">Выбрать цель сертификации</option>
             {options.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -440,7 +424,7 @@ export function CertificationBlock({ user }: Props) {
   return (
     <section className="card-section flex h-full min-h-[340px] w-full flex-col px-5 py-6 shadow-soft">
       <h2 className="dashboard-v2-title mb-5 text-center">
-        Целевой уровень сертификации
+        Планируемый уровень сертификации
       </h2>
 
       <div className="dashboard-v2-label dashboard-v2-level-pill mb-6">

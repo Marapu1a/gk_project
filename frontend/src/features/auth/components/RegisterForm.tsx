@@ -15,6 +15,7 @@ import 'react-phone-input-2/lib/style.css';
 import { toast } from 'sonner';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import { AuthCard, AuthField, AuthSubmitButton, PasswordInput } from './AuthLayout';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 // utils
 import { buildFullNameRu, buildFullNameLatin } from '@/features/user/utils/name';
@@ -167,15 +168,13 @@ export function RegisterForm() {
       return data;
     },
     onSuccess: () => {
-      toast.success('Регистрация успешна');
+      toast.success(UI_TOAST_MESSAGES.auth.registerSuccess);
       navigate('/dashboard-v2');
     },
     onError: (error: any) => {
       const backendMessage = error?.response?.data?.error;
 
-      toast.error(
-        backendMessage || 'Регистрация прошла, но не удалось зафиксировать обязательные согласия',
-      );
+      toast.error(backendMessage || UI_TOAST_MESSAGES.auth.registerFailed);
     },
   });
 
@@ -187,7 +186,7 @@ export function RegisterForm() {
   const onSubmit = form.handleSubmit(
     (raw) => {
       if (!requiredConsentsAccepted) {
-        toast.error('Подтвердите обязательные условия и согласия');
+        toast.error(UI_TOAST_MESSAGES.auth.requiredConsents);
         return;
       }
 
@@ -210,7 +209,7 @@ export function RegisterForm() {
 
       const phoneIntl = normalizePhone(phone);
       if (phoneIntl && !isValidPhoneNumber(phoneIntl)) {
-        toast.error('Введите корректный номер телефона');
+        toast.error(UI_TOAST_MESSAGES.auth.phoneInvalid);
         form.setFocus('phone');
         return;
       }
@@ -229,7 +228,7 @@ export function RegisterForm() {
     (errors) => {
       const first = getFirstError(errors);
       if (!first) {
-        toast.error('Проверьте поля формы');
+        toast.error(UI_TOAST_MESSAGES.auth.formCheck);
         return;
       }
 

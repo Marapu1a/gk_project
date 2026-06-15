@@ -88,9 +88,16 @@ export async function patchExamAppStatusHandler(req: FastifyRequest, reply: Fast
       status: next,
       comment: isAdminActor ? comment.trim() || null : next === 'PENDING' ? null : app.comment,
       submittedAt: next === 'PENDING' ? now : app.submittedAt,
-      reviewedAt: isAdminActor && (next === 'APPROVED' || next === 'REJECTED') ? now : app.reviewedAt,
+      reviewedAt:
+        next === 'PENDING'
+          ? null
+          : isAdminActor && (next === 'APPROVED' || next === 'REJECTED')
+            ? now
+            : app.reviewedAt,
       reviewedByEmail:
-        isAdminActor && (next === 'APPROVED' || next === 'REJECTED')
+        next === 'PENDING'
+          ? null
+          : isAdminActor && (next === 'APPROVED' || next === 'REJECTED')
           ? req.user.email ?? null
           : app.reviewedByEmail,
     },
@@ -131,9 +138,7 @@ export async function patchExamAppStatusHandler(req: FastifyRequest, reply: Fast
           ? 'Заявка на экзамен одобрена'
           : next === 'REJECTED'
             ? `Заявка на экзамен отклонена: ${comment.trim()}`
-            : next === 'PENDING'
-              ? 'Заявка на экзамен переведена на рассмотрение'
-              : 'Заявка на экзамен сброшена, можно подать заново';
+            : 'Заявка на экзамен переведена на рассмотрение';
 
       await createNotification({
         userId,

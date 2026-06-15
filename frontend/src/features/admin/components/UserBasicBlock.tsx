@@ -9,6 +9,8 @@ import {
 } from '@/features/files/components/AvatarUploadModal';
 import { useUpdateUserInfo } from '@/features/admin/hooks/useUpdateUserInfo';
 import { UserLocationFields } from '@/features/user/components/UserLocationFields';
+import { formatCertificationLevelName, systemRoleLabels } from '@/utils/labels';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type Props = {
   userId: string;
@@ -25,8 +27,6 @@ type Props = {
   createdAt: string;
   groupName: string | null;
 };
-
-const roleMap = { ADMIN: 'Администратор', REVIEWER: 'Проверяющий', STUDENT: 'Соискатель' } as const;
 
 function toDateInput(iso: string) {
   return iso.slice(0, 10);
@@ -184,7 +184,7 @@ export default function UserBasicBlock(props: Props) {
 
     const phoneIntl = normalizePhone(form.phone);
     if (phoneIntl && !isValidPhoneNumber(phoneIntl)) {
-      toast.error('Неверный номер телефона');
+      toast.error(UI_TOAST_MESSAGES.auth.phoneInvalid);
       return;
     }
 
@@ -200,10 +200,10 @@ export default function UserBasicBlock(props: Props) {
 
       setDisplayFullName(fullNameOut || '');
       setDisplayFullNameLatin(fullNameLatinOut || null);
-      toast.success('Данные пользователя обновлены');
+      toast.success(UI_TOAST_MESSAGES.profile.userDataSaved);
       setEdit(false);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось сохранить');
+      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.profile.userDataSaveFailed);
     }
   };
 
@@ -262,8 +262,8 @@ export default function UserBasicBlock(props: Props) {
             <Meta label="Дата рождения" value={fmt(birthDate)} />
             <Meta label="Город" value={city || '—'} />
             <Meta label="Страна" value={country || '—'} />
-            <Meta label="Роль" value={roleMap[role]} />
-            <Meta label="Основная группа" value={groupName || '—'} />
+            <Meta label="Права в системе" value={systemRoleLabels[role] || role} />
+            <Meta label="Текущий уровень сертификации" value={formatCertificationLevelName(groupName)} />
             <Meta label="Зарегистрирован" value={fmt(createdAt)} />
           </div>
         ) : (

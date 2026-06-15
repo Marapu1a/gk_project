@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { abandonActiveCycle } from '../api/abandonActiveCycle';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 export function useAbandonActiveCycle(userId: string) {
   const qc = useQueryClient();
@@ -9,7 +10,7 @@ export function useAbandonActiveCycle(userId: string) {
     mutationFn: (reason: string) => abandonActiveCycle(userId, reason),
 
     onSuccess: async () => {
-      toast.success('Активный цикл отменён');
+      toast.success(UI_TOAST_MESSAGES.admin.currentCycleAbandoned);
 
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
@@ -24,7 +25,7 @@ export function useAbandonActiveCycle(userId: string) {
     },
 
     onError: (err: any) => {
-      toast.error(err?.response?.data?.error || 'Ошибка отмены цикла');
+      toast.error(getUiErrorMessage(err, UI_TOAST_MESSAGES.admin.currentCycleAbandonFailed));
     },
   });
 }

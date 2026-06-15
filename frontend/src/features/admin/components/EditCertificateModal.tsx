@@ -8,6 +8,8 @@ import { updateFile } from '@/features/files/api/updateFile';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { deleteFile } from '@/features/files/api/deleteFile';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { toCertificateDateInputValue } from '@/features/certificate/utils/certificateDates';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_CERTIFICATE_FILE_MB = 20;
@@ -46,12 +48,6 @@ type UploadedCertificateFile = {
   mimeType: string;
 };
 
-function toDateInput(value: string | null) {
-  if (!value) return '';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
-}
-
 function getCertificateNumberSuffix(number: string | null) {
   if (!number) return '';
   return number.startsWith(CERTIFICATE_NUMBER_PREFIX)
@@ -66,8 +62,8 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
 
   const [title, setTitle] = useState(certificate.title ?? '');
   const [numberSuffix, setNumberSuffix] = useState(getCertificateNumberSuffix(certificate.number));
-  const [issuedAt, setIssuedAt] = useState(toDateInput(certificate.issuedAt));
-  const [expiresAt, setExpiresAt] = useState(toDateInput(certificate.expiresAt));
+  const [issuedAt, setIssuedAt] = useState(toCertificateDateInputValue(certificate.issuedAt));
+  const [expiresAt, setExpiresAt] = useState(toCertificateDateInputValue(certificate.expiresAt));
 
   const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<UploadedCertificateFile | null>(null);
@@ -87,10 +83,10 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
 
     try {
       await deleteMutation.mutateAsync(certificate.id);
-      toast.success('Сертификат отозван');
+      toast.success(UI_TOAST_MESSAGES.certificate.revoked);
       onClose();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось отозвать сертификат');
+      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.certificate.revokeFailed);
     }
   }
 
@@ -101,8 +97,8 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
       const payload: any = {
         title: title.trim() || undefined,
         number: `${CERTIFICATE_NUMBER_PREFIX}${numberSuffix.trim()}`,
-        issuedAt: new Date(issuedAt).toISOString(),
-        expiresAt: new Date(expiresAt).toISOString(),
+        issuedAt,
+        expiresAt,
       };
 
       if (uploadedFileId) {
@@ -114,7 +110,7 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
         payload,
       });
 
-      toast.success('Сертификат обновлён');
+      toast.success(UI_TOAST_MESSAGES.certificate.updated);
 
       onUpdated({
         title: updated.title,
@@ -128,7 +124,7 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
 
       onClose();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось сохранить изменения');
+      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.certificate.updateFailed);
     }
   }
 
@@ -140,12 +136,12 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
       file.type === 'application/pdf' || file.name.trim().toLowerCase().endsWith('.pdf');
 
     if (!isPdf) {
-      toast.error('Для сертификата можно загрузить только PDF-файл');
+      toast.error(UI_TOAST_MESSAGES.files.pdfOnly);
       return;
     }
 
     if (file.size > MAX_CERTIFICATE_FILE_MB * 1024 * 1024) {
-      toast.error(`Файл больше ${MAX_CERTIFICATE_FILE_MB} МБ`);
+      toast.error(UI_TOAST_MESSAGES.files.tooLarge(MAX_CERTIFICATE_FILE_MB));
       return;
     }
 
@@ -164,13 +160,13 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
       try {
         await updateFile(uploaded.id, 'CERTIFICATE');
       } catch {
-        toast.info('Файл загружен, но не удалось обновить метаданные.');
+        toast.info(UI_TOAST_MESSAGES.certificate.fileMetadataWarning);
       }
 
       setUploadedFile(uploaded);
       setUploadedFileId(uploaded.id);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось загрузить сертификат');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.certificate.uploadFailed);
     } finally {
       setIsUploadingFile(false);
     }
@@ -184,13 +180,13 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
       setUploadedFile(null);
       setUploadedFileId(null);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось удалить файл');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.certificate.deleteFileFailed);
     }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handlePdfDrop,
-    onDropRejected: () => toast.error('Для сертификата можно загрузить только PDF-файл'),
+    onDropRejected: () => toast.error(UI_TOAST_MESSAGES.files.pdfOnly),
     multiple: false,
     accept: { 'application/pdf': ['.pdf'] },
     disabled: isBusy,
@@ -206,7 +202,7 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
-              <label className="dashboard-v2-label mb-1 block">Группа сертификата</label>
+              <label className="dashboard-v2-label mb-1 block">Уровень сертификата</label>
               <input
                 className="input-design h-[32px] bg-[#F7F9FB]"
                 value={certificate.group?.name ?? '—'}

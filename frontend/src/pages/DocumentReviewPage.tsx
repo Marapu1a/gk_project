@@ -9,6 +9,7 @@ import { useRequestDocumentDeletion } from '@/features/documentReview/hooks/useR
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { documentTypeLabels } from '@/utils/documentTypeLabels';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type FileStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'DELETED';
 
@@ -173,10 +174,10 @@ export default function DocumentReviewPage() {
                 fileReviewId: deleteRequestTarget.id,
                 comment,
               });
-              toast.success('Запрос на удаление отправлен');
+              toast.success(UI_TOAST_MESSAGES.documents.deleteRequestSent);
               setDeleteRequestTarget(null);
             } catch (err: any) {
-              toast.error(err?.response?.data?.error || 'Не удалось отправить запрос');
+              toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.documents.deleteRequestFailed);
             }
           }}
         />
@@ -308,7 +309,7 @@ function DeletionRequestModal({
           event.preventDefault();
           const trimmed = comment.trim();
           if (!trimmed) {
-            toast.error('Укажите причину удаления');
+            toast.error(UI_TOAST_MESSAGES.documents.deleteReasonRequired);
             return;
           }
           onSubmit(trimmed);

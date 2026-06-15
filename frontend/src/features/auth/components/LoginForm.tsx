@@ -10,6 +10,7 @@ import { loginSchema } from '../validation/loginSchema';
 import type { LoginDto } from '../validation/loginSchema';
 import { loginUser } from '../api/login';
 import { fetchCurrentUser } from '@/features/auth/api/me';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const ARCHIVED_ACCOUNT_MESSAGE = 'Аккаунт удалён, для восстановления свяжитесь с нами';
 const CONTACTS_URL = 'https://reestrpap.ru/contacts';
@@ -76,11 +77,11 @@ export function LoginForm() {
     mutationFn: loginUser,
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
-      toast.success('Вход выполнен');
+      toast.success(UI_TOAST_MESSAGES.auth.loginSuccess);
       navigate(normalizeRedirect(params.get('to')), { replace: true });
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.error || 'Ошибка входа';
+      const message = error?.response?.data?.error || UI_TOAST_MESSAGES.auth.loginFailed;
       form.setError('root.serverError', { message });
       toast.error(message === ARCHIVED_ACCOUNT_MESSAGE ? <ArchivedAccountError /> : message);
     },

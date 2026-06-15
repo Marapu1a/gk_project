@@ -10,6 +10,7 @@ import { deleteFile } from '@/features/files/api/deleteFile';
 import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_FILES = 10;
@@ -47,7 +48,7 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
     try {
       await updateFileType.mutateAsync({ fileId, type });
     } catch {
-      toast.error('Не удалось сохранить тип документа');
+      toast.error(UI_TOAST_MESSAGES.documents.updateFailed);
     }
   };
 
@@ -62,9 +63,9 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
 
     try {
       await deleteFile(fileId);
-      toast.success('Файл удален');
+      toast.success(UI_TOAST_MESSAGES.files.fileDeleted);
     } catch {
-      toast.info('Физически удалить не удалось. Уберем из списка.');
+      toast.info(UI_TOAST_MESSAGES.files.physicalDeleteFailed);
     } finally {
       setFiles((current) => current.filter((file) => file.id !== fileId));
     }
@@ -75,7 +76,7 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
 
     const availableSlots = MAX_FILES - files.length;
     if (availableSlots <= 0) {
-      toast.error(`Можно загрузить до ${MAX_FILES} файлов`);
+      toast.error(UI_TOAST_MESSAGES.files.maxFiles(MAX_FILES));
       return;
     }
 
@@ -83,7 +84,7 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
     const oversized = nextFiles.find((file) => file.size > MAX_SIZE_MB * 1024 * 1024);
 
     if (oversized) {
-      toast.error(`Файл больше ${MAX_SIZE_MB} МБ`);
+      toast.error(UI_TOAST_MESSAGES.files.tooLarge(MAX_SIZE_MB));
       return;
     }
 
@@ -97,13 +98,15 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
       }
 
       setFiles((current) => [...current, ...uploaded]);
-      toast.success(uploaded.length === 1 ? 'Файл загружен' : 'Файлы загружены');
+      toast.success(
+        uploaded.length === 1 ? UI_TOAST_MESSAGES.files.fileUploaded : UI_TOAST_MESSAGES.files.filesUploaded,
+      );
     } catch (err: any) {
       const message =
         err?.response?.data?.error ??
         (err?.response?.status === 413
-          ? `Файл превышает допустимый размер (${MAX_SIZE_MB}MB)`
-          : 'Ошибка загрузки файла');
+          ? UI_TOAST_MESSAGES.files.tooLarge(MAX_SIZE_MB)
+          : UI_TOAST_MESSAGES.files.uploadFailed);
 
       toast.error(message);
     } finally {
@@ -127,12 +130,12 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
     event.preventDefault();
 
     if (!files.length) {
-      toast.error('Добавьте хотя бы один файл.');
+      toast.error(UI_TOAST_MESSAGES.documents.noFilesSelected);
       return;
     }
 
     if (files.some((file) => !file.type)) {
-      toast.error('У каждого файла должен быть выбран тип документа.');
+      toast.error(UI_TOAST_MESSAGES.documents.fileTypeRequired);
       return;
     }
 
@@ -145,12 +148,12 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
         comment,
       });
 
-      toast.success('Заявка отправлена');
+      toast.success(UI_TOAST_MESSAGES.documents.requestSent);
       setFiles([]);
       setComment('');
       queryClient.invalidateQueries({ queryKey: ['docReviewReq'] });
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Ошибка при отправке');
+      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.files.uploadFailed);
     }
   };
 

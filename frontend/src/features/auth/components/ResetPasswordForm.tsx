@@ -7,6 +7,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { AuthCard, AuthField, AuthFooterLinks, AuthSubmitButton, PasswordInput } from './AuthLayout';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type FormData = z.infer<typeof resetPasswordSchema>;
 
@@ -40,10 +41,10 @@ export function ResetPasswordForm() {
   const onSubmit = handleSubmit(async (data) => {
     try {
       await resetPassword({ token, password: data.password });
-      toast.success('Пароль обновлён');
+      toast.success(UI_TOAST_MESSAGES.auth.passwordUpdated);
       navigate('/login');
     } catch (err: any) {
-      const message = err?.response?.data?.error || 'Ссылка устарела или недействительна';
+      const message = err?.response?.data?.error || UI_TOAST_MESSAGES.auth.passwordResetLinkInvalid;
       setError('root.serverError', { message });
       toast.error(message);
     }

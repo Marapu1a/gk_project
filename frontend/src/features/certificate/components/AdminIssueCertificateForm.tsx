@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useUsers } from '@/features/admin/hooks/useUsers';
 import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_CERTIFICATE_FILE_MB = 20;
@@ -123,18 +124,6 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
     });
   }, [allUsers, userSearchInput]);
 
-  function toISOStartOfDay(dateStr: string) {
-    if (!dateStr) return '';
-    const d = new Date(`${dateStr}T00:00:00`);
-    return d.toISOString();
-  }
-
-  function toISOEndOfDay(dateStr: string) {
-    if (!dateStr) return '';
-    const d = new Date(`${dateStr}T23:59:59`);
-    return d.toISOString();
-  }
-
   const canSubmit =
     !!email.trim() &&
     !!title.trim() &&
@@ -155,10 +144,10 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       return 'На этот цикл уже выдан сертификат.';
     }
     if (code === 'CERTIFICATE_FILE_MUST_BE_PDF') {
-      return 'Для сертификата можно загрузить только PDF-файл.';
+      return UI_TOAST_MESSAGES.files.pdfOnly;
     }
     if (code === 'TARGET_GROUP_NOT_CONFIGURED') return 'Целевая группа не настроена в системе.';
-    return err?.response?.data?.error || err?.message || 'Не удалось выдать сертификат';
+    return err?.response?.data?.error || err?.message || UI_TOAST_MESSAGES.certificate.issueFailed;
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -176,8 +165,8 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
         email: email.trim(),
         title: title.trim(),
         number: `${CERTIFICATE_NUMBER_PREFIX}${numberSuffix.trim()}`,
-        issuedAt: toISOStartOfDay(issuedDate),
-        expiresAt: toISOEndOfDay(expiresDate),
+        issuedAt: issuedDate,
+        expiresAt: expiresDate,
         uploadedFileId,
       });
 
@@ -217,12 +206,12 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       file.type === 'application/pdf' || file.name.trim().toLowerCase().endsWith('.pdf');
 
     if (!isPdf) {
-      toast.error('Для сертификата можно загрузить только PDF-файл');
+      toast.error(UI_TOAST_MESSAGES.files.pdfOnly);
       return;
     }
 
     if (file.size > MAX_CERTIFICATE_FILE_MB * 1024 * 1024) {
-      toast.error(`Файл больше ${MAX_CERTIFICATE_FILE_MB} МБ`);
+      toast.error(UI_TOAST_MESSAGES.files.tooLarge(MAX_CERTIFICATE_FILE_MB));
       return;
     }
 
@@ -241,13 +230,13 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       try {
         await updateFile(uploaded.id, 'CERTIFICATE');
       } catch {
-        toast.info('Файл загружен, но не удалось обновить метаданные.');
+        toast.info(UI_TOAST_MESSAGES.certificate.fileMetadataWarning);
       }
 
       setUploadedFile(uploaded);
       setUploadedFileId(uploaded.id);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось загрузить сертификат');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.certificate.uploadFailed);
     } finally {
       setIsUploadingFile(false);
     }
@@ -261,13 +250,13 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       setUploadedFile(null);
       setUploadedFileId('');
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось удалить файл');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.certificate.deleteFileFailed);
     }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handlePdfDrop,
-    onDropRejected: () => toast.error('Для сертификата можно загрузить только PDF-файл'),
+    onDropRejected: () => toast.error(UI_TOAST_MESSAGES.files.pdfOnly),
     multiple: false,
     accept: { 'application/pdf': ['.pdf'] },
     disabled: isBusy,
@@ -359,7 +348,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       <div className="mt-7 grid grid-cols-1 gap-5 md:grid-cols-2">
         <div>
           <label className="block text-[13px] font-semibold text-[var(--color-blue-dark)]">
-            Группа сертификата
+            Уровень сертификата
           </label>
           <select
             value={title}

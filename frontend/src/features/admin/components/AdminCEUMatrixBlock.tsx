@@ -4,6 +4,7 @@ import { useUserCEUMatrix } from '../hooks/ceu/useUserCEUMatrix';
 import { useUpdateUserCEUMatrix } from '../hooks/ceu/useUpdateUserCEUMatrix';
 import type { CEUCategory } from '../api/ceu/getUserCEUMatrix';
 import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const CATEGORIES: Array<{ key: CEUCategory; label: string; requiredKey: RequiredKey }> = [
   { key: 'ETHICS', label: 'Этика', requiredKey: 'ethics' },
@@ -94,7 +95,7 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
     }).filter((item) => item.value !== null && item.value !== item.current);
 
     if (!changed.length) {
-      toast.info('Нет изменений для сохранения');
+      toast.info(UI_TOAST_MESSAGES.admin.noChanges);
       return;
     }
 
@@ -102,7 +103,7 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
       (category) => parseValue(values[category.key].draft) === null,
     );
     if (invalid) {
-      toast.error('Проверьте значения CEU-баллов');
+      toast.error(UI_TOAST_MESSAGES.ceu.valuesInvalid);
       return;
     }
 
@@ -123,14 +124,14 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
         CULTURAL_DIVERSITY: undefined,
         GENERAL: undefined,
       });
-      toast.success(notifyUser ? 'CEU-баллы сохранены, уведомление отправлено' : 'CEU-баллы сохранены тихо');
+      toast.success(notifyUser ? UI_TOAST_MESSAGES.ceu.adminSavedNotify : UI_TOAST_MESSAGES.ceu.adminSavedQuiet);
       setIsNotifyChoiceOpen(false);
     } catch (err: any) {
       const errorCode = err?.response?.data?.errorCode ?? err?.response?.data?.error;
       const message =
         errorCode === 'NO_ACTIVE_CYCLE'
-          ? 'У пользователя нет активного цикла'
-          : err?.response?.data?.error || 'Не удалось сохранить CEU-баллы';
+          ? UI_TOAST_MESSAGES.admin.noActiveCycleForEdit
+          : err?.response?.data?.error || UI_TOAST_MESSAGES.ceu.adminSaveFailed;
       toast.error(message);
     }
   };

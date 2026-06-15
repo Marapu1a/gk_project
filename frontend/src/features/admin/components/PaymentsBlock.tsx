@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { paymentStatusLabels, paymentTypeLabels } from '@/utils/labels';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useUpdatePaymentStatus } from '@/features/payment/hooks/useUpdatePaymentStatus';
 import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
 
@@ -207,14 +208,14 @@ export default function PaymentsBlock({
       toast.success(
         nextStatus === 'PAID'
           ? notify
-            ? 'Оплата подтверждена, уведомление отправлено'
-            : 'Оплата подтверждена без уведомления'
+            ? UI_TOAST_MESSAGES.payment.confirmedNotify
+            : UI_TOAST_MESSAGES.payment.confirmedQuiet
           : notify
-            ? 'Оплата отменена, уведомление отправлено'
-            : 'Оплата отменена без уведомления',
+            ? UI_TOAST_MESSAGES.payment.canceledNotify
+            : UI_TOAST_MESSAGES.payment.canceledQuiet,
       );
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось изменить оплату');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.payment.updateFailed);
     }
   };
 

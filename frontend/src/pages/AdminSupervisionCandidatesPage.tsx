@@ -17,6 +17,7 @@ import type {
   AdminReviewerCandidateSortDir,
   AdminReviewerHourState,
 } from '@/features/admin/api/supervision/getAdminReviewerCandidates';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const KIND_LABELS: Record<AdminReviewerCandidateKind, string> = {
   supervision: 'Супервизия',
@@ -225,13 +226,13 @@ function AdminSupervisionCandidatesContent() {
       });
       toast.success(
         notifyUser
-          ? `Заявки убраны, уведомление отправлено (${result.removedRecordsCount})`
-          : `Заявки убраны тихо (${result.removedRecordsCount})`,
+          ? `${UI_TOAST_MESSAGES.admin.pendingHoursRemovedNotify} (${result.removedRecordsCount})`
+          : `${UI_TOAST_MESSAGES.admin.pendingHoursRemovedQuiet} (${result.removedRecordsCount})`,
       );
       setSelectedRow(null);
       setRemoveTarget(null);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось убрать заявки из проверки');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.pendingHoursRemoveFailed);
     }
   };
 

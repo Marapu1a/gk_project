@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { submitCeuRequest } from '../api/submitCeuRequest';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type CeuCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
 type CeuActivityType = 'TRAINING_ATTENDANCE' | 'PRESENTATION' | 'PUBLICATION' | 'TEACHING';
@@ -95,7 +96,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
     if (!file || submitting) return;
 
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      toast.error(`Файл больше ${MAX_SIZE_MB} МБ`);
+      toast.error(UI_TOAST_MESSAGES.files.tooLarge(MAX_SIZE_MB));
       return;
     }
 
@@ -128,32 +129,32 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
     const today = todayInputValue();
 
     if (value <= 0) {
-      toast.error('Укажите количество CEU-баллов');
+      toast.error(UI_TOAST_MESSAGES.ceu.pointsRequired);
       return;
     }
 
     if (!isHalfStep(value)) {
-      toast.error('Шаг для CEU-баллов должен быть 0,5');
+      toast.error(UI_TOAST_MESSAGES.ceu.stepInvalid);
       return;
     }
 
     if (!eventDate) {
-      toast.error('Укажите дату мероприятия');
+      toast.error(UI_TOAST_MESSAGES.ceu.eventDateRequired);
       return;
     }
 
     if (eventDate > today) {
-      toast.error('Дата мероприятия не может быть в будущем');
+      toast.error(UI_TOAST_MESSAGES.ceu.eventDateInFuture);
       return;
     }
 
     if (!trimmedEventName) {
-      toast.error('Укажите название или ведущего тренинга');
+      toast.error(UI_TOAST_MESSAGES.ceu.eventNameRequired);
       return;
     }
 
     if (!selectedFile) {
-      toast.error('Выберите файл подтверждения');
+      toast.error(UI_TOAST_MESSAGES.ceu.fileRequired);
       return;
     }
 
@@ -174,10 +175,10 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
         queryClient.invalidateQueries({ queryKey: ['ceu', 'unconfirmed'] }),
       ]);
 
-      toast.success('Заявка на CEU отправлена');
+      toast.success(UI_TOAST_MESSAGES.ceu.requestSent);
       resetForm();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось отправить заявку на CEU');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.ceu.requestFailed);
     } finally {
       setSubmitting(false);
     }

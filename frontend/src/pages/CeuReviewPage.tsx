@@ -6,6 +6,7 @@ import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { Button } from '@/components/Button';
 import { PageNav } from '@/components/PageNav';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
+import { AdminNotifyChoiceModal } from '@/features/admin/components/AdminNotifyChoiceModal';
 import { useAdminCeuHistory } from '@/features/admin/hooks/ceu/useAdminCeuHistory';
 import {
   downloadAdminCeuHistoryCsv,
@@ -18,7 +19,8 @@ import {
 import { useUpdateCEUEntry } from '@/features/ceu/hooks/useUpdateCeuEntry';
 import { displayCeuEventName } from '@/features/ceu/utils/displayCeuEventName';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
-import { ceuCategoryLabels, recordStatusLabels } from '@/utils/labels';
+import { ceuCategoryLabels, formatCertificationLevelName, recordStatusLabels } from '@/utils/labels';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
@@ -243,7 +245,7 @@ export default function CeuReviewPage() {
           </label>
 
           <label className="dashboard-v2-small block text-[#1F305E]">
-            Группа
+            Уровень сертификации
             <select
               value={group}
               onChange={(event) => updateQuery({ group: event.target.value })}
@@ -251,7 +253,7 @@ export default function CeuReviewPage() {
             >
               {commonGroups.map((item) => (
                 <option key={item || 'all'} value={item}>
-                  {item || 'Все группы'}
+                  {item ? formatCertificationLevelName(item) : 'Все уровни'}
                 </option>
               ))}
             </select>
@@ -328,7 +330,7 @@ export default function CeuReviewPage() {
                   </th>
                   <th className="w-[150px] px-4 py-3 font-medium">
                     <button type="button" onClick={() => setSort('group')} className="font-medium">
-                      Группа {sortBy === 'group' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                      Уровень {sortBy === 'group' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
                   <th className="w-[185px] px-4 py-3 font-medium">
@@ -440,24 +442,39 @@ function AdminCeuDetailsModal({
   const mutation = useUpdateCEUEntry(row.userId, row.email);
   const [rejectedReason, setRejectedReason] = useState(row.rejectedReason ?? '');
   const [deleteFile, setDeleteFile] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'CONFIRM' | 'REJECT' | null>(null);
   const isSpent = row.status === 'SPENT';
   const canConfirm = row.status === 'REJECTED';
   const canReject = !isSpent && !canConfirm;
 
-  const confirm = async () => {
+  const requestConfirm = () => {
+    setPendingAction('CONFIRM');
+  };
+
+  const requestReject = () => {
+    const reason = rejectedReason.trim();
+    if (!reason) {
+      toast.error(UI_TOAST_MESSAGES.ceu.rejectReasonRequired);
+      return;
+    }
+    setPendingAction('REJECT');
+  };
+
+  const confirm = async (notifyUser: boolean) => {
     try {
-      await mutation.mutateAsync({ id: row.entryId, status: 'CONFIRMED' });
-      toast.success('CEU-баллы подтверждены');
+      await mutation.mutateAsync({ id: row.entryId, status: 'CONFIRMED', notifyUser });
+      toast.success(UI_TOAST_MESSAGES.ceu.confirmed);
+      setPendingAction(null);
       onClose();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось подтвердить CEU-баллы');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.ceu.confirmFailed);
     }
   };
 
-  const reject = async () => {
+  const reject = async (notifyUser: boolean) => {
     const reason = rejectedReason.trim();
     if (!reason) {
-      toast.error('Укажите причину отклонения');
+      toast.error(UI_TOAST_MESSAGES.ceu.rejectReasonRequired);
       return;
     }
 
@@ -467,11 +484,17 @@ function AdminCeuDetailsModal({
         status: 'REJECTED',
         rejectedReason: reason,
         deleteFile,
+        notifyUser,
       });
-      toast.success(deleteFile ? 'CEU отклонены, файл удалён' : 'CEU-баллы отклонены');
+      toast.success(
+        deleteFile
+          ? UI_TOAST_MESSAGES.ceu.rejectedWithFileDeleted
+          : UI_TOAST_MESSAGES.ceu.rejected,
+      );
+      setPendingAction(null);
       onClose();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось отклонить CEU-баллы');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.ceu.rejectFailed);
     }
   };
 
@@ -516,7 +539,7 @@ function AdminCeuDetailsModal({
             />
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <ReadOnlyPlain label="Кандидат" value={row.fullName || '-'} mutedLabel />
+              <ReadOnlyPlain label="Специалист" value={row.fullName || '-'} mutedLabel />
               <ReadOnlyPlain label="Email" value={row.email || '-'} mutedLabel />
             </div>
 
@@ -579,7 +602,7 @@ function AdminCeuDetailsModal({
             canConfirm ? (
               <button
                 type="button"
-                onClick={confirm}
+                onClick={requestConfirm}
                 disabled={mutation.isPending}
                 className="btn btn-dark dashboard-v2-label h-[42px] min-w-[140px] rounded-full px-6 disabled:bg-[#B7BFCE]"
               >
@@ -588,11 +611,11 @@ function AdminCeuDetailsModal({
             ) : (
               <button
                 type="button"
-                onClick={reject}
+                onClick={requestReject}
                 disabled={mutation.isPending}
                 className="btn btn-dark dashboard-v2-label h-[42px] min-w-[150px] rounded-full px-6 disabled:bg-[#B7BFCE]"
               >
-                Отклонить
+                Отклонить как ошибочную
               </button>
             )
           ) : (
@@ -601,6 +624,25 @@ function AdminCeuDetailsModal({
             </Button>
           )}
         </div>
+
+        {pendingAction ? (
+          <AdminNotifyChoiceModal
+            title={
+              pendingAction === 'CONFIRM'
+                ? 'Подтвердить CEU-баллы?'
+                : deleteFile
+                  ? 'Отклонить CEU и удалить файл?'
+                  : 'Отклонить CEU как ошибочную?'
+            }
+            message="Отправить пользователю уведомление об этом действии?"
+            danger={pendingAction === 'REJECT'}
+            isPending={mutation.isPending}
+            onClose={() => setPendingAction(null)}
+            onChoose={(notify) =>
+              pendingAction === 'CONFIRM' ? void confirm(notify) : void reject(notify)
+            }
+          />
+        ) : null}
       </div>
     </div>
   );

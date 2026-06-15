@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateUserGroups, type UpdateUserGroupsResponse } from '../api/updateUserGroups';
 import { toast } from 'sonner';
 import { examStatusLabels, paymentStatusLabels } from '@/utils/labels';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 
 const label = (map: Record<string, string>, code?: string | null) =>
   code ? (map[code] ?? code) : '';
@@ -41,8 +42,8 @@ export function useUpdateUserGroups(userId: string, isSelf = false) {
       if (data.groupsChanged) {
         toast.success(
           data.closedCycleCount
-            ? 'Статус обновлен, текущий цикл закрыт.'
-            : 'Статус пользователя обновлен.',
+            ? 'Уровень сертификации обновлен, текущий цикл закрыт.'
+            : 'Уровень сертификации пользователя обновлен.',
         );
       } else if (data.upgraded) {
         const burned = typeof data.burned === 'number' ? data.burned : 0;
@@ -66,13 +67,12 @@ export function useUpdateUserGroups(userId: string, isSelf = false) {
           toast.info(`Оплата экзамена сброшена${text ? ` до ${text}` : ''}${cnt}.`);
         }
       } else {
-        toast.success('Статус пользователя сохранен.');
+        toast.success('Уровень сертификации пользователя сохранен.');
       }
     },
 
     onError: (err: any) => {
-      const msg = err?.response?.data?.error || 'Не удалось обновить группы';
-      toast.error(msg);
+      toast.error(getUiErrorMessage(err, 'Не удалось обновить уровень сертификации.'));
     },
   });
 }

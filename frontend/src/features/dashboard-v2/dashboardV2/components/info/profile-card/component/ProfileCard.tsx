@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useLogout } from '@/features/dashboard/hooks/useLogout';
 import { useMyCertificates } from '@/features/certificate/hooks/useMyCertificates';
+import { formatCertificateDate } from '@/features/certificate/utils/certificateDates';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { NotificationModal } from '@/features/notifications/components/NotificationModal';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 import { ProfileAvatar } from '../../profile-avatar/component/ProfileAvatar';
 import { BellIcon } from '../icons/BellIcon';
@@ -50,7 +52,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const currentCertificate = certificates.find((c) => c.isActiveNow) ?? certificates[0];
 
   const expiresAt = currentCertificate?.expiresAt
-    ? new Date(currentCertificate.expiresAt).toLocaleDateString('ru-RU')
+    ? formatCertificateDate(currentCertificate.expiresAt)
     : null;
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -58,9 +60,9 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const copyEmail = async () => {
     try {
       await navigator.clipboard.writeText(user.email);
-      toast.success('Email скопирован');
+      toast.success(UI_TOAST_MESSAGES.admin.emailCopied);
     } catch {
-      toast.error('Не удалось скопировать email');
+      toast.error(UI_TOAST_MESSAGES.admin.emailCopyFailed);
     }
   };
 

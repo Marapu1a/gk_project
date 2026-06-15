@@ -1,6 +1,7 @@
 // src/features/admin/components/UpdateUserPasswordModal.tsx
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useUpdateUserPassword } from '../hooks/useUpdateUserPassword';
 
 type Props = {
@@ -14,16 +15,16 @@ export function UpdateUserPasswordModal({ userId, onClose }: Props) {
 
   const onSave = async () => {
     if (password.length < 6) {
-      toast.error('Минимум 6 символов');
+      toast.error(UI_TOAST_MESSAGES.admin.passwordMinLength);
       return;
     }
 
     try {
       await mutation.mutateAsync({ password });
-      toast.success('Пароль изменён');
+      toast.success(UI_TOAST_MESSAGES.admin.passwordChanged);
       onClose();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Ошибка смены пароля');
+      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.admin.passwordChangeFailed);
     }
   };
 

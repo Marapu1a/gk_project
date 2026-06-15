@@ -8,6 +8,7 @@ import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisi
 import { useSubmitSupervisionRequest } from '@/features/supervision/hooks/useSubmitSupervisionRequest';
 import { useReviewerSuggestions } from '@/features/supervision/hooks/useReviewerSuggestions';
 import { LONG_TEXT_MAX_LENGTH } from '@/utils/formLimits';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const GUIDE_STORAGE_PREFIX = 'supervision-hours-guide-hidden:v1';
@@ -241,12 +242,12 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
 
   const lockPractice = () => {
     if (isExperiencedSupervisor) {
-      toast.error('Опытные супервизоры не набирают часы практики.');
+      toast.error(UI_TOAST_MESSAGES.supervision.experiencedSupervisorNoPractice);
       return;
     }
 
     if (practiceTotal <= 0) {
-      toast.error('Укажите часы полевой практики или работы с информацией.');
+      toast.error(UI_TOAST_MESSAGES.supervision.practiceHoursRequired);
       return;
     }
 
@@ -256,18 +257,18 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     }
 
     if (periodStartedAt && periodEndedAt && periodEndedAt < periodStartedAt) {
-      toast.error('Дата окончания не может быть раньше даты начала.');
+      toast.error(UI_TOAST_MESSAGES.supervision.endBeforeStart);
       return;
     }
 
     const today = todayInputValue();
     if (periodStartedAt && periodStartedAt > today) {
-      toast.error('Дата начала не может быть в будущем.');
+      toast.error(UI_TOAST_MESSAGES.supervision.startDateInFuture);
       return;
     }
 
     if (periodEndedAt && periodEndedAt > today) {
-      toast.error('Дата окончания не может быть в будущем.');
+      toast.error(UI_TOAST_MESSAGES.supervision.endDateInFuture);
       return;
     }
 
@@ -329,10 +330,10 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
         entries,
       });
 
-      toast.success('Заявка отправлена');
+      toast.success(UI_TOAST_MESSAGES.supervision.requestSent);
       resetForm();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Ошибка отправки заявки');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.supervision.requestSendFailed);
     }
   };
 

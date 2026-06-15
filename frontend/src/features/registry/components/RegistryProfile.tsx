@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { useRegistryProfile } from '../hooks/useRegistryProfile';
 import type { RegistryCertificate } from '../api/getRegistryProfile';
+import { formatCertificateDate, isCertificateDateActive } from '@/features/certificate/utils/certificateDates';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const COPY_ICON = '/dashboard-v2/icon_copy.svg';
@@ -21,17 +22,8 @@ function certificateFileName(cert: RegistryCertificate) {
   return `${title}-${number}.pdf`.replace(/[\\/:*?"<>|]+/g, '-');
 }
 
-function formatDate(iso?: string | null) {
-  if (!iso) return '—';
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru-RU');
-}
-
 function isCertificateActive(cert: RegistryCertificate) {
-  const expiresAt = new Date(cert.expiresAt);
-  if (Number.isNaN(expiresAt.getTime())) return false;
-  expiresAt.setHours(23, 59, 59, 999);
-  return expiresAt >= new Date();
+  return isCertificateDateActive(cert.expiresAt);
 }
 
 async function copyText(value: string, label: string) {
@@ -382,10 +374,10 @@ function CertificateCheckModal({
           <dl className="space-y-7 text-[#222]">
             <CertificateField label="ФИО" value={fullName} />
             <CertificateField label="Уровень" value={cert.title || '—'} />
-            <CertificateField label="Выдан" value={formatDate(cert.issuedAt)} />
+            <CertificateField label="Выдан" value={formatCertificateDate(cert.issuedAt)} />
             <CertificateField
               label="Действует до"
-              value={formatDate(cert.expiresAt)}
+              value={formatCertificateDate(cert.expiresAt)}
               danger={!active}
             />
             <div>

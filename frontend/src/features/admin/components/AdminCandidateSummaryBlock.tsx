@@ -1,7 +1,13 @@
 import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import { docReviewStatusLabels, examStatusLabels, targetLevelLabels } from '@/utils/labels';
+import {
+  docReviewStatusLabels,
+  examStatusLabels,
+  formatCertificationLevelName,
+  targetLevelLabels,
+} from '@/utils/labels';
+import { formatCertificateDate } from '@/features/certificate/utils/certificateDates';
 
 type Props = {
   user: any;
@@ -97,8 +103,10 @@ function resolveAfterCertificateLabel(user: any, activeGroupName: string | null)
 function latestCertificateText(certificate: any) {
   if (!certificate) return 'нет';
 
-  const group = certificate.group?.name ?? certificate.title ?? 'Сертификат';
-  const expiresAt = certificate.expiresAt ? `до ${formatDate(certificate.expiresAt)}` : 'бессрочно';
+  const group = certificate.group?.name
+    ? formatCertificationLevelName(certificate.group.name)
+    : (certificate.title ?? 'Сертификат');
+  const expiresAt = certificate.expiresAt ? `до ${formatCertificateDate(certificate.expiresAt)}` : 'бессрочно';
   return `${group} · ${expiresAt}`;
 }
 
@@ -420,7 +428,7 @@ export function AdminCandidateSummaryBlock({
     <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="dashboard-v2-title">Сводка по кандидату</h2>
+          <h2 className="dashboard-v2-title">Сводка по специалисту</h2>
           <p className="mt-1 text-[13px] font-semibold text-[#8D96B5]">
             Быстрая картина по активному циклу, заявкам и оплатам
           </p>
@@ -436,10 +444,13 @@ export function AdminCandidateSummaryBlock({
           <div className="grid gap-3 md:grid-cols-2">
             <Meta label="ФИО" value={user.fullName || '—'} />
             <Meta label="Email" value={user.email || '—'} />
-            <Meta label="Группа" value={activeGroupName || '—'} />
+            <Meta
+              label="Подтвержденный уровень сертификации"
+              value={formatCertificationLevelName(activeGroupName)}
+            />
             <Meta label="Последний сертификат" value={latestCertificateText(latestCertificate)} />
-            <Meta label="Целевой уровень" value={resolveTargetLabel(user)} />
-            <Meta label="Активный процесс" value={activeCycleText} />
+            <Meta label="Цель сертификации" value={resolveTargetLabel(user)} />
+            <Meta label="Текущий цикл сертификации" value={activeCycleText} />
             <Meta label="После выдачи сертификата" value={afterCertificateText} />
           </div>
 
@@ -450,7 +461,7 @@ export function AdminCandidateSummaryBlock({
                 className="btn dashboard-v2-action dashboard-v2-action-secondary"
                 onClick={onOpenStatusManagement}
               >
-                Статус и сертификат
+                Уровень и сертификат
               </button>
             ) : null}
             <Link

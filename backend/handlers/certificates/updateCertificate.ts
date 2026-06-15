@@ -3,14 +3,15 @@ import { FastifyReply, FastifyRequest, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import fs from 'fs/promises';
 import path from 'path';
+import { parseCertificateExpiresAt, parseCertificateIssuedAt } from '../../utils/certificateDates';
 
 interface UpdateCertificateRoute extends RouteGenericInterface {
   Params: { id: string };
   Body: {
     title?: string;
     number?: string;
-    issuedAt?: string;       // ISO
-    expiresAt?: string;      // ISO
+    issuedAt?: string;       // YYYY-MM-DD
+    expiresAt?: string;      // YYYY-MM-DD
     uploadedFileId?: string; // UploadedFile.id
   };
 }
@@ -83,17 +84,17 @@ export async function updateCertificateHandler(
   let nextExpiresAt = existing.expiresAt;
 
   if (typeof issuedAt === 'string') {
-    const iss = new Date(issuedAt);
-    if (Number.isNaN(iss.getTime())) {
-      return reply.code(422).send({ error: 'issuedAt должен быть корректной ISO-датой' });
+    const iss = parseCertificateIssuedAt(issuedAt);
+    if (!iss) {
+      return reply.code(422).send({ error: 'issuedAt должен быть корректной датой' });
     }
     nextIssuedAt = iss;
   }
 
   if (typeof expiresAt === 'string') {
-    const exp = new Date(expiresAt);
-    if (Number.isNaN(exp.getTime())) {
-      return reply.code(422).send({ error: 'expiresAt должен быть корректной ISO-датой' });
+    const exp = parseCertificateExpiresAt(expiresAt);
+    if (!exp) {
+      return reply.code(422).send({ error: 'expiresAt должен быть корректной датой' });
     }
     nextExpiresAt = exp;
   }

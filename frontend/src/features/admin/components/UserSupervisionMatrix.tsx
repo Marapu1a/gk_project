@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useUserSupervisionMatrix } from '../hooks/supervision/useUserSupervisionMatrix';
 import { useUpdateUserSupervisionMatrix } from '../hooks/supervision/useUpdateUserSupervisionMatrix';
 import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
+import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
 
 type Props = {
   userId: string;
@@ -263,7 +264,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
 
   const lockPractice = () => {
     if (values.practiceTotalWithoutBonus <= 0) {
-      toast.error('Укажите часы полевой практики или работы с информацией.');
+      toast.error(UI_TOAST_MESSAGES.supervision.practiceHoursRequired);
       return;
     }
 
@@ -277,7 +278,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
 
   const savePractice = async (notifyUser: boolean) => {
     if (!practiceLocked) {
-      toast.error('Сначала подтвердите левую часть с часами практики');
+      toast.error(UI_TOAST_MESSAGES.supervision.practiceConfirmFirst);
       return;
     }
 
@@ -299,21 +300,25 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
         distribution: values.distribution,
         notifyUser,
       });
-      toast.success(notifyUser ? 'Часы сохранены, уведомление отправлено' : 'Часы сохранены тихо');
+      toast.success(
+        notifyUser
+          ? UI_TOAST_MESSAGES.supervision.adminSavedNotify
+          : UI_TOAST_MESSAGES.supervision.adminSavedQuiet,
+      );
       setPendingSaveMode(null);
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Не удалось сохранить часы');
+      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.supervision.saveHoursFailed);
     }
   };
 
   const saveMentorship = async (notifyUser: boolean) => {
     if (values.mentorshipValue < 0) {
-      toast.error('Введите корректное количество часов менторства');
+      toast.error(UI_TOAST_MESSAGES.supervision.mentorHoursRequired);
       return;
     }
 
     if ((mentor?.required ?? 0) > 0 && values.mentorshipValue > (mentor?.required ?? 0)) {
-      toast.error(`Нельзя указать больше ${formatNumber(mentor?.required)} часов менторства`);
+      toast.error(UI_TOAST_MESSAGES.supervision.mentorLimitExceeded(formatNumber(mentor?.required)));
       return;
     }
 
@@ -324,11 +329,13 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
         notifyUser,
       });
       toast.success(
-        notifyUser ? 'Часы менторства сохранены, уведомление отправлено' : 'Часы менторства сохранены тихо',
+        notifyUser
+          ? UI_TOAST_MESSAGES.supervision.adminSavedNotify
+          : UI_TOAST_MESSAGES.supervision.adminSavedQuiet,
       );
       setPendingSaveMode(null);
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Не удалось сохранить часы менторства');
+      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.supervision.saveMentorshipFailed);
     }
   };
 

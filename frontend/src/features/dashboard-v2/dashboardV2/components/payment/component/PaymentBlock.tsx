@@ -5,6 +5,7 @@ import type { PaymentItem } from '@/features/payment/api/getUserPayments';
 import { PaymentCard } from './PaymentCard';
 import { PaymentModal } from './PaymentModal';
 import { PaymentStatusIcon } from './PaymentStatusIcon';
+import { formatCertificationLevelName } from '@/utils/labels';
 
 const LABELS: Record<PaymentItem['type'], string> = {
   FULL_PACKAGE: 'Сертификация - пакет со скидкой 10%',
@@ -56,7 +57,7 @@ function PaymentEmptyState() {
   return (
     <section className="card-section flex h-full min-h-[340px] w-full items-center justify-center px-6 py-6 shadow-soft">
       <p className="dashboard-v2-text max-w-[260px] text-center text-[#8D96B5]">
-        Выберите целевой уровень сертификации, чтобы продолжить
+        Выберите цель сертификации, чтобы продолжить
       </p>
     </section>
   );
@@ -73,8 +74,8 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
     isRenewalCycle &&
     targetLevelName === 'Супервизор' &&
     (activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор')
-      ? 'Опытный Супервизор'
-      : targetLevelName;
+      ? 'Опытный супервизор'
+      : formatCertificationLevelName(targetLevelName);
 
   const preparedPayments = useMemo(() => {
     if (!payments) return [];

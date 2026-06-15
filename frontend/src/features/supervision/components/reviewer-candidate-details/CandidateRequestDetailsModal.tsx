@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useUpdateHourStatus } from '../../hooks/useUpdateHourStatus';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import type {
   ReviewerCandidateKind,
   ReviewerCandidateRequest,
@@ -85,10 +86,10 @@ export function CandidateRequestDetailsModal({
 
     try {
       await mutation.mutateAsync({ id: request.actionHourId, status: 'CONFIRMED' });
-      toast.success('Часы подтверждены');
+      toast.success(UI_TOAST_MESSAGES.supervision.confirmed);
       onClose();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось подтвердить часы');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.supervision.confirmFailed);
     }
   };
 
@@ -97,7 +98,7 @@ export function CandidateRequestDetailsModal({
 
     const trimmed = rejectedReason.trim();
     if (!trimmed) {
-      toast.error('Укажите причину отклонения');
+      toast.error(UI_TOAST_MESSAGES.supervision.reviewReasonRequired);
       return;
     }
 
@@ -107,10 +108,10 @@ export function CandidateRequestDetailsModal({
         status: 'REJECTED',
         rejectedReason: trimmed,
       });
-      toast.success('Часы отклонены');
+      toast.success(UI_TOAST_MESSAGES.supervision.rejected);
       onClose();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось отклонить часы');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.supervision.rejectFailed);
     }
   };
 

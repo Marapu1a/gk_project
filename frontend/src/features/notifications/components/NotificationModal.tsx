@@ -20,6 +20,7 @@ import {
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { NotificationMessage } from './NotificationMessage';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const EMPTY_ICON = '/dashboard-v2/icon_notification_bell.svg';
@@ -65,9 +66,9 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
 
     try {
       await deleteNotif.mutateAsync(id);
-      toast.success('Уведомление удалено');
+      toast.success(UI_TOAST_MESSAGES.admin.notificationDeleted);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось удалить уведомление');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.notificationDeleteFailed);
     }
   };
 
@@ -77,9 +78,9 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
     try {
       await Promise.allSettled(unread.map((item) => markRead.mutateAsync(item.id)));
       await queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      toast.success('Уведомления отмечены прочитанными');
+      toast.success(UI_TOAST_MESSAGES.admin.notificationsMarkedRead);
     } catch {
-      toast.error('Не удалось отметить все уведомления');
+      toast.error(UI_TOAST_MESSAGES.admin.notificationsMarkReadFailed);
     }
   };
 
@@ -97,9 +98,9 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
 
     try {
       await deleteAllNotif.mutateAsync();
-      toast.success('Уведомления удалены');
+      toast.success(UI_TOAST_MESSAGES.admin.notificationsDeleted);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось удалить уведомления');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.notificationsDeleteFailed);
     }
   };
 

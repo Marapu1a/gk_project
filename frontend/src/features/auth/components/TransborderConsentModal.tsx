@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useTransborderConsentDocument } from '../hooks/useTransborderConsentDocument';
 import { useAcceptTransborderConsent } from '../hooks/useAcceptTransborderConsent';
 import type { ConsentItemCode, ConsentSource, ConsentDocumentItem } from '../api/consent';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type Props = {
   open: boolean;
@@ -51,7 +52,7 @@ export function TransborderConsentModal({ open, source, onAccepted, onLogout }: 
 
   const handleSubmit = async () => {
     if (!canSubmit) {
-      toast.error('Нужно подтвердить все обязательные пункты');
+      toast.error(UI_TOAST_MESSAGES.auth.transborderConsentsRequired);
       return;
     }
 
@@ -61,10 +62,10 @@ export function TransborderConsentModal({ open, source, onAccepted, onLogout }: 
         acceptedItems,
       });
 
-      toast.success('Согласия сохранены');
+      toast.success(UI_TOAST_MESSAGES.auth.transborderConsentsSaved);
       onAccepted();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось сохранить согласия');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.auth.transborderConsentsSaveFailed);
     }
   };
 

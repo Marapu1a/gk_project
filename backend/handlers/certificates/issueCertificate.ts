@@ -9,14 +9,15 @@ import {
   PaymentStatus,
   CycleType,
 } from '@prisma/client';
+import { parseCertificateExpiresAt, parseCertificateIssuedAt } from '../../utils/certificateDates';
 
 interface IssueCertificateRoute extends RouteGenericInterface {
   Body: {
     email: string;
     title: string;
     number: string;
-    issuedAt: string; // ISO
-    expiresAt: string; // ISO
+    issuedAt: string; // YYYY-MM-DD
+    expiresAt: string; // YYYY-MM-DD
     uploadedFileId: string; // UploadedFile.id
   };
 }
@@ -85,14 +86,14 @@ export async function issueCertificateHandler(
   number = String(number).trim();
   uploadedFileId = String(uploadedFileId).trim();
 
-  const iss = new Date(issuedAt);
-  const exp = new Date(expiresAt);
+  const iss = parseCertificateIssuedAt(issuedAt);
+  const exp = parseCertificateExpiresAt(expiresAt);
   const now = new Date();
 
-  if (Number.isNaN(iss.getTime())) {
-    return reply.code(422).send({ error: 'issuedAt должен быть корректной ISO-датой' });
+  if (!iss) {
+    return reply.code(422).send({ error: 'issuedAt должен быть корректной датой' });
   }
-  if (Number.isNaN(exp.getTime())) {
+  if (!exp) {
     return reply.code(422).send({ error: 'expiresAt должен быть позже issuedAt' });
   }
   if (iss > now) return reply.code(422).send({ error: 'issuedAt не может быть в будущем' });

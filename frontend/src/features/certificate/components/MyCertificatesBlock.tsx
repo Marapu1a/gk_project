@@ -7,6 +7,7 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
 import { useMyCertificates } from '../hooks/useMyCertificates';
 import type { CertificateDTO } from '../api/issueCertificate';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
@@ -170,7 +171,7 @@ function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: ()
   };
 
   const showTemporaryUnavailable = () => {
-    toast.info('Отправка пока не работает. Скачайте сертификат и отправьте файл вручную.');
+    toast.info(UI_TOAST_MESSAGES.certificate.sendUnavailable);
   };
 
   const modal = (

@@ -6,6 +6,7 @@ import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabel
 import { useUpdateFileType } from '@/features/documentReview/hooks/useUpdateFileType';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
@@ -59,7 +60,7 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
 
     const file = accepted[0];
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      toast.error(`Файл больше ${MAX_SIZE_MB} МБ`);
+      toast.error(UI_TOAST_MESSAGES.files.tooLarge(MAX_SIZE_MB));
       return;
     }
     setUploading(true);
@@ -67,13 +68,13 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
       const uploaded = await uploadFile(file, 'documents');
       const updated = [...files, uploaded];
       saveState(updated);
-      toast.success('Файл загружен');
+      toast.success(UI_TOAST_MESSAGES.files.fileUploaded);
     } catch (err: any) {
       const msg =
         err?.response?.data?.error ??
         (err?.response?.status === 413
-          ? `Файл превышает допустимый размер (${MAX_SIZE_MB}MB)`
-          : 'Ошибка загрузки файла');
+          ? UI_TOAST_MESSAGES.files.tooLarge(MAX_SIZE_MB)
+          : UI_TOAST_MESSAGES.files.uploadFailed);
 
       toast.error(msg);
     } finally {
@@ -94,7 +95,7 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
     }
     try {
       await deleteFile(id);
-      toast.success('Файл удалён');
+      toast.success(UI_TOAST_MESSAGES.files.fileDeleted);
     } catch {
       toast.info('Физически удалить не удалось. Уберём из списка.');
     } finally {
@@ -109,7 +110,7 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
     try {
       await updateFileType.mutateAsync({ fileId: id, type });
     } catch {
-      toast.error('Не удалось сохранить тип документа');
+      toast.error(UI_TOAST_MESSAGES.documents.updateFailed);
     }
   };
 

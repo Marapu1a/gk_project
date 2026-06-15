@@ -5,6 +5,7 @@ import { LONG_TEXT_MAX_LENGTH } from '@/utils/formLimits';
 import { useCreateUserNote } from '../hooks/useCreateUserNote';
 import { useDeleteUserNote } from '../hooks/useDeleteUserNote';
 import type { AdminUserActionLogItem } from '../api/getUserActionLog';
+import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
 
 type Props = {
   userId: string;
@@ -28,16 +29,16 @@ export function AdminUserNotesModal({ userId, notes, isLoading, onClose }: Props
   const saveNote = async () => {
     const text = noteText.trim();
     if (!text) {
-      toast.info('Напишите текст заметки');
+      toast.info(UI_TOAST_MESSAGES.admin.noteRequired);
       return;
     }
 
     try {
       await createNote.mutateAsync(text);
       setNoteText('');
-      toast.success('Заметка сохранена');
+      toast.success(UI_TOAST_MESSAGES.admin.noteSaved);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось сохранить заметку');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.noteSaveFailed);
     }
   };
 
@@ -51,9 +52,9 @@ export function AdminUserNotesModal({ userId, notes, isLoading, onClose }: Props
 
     try {
       await deleteNote.mutateAsync(noteId);
-      toast.success('Заметка удалена');
+      toast.success(UI_TOAST_MESSAGES.admin.noteDeleted);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось удалить заметку');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.noteDeleteFailed);
     }
   };
 

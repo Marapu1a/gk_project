@@ -5,6 +5,8 @@ export type UpdateCEUEntryPayload = {
   status: 'CONFIRMED' | 'REJECTED' | 'UNCONFIRMED';
   rejectedReason?: string;
   deleteFile?: boolean;
+  notifyUser?: boolean;
+  notify?: boolean;
 };
 
 export async function updateCEUEntry(id: string, payload: UpdateCEUEntryPayload) {

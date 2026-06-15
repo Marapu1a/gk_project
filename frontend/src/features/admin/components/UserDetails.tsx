@@ -39,7 +39,7 @@ export default function UserDetails() {
     <div className="mx-auto max-w-[1180px] space-y-5 px-4 py-5 text-[var(--color-blue-dark)]">
       <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4">
         <PageNav />
-        <h1 className="dashboard-v2-page-title text-center">Детали кандидата</h1>
+        <h1 className="dashboard-v2-page-title text-center">Детали специалиста</h1>
         <button
           type="button"
           className="inline-flex min-h-[38px] cursor-pointer items-center gap-2 justify-self-end rounded-full border border-[#8D96B5] bg-white px-3 text-[16px] font-extrabold text-[#6B7894] transition hover:bg-[var(--color-blue-soft)]"

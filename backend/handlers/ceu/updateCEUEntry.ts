@@ -14,6 +14,8 @@ interface UpdateCEUEntryRoute extends RouteGenericInterface {
     status: 'CONFIRMED' | 'REJECTED';
     rejectedReason?: string;
     deleteFile?: boolean;
+    notify?: boolean;
+    notifyUser?: boolean;
   };
 }
 
@@ -35,6 +37,7 @@ export async function updateCEUEntryHandler(
 ) {
   const { id } = req.params;
   const { status, rejectedReason, deleteFile = false } = req.body;
+  const notifyUser = req.body.notifyUser ?? req.body.notify ?? true;
   const reviewerId = req.user?.userId;
   const reviewerRole = req.user?.role;
 
@@ -55,12 +58,15 @@ export async function updateCEUEntryHandler(
     where: { id },
     select: {
       status: true,
+      category: true,
+      value: true,
       record: {
         select: {
           id: true,
           userId: true,
           cycleId: true,
           fileId: true,
+          eventName: true,
           user: { select: { email: true } },
         },
       },
@@ -143,17 +149,42 @@ export async function updateCEUEntryHandler(
   }
 
   try {
-    await createNotification({
-      userId: entry.record.userId,
-      type: NotificationType.CEU,
-      message:
-        status === 'CONFIRMED'
-          ? 'Ваши CEU-баллы подтверждены'
-          : `Ваши CEU-баллы отклонены: ${reason}`,
-      link: '/ceu/points?panel=history',
+    await prisma.adminUserActionLog.create({
+      data: {
+        userId: entry.record.userId,
+        adminId: reviewerId,
+        action:
+          status === 'CONFIRMED'
+            ? 'Подтвердил CEU-баллы'
+            : deleteFile
+              ? 'Отклонил CEU-баллы и удалил файл'
+              : 'Отклонил CEU-баллы',
+        details: [
+          `Запись: ${entry.record.eventName || entry.record.id}`,
+          `Категория: ${entry.category}`,
+          `Баллы: ${entry.value}`,
+          status === 'REJECTED' ? `Причина: ${reason}` : null,
+          deleteFile ? 'Файл удален' : null,
+          notifyUser ? 'Пользователь уведомлен' : 'Без уведомления',
+        ]
+          .filter(Boolean)
+          .join('; '),
+      },
     });
+
+    if (notifyUser) {
+      await createNotification({
+        userId: entry.record.userId,
+        type: NotificationType.CEU,
+        message:
+          status === 'CONFIRMED'
+            ? 'Ваши CEU-баллы подтверждены'
+            : `Ваши CEU-баллы отклонены: ${reason}`,
+        link: '/ceu/points?panel=history',
+      });
+    }
   } catch (err) {
-    req.log.error(err, 'CEU_REVIEW notification failed');
+    req.log.error(err, 'CEU_REVIEW side effects failed');
   }
 
   return reply.send({
@@ -163,6 +194,7 @@ export async function updateCEUEntryHandler(
       status,
       rejectedReason: status === 'REJECTED' ? reason : null,
       fileDeleted: !!fileIdToDelete,
+      notified: notifyUser,
     },
   });
 }

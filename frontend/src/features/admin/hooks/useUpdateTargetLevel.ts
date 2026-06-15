@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateTargetLevel } from '../api/updateTargetLevel';
 import { toast } from 'sonner';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type TargetLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
 type GoalMode = 'CERTIFICATION' | 'RENEWAL';
@@ -13,7 +14,7 @@ export function useUpdateTargetLevel(userId: string) {
       updateTargetLevel(userId, payload),
 
     onSuccess: async () => {
-      toast.success('Целевой уровень обновлён');
+      toast.success(UI_TOAST_MESSAGES.admin.currentLevelSaved);
 
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
@@ -28,7 +29,7 @@ export function useUpdateTargetLevel(userId: string) {
     },
 
     onError: (err: any) => {
-      toast.error(err?.response?.data?.error || 'Ошибка обновления targetLevel');
+      toast.error(getUiErrorMessage(err, UI_TOAST_MESSAGES.admin.saveCurrentLevelFailed));
     },
   });
 }

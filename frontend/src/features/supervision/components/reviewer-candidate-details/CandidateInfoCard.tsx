@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type CandidateInfoCardProps = {
   fullName: string | null;
@@ -32,9 +33,9 @@ export function CandidateInfoCard({
   const copyEmail = async () => {
     try {
       await navigator.clipboard.writeText(email);
-      toast.success('Email скопирован');
+      toast.success(UI_TOAST_MESSAGES.admin.emailCopied);
     } catch {
-      toast.error('Не удалось скопировать email');
+      toast.error(UI_TOAST_MESSAGES.admin.emailCopyFailed);
     }
   };
 

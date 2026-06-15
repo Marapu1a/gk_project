@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { examStatusLabels } from '@/utils/labels';
 import type { TargetLevel } from '@/features/user/api/setTargetLevel';
 import { toast } from 'sonner';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 export function QualificationStatusBlock({
   activeGroupName,
@@ -208,7 +209,7 @@ function ExamSection({ isEligible, examPaid }: { isEligible: boolean; examPaid: 
           toast.error(
             err?.response?.data?.message ||
               err?.response?.data?.error ||
-              'Не удалось отправить заявку на экзамен',
+              UI_TOAST_MESSAGES.exam.requestSendFailed,
           );
         },
       },

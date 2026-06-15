@@ -5,6 +5,7 @@ import { useUpdateHourStatus } from '../hooks/useUpdateHourStatus';
 import { toast } from 'sonner';
 import type { AssignedHourItem } from '../api/getAssignedHours';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type HourType = AssignedHourItem['type'];
 
@@ -71,9 +72,9 @@ export function SupervisionReviewForm() {
   const handleConfirm = async (id: string, userEmail: string) => {
     try {
       await mutation.mutateAsync({ id, status: 'CONFIRMED' });
-      toast.success(`Подтверждено: ${userEmail}`);
+      toast.success(UI_TOAST_MESSAGES.supervision.confirmedFor(userEmail));
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Ошибка подтверждения');
+      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.supervision.confirmFailed);
     }
   };
 
@@ -83,14 +84,14 @@ export function SupervisionReviewForm() {
     userEmail: string,
   ) => {
     const trimmed = (reason ?? '').trim();
-    if (!trimmed) return toast.error('Укажите причину отклонения');
+    if (!trimmed) return toast.error(UI_TOAST_MESSAGES.supervision.reviewReasonRequired);
 
     try {
       await mutation.mutateAsync({ id, status: 'REJECTED', rejectedReason: trimmed });
-      toast.success(`Отклонено: ${userEmail}`);
+      toast.success(UI_TOAST_MESSAGES.supervision.rejectedFor(userEmail));
       setRejectedReasonMap((m) => ({ ...m, [id]: '' }));
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Ошибка отклонения');
+      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.supervision.rejectFailed);
     }
   };
 

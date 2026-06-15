@@ -7,6 +7,7 @@ import { useArchiveUser, useRestoreUser } from '../hooks/useArchiveUser';
 import { useToggleUserRole } from '../hooks/useToggleUserRole';
 import { useUpdateUserVisibility } from '../hooks/useUpdateUserVisibility';
 import { useUserActionLog } from '../hooks/useUserActionLog';
+import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
 
 type ActionKey = 'registryVisible' | 'archived' | 'adminRole';
 
@@ -137,7 +138,7 @@ export function AdminAccountActionsBlock({
 
   const onSave = async () => {
     if (!selectedActions.length) {
-      toast.info('Выберите действие');
+      toast.info(UI_TOAST_MESSAGES.admin.chooseAction);
       return;
     }
 
@@ -149,9 +150,9 @@ export function AdminAccountActionsBlock({
 
       resetSelected();
       queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] });
-      toast.success('Действия выполнены');
+      toast.success(UI_TOAST_MESSAGES.admin.actionsDone);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось выполнить действие');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.actionFailed);
     }
   };
 

@@ -8,6 +8,7 @@ import { useExamAppDetails } from '../hooks/useExamAppDetails';
 import type { ExamApp, ExamReadinessDetails, ExamStatus } from '../api/getMyExamApp';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { examStatusLabels, targetLevelLabels } from '@/utils/labels';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
@@ -80,7 +81,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
   const doChange = (next: ExamStatus) => {
     const trimmedComment = comment.trim();
     if (next === 'REJECTED' && !trimmedComment) {
-      toast.error('Укажите причину отклонения');
+      toast.error(UI_TOAST_MESSAGES.exam.rejectReasonRequired);
       return;
     }
 
@@ -101,7 +102,11 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
           onClose();
         },
         onError: (err: any) => {
-          toast.error(err?.response?.data?.message || err?.response?.data?.error || 'Не удалось изменить статус');
+          toast.error(
+            err?.response?.data?.message ||
+              err?.response?.data?.error ||
+              UI_TOAST_MESSAGES.exam.statusUpdateFailed,
+          );
         },
       },
     );
@@ -124,7 +129,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
         <div className="grid gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
           <section className="space-y-5">
             <div className="rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-4">
-              <h4 className="dashboard-v2-title mb-3">Кандидат</h4>
+              <h4 className="dashboard-v2-title mb-3">Специалист</h4>
               <InfoRow label="ФИО" value={summary?.user.fullName || app.user.fullName || '-'} />
               <InfoRow label="Email" value={summary?.user.email || app.user.email} />
               <InfoRow
@@ -237,12 +242,6 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
           <Button type="button" variant="ghost" onClick={onClose} disabled={disabled}>
             Закрыть
           </Button>
-
-          {currentApp.status === 'REJECTED' ? (
-            <Button type="button" variant="ghost" onClick={() => doChange('NOT_SUBMITTED')} disabled={disabled}>
-              Сбросить
-            </Button>
-          ) : null}
 
           {currentApp.status === 'PENDING' ? (
             <button

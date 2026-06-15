@@ -8,6 +8,7 @@ import { useReviewerSuggestions } from '../hooks/useReviewerSuggestions';
 import { useSubmitSupervisionRequest } from '../hooks/useSubmitSupervisionRequest';
 import { useSupervisionSummary } from '../hooks/useSupervisionSummary';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const hoursInputSchema = z.string().refine(
   (value) => value === '' || /^\d*(?:[.]\d{0,2})?$/.test(value),
@@ -148,22 +149,22 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
 
   const submit = async () => {
     if (mentorshipDate > today) {
-      toast.error('Дата менторства не может быть в будущем.');
+      toast.error(UI_TOAST_MESSAGES.supervision.startDateInFuture);
       return;
     }
 
     if (hoursValue <= 0) {
-      toast.error('Укажите количество часов менторства.');
+      toast.error(UI_TOAST_MESSAGES.supervision.mentorHoursRequired);
       return;
     }
 
     if (effectiveLimit != null && hoursValue > effectiveLimit) {
-      toast.error(`Можно добавить не более ${effectiveLimit} часов менторства.`);
+      toast.error(UI_TOAST_MESSAGES.supervision.mentorLimitExceeded(String(effectiveLimit)));
       return;
     }
 
     if (!format) {
-      toast.error('Выберите формат менторства.');
+      toast.error(UI_TOAST_MESSAGES.supervision.mentorFormatRequired);
       return;
     }
 
@@ -180,10 +181,10 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
         entries: [{ type: 'SUPERVISOR', value: hoursValue }],
       });
 
-      toast.success('Заявка на менторство отправлена');
+      toast.success(UI_TOAST_MESSAGES.supervision.mentorshipRequestSent);
       resetForm();
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Ошибка отправки заявки');
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.supervision.requestSendFailed);
     }
   };
 
@@ -245,7 +246,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
                   </Field>
                 </div>
 
-                <Field label="Ментор (наставник)" className="relative mt-4">
+              <Field label="Наставник (ментор)" className="relative mt-4">
                   <input
                     className="input-design h-[36px]"
                     value={mentorEmail}

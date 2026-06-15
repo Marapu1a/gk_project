@@ -9,12 +9,8 @@ import { UserLocationFields } from './UserLocationFields';
 // utils
 import { splitFullName, buildFullNameRu, buildFullNameLatin } from '@/features/user/utils/name';
 import { normalizePhone } from '@/features/user/utils/phone';
-
-const roleLabels = {
-  STUDENT: 'Соискатель',
-  REVIEWER: 'Супервизор',
-  ADMIN: 'Администратор',
-} as const;
+import { formatCertificationLevelName, systemRoleLabels } from '@/utils/labels';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 // --- helpers ---
 function toDateInput(iso: string) {
@@ -106,12 +102,12 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
     const fnLatRaw = form.firstNameLatin.trim();
 
     if (!lnRaw || !fnRaw || !mnRaw) {
-      toast.error('Фамилия, имя и отчество обязательны');
+      toast.error(UI_TOAST_MESSAGES.profile.fullNameRequired);
       return;
     }
 
     if (!lnLatRaw || !fnLatRaw) {
-      toast.error('Имя и фамилия латиницей обязательны');
+      toast.error(UI_TOAST_MESSAGES.profile.latinNameRequired);
       return;
     }
 
@@ -120,7 +116,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
 
     const phoneIntl = normalizePhone(form.phone);
     if (phoneIntl && !isValidPhoneNumber(phoneIntl)) {
-      toast.error('Неверный номер телефона');
+      toast.error(UI_TOAST_MESSAGES.auth.phoneInvalid);
       return;
     }
 
@@ -136,10 +132,10 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
         country: countriesStr || undefined,
         city: citiesStr || undefined,
       });
-      toast.success('Профиль обновлён');
+      toast.success(UI_TOAST_MESSAGES.profile.saved);
       setEdit(false);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось сохранить');
+      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.profile.saveFailed);
     }
   };
 
@@ -161,8 +157,8 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
           <Meta label="Дата рождения" value={fmt(user.birthDate)} />
           <Meta label="Город" value={arrToStr(strToArr(user.city)) || '—'} />
           <Meta label="Страна" value={arrToStr(strToArr(user.country)) || '—'} />
-          <Meta label="Роль" value={roleLabels[user.role] || user.role} />
-          <Meta label="Группа" value={user.activeGroup?.name || '—'} />
+          <Meta label="Права в системе" value={systemRoleLabels[user.role] || user.role} />
+          <Meta label="Текущий уровень сертификации" value={formatCertificationLevelName(user.activeGroup?.name)} />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -249,11 +245,11 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             <Field label="Email">
               <div>{user.email}</div>
             </Field>
-            <Field label="Роль">
-              <div>{roleLabels[user.role] || user.role}</div>
+            <Field label="Права в системе">
+              <div>{systemRoleLabels[user.role] || user.role}</div>
             </Field>
-            <Field label="Группа">
-              <div>{user.activeGroup?.name || '—'}</div>
+            <Field label="Текущий уровень сертификации">
+              <div>{formatCertificationLevelName(user.activeGroup?.name)}</div>
             </Field>
           </div>
         </div>

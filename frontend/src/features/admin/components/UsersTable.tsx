@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import { useUsers } from '../hooks/useUsers';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
+import { formatCertificationLevelName, systemRoleLabels } from '@/utils/labels';
 
 type Role = 'ADMIN' | 'STUDENT' | 'REVIEWER';
 type UserStatus = 'ACTIVE' | 'ARCHIVE_REQUESTED' | 'ARCHIVED' | 'ALL';
@@ -37,12 +38,6 @@ const STATUS_OPTIONS: Array<{ value: UserStatus; label: string }> = [
   { value: 'ALL', label: 'Все статусы' },
 ];
 
-const roleMap: Record<Role, string> = {
-  ADMIN: 'Администратор',
-  STUDENT: 'Соискатель',
-  REVIEWER: 'Проверяющий',
-};
-
 function formatDate(value?: string | null) {
   if (!value) return '—';
   const date = new Date(value);
@@ -51,7 +46,7 @@ function formatDate(value?: string | null) {
 
 function currentGroup(user: UserRow) {
   const group = [...(user.groups ?? [])].sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0))[0];
-  return group?.name || roleMap[user.role] || user.role;
+  return group?.name ? formatCertificationLevelName(group.name) : systemRoleLabels[user.role] || user.role;
 }
 
 function splitFullName(value?: string | null) {
@@ -76,7 +71,7 @@ function csvCell(value: unknown) {
 
 function downloadCsv(users: UserRow[]) {
   const rows = [
-    ['№', 'ФИО', 'Email', 'Роль', 'Регистрация', 'Активность', 'Статус'],
+    ['№', 'ФИО', 'Email', 'Уровень сертификации', 'Регистрация', 'Активность', 'Статус аккаунта'],
     ...users.map((user) => [
       user.registrationNumber || '',
       user.fullName || '',
@@ -202,23 +197,23 @@ export function UsersTable() {
         </label>
 
         <label className="dashboard-v2-small block">
-          Роль
+          Уровень сертификации
           <select
             value={group}
             onChange={(event) => resetPage(() => setGroup(event.target.value))}
             className="input-design mt-1"
           >
-            <option value="">Все роли</option>
+            <option value="">Все уровни</option>
             {GROUP_OPTIONS.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {formatCertificationLevelName(option)}
               </option>
             ))}
           </select>
         </label>
 
         <label className="dashboard-v2-small block">
-          Статус
+          Статус аккаунта
           <select
             value={status}
             onChange={(event) => resetPage(() => setStatus(event.target.value as UserStatus))}
@@ -261,7 +256,7 @@ export function UsersTable() {
                   <th className="rounded-l-[8px] px-3 py-3 font-medium">№</th>
                   <th className="px-3 py-3 font-medium">ФИО</th>
                   <th className="px-3 py-3 font-medium">Email</th>
-                  <th className="px-3 py-3 text-center font-medium">Роль</th>
+                  <th className="px-3 py-3 text-center font-medium">Уровень</th>
                   <th className="px-3 py-3 text-center font-medium">Регистрация</th>
                   <th className="rounded-r-[8px] px-3 py-3 text-center font-medium">Активность</th>
                 </tr>

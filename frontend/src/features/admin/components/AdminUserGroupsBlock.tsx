@@ -8,7 +8,9 @@ import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import { useUpdateTargetLevel } from '@/features/admin/hooks/useUpdateTargetLevel';
 import { EditCertificateModal } from '@/features/admin/components/EditCertificateModal';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
-import { targetLevelLabels } from '@/utils/labels';
+import { formatCertificationLevelName, targetLevelLabels } from '@/utils/labels';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { formatCertificateDate, isCertificateDateActive } from '@/features/certificate/utils/certificateDates';
 
 type TargetLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
 type GoalMode = 'CERTIFICATION' | 'RENEWAL';
@@ -24,6 +26,10 @@ const processTypeLabels: Record<GoalMode, string> = {
   RENEWAL: 'Ресертификация',
 };
 
+function isCertificateActive(expiresAt: string | null): boolean {
+  return !expiresAt || isCertificateDateActive(expiresAt);
+}
+
 function resolveCurrentLevelByGroupName(groupName: string | null | undefined): TargetLevel | null {
   if (groupName === 'Инструктор') return 'INSTRUCTOR';
   if (groupName === 'Куратор') return 'CURATOR';
@@ -36,14 +42,11 @@ function formatDate(value: string | null | undefined) {
   return new Date(value).toLocaleDateString('ru-RU');
 }
 
-function isCertificateActive(expiresAt: string | null): boolean {
-  if (!expiresAt) return true;
-  return new Date(expiresAt).getTime() > Date.now();
-}
-
 function getCertificateStatusText(expiresAt: string | null) {
   if (!expiresAt) return 'без срока окончания';
-  return isCertificateActive(expiresAt) ? `действует до ${formatDate(expiresAt)}` : `просрочен с ${formatDate(expiresAt)}`;
+  return isCertificateDateActive(expiresAt)
+    ? `действует до ${formatCertificateDate(expiresAt)}`
+    : `просрочен с ${formatCertificateDate(expiresAt)}`;
 }
 
 function getDisplayedLevelLabel(
@@ -183,14 +186,14 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
 
   const saveGroup = async () => {
     if (!selectedGroup || !data) {
-      toast.error('Выберите статус пользователя');
+      toast.error(UI_TOAST_MESSAGES.admin.currentLevelRequired);
       return;
     }
 
     const message =
       groupChanged && (activeCycle || userDetails?.targetLevel)
-        ? 'Сменить текущий статус пользователя? Текущий цикл будет закрыт, целевой уровень будет сброшен.'
-        : 'Сохранить текущий статус пользователя?';
+        ? 'Сменить текущий уровень сертификации? Текущий цикл будет закрыт, цель сертификации будет сброшена.'
+        : 'Сохранить текущий уровень сертификации?';
 
     const ok = await confirm({
       message,
@@ -202,7 +205,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     try {
       await updateGroups.mutateAsync([selectedGroup.id]);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Ошибка при сохранении статуса');
+      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.admin.saveCurrentLevelFailed);
     }
   };
 
@@ -228,7 +231,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
   const handleAbandonCycle = async () => {
     const reason = abandonReason.trim();
     if (!reason) {
-      toast.error('Укажите причину отмены цикла');
+      toast.error(UI_TOAST_MESSAGES.admin.abandonCycleReasonRequired);
       return;
     }
 
@@ -258,13 +261,13 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
   return (
     <div className="space-y-5">
       <section className="rounded-[16px] bg-[var(--color-blue-soft)] p-4">
-        <h2 className="dashboard-v2-title mb-4">Статус и сертификация</h2>
+        <h2 className="dashboard-v2-title mb-4">Уровень и сертификация</h2>
 
         <div className="overflow-hidden rounded-[12px] bg-white/45">
           <Meta label="ФИО" value={data.user.fullName || '—'} />
           <Meta label="Email" value={data.user.email} />
-          <Meta label="Текущий статус" value={savedActiveGroup?.name ?? '—'} />
-          <Meta label="Текущий цикл" value={processText} />
+          <Meta label="Текущий уровень сертификации" value={formatCertificationLevelName(savedActiveGroup?.name)} />
+          <Meta label="Текущий цикл сертификации" value={processText} />
           <Meta
             label="Последний сертификат"
             value={
@@ -278,7 +281,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
 
         {userDetails.targetLevel && !activeCycle ? (
           <div className="mt-4 rounded-[12px] bg-[rgba(255,83,100,0.08)] px-4 py-3 text-[13px] font-semibold text-[var(--color-danger)]">
-            У пользователя выбран целевой уровень, но активный цикл не найден. Проверьте состояние
+            У пользователя выбрана цель сертификации, но активный цикл не найден. Проверьте состояние
             перед выдачей сертификата.
           </div>
         ) : null}
@@ -305,11 +308,11 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
                   activeCertificate.number ? ` №${activeCertificate.number}` : ''
                 }`}
               />
-              <Meta label="Группа" value={activeCertificate.group?.name ?? '—'} />
-              <Meta label="Выдан" value={formatDate(activeCertificate.issuedAt)} />
+              <Meta label="Уровень сертификата" value={formatCertificationLevelName(activeCertificate.group?.name)} />
+              <Meta label="Выдан" value={formatCertificateDate(activeCertificate.issuedAt)} />
               <Meta
                 label="Действует до"
-                value={activeCertificate.expiresAt ? formatDate(activeCertificate.expiresAt) : 'бессрочно'}
+                value={activeCertificate.expiresAt ? formatCertificateDate(activeCertificate.expiresAt) : 'бессрочно'}
               />
               <Meta
                 label="Подтвердил"
@@ -369,17 +372,17 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
       <section className="rounded-[16px] bg-white p-4 shadow-[0_2px_12px_rgba(31,48,94,0.08)]">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
-            <label className="dashboard-v2-label mb-1 block">Текущий статус пользователя</label>
+            <label className="dashboard-v2-label mb-1 block">Текущий уровень сертификации</label>
             <select
               className="input-design h-[38px]"
               value={selectedGroupId}
               onChange={(event) => setSelectedGroupId(event.target.value)}
               disabled={updateGroups.isPending}
             >
-              <option value="">Выберите статус</option>
+              <option value="">Выберите уровень</option>
               {data.allGroups.map((group) => (
                 <option key={group.id} value={group.id}>
-                  {group.name}
+                  {formatCertificationLevelName(group.name)}
                 </option>
               ))}
             </select>
@@ -391,13 +394,13 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
             onClick={saveGroup}
             disabled={updateGroups.isPending || !selectedGroupId || !groupChanged}
           >
-            {updateGroups.isPending ? 'Сохраняем...' : 'Сохранить статус'}
+            {updateGroups.isPending ? 'Сохраняем...' : 'Сохранить уровень'}
           </button>
         </div>
 
         {groupChanged ? (
           <div className="mt-3 rounded-[12px] bg-[rgba(255,83,100,0.08)] px-4 py-3 text-[13px] font-semibold text-[var(--color-danger)]">
-            При смене статуса текущий цикл будет закрыт, а целевой уровень сброшен.
+            При смене уровня текущий цикл будет закрыт, а цель сертификации сброшена.
           </div>
         ) : null}
       </section>
