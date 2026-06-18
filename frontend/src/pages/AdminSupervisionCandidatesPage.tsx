@@ -459,8 +459,8 @@ function AdminSupervisionCandidatesContent() {
                         <ActionArrowButton
                           onClick={() => setSelectedRow(row)}
                           size={31}
-                          title="Открыть детали отправки"
-                          aria-label="Открыть детали отправки"
+                          title="Открыть детали заявки"
+                          aria-label="Открыть детали заявки"
                         />
                       </td>
                     </tr>
@@ -674,14 +674,14 @@ function AdminPendingHoursDetailsModal({
       <div className="relative max-h-[90vh] w-full max-w-[900px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 text-[#1F305E] shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
         <ModalCloseButton onClick={onClose} />
 
-        <h3 className="dashboard-v2-page-title mb-5 text-center">Детали отправки часов</h3>
+        <h3 className="dashboard-v2-page-title mb-5 text-center">Детали заявки на подтверждение часов</h3>
 
         <div className="mb-5 grid gap-4 md:grid-cols-3">
           <CompactField label="Кандидат" value={candidateName(row.candidate.fullName, row.candidate.email)} />
           <CompactField label="Email кандидата" value={row.candidate.email} />
           <CompactField label="Назначенный проверяющий" value={row.reviewer.email} />
           <CompactField label="Тип" value={kindLabel} />
-          <CompactField label="Последняя отправка" value={formatDate(row.latestPendingRequestAt ?? row.latestRequestAt)} />
+          <CompactField label="Последняя заявка" value={formatDate(row.latestPendingRequestAt ?? row.latestRequestAt)} />
           <CompactField label="Состояние" value={hourState(row).text} />
         </div>
 
@@ -694,7 +694,7 @@ function AdminPendingHoursDetailsModal({
               >
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h4 className="dashboard-v2-title">
-                    {pendingRequests.length > 1 ? `Отправка ${index + 1}` : 'Отправка'}
+                    {pendingRequests.length > 1 ? `Заявка ${index + 1}` : 'Заявка'}
                   </h4>
                   <span className="dashboard-v2-caption text-[#8D96B5]">
                     {formatDate(request.createdAt)}

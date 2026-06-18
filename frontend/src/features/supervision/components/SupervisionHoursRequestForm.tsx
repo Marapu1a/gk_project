@@ -127,12 +127,15 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   const [nonObservingGroup, setNonObservingGroup] = useState('0');
   const [description, setDescription] = useState('');
   const [supervisorEmail, setSupervisorEmail] = useState('');
+  const [selectedSupervisorEmail, setSelectedSupervisorEmail] = useState('');
   const [search, setSearch] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [ethicsAccepted, setEthicsAccepted] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isGuideHidden, setIsGuideHidden] = useState(false);
 
+  const hasStoredEthicsAcceptance = Boolean(user?.supervisionEthicsAcceptedAt);
+  const effectiveEthicsAccepted = hasStoredEthicsAcceptance || ethicsAccepted;
   const guideStorageKey = user?.id ? `${GUIDE_STORAGE_PREFIX}:${user.id}` : null;
 
   useEffect(() => {
@@ -178,6 +181,17 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
       return tokens.every((token) => hay.includes(token));
     });
   }, [suggestions, supervisorEmail]);
+  const trimmedSupervisorEmail = supervisorEmail.trim();
+  const exactSupervisorMatch = useMemo(() => {
+    const input = norm(trimmedSupervisorEmail);
+    if (!input) return null;
+    return suggestions.find((suggestion) => norm(suggestion.email) === input) ?? null;
+  }, [suggestions, trimmedSupervisorEmail]);
+  const hasResolvedSupervisor = Boolean(
+    trimmedSupervisorEmail &&
+      ((selectedSupervisorEmail && norm(selectedSupervisorEmail) === norm(trimmedSupervisorEmail)) ||
+        exactSupervisorMatch),
+  );
 
   const implementingValue = parseHours(implementing);
   const programmingValue = parseHours(programming);
@@ -236,8 +250,8 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     !practiceRuleError &&
     !practiceLimitError &&
     isDistributionValid &&
-    supervisorEmail.trim().length > 0 &&
-    ethicsAccepted &&
+    hasResolvedSupervisor &&
+    effectiveEthicsAccepted &&
     !mutation.isPending;
 
   const lockPractice = () => {
@@ -288,7 +302,8 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     setNonObservingGroup('0');
     setDescription('');
     setSupervisorEmail('');
-    setEthicsAccepted(false);
+    setSelectedSupervisorEmail('');
+    setEthicsAccepted(effectiveEthicsAccepted);
   };
 
   const hideGuidePermanently = () => {
@@ -311,6 +326,11 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
       return;
     }
 
+    if (!hasResolvedSupervisor) {
+      toast.error(UI_TOAST_MESSAGES.supervision.reviewerMustExist);
+      return;
+    }
+
     if (!canSubmit) return;
 
     const entries = [
@@ -320,12 +340,12 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
 
     try {
       await mutation.mutateAsync({
-        supervisorEmail: supervisorEmail.trim(),
+        supervisorEmail: exactSupervisorMatch?.email ?? trimmedSupervisorEmail,
         periodStartedAt: periodStartedAt || undefined,
         periodEndedAt: periodEndedAt || undefined,
         treatmentSetting: treatmentSetting.trim() || undefined,
         description: description.trim() || undefined,
-        ethicsAccepted,
+        ethicsAccepted: effectiveEthicsAccepted,
         draftDistribution: distribution,
         entries,
       });
@@ -544,6 +564,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                 value={supervisorEmail}
                 onChange={(event) => {
                   setSupervisorEmail(event.target.value);
+                  setSelectedSupervisorEmail('');
                   setShowSuggestions(true);
                 }}
                 onFocus={() => {
@@ -563,6 +584,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                       className="w-full border-b border-[#DCE8EC] px-3 py-2 text-left text-[13px] last:border-b-0 hover:bg-[#F5F8FA]"
                       onClick={() => {
                         setSupervisorEmail(suggestion.email);
+                        setSelectedSupervisorEmail(suggestion.email);
                         setShowSuggestions(false);
                       }}
                     >
@@ -580,17 +602,33 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
               !isUsersLoading &&
               matchedUsers.length === 0 ? (
                 <div className="absolute z-20 mt-1 w-full rounded-[10px] bg-white px-3 py-2 text-[13px] text-[#6B7894] shadow-[0_2px_12px_rgba(31,48,94,0.16)]">
-                  Пользователь не найден. Можно ввести email вручную.
+                  Супервизор не найден в системе.
                 </div>
               ) : null}
             </Field>
 
+            {trimmedSupervisorEmail && !hasResolvedSupervisor ? (
+              <p className="mt-2 text-[13px] font-semibold leading-[1.35] text-[#FF5364]">
+                Выберите супервизора из подсказки.
+              </p>
+            ) : null}
+
+            <p className="mt-3 text-center text-[13px] leading-[1.35] text-[#6B7894]">
+              Если вашего супервизора нет в реестре, напишите{' '}
+              <a
+                href="mailto:cspap@yandex.ru"
+                className="font-semibold text-[#1F305E] underline"
+              >
+                cspap@yandex.ru
+              </a>
+            </p>
+
             <label className="mt-5 flex items-start gap-3 text-[13px] text-[#6B7894]">
               <input
                 type="checkbox"
-                checked={ethicsAccepted}
+                checked={effectiveEthicsAccepted}
                 onChange={(event) => setEthicsAccepted(event.target.checked)}
-                disabled={Boolean(user?.supervisionEthicsAcceptedAt)}
+                disabled={hasStoredEthicsAcceptance}
                 className="mt-0.5 h-5 w-5 rounded border-[#A7B1C7]"
               />
               <span>
@@ -615,15 +653,6 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
               {mutation.isPending ? 'Отправляем...' : 'Отправить'}
             </button>
 
-            <p className="mt-3 text-center text-[13px] leading-[1.35] text-[#6B7894]">
-              Если вашего супервизора нет в реестре, напишите{' '}
-              <a
-                href="mailto:cspap@yandex.ru"
-                className="font-semibold text-[#1F305E] underline"
-              >
-                cspap@yandex.ru
-              </a>
-            </p>
           </div>
             </div>
           </section>

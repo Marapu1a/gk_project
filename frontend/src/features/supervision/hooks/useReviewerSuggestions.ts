@@ -1,4 +1,4 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   getReviewerSuggestions,
   type ReviewerSuggestionsResponse,
@@ -22,7 +22,6 @@ export function useReviewerSuggestions({ search, supervision, limit = 20 }: Para
         limit,
       }),
     enabled: normalizedSearch.length >= 2,
-    placeholderData: keepPreviousData,
     staleTime: 30_000,
   });
 }

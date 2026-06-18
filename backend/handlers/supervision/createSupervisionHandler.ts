@@ -18,6 +18,11 @@ import {
 } from '../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
 
+const PRACTICE_REVIEWER_REQUIRED_MESSAGE =
+  'Заявку на подтверждение часов практики можно отправить только супервизорам, которые есть в системе. Напишите в поддержку, если вашего супервизора нет в системе или что-то пошло не так.';
+const MENTOR_REVIEWER_REQUIRED_MESSAGE =
+  'Заявку на подтверждение часов менторства можно отправить только наставникам, которые есть в системе. Напишите в поддержку, если вашего наставника нет в системе или что-то пошло не так.';
+
 function mapTargetLevel(level: TargetLevel) {
   if (level === TargetLevel.INSTRUCTOR) return 'Инструктор';
   if (level === TargetLevel.CURATOR) return 'Куратор';
@@ -102,19 +107,6 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
   }
 
-  const reviewer = await prisma.user.findFirst({
-    where: { email: { equals: supervisorEmail, mode: 'insensitive' }, archivedAt: null },
-    include: { groups: { include: { group: true } } },
-    orderBy: [{ email: 'asc' }, { id: 'asc' }],
-  });
-  if (!reviewer) {
-    return reply.code(400).send({ error: 'Супервизор с таким email не найден' });
-  }
-
-  if (reviewer.id === userId) {
-    return reply.code(400).send({ error: 'SELF_REVIEW_FORBIDDEN' });
-  }
-
   const currentUser = await prisma.user.findUnique({
     where: { id: userId },
     include: { groups: { include: { group: true } } },
@@ -126,19 +118,34 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     return reply.code(403).send({ error: 'Аккаунт архивирован' });
   }
 
+  const userGroups = currentUser.groups.map((g) => g.group.name);
+  const isAuthorSimpleSupervisor = userGroups.includes('Супервизор');
+  const isAuthorExperiencedSupervisor = userGroups.includes('Опытный Супервизор');
+  const isAuthorAnySupervisor = isAuthorSimpleSupervisor || isAuthorExperiencedSupervisor;
+  const reviewerRequiredMessage = isAuthorSimpleSupervisor
+    ? MENTOR_REVIEWER_REQUIRED_MESSAGE
+    : PRACTICE_REVIEWER_REQUIRED_MESSAGE;
+
+  const reviewer = await prisma.user.findFirst({
+    where: { email: { equals: supervisorEmail, mode: 'insensitive' }, archivedAt: null },
+    include: { groups: { include: { group: true } } },
+    orderBy: [{ email: 'asc' }, { id: 'asc' }],
+  });
+  if (!reviewer) {
+    return reply.code(400).send({ error: reviewerRequiredMessage });
+  }
+
+  if (reviewer.id === userId) {
+    return reply.code(400).send({ error: 'SELF_REVIEW_FORBIDDEN' });
+  }
+
   const acceptedEthicsAt = currentUser.supervisionEthicsAcceptedAt ?? (ethicsAccepted ? new Date() : null);
   if (!acceptedEthicsAt) {
     return reply.code(400).send({ error: 'Необходимо принять этические принципы IBAO' });
   }
 
-  const userGroups = currentUser.groups.map((g) => g.group.name);
   const reviewerGroups = reviewer.groups.map((g) => g.group.name);
 
-  const isAuthorSimpleSupervisor = userGroups.includes('Супервизор');
-  const isAuthorExperiencedSupervisor = userGroups.includes('Опытный Супервизор');
-  const isAuthorAnySupervisor = isAuthorSimpleSupervisor || isAuthorExperiencedSupervisor;
-
-  const isReviewerAdmin = reviewer.role === 'ADMIN';
   const isReviewerExperienced = reviewerGroups.includes('Опытный Супервизор');
   const isReviewerSupervisor = reviewerGroups.includes('Супервизор') || isReviewerExperienced;
 
@@ -148,15 +155,15 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     });
   }
 
-  if (isAuthorSimpleSupervisor && !(isReviewerExperienced || isReviewerAdmin)) {
+  if (isAuthorSimpleSupervisor && !isReviewerExperienced) {
     return reply.code(400).send({
-      error: 'Менторские часы можно отправлять только опытным супервизорам или админам',
+      error: MENTOR_REVIEWER_REQUIRED_MESSAGE,
     });
   }
 
-  if (!isAuthorAnySupervisor && !(isReviewerSupervisor || isReviewerAdmin)) {
+  if (!isAuthorAnySupervisor && !isReviewerSupervisor) {
     return reply.code(400).send({
-      error: 'Часы практики можно отправлять только супервизорам, опытным супервизорам или админам',
+      error: PRACTICE_REVIEWER_REQUIRED_MESSAGE,
     });
   }
 

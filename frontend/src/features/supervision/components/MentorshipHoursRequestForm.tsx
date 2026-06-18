@@ -78,11 +78,14 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
   const [mentorshipDate, setMentorshipDate] = useState(todayInputValue);
   const [mentorshipHours, setMentorshipHours] = useState('0');
   const [mentorEmail, setMentorEmail] = useState('');
+  const [selectedMentorEmail, setSelectedMentorEmail] = useState('');
   const [format, setFormat] = useState<(typeof MENTORSHIP_FORMATS)[number] | ''>('');
   const [comment, setComment] = useState('');
   const [search, setSearch] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [ethicsAccepted, setEthicsAccepted] = useState(false);
+  const hasStoredEthicsAcceptance = Boolean(user?.supervisionEthicsAcceptedAt);
+  const effectiveEthicsAccepted = hasStoredEthicsAcceptance || ethicsAccepted;
 
   useEffect(() => {
     if (user?.supervisionEthicsAcceptedAt) {
@@ -119,6 +122,17 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
       return tokens.every((token) => hay.includes(token));
     });
   }, [suggestions, mentorEmail]);
+  const trimmedMentorEmail = mentorEmail.trim();
+  const exactMentorMatch = useMemo(() => {
+    const input = norm(trimmedMentorEmail);
+    if (!input) return null;
+    return suggestions.find((suggestion) => norm(suggestion.email) === input) ?? null;
+  }, [suggestions, trimmedMentorEmail]);
+  const hasResolvedMentor = Boolean(
+    trimmedMentorEmail &&
+      ((selectedMentorEmail && norm(selectedMentorEmail) === norm(trimmedMentorEmail)) ||
+        exactMentorMatch),
+  );
 
   const hoursValue = parseHours(mentorshipHours);
   const mentor = summary?.mentor ?? null;
@@ -133,18 +147,19 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
     mentorshipDate <= today &&
     hoursValue > 0 &&
     (effectiveLimit == null || hoursValue <= effectiveLimit) &&
-    mentorEmail.trim().length > 0 &&
+    hasResolvedMentor &&
     format.length > 0 &&
-    ethicsAccepted &&
+    effectiveEthicsAccepted &&
     !mutation.isPending;
 
   const resetForm = () => {
     setMentorshipDate(todayInputValue());
     setMentorshipHours('0');
     setMentorEmail('');
+    setSelectedMentorEmail('');
     setFormat('');
     setComment('');
-    setEthicsAccepted(Boolean(user?.supervisionEthicsAcceptedAt));
+    setEthicsAccepted(effectiveEthicsAccepted);
   };
 
   const submit = async () => {
@@ -168,16 +183,21 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
       return;
     }
 
+    if (!hasResolvedMentor) {
+      toast.error(UI_TOAST_MESSAGES.supervision.mentorMustExist);
+      return;
+    }
+
     if (!canSubmit) return;
 
     try {
       await mutation.mutateAsync({
-        supervisorEmail: mentorEmail.trim(),
+        supervisorEmail: exactMentorMatch?.email ?? trimmedMentorEmail,
         periodStartedAt: mentorshipDate,
         periodEndedAt: mentorshipDate,
         treatmentSetting: format,
         description: comment.trim() || undefined,
-        ethicsAccepted,
+        ethicsAccepted: effectiveEthicsAccepted,
         entries: [{ type: 'SUPERVISOR', value: hoursValue }],
       });
 
@@ -252,6 +272,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
                     value={mentorEmail}
                     onChange={(event) => {
                       setMentorEmail(event.target.value);
+                      setSelectedMentorEmail('');
                       setShowSuggestions(true);
                     }}
                     onFocus={() => {
@@ -271,6 +292,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
                           className="w-full border-b border-[#DCE8EC] px-3 py-2 text-left text-[13px] last:border-b-0 hover:bg-[#F5F8FA]"
                           onClick={() => {
                             setMentorEmail(suggestion.email);
+                            setSelectedMentorEmail(suggestion.email);
                             setShowSuggestions(false);
                           }}
                         >
@@ -288,10 +310,16 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
                   !isUsersLoading &&
                   matchedUsers.length === 0 ? (
                     <div className="absolute z-20 mt-1 w-full rounded-[10px] bg-white px-3 py-2 text-[13px] text-[#6B7894] shadow-[0_2px_12px_rgba(31,48,94,0.16)]">
-                      Пользователь не найден. Можно ввести email вручную.
+                      Наставник не найден в системе.
                     </div>
                   ) : null}
                 </Field>
+
+                {trimmedMentorEmail && !hasResolvedMentor ? (
+                  <p className="mt-2 text-[13px] font-semibold leading-[1.35] text-[#FF5364]">
+                    Выберите наставника из подсказки.
+                  </p>
+                ) : null}
 
                 <Field label="Комментарии" className="mt-4">
                   <textarea
@@ -344,12 +372,22 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
                   </div>
                 </div>
 
+                <p className="mt-5 text-center text-[13px] leading-[1.35] text-[#6B7894]">
+                  Если вашего ментора нет в реестре, напишите{' '}
+                  <a
+                    href="mailto:cspap@yandex.ru"
+                    className="font-semibold text-[#1F305E] underline"
+                  >
+                    cspap@yandex.ru
+                  </a>
+                </p>
+
                 <label className="mt-5 flex items-start gap-3 text-[13px] text-[#6B7894]">
                   <input
                     type="checkbox"
-                    checked={ethicsAccepted}
+                    checked={effectiveEthicsAccepted}
                     onChange={(event) => setEthicsAccepted(event.target.checked)}
-                    disabled={Boolean(user?.supervisionEthicsAcceptedAt)}
+                    disabled={hasStoredEthicsAcceptance}
                     className="mt-0.5 h-5 w-5 rounded border-[#A7B1C7]"
                   />
                   <span>
@@ -373,16 +411,6 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
                 >
                   {mutation.isPending ? 'Отправляем...' : 'Отправить'}
                 </button>
-
-                <p className="mt-3 text-center text-[13px] leading-[1.35] text-[#6B7894]">
-                  Если вашего ментора нет в реестре, напишите{' '}
-                  <a
-                    href="mailto:cspap@yandex.ru"
-                    className="font-semibold text-[#1F305E] underline"
-                  >
-                    cspap@yandex.ru
-                  </a>
-                </p>
               </div>
             </div>
           </section>

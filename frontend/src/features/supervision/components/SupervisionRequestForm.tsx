@@ -256,7 +256,7 @@ export function SupervisionRequestForm() {
         {/* Email супервизора c подсказками */}
         <div className="relative">
           <label className="block font-medium mb-1">
-            Email {isMentor ? 'опытного супервизора или админа' : 'супервизора или его фамилия'}
+            Email {isMentor ? 'опытного супервизора' : 'супервизора или его фамилия'}
           </label>
           <input
             type="text"
@@ -335,7 +335,7 @@ export function SupervisionRequestForm() {
                 className="absolute z-20 mt-1 w-full rounded-2xl bg-white header-shadow px-3 py-2 text-xs text-gray-600"
                 style={{ border: '1px solid var(--color-green-light)' }}
               >
-                Пользователь не найден. Можно ввести email вручную.
+                Проверяющий не найден в системе.
               </div>
             )}
 

@@ -19,8 +19,8 @@ const TARGET_LABELS: Record<TargetLevel, string> = {
 };
 
 const KIND_LABELS: Record<ReviewerCandidateKind, string> = {
-  supervision: 'Отправки часов супервизии',
-  mentorship: 'Отправки часов менторства',
+  supervision: 'Заявки на подтверждение часов практики',
+  mentorship: 'Заявки на подтверждение часов менторства',
 };
 
 function isKind(value: string | undefined): value is ReviewerCandidateKind {

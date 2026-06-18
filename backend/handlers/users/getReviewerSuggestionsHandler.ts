@@ -38,24 +38,16 @@ export async function getReviewerSuggestionsHandler(req: FastifyRequest, reply: 
   const eligibleByRoleOrGroup =
     supervision === 'mentor'
       ? {
-          OR: [
-            { role: 'ADMIN' as const },
-            { groups: { some: { group: { name: 'Опытный Супервизор' } } } },
-          ],
+          groups: { some: { group: { name: 'Опытный Супервизор' } } },
         }
       : {
-          OR: [
-            { role: 'ADMIN' as const },
-            {
-              groups: {
-                some: {
-                  group: {
-                    name: { in: ['Супервизор', 'Опытный Супервизор'] },
-                  },
-                },
+          groups: {
+            some: {
+              group: {
+                name: { in: ['Супервизор', 'Опытный Супервизор'] },
               },
             },
-          ],
+          },
         };
 
   const users = await prisma.user.findMany({

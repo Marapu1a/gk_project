@@ -120,11 +120,11 @@ export function CandidateRequestDetailsModal({
         <ModalCloseButton onClick={onClose} />
 
         <h3 className="dashboard-v2-page-title mb-5 text-center text-[#1F305E]">
-          Детали отправки часов
+          Детали заявки на подтверждение часов
         </h3>
 
         <div className="mb-5 grid gap-4 sm:grid-cols-3">
-          <ReadOnlyField label="Дата отправки" value={formatDate(request.createdAt)} />
+          <ReadOnlyField label="Дата заявки" value={formatDate(request.createdAt)} />
           <ReadOnlyField
             label="Тип часов"
             value={kind === 'mentorship' ? 'Менторство' : 'Супервизия'}

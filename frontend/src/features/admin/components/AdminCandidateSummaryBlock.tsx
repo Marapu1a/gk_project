@@ -1,6 +1,15 @@
-import { useMemo, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useMemo,
+  useState,
+  type FocusEvent,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   docReviewStatusLabels,
   examStatusLabels,
@@ -8,6 +17,7 @@ import {
   targetLevelLabels,
 } from '@/utils/labels';
 import { formatCertificateDate } from '@/features/certificate/utils/certificateDates';
+import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type Props = {
   user: any;
@@ -39,8 +49,13 @@ function capToRequired(current?: number | null, required?: number | null) {
   return Math.min(Math.max(0, currentValue), requiredValue);
 }
 
-function progressText(current?: number | null, required?: number | null, options?: { cap?: boolean }) {
-  const currentValue = options?.cap === false ? Math.max(0, Number(current ?? 0)) : capToRequired(current, required);
+function progressText(
+  current?: number | null,
+  required?: number | null,
+  options?: { cap?: boolean },
+) {
+  const currentValue =
+    options?.cap === false ? Math.max(0, Number(current ?? 0)) : capToRequired(current, required);
   return `${formatNumber(currentValue)} / ${formatNumber(required)}`;
 }
 
@@ -60,7 +75,7 @@ function resolveTargetLabel(user: any) {
   const activeCycle = user.activeCycle;
   const targetLevel = activeCycle?.targetLevel ?? user.targetLevel;
 
-  if (!targetLevel) return 'Не выбран';
+  if (!targetLevel) return 'Не выбрана';
   if (activeCycle?.type === 'RENEWAL' && targetLevel === 'SUPERVISOR') {
     return 'Опытный супервизор';
   }
@@ -106,7 +121,9 @@ function latestCertificateText(certificate: any) {
   const group = certificate.group?.name
     ? formatCertificationLevelName(certificate.group.name)
     : (certificate.title ?? 'Сертификат');
-  const expiresAt = certificate.expiresAt ? `до ${formatCertificateDate(certificate.expiresAt)}` : 'бессрочно';
+  const expiresAt = certificate.expiresAt
+    ? `до ${formatCertificateDate(certificate.expiresAt)}`
+    : 'бессрочно';
   return `${group} · ${expiresAt}`;
 }
 
@@ -143,7 +160,12 @@ function documentStatus(user: any) {
   const hasArchivedRequests = Boolean(user.documentReviewRequests?.length);
 
   if (readiness?.ready)
-    return { label: 'Принято', tone: 'good' as const, to: latestRequest?.adminUrl, mode: 'history' as const };
+    return {
+      label: 'Принято',
+      tone: 'good' as const,
+      to: latestRequest?.adminUrl,
+      mode: 'history' as const,
+    };
   if (latestRequest) {
     const label =
       latestRequest.status === 'CONFIRMED'
@@ -248,6 +270,7 @@ export function AdminCandidateSummaryBlock({
   const docs = documentStatus(user);
   const latestCertificate = user.latestCertificate;
   const examApplication = user.activeCycleExamApplication;
+  const [openTooltipKey, setOpenTooltipKey] = useState<string | null>(null);
   const supervisionCurrent = readiness?.supervision?.current;
   const supervisionRequired = readiness?.supervision?.required;
   const ceuCurrent = readiness?.ceu?.current;
@@ -449,20 +472,38 @@ export function AdminCandidateSummaryBlock({
         </StatusPill>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="rounded-[16px] bg-[var(--color-blue-soft)] p-4">
-          <div className="grid gap-3 md:grid-cols-2">
-            <Meta label="ФИО" value={user.fullName || '—'} />
-            <Meta label="ФИО латиницей" value={user.fullNameLatin || '—'} />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+        <div className="min-w-0 rounded-[16px] bg-[var(--color-blue-soft)] p-4">
+          <div className="grid min-w-0 gap-3 md:grid-cols-2">
+            <Meta
+              label="ФИО"
+              value={user.fullName || '—'}
+              tooltipKey="fullName"
+              openTooltipKey={openTooltipKey}
+              setOpenTooltipKey={setOpenTooltipKey}
+            />
+            <Meta
+              label="ФИО латиницей"
+              value={user.fullNameLatin || '—'}
+              tooltipKey="fullNameLatin"
+              openTooltipKey={openTooltipKey}
+              setOpenTooltipKey={setOpenTooltipKey}
+            />
             <Meta
               label="Подтвержденный уровень сертификации"
               value={formatCertificationLevelName(activeGroupName)}
             />
-            <Meta label="Email" value={user.email || '—'} />
+            <Meta
+              label="Email"
+              value={user.email || '—'}
+              tooltipKey="email"
+              openTooltipKey={openTooltipKey}
+              setOpenTooltipKey={setOpenTooltipKey}
+            />
             <Meta label="Цель сертификации" value={resolveTargetLabel(user)} />
             <Meta label="Последний сертификат" value={latestCertificateText(latestCertificate)} />
             <Meta label="После выдачи сертификата" value={afterCertificateText} />
-            <Meta label="Текущий цикл сертификации" value={activeCycleText} />
+            <Meta label="Текущий цикл сертификации" value={activeCycleText} wide />
           </div>
 
           <div className="mt-4 flex flex-wrap justify-end gap-3 border-t border-white/70 pt-4">
@@ -484,7 +525,7 @@ export function AdminCandidateSummaryBlock({
           </div>
         </div>
 
-        <div className="rounded-[16px] bg-[var(--color-blue-soft)] p-4">
+        <div className="min-w-0 rounded-[16px] bg-[var(--color-blue-soft)] p-4">
           {summaryLines.length ? (
             summaryLines.map((line) => (
               <SummaryLine
@@ -503,16 +544,167 @@ export function AdminCandidateSummaryBlock({
           )}
         </div>
       </div>
-
     </section>
   );
 }
 
-function Meta({ label, value }: { label: string; value: ReactNode }) {
+const COPY_ICON = '/dashboard-v2/icon_copy.svg';
+const TOOLTIP_CLOSE_DELAY_MS = 1800;
+
+function CopyableTruncatedValue({
+  value,
+  tooltipKey,
+  openTooltipKey,
+  setOpenTooltipKey,
+}: {
+  value: string;
+  tooltipKey: string;
+  openTooltipKey: string | null;
+  setOpenTooltipKey: (key: string | null) => void;
+}) {
+  const rootRef = useRef<HTMLSpanElement | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
+  const hasValue = value.trim() && value !== '—';
+  const isOpen = openTooltipKey === tooltipKey;
+
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current == null) return;
+    window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  };
+
+  const openTooltip = () => {
+    clearCloseTimer();
+    setOpenTooltipKey(tooltipKey);
+  };
+
+  const scheduleCloseTooltip = () => {
+    clearCloseTimer();
+    closeTimerRef.current = window.setTimeout(() => {
+      setOpenTooltipKey(null);
+      closeTimerRef.current = null;
+    }, TOOLTIP_CLOSE_DELAY_MS);
+  };
+
+  const handleBlur = (event: FocusEvent<HTMLSpanElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    scheduleCloseTooltip();
+  };
+
+  const copyValue = async (event?: MouseEvent<HTMLButtonElement>) => {
+    event?.stopPropagation();
+    if (!hasValue) return;
+
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(UI_TOAST_MESSAGES.admin.valueCopied);
+    } catch {
+      toast.error(UI_TOAST_MESSAGES.admin.valueCopyFailed);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (rootRef.current?.contains(event.target as Node)) return;
+      clearCloseTimer();
+      setOpenTooltipKey(null);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [isOpen, setOpenTooltipKey]);
+
+  useEffect(
+    () => () => {
+      clearCloseTimer();
+    },
+    [],
+  );
+
+  if (!hasValue) {
+    return <span>—</span>;
+  }
+
   return (
-    <div>
+    <span
+      ref={rootRef}
+      className="relative inline-flex max-w-full min-w-0 items-center gap-1"
+      onMouseEnter={openTooltip}
+      onMouseLeave={scheduleCloseTooltip}
+      onFocus={openTooltip}
+      onBlur={handleBlur}
+    >
+      <button
+        type="button"
+        className="max-w-full min-w-0 cursor-pointer truncate text-left transition hover:text-[var(--color-blue-darker)]"
+        onClick={() => {
+          clearCloseTimer();
+          setOpenTooltipKey(isOpen ? null : tooltipKey);
+        }}
+        title={value}
+      >
+        {value}
+      </button>
+
+      {isOpen ? (
+        <span
+          className="absolute left-0 top-full z-30 mt-2 w-max max-w-[min(520px,calc(100vw-64px))] rounded-[12px] bg-white px-3 py-2 text-[13px] font-semibold leading-[1.35] text-[#1F305E] shadow-[0_6px_22px_rgba(31,48,94,0.18)]"
+          onMouseEnter={openTooltip}
+          onMouseLeave={scheduleCloseTooltip}
+        >
+          <span className="block break-all pr-8">{value}</span>
+          <button
+            type="button"
+            className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-[6px] transition hover:bg-[var(--color-blue-soft)]"
+            onClick={copyValue}
+            aria-label="Скопировать значение"
+          >
+            <img src={COPY_ICON} alt="" className="h-[14px] w-[14px]" />
+          </button>
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function Meta({
+  label,
+  value,
+  wide = false,
+  tooltipKey,
+  openTooltipKey,
+  setOpenTooltipKey,
+}: {
+  label: string;
+  value: string;
+  wide?: boolean;
+  tooltipKey?: string;
+  openTooltipKey?: string | null;
+  setOpenTooltipKey?: (key: string | null) => void;
+}) {
+  const canShowTooltip = Boolean(tooltipKey && setOpenTooltipKey);
+
+  return (
+    <div className={`min-w-0 ${wide ? 'md:col-span-2' : ''}`}>
       <div className="text-[12px] font-semibold text-[#8D96B5]">{label}</div>
-      <div className="mt-0.5 text-[15px] font-extrabold text-[#1F305E]">{value}</div>
+      <div className="mt-0.5 min-w-0 text-[15px] font-extrabold text-[#1F305E]">
+        {canShowTooltip ? (
+          <CopyableTruncatedValue
+            value={value}
+            tooltipKey={tooltipKey as string}
+            openTooltipKey={openTooltipKey ?? null}
+            setOpenTooltipKey={setOpenTooltipKey as (key: string | null) => void}
+          />
+        ) : (
+          <span className="block truncate" title={value}>
+            {value}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

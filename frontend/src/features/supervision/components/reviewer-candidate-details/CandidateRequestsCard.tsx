@@ -46,7 +46,7 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
       <h2 className="dashboard-v2-title mb-7">{title}</h2>
 
       {requests.length === 0 ? (
-        <p className="dashboard-v2-text text-[#6B7894]">Отправок пока нет.</p>
+        <p className="dashboard-v2-text text-[#6B7894]">Заявок пока нет.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="dashboard-v2-text w-full min-w-[460px] text-[#1F305E]">
@@ -60,7 +60,7 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                     }
                     className="mx-auto inline-flex cursor-pointer items-center gap-1"
                   >
-                    Дата отправки
+                    Дата заявки
                     <img
                       src="/dashboard-v2/icon_sort_by.svg"
                       alt=""
@@ -90,8 +90,8 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                         <ActionArrowButton
                           onClick={() => setSelectedRequest(request)}
                           size={30}
-                          title="Открыть детали отправки"
-                          aria-label="Открыть детали отправки"
+                          title="Открыть детали заявки"
+                          aria-label="Открыть детали заявки"
                         />
 
                         <span>{formatDate(request.createdAt)}</span>

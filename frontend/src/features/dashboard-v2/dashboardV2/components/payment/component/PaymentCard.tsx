@@ -51,12 +51,6 @@ export function PaymentCard({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {isFullPackage && !isPaid && (
-            <span className="rounded-full bg-[var(--color-danger)] px-2.5 py-[5px] text-[10px] font-bold leading-none text-white">
-              -35%
-            </span>
-          )}
-
           {isPaid ? (
             <PaymentStatusIcon className="h-[34px] w-[34px]" />
           ) : isPending ? (
