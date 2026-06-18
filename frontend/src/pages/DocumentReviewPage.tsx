@@ -2,10 +2,12 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { PageNav } from '@/components/PageNav';
 import { DocumentReviewForm } from '@/features/documentReview/components/DocumentReviewForm';
 import { useGetDocReviewReq } from '@/features/documentReview/hooks/useGetDocReviewReq';
 import { useRequestDocumentDeletion } from '@/features/documentReview/hooks/useRequestDocumentDeletion';
+import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { documentTypeLabels } from '@/utils/documentTypeLabels';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
@@ -81,6 +83,7 @@ export default function DocumentReviewPage() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [deleteRequestTarget, setDeleteRequestTarget] = useState<ReviewFile | null>(null);
   const { data: request, isLoading } = useGetDocReviewReq();
+  const { data: currentUser, isLoading: userLoading } = useCurrentUser();
   const { data: payments, isLoading: paymentsLoading } = useUserPayments();
   const deletionRequest = useRequestDocumentDeletion();
 
@@ -96,8 +99,12 @@ export default function DocumentReviewPage() {
     : paymentStatusLabels[paymentStatus];
 
   const reviewFiles = useMemo(() => normalizeReviewFiles(request), [request]);
+  const activeCycleId = currentUser?.activeCycle?.id ?? null;
+  const isArchiveRequest = Boolean(
+    request && activeCycleId && request.cycleId !== activeCycleId,
+  );
 
-  if (isLoading || paymentsLoading) {
+  if (isLoading || paymentsLoading || userLoading) {
     return <p className="p-6 text-sm text-blue-dark">Загрузка...</p>;
   }
 
@@ -143,6 +150,14 @@ export default function DocumentReviewPage() {
 
         <section className="mt-9">
           <h2 className="mb-5 text-center text-[22px] font-extrabold leading-tight">История</h2>
+
+          {isArchiveRequest ? (
+            <div className="mx-auto mb-4 max-w-[620px] rounded-[12px] bg-[var(--color-blue-soft)] px-5 py-4 text-[14px] font-semibold text-[var(--color-blue-dark)]">
+              Ниже показаны документы из предыдущего периода. Они сохранены для истории, но не
+              подтверждают документы текущего цикла сертификации. Для текущего цикла загрузите
+              документы заново.
+            </div>
+          ) : null}
 
           {reviewFiles.length === 0 ? (
             <p className="mx-auto max-w-[620px] rounded-[12px] bg-white px-5 py-5 text-center text-[14px] text-[#8D96B5] shadow-soft">
@@ -314,8 +329,10 @@ function DeletionRequestModal({
           }
           onSubmit(trimmed);
         }}
-        className="w-full max-w-[430px] rounded-[16px] bg-white px-5 py-5 shadow-[0_16px_40px_rgba(0,0,0,0.22)]"
+        className="relative w-full max-w-[430px] rounded-[16px] bg-white px-5 py-5 shadow-[0_16px_40px_rgba(0,0,0,0.22)]"
       >
+        <ModalCloseButton onClick={onClose} disabled={isPending} />
+
         <h2 className="text-center text-[22px] font-extrabold leading-tight text-[var(--color-blue-dark)]">
           Запросить удаление
         </h2>

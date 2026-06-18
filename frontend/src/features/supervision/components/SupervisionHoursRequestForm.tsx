@@ -9,8 +9,8 @@ import { useSubmitSupervisionRequest } from '@/features/supervision/hooks/useSub
 import { useReviewerSuggestions } from '@/features/supervision/hooks/useReviewerSuggestions';
 import { LONG_TEXT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
-const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const GUIDE_STORAGE_PREFIX = 'supervision-hours-guide-hidden:v1';
 const hoursInputSchema = z.string().refine(
   (value) => value === '' || /^\d*(?:[.]\d{0,2})?$/.test(value),
@@ -666,14 +666,7 @@ function SupervisionHoursGuideModal({
         aria-labelledby="supervision-hours-guide-title"
         className="relative max-h-[90vh] w-full max-w-[760px] overflow-y-auto rounded-[16px] bg-white px-5 pb-5 pt-4 text-[#1F305E] shadow-[0_16px_40px_rgba(0,0,0,0.24)] sm:px-7 sm:pb-7"
       >
-        <button
-          type="button"
-          onClick={close}
-          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center opacity-65 transition hover:opacity-100"
-          aria-label="Закрыть"
-        >
-          <img src={EXIT_ICON} alt="" className="h-6 w-6" />
-        </button>
+        <ModalCloseButton onClick={close} iconClassName="h-6 w-6" />
 
         <h2
           id="supervision-hours-guide-title"

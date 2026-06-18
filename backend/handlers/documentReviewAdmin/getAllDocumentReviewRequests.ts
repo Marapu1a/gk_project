@@ -23,6 +23,7 @@ export async function getAllDocumentReviewRequests(req: FastifyRequest, reply: F
     orderBy: { submittedAt: 'desc' },
     include: {
       user: { select: { id: true, email: true, fullName: true } },
+      cycle: { select: { id: true, type: true, status: true, targetLevel: true, startedAt: true } },
       documents: true,
       documentFiles: { select: { id: true, status: true, deletionRequestedAt: true } },
     },

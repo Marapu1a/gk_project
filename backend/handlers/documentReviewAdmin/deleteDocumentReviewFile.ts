@@ -40,17 +40,48 @@ export async function deleteDocumentReviewFile(req: FastifyRequest, reply: Fasti
     return reply.code(400).send({ error: 'Насовсем можно удалить только уже удаленный документ' });
   }
 
-  await prisma.$transaction(async (tx) => {
+  const physicalFileIdToDelete = await prisma.$transaction(async (tx) => {
     await tx.documentReviewFile.delete({ where: { id: fileReviewId } });
 
-    await tx.uploadedFile.delete({
+    const uploadedFile = await tx.uploadedFile.findUnique({
       where: { id: reviewFile.fileId },
+      select: {
+        fileId: true,
+        requestId: true,
+        certificate: { select: { id: true } },
+        supervisionContract: { select: { id: true } },
+        _count: { select: { documentReviewFiles: true } },
+      },
     });
 
+    const fileStillBelongsToAnotherRequest =
+      uploadedFile?.requestId && uploadedFile.requestId !== id;
+
+    const canDeleteUploadedFile =
+      uploadedFile &&
+      uploadedFile._count.documentReviewFiles === 0 &&
+      !fileStillBelongsToAnotherRequest &&
+      !uploadedFile.certificate &&
+      !uploadedFile.supervisionContract;
+
+    let physicalFileId: string | null = null;
+
+    if (canDeleteUploadedFile) {
+      physicalFileId = uploadedFile.fileId;
+
+      await tx.uploadedFile.delete({
+        where: { id: reviewFile.fileId },
+      });
+    }
+
     await recalculateDocumentReviewRequestStatus(tx, id);
+
+    return physicalFileId;
   });
 
-  await deletePhysicalFile(reviewFile.file.fileId);
+  if (physicalFileIdToDelete) {
+    await deletePhysicalFile(physicalFileIdToDelete);
+  }
 
   return reply.send({ ok: true });
 }

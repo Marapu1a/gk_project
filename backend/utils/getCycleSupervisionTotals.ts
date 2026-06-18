@@ -1,6 +1,6 @@
 // src/utils/getCycleSupervisionTotals.ts
 import { prisma } from '../lib/prisma';
-import { PracticeLevel, TargetLevel, CycleType } from '@prisma/client';
+import { PracticeLevel, TargetLevel, CycleType, SupervisionAdminCorrectionKind } from '@prisma/client';
 import {
   calcAutoSupervisionHours,
   calcAutoRenewalSupervisionHours,
@@ -19,7 +19,7 @@ export async function getCycleSupervisionTotals(
     PracticeLevel.PROGRAMMING,
   ];
 
-  const [cycle, confirmed, pending] = await Promise.all([
+  const [cycle, confirmed, pending, adminCorrection] = await Promise.all([
     prisma.certificationCycle.findUnique({
       where: { id: cycleId },
       select: { type: true },
@@ -40,9 +40,36 @@ export async function getCycleSupervisionTotals(
       },
       _sum: { value: true },
     }),
+    prisma.supervisionAdminCorrection.findUnique({
+      where: {
+        cycleId_kind: {
+          cycleId,
+          kind: SupervisionAdminCorrectionKind.PRACTICE,
+        },
+      },
+      select: {
+        id: true,
+        implementing: true,
+        programming: true,
+        directIndividual: true,
+        directGroup: true,
+        nonObservingIndividual: true,
+        nonObservingGroup: true,
+        updatedAt: true,
+      },
+    }),
   ]);
 
-  const practiceConfirmedRaw = confirmed._sum.value ?? 0;
+  const correctionPractice =
+    adminCorrection ? adminCorrection.implementing + adminCorrection.programming : null;
+  const correctionSupervision = adminCorrection
+    ? adminCorrection.directIndividual +
+      adminCorrection.directGroup +
+      adminCorrection.nonObservingIndividual +
+      adminCorrection.nonObservingGroup
+    : null;
+
+  const practiceConfirmedRaw = correctionPractice ?? confirmed._sum.value ?? 0;
   const practicePending = pending._sum.value ?? 0;
 
   const practiceConfirmed = practiceConfirmedRaw + extraConfirmedPracticeHours;
@@ -51,15 +78,17 @@ export async function getCycleSupervisionTotals(
   const groupName = mapTargetLevel(targetLevel);
   const isRenewal = cycle?.type === CycleType.RENEWAL;
 
-  const supervisionConfirmed = isRenewal
-    ? calcAutoRenewalSupervisionHours({
-      groupName,
-      practiceHours: practiceConfirmed,
-    })
-    : calcAutoSupervisionHours({
-      groupName,
-      practiceHours: practiceConfirmed,
-    });
+  const supervisionConfirmed =
+    correctionSupervision ??
+    (isRenewal
+      ? calcAutoRenewalSupervisionHours({
+        groupName,
+        practiceHours: practiceConfirmed,
+      })
+      : calcAutoSupervisionHours({
+        groupName,
+        practiceHours: practiceConfirmed,
+      }));
 
   const supervisionTotalWithPending = isRenewal
     ? calcAutoRenewalSupervisionHours({
@@ -86,6 +115,7 @@ export async function getCycleSupervisionTotals(
     supervisionConfirmed,
     supervisionPending,
     supervisionTotalWithPending,
+    adminCorrection,
   };
 }
 

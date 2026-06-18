@@ -4,12 +4,11 @@ import { toast } from 'sonner';
 import { useUpdateHourStatus } from '../../hooks/useUpdateHourStatus';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 import type {
   ReviewerCandidateKind,
   ReviewerCandidateRequest,
 } from '../../api/getReviewerCandidateDetails';
-
-const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
 type CandidateRequestDetailsModalProps = {
   kind: ReviewerCandidateKind;
@@ -118,14 +117,7 @@ export function CandidateRequestDetailsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
       <div className="relative max-h-[90vh] w-full max-w-[920px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-3 flex h-11 w-11 cursor-pointer items-center justify-center opacity-55 transition hover:opacity-100"
-          aria-label="Закрыть"
-        >
-          <img src={EXIT_ICON} alt="" className="h-5 w-5" />
-        </button>
+        <ModalCloseButton onClick={onClose} />
 
         <h3 className="dashboard-v2-page-title mb-5 text-center text-[#1F305E]">
           Детали отправки часов
@@ -229,8 +221,8 @@ export function CandidateRequestDetailsModal({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
-          {isPending ? (
+        {isPending ? (
+          <div className="mt-6 flex justify-end gap-3">
             <>
               <button
                 type="button"
@@ -260,16 +252,8 @@ export function CandidateRequestDetailsModal({
                 </button>
               )}
             </>
-          ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-dark dashboard-v2-label h-[42px] min-w-[120px] rounded-full px-6"
-            >
-              Закрыть
-            </button>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

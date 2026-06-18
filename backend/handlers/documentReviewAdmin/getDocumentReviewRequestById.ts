@@ -36,6 +36,7 @@ export async function getDocumentReviewRequestById(req: FastifyRequest, reply: F
           },
         },
       },
+      cycle: { select: { id: true, type: true, status: true, targetLevel: true, startedAt: true } },
       documents: true,
       documentFiles: {
         include: {
@@ -52,5 +53,22 @@ export async function getDocumentReviewRequestById(req: FastifyRequest, reply: F
     return reply.code(404).send({ error: 'Заявка не найдена' });
   }
 
-  return reply.send(withResolvedDocumentReviewRequestStatus(request));
+  const relatedRequests = await prisma.documentReviewRequest.findMany({
+    where: {
+      userId: request.userId,
+      id: { not: request.id },
+    },
+    orderBy: { submittedAt: 'desc' },
+    take: 12,
+    include: {
+      cycle: { select: { id: true, type: true, status: true, targetLevel: true, startedAt: true } },
+      documentFiles: { select: { id: true, status: true } },
+      _count: { select: { documents: true, documentFiles: true } },
+    },
+  });
+
+  return reply.send({
+    ...withResolvedDocumentReviewRequestStatus(request),
+    relatedRequests: relatedRequests.map(withResolvedDocumentReviewRequestStatus),
+  });
 }

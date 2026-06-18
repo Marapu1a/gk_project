@@ -42,6 +42,11 @@ export type SupervisionRecordHistoryItem = {
     fullName: string | null;
     email: string;
   } | null;
+  reviewedBy: {
+    id: string;
+    fullName: string | null;
+    email: string;
+  } | null;
 };
 
 export type GetSupervisionRecordHistoryResponse = {

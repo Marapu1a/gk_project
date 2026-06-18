@@ -9,8 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-
-const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
 type ConfirmVariant = 'primary' | 'danger';
 
@@ -120,14 +119,7 @@ function ConfirmDialog({
         aria-labelledby="confirm-dialog-title"
         className="relative w-full max-w-[430px] rounded-[16px] bg-white px-5 pb-5 pt-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]"
       >
-        <button
-          type="button"
-          onClick={() => onClose(false)}
-          className="absolute right-4 top-4 flex h-11 w-11 cursor-pointer items-center justify-center opacity-65 transition hover:opacity-100"
-          aria-label="Закрыть"
-        >
-          <img src={EXIT_ICON} alt="" className="h-6 w-6" />
-        </button>
+        <ModalCloseButton onClick={() => onClose(false)} iconClassName="h-6 w-6" />
 
         <h2
           id="confirm-dialog-title"

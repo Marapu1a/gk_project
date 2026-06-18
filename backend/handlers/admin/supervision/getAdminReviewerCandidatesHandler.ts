@@ -5,6 +5,7 @@ import {
   RecordStatus,
   ReviewerCandidateKind,
   ReviewerCandidateStatus,
+  SupervisionAdminCorrectionKind,
 } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 
@@ -18,7 +19,8 @@ type HourState =
   | 'CONFIRMED_BY_ADMIN'
   | 'REJECTED_BY_ADMIN'
   | 'CONFIRMED_BY_REVIEWER'
-  | 'REJECTED_BY_REVIEWER';
+  | 'REJECTED_BY_REVIEWER'
+  | 'ADMIN_CORRECTION';
 
 interface GetAdminReviewerCandidatesRoute extends RouteGenericInterface {
   Querystring: {
@@ -65,6 +67,7 @@ const HOUR_STATES = new Set<string>([
   'REJECTED_BY_ADMIN',
   'CONFIRMED_BY_REVIEWER',
   'REJECTED_BY_REVIEWER',
+  'ADMIN_CORRECTION',
 ]);
 const SORT_FIELDS = new Set<string>([
   'candidate',
@@ -146,6 +149,7 @@ function hourStateRank(state: Exclude<HourState, 'ALL'>) {
     NEEDS_REVIEW: 0,
     REJECTED_BY_ADMIN: 1,
     REJECTED_BY_REVIEWER: 2,
+    ADMIN_CORRECTION: 3,
     CONFIRMED_BY_ADMIN: 3,
     CONFIRMED_BY_REVIEWER: 4,
     NO_NEW_HOURS: 5,
@@ -156,6 +160,12 @@ function hourStateRank(state: Exclude<HourState, 'ALL'>) {
 
 function rowTimestamp(row: { latestPendingRequestAt: Date | null; latestRequestAt: Date | null; relationCreatedAt: Date }) {
   return row.latestPendingRequestAt ?? row.latestRequestAt ?? row.relationCreatedAt;
+}
+
+function correctionKind(kind: CandidateKind) {
+  return kind === 'mentorship'
+    ? SupervisionAdminCorrectionKind.MENTORSHIP
+    : SupervisionAdminCorrectionKind.PRACTICE;
 }
 
 export async function getAdminReviewerCandidatesHandler(
@@ -371,6 +381,7 @@ export async function getAdminReviewerCandidatesHandler(
       const resolvedHourState = resolveHourState({ pendingCount, latestReview });
 
       return {
+        rowType: 'RELATION' as const,
         relationId: relation.id,
         kind: normalizedKind,
         relationStatus: relation.status,
@@ -380,6 +391,7 @@ export async function getAdminReviewerCandidatesHandler(
         latestPendingRequestAt,
         latestReview,
         hourState: resolvedHourState,
+        adminCorrection: null,
         pendingRequests: pendingRecords.map((record) => ({
           id: record.id,
           createdAt: record.createdAt,
@@ -408,7 +420,87 @@ export async function getAdminReviewerCandidatesHandler(
       };
     });
 
-  const filteredRows = rows.filter((row) => {
+  const corrections = await prisma.supervisionAdminCorrection.findMany({
+    where: {
+      kind: correctionKind(normalizedKind),
+      cycle: { status: CycleStatus.ACTIVE },
+      user: {
+        archivedAt: null,
+        ...(trimmedSearch
+          ? {
+              OR: [
+                { email: { contains: trimmedSearch, mode: 'insensitive' } },
+                { fullName: { contains: trimmedSearch, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      admin: trimmedReviewerSearch
+        ? {
+            OR: [
+              { email: { contains: trimmedReviewerSearch, mode: 'insensitive' } },
+              { fullName: { contains: trimmedReviewerSearch, mode: 'insensitive' } },
+            ],
+          }
+        : undefined,
+    },
+    select: {
+      id: true,
+      kind: true,
+      implementing: true,
+      programming: true,
+      mentor: true,
+      directIndividual: true,
+      directGroup: true,
+      nonObservingIndividual: true,
+      nonObservingGroup: true,
+      notifyUser: true,
+      createdAt: true,
+      updatedAt: true,
+      user: { select: { id: true, email: true, fullName: true } },
+      admin: { select: { id: true, email: true, fullName: true } },
+    },
+    orderBy: { updatedAt: 'desc' },
+  });
+
+  const correctionRows = corrections.map((correction) => ({
+    rowType: 'ADMIN_CORRECTION' as const,
+    relationId: `correction:${correction.id}`,
+    correctionId: correction.id,
+    kind: normalizedKind,
+    relationStatus: ReviewerCandidateStatus.ACCEPTED,
+    candidate: correction.user,
+    reviewer: correction.admin ?? { id: '', email: '—', fullName: null },
+    latestRequestAt: correction.updatedAt,
+    latestPendingRequestAt: null,
+    latestReview: null,
+    hourState: 'ADMIN_CORRECTION' as const,
+    pendingRequests: [],
+    adminCorrection: {
+      id: correction.id,
+      createdAt: correction.createdAt,
+      updatedAt: correction.updatedAt,
+      admin: correction.admin,
+      notifyUser: correction.notifyUser,
+      implementing: correction.implementing,
+      programming: correction.programming,
+      mentor: correction.mentor,
+      distribution: {
+        directIndividual: correction.directIndividual,
+        directGroup: correction.directGroup,
+        nonObservingIndividual: correction.nonObservingIndividual,
+        nonObservingGroup: correction.nonObservingGroup,
+      },
+    },
+    relationCreatedAt: correction.createdAt,
+    relationUpdatedAt: correction.updatedAt,
+    pendingCount: 0,
+    sortRank: hourStateRank('ADMIN_CORRECTION'),
+  }));
+
+  const allRows = [...rows, ...correctionRows];
+
+  const filteredRows = allRows.filter((row) => {
     const date = rowTimestamp(row);
     if (from && date < from) return false;
     if (to && date >= to) return false;
@@ -454,6 +546,13 @@ export async function getAdminReviewerCandidatesHandler(
         periodStartedAt: request.periodStartedAt?.toISOString() ?? null,
         periodEndedAt: request.periodEndedAt?.toISOString() ?? null,
       })),
+      adminCorrection: row.adminCorrection
+        ? {
+            ...row.adminCorrection,
+            createdAt: row.adminCorrection.createdAt.toISOString(),
+            updatedAt: row.adminCorrection.updatedAt.toISOString(),
+          }
+        : null,
       relationCreatedAt: row.relationCreatedAt.toISOString(),
       relationUpdatedAt: row.relationUpdatedAt.toISOString(),
     })),

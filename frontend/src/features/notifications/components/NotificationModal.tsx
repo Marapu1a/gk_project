@@ -19,6 +19,7 @@ import {
 } from '@/utils/notificationDictionary';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { NotificationMessage } from './NotificationMessage';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
@@ -107,14 +108,12 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
   const modal = (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6">
       <section className="relative flex h-[min(92vh,760px)] w-full max-w-[1060px] flex-col overflow-hidden rounded-[30px] bg-white shadow-[0_18px_45px_rgba(0,0,0,0.22)]">
-        <button
-          type="button"
+        <ModalCloseButton
           onClick={onClose}
-          className="absolute right-8 top-8 z-10 flex h-[34px] w-[34px] cursor-pointer items-center justify-center opacity-80 transition hover:opacity-100"
-          aria-label="Закрыть уведомления"
-        >
-          <img src={EXIT_ICON} alt="" className="h-[30px] w-[30px]" />
-        </button>
+          label="Закрыть уведомления"
+          iconClassName="h-[30px] w-[30px]"
+          className="z-10"
+        />
 
         <header className="px-8 pb-5 pt-9 text-center">
           <h2 className="text-[28px] font-extrabold leading-tight text-[var(--color-blue-dark)]">

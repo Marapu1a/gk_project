@@ -40,6 +40,7 @@ export type AdminCeuHistoryRow = {
   role: 'ADMIN' | 'REVIEWER' | 'STUDENT';
   currentGroup: { id: string; name: string; rank: number } | null;
   groups: { id: string; name: string; rank: number }[];
+  cycleLabel: string;
   recordCreatedAt: string;
   eventDate: string;
   eventName: string;

@@ -2,15 +2,13 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/Button';
 import { usePatchExamAppStatus } from '../hooks/usePatchExamAppStatus';
 import { useExamAppDetails } from '../hooks/useExamAppDetails';
 import type { ExamApp, ExamReadinessDetails, ExamStatus } from '../api/getMyExamApp';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { examStatusLabels, targetLevelLabels } from '@/utils/labels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
-
-const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
 export type ExamAppModalProps = {
   app: ExamApp;
@@ -115,14 +113,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
       <div className="relative max-h-[92vh] w-full max-w-[1080px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-3 flex h-11 w-11 cursor-pointer items-center justify-center opacity-55 transition hover:opacity-100"
-          aria-label="Закрыть"
-        >
-          <img src={EXIT_ICON} alt="" className="h-5 w-5" />
-        </button>
+        <ModalCloseButton onClick={onClose} />
 
         <h3 className="dashboard-v2-page-title mb-5 text-center">Заявка на экзамен</h3>
 
@@ -239,10 +230,6 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
         </label>
 
         <div className="mt-6 flex flex-wrap justify-end gap-3">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={disabled}>
-            Закрыть
-          </Button>
-
           {currentApp.status === 'PENDING' ? (
             <button
               type="button"

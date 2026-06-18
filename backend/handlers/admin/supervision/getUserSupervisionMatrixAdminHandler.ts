@@ -1,7 +1,13 @@
 // src/handlers/admin/supervision/getUserSupervisionMatrixAdminHandler.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../../lib/prisma';
-import { PracticeLevel, RecordStatus, CycleStatus, TargetLevel } from '@prisma/client';
+import {
+  PracticeLevel,
+  RecordStatus,
+  CycleStatus,
+  TargetLevel,
+  SupervisionAdminCorrectionKind,
+} from '@prisma/client';
 import { supervisionRequirementsByGroup, calcAutoSupervisionHours } from '../../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../../utils/getCycleSupervisionTotals';
 
@@ -56,7 +62,7 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
   if (!activeCycle) return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
 
   // ===== matrix aggregation (ТОЛЬКО ACTIVE cycle) =====
-  const [grouped, confirmedHours, distributionRecords] = await Promise.all([
+  const [grouped, confirmedHours, distributionRecords, mentorCorrection] = await Promise.all([
     prisma.supervisionHour.groupBy({
       by: ['type', 'status'],
       where: {
@@ -87,6 +93,15 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
         draftNonObservingIndividual: true,
         draftNonObservingGroup: true,
       },
+    }),
+    prisma.supervisionAdminCorrection.findUnique({
+      where: {
+        cycleId_kind: {
+          cycleId: activeCycle.id,
+          kind: SupervisionAdminCorrectionKind.MENTORSHIP,
+        },
+      },
+      select: { mentor: true, updatedAt: true },
     }),
   ]);
 
@@ -186,11 +201,12 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
     activeCycle.targetLevel,
     bonusPractice,
   );
+  const practiceCorrection = cycleTotals.adminCorrection;
 
   const usable: SupervisionSummary = {
     practice: cycleTotals.practiceConfirmed,
     supervision: cycleTotals.supervisionConfirmed,
-    supervisor: usableRaw.supervisor,
+    supervisor: mentorCorrection?.mentor ?? usableRaw.supervisor,
   };
   const pending: SupervisionSummary = {
     practice: cycleTotals.practicePending,
@@ -211,8 +227,14 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
   };
 
   // для админ-матрицы показываем авто-часы в SUPERVISION-ячейке
+  if (practiceCorrection) {
+    matrix.PRACTICE.CONFIRMED = round2(practiceCorrection.implementing + practiceCorrection.programming);
+  }
   matrix.SUPERVISION.CONFIRMED = usable.supervision;
   matrix.SUPERVISION.UNCONFIRMED = pending.supervision;
+  if (mentorCorrection) {
+    matrix.SUPERVISOR.CONFIRMED = mentorCorrection.mentor;
+  }
 
   return reply.send({
     user: short(user),
@@ -225,8 +247,26 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
       pending,
       bonus: bonusPractice > 0 ? { practice: bonusPractice, fromCycleId: bonusSourceCycleId } : null,
       mentor: isBasicSupervisor ? mentor(usableRaw, pendingRaw) : null,
-      practiceBreakdown: practiceBreakdown(confirmedAgg, bonusPractice),
-      supervisionBreakdown: supervisionBreakdown(usable.supervision, recordDistribution),
+      practiceBreakdown: practiceCorrection
+        ? {
+            total: round2(practiceCorrection.implementing + practiceCorrection.programming + bonusPractice),
+            legacy: 0,
+            implementing: round2(practiceCorrection.implementing),
+            programming: round2(practiceCorrection.programming),
+            bonus: round2(bonusPractice),
+          }
+        : practiceBreakdown(confirmedAgg, bonusPractice),
+      supervisionBreakdown: supervisionBreakdown(
+        usable.supervision,
+        practiceCorrection
+          ? {
+              directIndividual: round2(practiceCorrection.directIndividual),
+              directGroup: round2(practiceCorrection.directGroup),
+              nonObservingIndividual: round2(practiceCorrection.nonObservingIndividual),
+              nonObservingGroup: round2(practiceCorrection.nonObservingGroup),
+            }
+          : recordDistribution,
+      ),
     },
   });
 }

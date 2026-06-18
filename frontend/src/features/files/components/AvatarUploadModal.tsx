@@ -1,6 +1,7 @@
 // src/features/files/components/AvatarUploadModal.tsx
 import { useRef, useState } from 'react';
 import { DashboardHelpTooltip } from '@/components/DashboardHelpTooltip';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { FileUpload, type UploadedFile } from '@/utils/FileUpload';
 import { useSetAvatarUrl } from '../hooks/useSetAvatarUrl';
 
@@ -45,9 +46,11 @@ export function AvatarUploadModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
-        className="relative bg-white rounded-2xl p-6 w-full max-w-md header-shadow"
+        className="relative w-full max-w-md rounded-2xl bg-white p-6 header-shadow"
         style={{ border: '1px solid var(--color-green-light)' }}
       >
+        <ModalCloseButton onClick={onClose} disabled={setAvatar.isPending} />
+
         <div className="mb-4 flex items-center gap-2">
           <h3 className="text-xl font-semibold text-blue-dark">Загрузка аватара</h3>
           <DashboardHelpTooltip content={hint} />

@@ -6,10 +6,12 @@ import { documentReviewStatusLabels } from '@/utils/documentReviewStatusLabels';
 
 type RequestRow = {
   id: string;
+  cycleId?: string | null;
   status: string;
   comment?: string | null;
   submittedAt: string;
   user?: { id?: string | null; email?: string | null; fullName?: string | null } | null;
+  cycle?: { id: string; status: string; type: string; targetLevel: string; startedAt?: string | null } | null;
   documents?: unknown[];
   documentFiles?: { id: string; status: string; deletionRequestedAt?: string | null }[];
 };
@@ -39,6 +41,12 @@ function statusClass(status: string) {
   if (status === 'REJECTED') return 'bg-[rgba(255,83,100,0.18)] text-[var(--color-danger)]';
   if (status === 'PARTIALLY_CONFIRMED') return 'bg-[#C9D8FF] text-[var(--color-blue-dark)]';
   return 'bg-[#E7E9EF] text-[#6B7894]';
+}
+
+function archiveLabel(request: RequestRow) {
+  if (!request.cycleId) return 'Старая заявка';
+  if (request.cycle?.status && request.cycle.status !== 'ACTIVE') return 'Предыдущий цикл';
+  return null;
 }
 
 export function AdminDocumentReviewList() {
@@ -169,6 +177,7 @@ export function AdminDocumentReviewList() {
                 <tbody>
                   {rows.map((request) => {
                     const filesCount = request.documentFiles?.length || request.documents?.length || 0;
+                    const archive = archiveLabel(request);
                     const deletionRequestsCount =
                       request.documentFiles?.filter(
                         (file) => file.deletionRequestedAt && file.status !== 'DELETED',
@@ -197,11 +206,18 @@ export function AdminDocumentReviewList() {
                           )}
                         </td>
                         <td className="border-b border-[var(--color-blue-soft)] px-4 py-4">
-                          <span
-                            className={`inline-flex h-[26px] items-center rounded-full px-3 text-[12px] font-extrabold ${statusClass(request.status)}`}
-                          >
-                            {documentReviewStatusLabels[request.status] || request.status}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`inline-flex h-[26px] items-center rounded-full px-3 text-[12px] font-extrabold ${statusClass(request.status)}`}
+                            >
+                              {documentReviewStatusLabels[request.status] || request.status}
+                            </span>
+                            {archive ? (
+                              <span className="inline-flex h-[24px] items-center rounded-full bg-[#EEF0F4] px-2.5 text-[11px] font-bold text-[#8D96B5]">
+                                {archive}
+                              </span>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="border-b border-[var(--color-blue-soft)] px-4 py-4">
                           <div className="flex flex-wrap items-center gap-2">

@@ -66,6 +66,11 @@ enum PracticeLevel {
   PROGRAMMING // новый подтип практики
 }
 
+enum SupervisionAdminCorrectionKind {
+  PRACTICE
+  MENTORSHIP
+}
+
 enum TargetLevel {
   INSTRUCTOR
   CURATOR
@@ -164,6 +169,7 @@ model User {
   certificates                Certificate[]
   ceuRecords                  CEURecord[]
   supervisionRecords          SupervisionRecord[]
+  supervisionAdminCorrections SupervisionAdminCorrection[] @relation("SupervisionAdminCorrectionTarget")
   groups                      UserGroup[]
   uploadedFiles               UploadedFile[]
   uploadedSupervisorContracts SupervisionContract[]       @relation("UploadedSupervisorContracts")
@@ -174,6 +180,7 @@ model User {
   reviewedCEUEntries       CEUEntry[]        @relation("ReviewedCEUEntry")
   reviewedSupervisionHours SupervisionHour[] @relation("ReviewedSupervisionHour")
   actedOnSupervisionHours  SupervisionHour[] @relation("SupervisionHourReviewedBy")
+  performedSupervisionAdminCorrections SupervisionAdminCorrection[] @relation("SupervisionAdminCorrectionAdmin")
   confirmedCertificates    Certificate[]     @relation("CertificateConfirmedBy")
   reviewedDocumentFiles    DocumentReviewFile[] @relation("ReviewedDocumentFile")
   deletedDocumentFiles     DocumentReviewFile[] @relation("DeletedDocumentFile")
@@ -262,6 +269,7 @@ model CertificationCycle {
   // records live inside cycle
   ceuRecords         CEURecord[]
   supervisionRecords SupervisionRecord[]
+  supervisionAdminCorrections SupervisionAdminCorrection[]
 
   // certificate knows the cycle (1 cycle -> 0..1 certificate)
   certificate                Certificate?
@@ -567,6 +575,38 @@ model SupervisionHour {
   rejectedReason String?
 
   @@index([reviewedById])
+}
+
+model SupervisionAdminCorrection {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation("SupervisionAdminCorrectionTarget", fields: [userId], references: [id], onDelete: Cascade)
+
+  cycleId String
+  cycle   CertificationCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  adminId String?
+  admin   User? @relation("SupervisionAdminCorrectionAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+
+  kind SupervisionAdminCorrectionKind
+
+  implementing Float @default(0)
+  programming  Float @default(0)
+  mentor       Float @default(0)
+
+  directIndividual       Float @default(0)
+  directGroup            Float @default(0)
+  nonObservingIndividual Float @default(0)
+  nonObservingGroup      Float @default(0)
+
+  notifyUser Boolean @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([cycleId, kind])
+  @@index([userId, kind, updatedAt])
+  @@index([adminId])
 }
 
 model Group {

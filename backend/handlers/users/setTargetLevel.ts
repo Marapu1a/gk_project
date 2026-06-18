@@ -110,18 +110,30 @@ function buildRequirementsSnapshot(targetLevel: TargetLevel, goalMode: GoalMode)
   };
 }
 
+function normalizeActiveGroupName(activeGroupName: string | null): string | null {
+  const normalized = (activeGroupName ?? '').trim().toLowerCase();
+  if (normalized === 'инструктор') return 'Инструктор';
+  if (normalized === 'куратор') return 'Куратор';
+  if (normalized === 'супервизор') return 'Супервизор';
+  if (normalized === 'опытный супервизор') return 'Опытный Супервизор';
+  if (normalized === 'соискатель') return 'Соискатель';
+  return activeGroupName;
+}
+
 function getAllowedTargetsByMode(goalMode: GoalMode, activeGroupName: string | null): TargetLevel[] {
+  const normalizedGroupName = normalizeActiveGroupName(activeGroupName);
+
   if (goalMode === 'RENEWAL') {
-    if (!activeGroupName) return [];
-    return ALLOWED_RENEWAL_TARGETS_BY_GROUP[activeGroupName] ?? [];
+    if (!normalizedGroupName) return [];
+    return ALLOWED_RENEWAL_TARGETS_BY_GROUP[normalizedGroupName] ?? [];
   }
 
-  if (!activeGroupName) {
+  if (!normalizedGroupName) {
     return [TargetLevel.INSTRUCTOR, TargetLevel.CURATOR, TargetLevel.SUPERVISOR];
   }
 
   return (
-    ALLOWED_CERTIFICATION_TARGETS_BY_GROUP[activeGroupName] ?? [
+    ALLOWED_CERTIFICATION_TARGETS_BY_GROUP[normalizedGroupName] ?? [
       TargetLevel.INSTRUCTOR,
       TargetLevel.CURATOR,
       TargetLevel.SUPERVISOR,
@@ -182,16 +194,18 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
 
   // --- renewal: минимальная валидация доступа ---
   if (goalMode === 'RENEWAL') {
-    const activeCertificate = await prisma.certificate.findFirst({
-      where: {
-        userId: id,
-        expiresAt: { gte: new Date() },
-      },
-      select: { id: true },
-    });
+    if (!isAdmin) {
+      const activeCertificate = await prisma.certificate.findFirst({
+        where: {
+          userId: id,
+          expiresAt: { gte: new Date() },
+        },
+        select: { id: true },
+      });
 
-    if (!activeCertificate) {
-      return sendError(reply, 400, 'RENEWAL_NOT_AVAILABLE');
+      if (!activeCertificate) {
+        return sendError(reply, 400, 'RENEWAL_NOT_AVAILABLE');
+      }
     }
 
     if (dbUser.targetLevel !== null) {

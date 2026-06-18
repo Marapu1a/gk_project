@@ -177,6 +177,7 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
       documentReviewRequests: {
         select: {
           id: true,
+          cycleId: true,
           status: true,
           paid: true,
           reviewerEmail: true,

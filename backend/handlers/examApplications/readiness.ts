@@ -226,9 +226,7 @@ export async function buildExamReadiness(userId: string) {
   ]);
 
   const documentRequest =
-    documentRequests.find((request) => request.cycleId === activeCycle.id) ??
-    documentRequests.find((request) => !request.cycleId) ??
-    null;
+    documentRequests.find((request) => request.cycleId === activeCycle.id) ?? null;
   const documentRequestStatus = documentRequest
     ? resolveDocumentReviewRequestStatus(documentRequest)
     : null;

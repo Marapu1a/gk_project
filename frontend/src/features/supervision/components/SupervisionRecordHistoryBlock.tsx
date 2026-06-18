@@ -2,8 +2,7 @@ import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { useSupervisionRecordHistory } from '../hooks/useSupervisionRecordHistory';
 import type { SupervisionRecordHistoryItem } from '../api/getSupervisionRecordHistory';
-
-const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
 type HistoryMode = 'supervision' | 'mentorship';
 
@@ -17,7 +16,23 @@ function formatNumber(value: number | null | undefined) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function isAdminCorrection(record: SupervisionRecordHistoryItem) {
+  return (record.description ?? '').toLowerCase().includes('корректировка часов');
+}
+
+function correctionActor(record: SupervisionRecordHistoryItem) {
+  return record.reviewedBy?.fullName || record.reviewedBy?.email || 'администратор';
+}
+
+function recordStartDate(record: SupervisionRecordHistoryItem) {
+  return isAdminCorrection(record) ? record.periodStartedAt || record.createdAt : record.periodStartedAt;
+}
+
 function statusLabel(record: SupervisionRecordHistoryItem, mode: HistoryMode = 'supervision') {
+  if (isAdminCorrection(record)) {
+    return `Корректировка администратора: ${correctionActor(record)}`;
+  }
+
   const supervisorName = record.supervisor?.fullName || record.supervisor?.email || '';
   const reviewerLabel = mode === 'mentorship' ? 'ментором' : 'супервизором';
 
@@ -84,7 +99,7 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
               <tbody>
                 {records.map((record) => (
                   <tr key={record.id} className="border-b border-[#DCE8EC] last:border-b-0">
-                    <td className="px-4 py-4">{formatDate(record.periodStartedAt)}</td>
+                    <td className="px-4 py-4">{formatDate(recordStartDate(record))}</td>
                     <td className="px-4 py-4 text-center font-extrabold">
                       {formatNumber(record.hours.mentor)}
                     </td>
@@ -120,7 +135,7 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
               <tbody>
                 {records.map((record) => (
                   <tr key={record.id} className="border-b border-[#DCE8EC] last:border-b-0">
-                    <td className="px-4 py-4">{formatDate(record.periodStartedAt)}</td>
+                    <td className="px-4 py-4">{formatDate(recordStartDate(record))}</td>
                     <td className="px-4 py-4">{formatDate(record.periodEndedAt)}</td>
                     <td className="px-4 py-4 text-center text-[#6B7894]">
                       {formatNumber(record.hours.implementing)}
@@ -188,17 +203,10 @@ function SupervisionRecordDetailsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
       <div className="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[12px] bg-white px-6 py-5 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-3 top-3 flex h-11 w-11 cursor-pointer items-center justify-center opacity-55 transition hover:opacity-100"
-          aria-label="Закрыть"
-        >
-          <img src={EXIT_ICON} alt="" className="h-5 w-5" />
-        </button>
+        <ModalCloseButton onClick={onClose} />
 
         <h3 className="mb-5 text-center text-[18px] font-extrabold text-[#1F305E]">
-          Детали заявки
+          {isAdminCorrection(record) ? 'Детали корректировки' : 'Детали заявки'}
         </h3>
 
         <div className="grid gap-5 lg:grid-cols-2">
@@ -210,8 +218,14 @@ function SupervisionRecordDetailsModal({
                 value={record.treatmentSetting || '—'}
               />
               <ReadOnlyField
-                label={mode === 'mentorship' ? 'Дата менторства' : 'Дата начала'}
-                value={formatDate(record.periodStartedAt)}
+                label={
+                  isAdminCorrection(record)
+                    ? 'Дата корректировки'
+                    : mode === 'mentorship'
+                      ? 'Дата менторства'
+                      : 'Дата начала'
+                }
+                value={formatDate(recordStartDate(record))}
               />
               {mode === 'supervision' ? (
                 <ReadOnlyField label="Дата окончания" value={formatDate(record.periodEndedAt)} />
@@ -282,8 +296,12 @@ function SupervisionRecordDetailsModal({
 
           <div>
             <ReadOnlyField
-              label={mode === 'mentorship' ? 'Ментор' : 'Супервизор'}
-              value={record.supervisor?.fullName || record.supervisor?.email || '—'}
+              label={isAdminCorrection(record) ? 'Администратор' : mode === 'mentorship' ? 'Ментор' : 'Супервизор'}
+              value={
+                isAdminCorrection(record)
+                  ? correctionActor(record)
+                  : record.supervisor?.fullName || record.supervisor?.email || '—'
+              }
             />
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">

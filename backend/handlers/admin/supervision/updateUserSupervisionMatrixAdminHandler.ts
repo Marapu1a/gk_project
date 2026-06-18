@@ -2,13 +2,22 @@
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../../lib/prisma';
 import { z } from 'zod';
-import { CycleStatus, CycleType, NotificationType, PracticeLevel, RecordStatus, TargetLevel } from '@prisma/client';
+import {
+  CycleStatus,
+  CycleType,
+  NotificationType,
+  PracticeLevel,
+  RecordStatus,
+  TargetLevel,
+  SupervisionAdminCorrectionKind,
+} from '@prisma/client';
 import {
   calcAutoRenewalSupervisionHours,
   calcAutoSupervisionHours,
   renewalSupervisionRequirementsByGroup,
   supervisionRequirementsByGroup,
 } from '../../../utils/supervisionRequirements';
+import { logAdminUserAction } from '../../../utils/adminUserActionLog';
 
 // Принимаем legacy-уровни, но внутри работаем только с новыми.
 type IncomingLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | 'PRACTICE' | 'SUPERVISION';
@@ -164,6 +173,10 @@ function getDistributionRuleError(params: {
   return null;
 }
 
+function formatHours(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
 export async function updateUserSupervisionMatrixAdminHandler(
   req: FastifyRequest<Route>,
   reply: FastifyReply
@@ -237,58 +250,46 @@ export async function updateUserSupervisionMatrixAdminHandler(
     });
     if (distributionRuleError) return reply.code(400).send({ error: distributionRuleError });
 
-    await prisma.$transaction(async (tx) => {
-      await tx.supervisionHour.deleteMany({
-        where: {
-          record: { userId, cycleId: activeCycle.id },
-          status: RecordStatus.CONFIRMED,
-          type: {
-            in: [
-              PracticeLevel.PRACTICE,
-              PracticeLevel.IMPLEMENTING,
-              PracticeLevel.PROGRAMMING,
-            ],
-          },
+    await prisma.supervisionAdminCorrection.upsert({
+      where: {
+        cycleId_kind: {
+          cycleId: activeCycle.id,
+          kind: SupervisionAdminCorrectionKind.PRACTICE,
         },
-      });
+      },
+      create: {
+        userId,
+        cycleId: activeCycle.id,
+        adminId: req.user.userId,
+        kind: SupervisionAdminCorrectionKind.PRACTICE,
+        implementing,
+        programming,
+        directIndividual: incoming.distribution.directIndividual,
+        directGroup: incoming.distribution.directGroup,
+        nonObservingIndividual: incoming.distribution.nonObservingIndividual,
+        nonObservingGroup: incoming.distribution.nonObservingGroup,
+        notifyUser: Boolean(incoming.notifyUser),
+      },
+      update: {
+        adminId: req.user.userId,
+        implementing,
+        programming,
+        directIndividual: incoming.distribution.directIndividual,
+        directGroup: incoming.distribution.directGroup,
+        nonObservingIndividual: incoming.distribution.nonObservingIndividual,
+        nonObservingGroup: incoming.distribution.nonObservingGroup,
+        notifyUser: Boolean(incoming.notifyUser),
+      },
+    });
 
-      if (practiceTotal > 0) {
-        await tx.supervisionRecord.create({
-          data: {
-            userId,
-            cycleId: activeCycle.id,
-            description: 'Корректировка часов администратором',
-            draftDirectIndividual: incoming.distribution.directIndividual,
-            draftDirectGroup: incoming.distribution.directGroup,
-            draftNonObservingIndividual: incoming.distribution.nonObservingIndividual,
-            draftNonObservingGroup: incoming.distribution.nonObservingGroup,
-            hours: {
-              create: [
-                implementing > 0
-                  ? {
-                      type: PracticeLevel.IMPLEMENTING,
-                      value: implementing,
-                      status: RecordStatus.CONFIRMED,
-                      reviewerId: req.user.userId,
-                      reviewedById: req.user.userId,
-                      reviewedAt: new Date(),
-                    }
-                  : null,
-                programming > 0
-                  ? {
-                      type: PracticeLevel.PROGRAMMING,
-                      value: programming,
-                      status: RecordStatus.CONFIRMED,
-                      reviewerId: req.user.userId,
-                      reviewedById: req.user.userId,
-                      reviewedAt: new Date(),
-                    }
-                  : null,
-              ].filter(Boolean) as any,
-            },
-          },
-        });
-      }
+    await logAdminUserAction({
+      userId,
+      adminId: req.user.userId,
+      action: 'Корректировка часов практики и супервизии',
+      details:
+        `Полевая практика: ${formatHours(implementing)}; ` +
+        `работа с информацией: ${formatHours(programming)}; ` +
+        `супервизия: ${formatHours(cappedExpectedSupervision)}`,
     });
 
     if (incoming.notifyUser) {
@@ -329,37 +330,33 @@ export async function updateUserSupervisionMatrixAdminHandler(
       });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.supervisionHour.deleteMany({
-        where: {
-          record: { userId, cycleId: activeCycle.id },
-          status: RecordStatus.CONFIRMED,
-          type: PracticeLevel.SUPERVISOR,
+    await prisma.supervisionAdminCorrection.upsert({
+      where: {
+        cycleId_kind: {
+          cycleId: activeCycle.id,
+          kind: SupervisionAdminCorrectionKind.MENTORSHIP,
         },
-      });
+      },
+      create: {
+        userId,
+        cycleId: activeCycle.id,
+        adminId: req.user.userId,
+        kind: SupervisionAdminCorrectionKind.MENTORSHIP,
+        mentor: value,
+        notifyUser: Boolean(incoming.notifyUser),
+      },
+      update: {
+        adminId: req.user.userId,
+        mentor: value,
+        notifyUser: Boolean(incoming.notifyUser),
+      },
+    });
 
-      if (value > 0) {
-        await tx.supervisionRecord.create({
-          data: {
-            userId,
-            cycleId: activeCycle.id,
-            description: 'Корректировка часов менторства администратором',
-            periodStartedAt: new Date(),
-            periodEndedAt: new Date(),
-            treatmentSetting: 'Корректировка',
-            hours: {
-              create: {
-                type: PracticeLevel.SUPERVISOR,
-                value,
-                status: RecordStatus.CONFIRMED,
-                reviewerId: req.user.userId,
-                reviewedById: req.user.userId,
-                reviewedAt: new Date(),
-              },
-            },
-          },
-        });
-      }
+    await logAdminUserAction({
+      userId,
+      adminId: req.user.userId,
+      action: 'Корректировка часов менторства',
+      details: `Менторство: ${formatHours(value)}`,
     });
 
     if (incoming.notifyUser) {
@@ -473,6 +470,13 @@ export async function updateUserSupervisionMatrixAdminHandler(
         rejectedReason: null,
       },
     });
+  });
+
+  await logAdminUserAction({
+    userId,
+    adminId: req.user.userId,
+    action: 'Корректировка часов',
+    details: `${level}: ${formatHours(current)} -> ${formatHours(value)} (${status})`,
   });
 
   return reply.send({ ok: true, level, status, newValue: value, cycleId: activeCycle.id });

@@ -3,6 +3,7 @@ import { useCeuSummary } from '@/features/ceu/hooks/useCeuSummary';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
 import { useGetDocReviewReq } from '@/features/documentReview/hooks/useGetDocReviewReq';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
+import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import type { CeuSummaryResponse } from '@/features/ceu/api/getCeuSummary';
 import type { SupervisionSummaryResponse } from '@/features/supervision/api/getSupervisionSummary';
 
@@ -48,6 +49,7 @@ export function useQualificationProgress(
 
   const { data: docReview, isLoading: docLoading } = useGetDocReviewReq();
   const { data: payments, isLoading: paymentsLoading } = useUserPayments();
+  const { data: currentUser, isLoading: currentUserLoading } = useCurrentUser();
 
   // 🔧 нормализуем имя группы
   const g = (activeGroupName ?? '').toLowerCase().trim();
@@ -127,7 +129,11 @@ export function useQualificationProgress(
   const documentReviewPaid = fullPackagePaid || isPaid('DOCUMENT_REVIEW');
   const examPaid = fullPackagePaid || isPaid('EXAM_ACCESS');
 
-  const documentsReady = docReview?.status === 'CONFIRMED';
+  const activeCycleId = currentUser?.activeCycle?.id ?? null;
+  const documentsBelongToActiveCycle = activeCycleId
+    ? docReview?.cycleId === activeCycleId
+    : false;
+  const documentsReady = docReview?.status === 'CONFIRMED' && documentsBelongToActiveCycle;
 
   const requiredPaymentsPaid =
     mode === 'EXAM'
@@ -162,7 +168,7 @@ export function useQualificationProgress(
     documentsReady,
     documentReviewPaid,
     requiredPaymentsPaid,
-    loading: ceuLoading || supervisionLoading || docLoading || paymentsLoading,
+    loading: ceuLoading || supervisionLoading || docLoading || paymentsLoading || currentUserLoading,
     reasons,
     examPaid,
   };

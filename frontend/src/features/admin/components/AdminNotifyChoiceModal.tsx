@@ -1,3 +1,5 @@
+import { ModalCloseButton } from '@/components/ModalCloseButton';
+
 type Props = {
   title: string;
   message?: string;
@@ -17,19 +19,12 @@ export function AdminNotifyChoiceModal({
 }: Props) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4">
-      <div className="w-full max-w-[520px] rounded-[20px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+      <div className="relative w-full max-w-[520px] rounded-[20px] bg-white p-5 pr-14 text-[var(--color-blue-dark)] shadow-soft">
+        <ModalCloseButton onClick={onClose} disabled={isPending} />
         <h3 className="dashboard-v2-title">{title}</h3>
         <p className="mt-3 dashboard-v2-text">{message}</p>
 
         <div className="mt-5 flex flex-wrap justify-end gap-3">
-          <button
-            type="button"
-            className="btn dashboard-v2-action dashboard-v2-action-secondary"
-            onClick={onClose}
-            disabled={isPending}
-          >
-            Закрыть
-          </button>
           <button
             type="button"
             className="btn dashboard-v2-action dashboard-v2-action-secondary"

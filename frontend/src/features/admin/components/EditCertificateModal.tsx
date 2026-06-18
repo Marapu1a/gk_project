@@ -8,6 +8,7 @@ import { updateFile } from '@/features/files/api/updateFile';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { deleteFile } from '@/features/files/api/deleteFile';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { toCertificateDateInputValue } from '@/features/certificate/utils/certificateDates';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
@@ -194,7 +195,9 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-[680px] rounded-[18px] bg-white p-6 shadow-xl">
+      <div className="relative w-full max-w-[680px] rounded-[18px] bg-white p-6 shadow-xl">
+        <ModalCloseButton onClick={onClose} disabled={isBusy} />
+
         <h3 className="mb-5 text-center text-[22px] font-bold text-[var(--color-blue-dark)]">
           Редактирование сертификата
         </h3>

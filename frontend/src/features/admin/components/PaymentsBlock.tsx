@@ -290,6 +290,11 @@ export default function PaymentsBlock({
       {pendingAction ? (
         <AdminNotifyChoiceModal
           title={pendingAction.nextStatus === 'PAID' ? 'Подтвердить оплату?' : 'Отменить оплату?'}
+          message={
+            pendingAction.payment.type === 'FULL_PACKAGE' && pendingAction.nextStatus === 'UNPAID'
+              ? 'Будет отменена пакетная оплата и все связанные платежи этого уровня. Отправить пользователю уведомление?'
+              : 'Отправить пользователю уведомление об этом действии?'
+          }
           danger={pendingAction.nextStatus === 'UNPAID'}
           isPending={mutate.isPending}
           onChoose={(notify) => void submitAction(notify)}

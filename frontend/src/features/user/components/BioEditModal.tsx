@@ -1,5 +1,6 @@
 // src/features/user/components/BioEditModal.tsx
 import { useState } from 'react';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { useSetBio } from '@/features/user/hooks/useSetBio';
 
 type Props = { userId: string; initial?: string | null; onClose: () => void };
@@ -18,10 +19,12 @@ export function BioEditModal({ userId, initial, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
-        className="relative bg-white rounded-2xl p-6 w-full max-w-lg header-shadow"
+        className="relative w-full max-w-lg rounded-2xl bg-white p-6 header-shadow"
         style={{ border: '1px solid var(--color-green-light)' }}
       >
-        <h3 className="text-xl font-semibold text-blue-dark mb-4">О себе</h3>
+        <ModalCloseButton onClick={onClose} disabled={mutation.isPending} />
+
+        <h3 className="mb-4 text-xl font-semibold text-blue-dark">О себе</h3>
 
         <textarea
           className="input h-40"
@@ -30,12 +33,9 @@ export function BioEditModal({ userId, initial, onClose }: Props) {
           placeholder="Коротко о себе (до 500 символов)…"
         />
 
-        <div className="mt-2 text-xs text-gray-500 text-right">{left} / 500</div>
+        <div className="mt-2 text-right text-xs text-gray-500">{left} / 500</div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button className="btn" onClick={onClose} disabled={mutation.isPending}>
-            Отмена
-          </button>
           <button className="btn btn-accent" onClick={save} disabled={mutation.isPending}>
             Сохранить
           </button>

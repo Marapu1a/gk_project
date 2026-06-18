@@ -24,3 +24,13 @@ export async function deleteDocumentReviewFile(requestId: string, fileReviewId: 
   const res = await api.delete(`/document-review-requests/${requestId}/files/${fileReviewId}`);
   return res.data;
 }
+
+export async function transferDocumentReviewFileToActiveCycle(
+  requestId: string,
+  fileReviewId: string,
+) {
+  const res = await api.post(
+    `/document-review-requests/${requestId}/files/${fileReviewId}/transfer-to-active-cycle`,
+  );
+  return res.data;
+}

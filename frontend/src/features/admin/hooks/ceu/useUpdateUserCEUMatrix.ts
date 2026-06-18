@@ -14,6 +14,7 @@ export function useUpdateUserCEUMatrix(userId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-ceu-matrix', userId] });
       qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] });
       qc.invalidateQueries({ queryKey: ['admin', 'ceu-history'] });
       qc.invalidateQueries({ queryKey: ['ceuSummary'] });
     },

@@ -14,7 +14,9 @@ export function useUpdateUserSupervisionMatrix(userId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'supervision-matrix', userId] });
       qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] });
       qc.invalidateQueries({ queryKey: ['admin', 'hours-review'] });
+      qc.invalidateQueries({ queryKey: ['supervision', 'history', 'records'] });
     },
   });
 }

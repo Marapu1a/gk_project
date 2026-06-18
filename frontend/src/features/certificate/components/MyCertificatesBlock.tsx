@@ -8,8 +8,7 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { useMyCertificates } from '../hooks/useMyCertificates';
 import type { CertificateDTO } from '../api/issueCertificate';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
-
-const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
 function fileUrl(cert: CertificateDTO) {
   return `/uploads/${cert.file.fileId}`;
@@ -184,15 +183,13 @@ function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: ()
       />
 
       <div className="relative z-10 flex max-h-[96vh] w-full max-w-[760px] flex-col items-center">
-        <button
-          type="button"
+        <ModalCloseButton
           onClick={onClose}
-          className="absolute right-[34px] top-[-34px] flex h-11 w-11 cursor-pointer items-center justify-center opacity-80 transition hover:opacity-100"
-          aria-label="Закрыть"
-          title="Закрыть"
-        >
-          <img src={EXIT_ICON} alt="" className="h-6 w-6 brightness-0 invert" />
-        </button>
+          variant="light"
+          iconClassName="h-6 w-6 brightness-0 invert"
+          positionClassName="absolute right-[34px] top-[-34px] flex h-11 w-11"
+          className="opacity-80"
+        />
 
         <div className="flex max-h-[calc(96vh-82px)] w-full items-center justify-center">
           <div className="rounded-[6px] bg-white p-2 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">

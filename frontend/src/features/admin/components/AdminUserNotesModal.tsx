@@ -6,6 +6,7 @@ import { useCreateUserNote } from '../hooks/useCreateUserNote';
 import { useDeleteUserNote } from '../hooks/useDeleteUserNote';
 import type { AdminUserActionLogItem } from '../api/getUserActionLog';
 import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
 type Props = {
   userId: string;
@@ -60,7 +61,8 @@ export function AdminUserNotesModal({ userId, notes, isLoading, onClose }: Props
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-      <div className="w-full max-w-[720px] rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+      <div className="relative w-full max-w-[720px] rounded-[22px] bg-white p-5 pr-14 text-[var(--color-blue-dark)] shadow-soft">
+        <ModalCloseButton onClick={onClose} />
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
             <h3 className="dashboard-v2-title">Заметки администратора</h3>
@@ -68,13 +70,6 @@ export function AdminUserNotesModal({ userId, notes, isLoading, onClose }: Props
               Служебные заметки видны только администраторам.
             </p>
           </div>
-          <button
-            type="button"
-            className="btn dashboard-v2-action dashboard-v2-action-secondary"
-            onClick={onClose}
-          >
-            Закрыть
-          </button>
         </div>
 
         <div className="rounded-[16px] bg-[var(--color-blue-soft)] p-4">

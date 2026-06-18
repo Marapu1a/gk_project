@@ -104,6 +104,20 @@ function currentGroup(
   return sorted[0]?.group ?? null;
 }
 
+function buildCycleLabel(
+  cycle?: { type: string; status: string; targetLevel: string } | null,
+  fallbackGroupName?: string | null,
+) {
+  if (!cycle) {
+    return fallbackGroupName ? `Старые CEU: ${fallbackGroupName}` : 'Старые CEU / без цикла';
+  }
+
+  const type = cycleTypeLabels[cycle.type] ?? cycle.type;
+  const target = targetLevelLabels[cycle.targetLevel] ?? cycle.targetLevel;
+  const status = cycleStatusLabels[cycle.status] ?? cycle.status;
+  return `${type}: ${target} (${status})`;
+}
+
 function compareValues(a: string | number | Date | null, b: string | number | Date | null) {
   if (a === b) return 0;
   if (a === null) return 1;
@@ -150,12 +164,11 @@ function buildCsv(rows: Awaited<ReturnType<typeof buildCEUHistoryRows>>['rows'])
     'Дата мероприятия',
     'Email',
     'ФИО',
-    'Группа',
+    'Цикл',
     'Категория',
     'Баллы',
     'Статус',
     'Тип CEU',
-    'Цикл',
     'Файл',
   ];
 
@@ -165,16 +178,11 @@ function buildCsv(rows: Awaited<ReturnType<typeof buildCEUHistoryRows>>['rows'])
       formatDate(row.eventDate),
       row.email,
       row.fullName ?? '',
-      row.currentGroup?.name ?? '',
+      row.cycleLabel,
       categoryLabels[row.category] ?? row.category,
       row.points,
       statusLabels[row.status] ?? row.status,
       row.activityType ? activityTypeLabels[row.activityType] ?? row.activityType : '',
-      row.cycle
-        ? `${cycleTypeLabels[row.cycle.type] ?? row.cycle.type}, ${
-            targetLevelLabels[row.cycle.targetLevel] ?? row.cycle.targetLevel
-          }, ${cycleStatusLabels[row.cycle.status] ?? row.cycle.status}`
-        : '',
       row.file?.name ?? '',
     ]
       .map(csvCell)
@@ -237,43 +245,8 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
             },
           }
         : {}),
-      ...(group.trim()
-        ? {
-            user: {
-              groups: {
-                some: {
-                  group: {
-                    name: { contains: group.trim(), mode: 'insensitive' },
-                  },
-                },
-              },
-            },
-          }
-        : {}),
     },
   };
-
-  if (search.trim() && group.trim()) {
-    where.record.user = {
-      AND: [
-        {
-          OR: [
-            { email: { contains: search.trim(), mode: 'insensitive' } },
-            { fullName: { contains: search.trim(), mode: 'insensitive' } },
-          ],
-        },
-        {
-          groups: {
-            some: {
-              group: {
-                name: { contains: group.trim(), mode: 'insensitive' },
-              },
-            },
-          },
-        },
-      ],
-    };
-  }
 
   const entries = await prisma.cEUEntry.findMany({
     where,
@@ -338,6 +311,7 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
   const rows = entries.map((entry) => {
     const group = currentGroup(entry.record.user.groups);
     const file = entry.record.fileId ? fileByStorageId.get(entry.record.fileId) ?? null : null;
+    const cycleLabel = buildCycleLabel(entry.record.cycle, group?.name);
 
     return {
       entryId: entry.id,
@@ -359,8 +333,13 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
       rejectedReason: entry.rejectedReason,
       reviewer: entry.reviewer,
       cycle: entry.record.cycle,
+      cycleLabel,
       file,
     };
+  }).filter((row) => {
+    if (!group.trim()) return true;
+    const needle = normalize(group);
+    return normalize(row.cycleLabel).includes(needle);
   });
 
   rows.sort((a, b) => {
@@ -369,7 +348,7 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
       createdAt: [a.recordCreatedAt, b.recordCreatedAt],
       eventDate: [a.eventDate, b.eventDate],
       email: [normalize(a.email), normalize(b.email)],
-      group: [normalize(a.currentGroup?.name), normalize(b.currentGroup?.name)],
+      group: [normalize(a.cycleLabel), normalize(b.cycleLabel)],
       category: [normalize(a.category), normalize(b.category)],
       status: [normalize(a.status), normalize(b.status)],
       points: [a.points, b.points],

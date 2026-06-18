@@ -5,8 +5,7 @@ import { toast } from 'sonner';
 import { getPaymentLink } from '@/utils/getPaymentLink';
 import type { PaymentItem } from '@/features/payment/api/getUserPayments';
 import { useSubmitPaymentMark } from '@/features/payment/hooks/useSubmitPaymentMark';
-
-const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
 type PaymentModalProps = {
   payment: PaymentItem | null;
@@ -113,14 +112,7 @@ export function PaymentModal({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-11 w-11 cursor-pointer items-center justify-center opacity-65 transition hover:opacity-100"
-            aria-label="Закрыть"
-          >
-            <img src={EXIT_ICON} alt="" className="h-6 w-6" />
-          </button>
+          <ModalCloseButton onClick={onClose} iconClassName="h-6 w-6" placement="inline" className="shrink-0" />
         </div>
 
         <div className="space-y-3">

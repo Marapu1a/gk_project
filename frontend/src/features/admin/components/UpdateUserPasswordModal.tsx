@@ -1,6 +1,7 @@
 // src/features/admin/components/UpdateUserPasswordModal.tsx
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useUpdateUserPassword } from '../hooks/useUpdateUserPassword';
 
@@ -29,9 +30,11 @@ export function UpdateUserPasswordModal({ userId, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-4 w-full max-w-sm header-shadow">
-        <h3 className="text-lg font-semibold mb-3 text-blue-dark">Смена пароля</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+      <div className="relative w-full max-w-sm rounded-2xl bg-white p-4 pt-5 header-shadow">
+        <ModalCloseButton onClick={onClose} disabled={mutation.isPending} />
+
+        <h3 className="mb-3 text-lg font-semibold text-blue-dark">Смена пароля</h3>
 
         <input
           type="password"
@@ -42,10 +45,7 @@ export function UpdateUserPasswordModal({ userId, onClose }: Props) {
           disabled={mutation.isPending}
         />
 
-        <div className="flex justify-end gap-2 mt-4">
-          <button className="btn" onClick={onClose} disabled={mutation.isPending}>
-            Отмена
-          </button>
+        <div className="mt-4 flex justify-end gap-2">
           <button className="btn btn-brand" onClick={onSave} disabled={mutation.isPending}>
             Сохранить
           </button>

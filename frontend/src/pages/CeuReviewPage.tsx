@@ -6,6 +6,7 @@ import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { Button } from '@/components/Button';
 import { PageNav } from '@/components/PageNav';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { AdminNotifyChoiceModal } from '@/features/admin/components/AdminNotifyChoiceModal';
 import { useAdminCeuHistory } from '@/features/admin/hooks/ceu/useAdminCeuHistory';
 import {
@@ -19,18 +20,15 @@ import {
 import { useUpdateCEUEntry } from '@/features/ceu/hooks/useUpdateCeuEntry';
 import { displayCeuEventName } from '@/features/ceu/utils/displayCeuEventName';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
-import { ceuCategoryLabels, formatCertificationLevelName, recordStatusLabels } from '@/utils/labels';
+import { ceuCategoryLabels, recordStatusLabels } from '@/utils/labels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
-const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
-
-const commonGroups = [
+const cycleFilters = [
   '',
-  'Соискатель',
   'Инструктор',
   'Куратор',
   'Супервизор',
-  'Опытный Супервизор',
+  'ресертификация',
 ];
 
 const CATEGORY_VALUES = new Set<AdminCeuCategory | 'ALL'>([
@@ -245,15 +243,15 @@ export default function CeuReviewPage() {
           </label>
 
           <label className="dashboard-v2-small block text-[#1F305E]">
-            Уровень сертификации
+            Цикл / цель
             <select
               value={group}
               onChange={(event) => updateQuery({ group: event.target.value })}
               className="input-design mt-1"
             >
-              {commonGroups.map((item) => (
+              {cycleFilters.map((item) => (
                 <option key={item || 'all'} value={item}>
-                  {item ? formatCertificationLevelName(item) : 'Все уровни'}
+                  {item ? item[0].toUpperCase() + item.slice(1) : 'Все циклы'}
                 </option>
               ))}
             </select>
@@ -328,9 +326,9 @@ export default function CeuReviewPage() {
                       Пользователь {sortBy === 'email' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[150px] px-4 py-3 font-medium">
+                  <th className="w-[190px] px-4 py-3 font-medium">
                     <button type="button" onClick={() => setSort('group')} className="font-medium">
-                      Уровень {sortBy === 'group' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                      Цикл {sortBy === 'group' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
                   <th className="w-[185px] px-4 py-3 font-medium">
@@ -385,7 +383,7 @@ export default function CeuReviewPage() {
                         {row.email}
                       </a>
                     </td>
-                    <td className="px-4 py-3">{row.currentGroup?.name || '-'}</td>
+                    <td className="px-4 py-3">{row.cycleLabel || '-'}</td>
                     <td className="px-4 py-3">{ceuCategoryLabels[row.category] ?? row.category}</td>
                     <td className="px-4 py-3 text-center font-extrabold">{row.points}</td>
                     <td className="px-4 py-3 text-center">
@@ -501,14 +499,7 @@ function AdminCeuDetailsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
       <div className="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-3 flex h-11 w-11 cursor-pointer items-center justify-center opacity-55 transition hover:opacity-100"
-          aria-label="Закрыть"
-        >
-          <img src={EXIT_ICON} alt="" className="h-5 w-5" />
-        </button>
+        <ModalCloseButton onClick={onClose} />
 
         <h3 className="dashboard-v2-page-title mb-5 text-center">Детали CEU</h3>
 
@@ -542,6 +533,8 @@ function AdminCeuDetailsModal({
               <ReadOnlyPlain label="Специалист" value={row.fullName || '-'} mutedLabel />
               <ReadOnlyPlain label="Email" value={row.email || '-'} mutedLabel />
             </div>
+
+            <ReadOnlyPlain label="Цикл" value={row.cycleLabel || '-'} mutedLabel />
 
             <div className="rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-3 text-center dashboard-v2-label text-[#1F305E]">
               {recordStatusLabels[row.status] ?? row.status}
@@ -597,9 +590,9 @@ function AdminCeuDetailsModal({
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
-          {!isSpent ? (
-            canConfirm ? (
+        {!isSpent ? (
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
+            {canConfirm ? (
               <button
                 type="button"
                 onClick={requestConfirm}
@@ -617,13 +610,9 @@ function AdminCeuDetailsModal({
               >
                 Отклонить как ошибочную
               </button>
-            )
-          ) : (
-            <Button type="button" onClick={onClose}>
-              Закрыть
-            </Button>
-          )}
-        </div>
+            )}
+          </div>
+        ) : null}
 
         {pendingAction ? (
           <AdminNotifyChoiceModal

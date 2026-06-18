@@ -139,7 +139,8 @@ function getRenewalPayment(user: any) {
 
 function documentStatus(user: any) {
   const readiness = user.examReadiness?.documents;
-  const latestRequest = readiness?.request ?? user.documentReviewRequests?.[0] ?? null;
+  const latestRequest = readiness?.request ?? null;
+  const hasArchivedRequests = Boolean(user.documentReviewRequests?.length);
 
   if (readiness?.ready)
     return { label: 'Принято', tone: 'good' as const, to: latestRequest?.adminUrl, mode: 'history' as const };
@@ -159,6 +160,15 @@ function documentStatus(user: any) {
         latestRequest.status === 'UNCONFIRMED' || latestRequest.status === 'PARTIALLY_CONFIRMED'
           ? ('active' as const)
           : ('history' as const),
+    };
+  }
+
+  if (user.activeCycle && hasArchivedRequests) {
+    return {
+      label: 'Нет заявки текущего цикла',
+      tone: 'bad' as const,
+      to: null,
+      mode: 'history' as const,
     };
   }
 
@@ -443,15 +453,16 @@ export function AdminCandidateSummaryBlock({
         <div className="rounded-[16px] bg-[var(--color-blue-soft)] p-4">
           <div className="grid gap-3 md:grid-cols-2">
             <Meta label="ФИО" value={user.fullName || '—'} />
-            <Meta label="Email" value={user.email || '—'} />
+            <Meta label="ФИО латиницей" value={user.fullNameLatin || '—'} />
             <Meta
               label="Подтвержденный уровень сертификации"
               value={formatCertificationLevelName(activeGroupName)}
             />
-            <Meta label="Последний сертификат" value={latestCertificateText(latestCertificate)} />
+            <Meta label="Email" value={user.email || '—'} />
             <Meta label="Цель сертификации" value={resolveTargetLabel(user)} />
-            <Meta label="Текущий цикл сертификации" value={activeCycleText} />
+            <Meta label="Последний сертификат" value={latestCertificateText(latestCertificate)} />
             <Meta label="После выдачи сертификата" value={afterCertificateText} />
+            <Meta label="Текущий цикл сертификации" value={activeCycleText} />
           </div>
 
           <div className="mt-4 flex flex-wrap justify-end gap-3 border-t border-white/70 pt-4">

@@ -3,6 +3,7 @@ import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../../lib/prisma';
 import { z } from 'zod';
 import { CycleStatus } from '@prisma/client';
+import { logAdminUserAction } from '../../../utils/adminUserActionLog';
 
 type CEUCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
 type CEUStatus = 'CONFIRMED' | 'SPENT' | 'REJECTED';
@@ -23,6 +24,13 @@ const bodySchema = z.object({
   value: z.number().min(0),
   notifyUser: z.boolean().optional().default(false),
 });
+
+const categoryLabels: Record<CEUCategory, string> = {
+  ETHICS: 'Этика',
+  CULTURAL_DIVERSITY: 'Культурное разнообразие',
+  SUPERVISION: 'Супервизия',
+  GENERAL: 'Общие',
+};
 
 export async function updateUserCEUMatrixAdminHandler(
   req: FastifyRequest<UpdateUserCEUMatrixRoute>,
@@ -97,6 +105,13 @@ export async function updateUserCEUMatrixAdminHandler(
         reviewedAt: new Date(),
       },
     });
+  });
+
+  await logAdminUserAction({
+    userId,
+    adminId: req.user.userId,
+    action: 'Корректировка CEU-баллов',
+    details: `${categoryLabels[category] ?? category}: ${current} -> ${value}`,
   });
 
   if (notifyUser) {

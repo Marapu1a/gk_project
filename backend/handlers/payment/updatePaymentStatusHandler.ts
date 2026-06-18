@@ -119,10 +119,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
       activated = res.count;
     }
 
-    if (
-      dbPayment.type === 'FULL_PACKAGE' &&
-      (status === 'PENDING' || status === 'UNPAID')
-    ) {
+    if (dbPayment.type === 'FULL_PACKAGE' && (status === 'PENDING' || status === 'UNPAID')) {
       const res = await tx.payment.updateMany({
         where: {
           userId: dbPayment.userId,
@@ -130,7 +127,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
           OR: dbPayment.targetLevel
             ? [{ targetLevel: dbPayment.targetLevel }, { targetLevel: null }]
             : [{ targetLevel: null }],
-          status: { not: 'PAID' },
+          status: status === 'PENDING' ? { not: 'PAID' } : { not: 'UNPAID' },
         },
         data: {
           status,

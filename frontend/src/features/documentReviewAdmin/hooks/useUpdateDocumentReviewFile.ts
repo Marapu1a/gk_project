@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   deleteDocumentReviewFile,
+  transferDocumentReviewFileToActiveCycle,
   updateDocumentReviewFile,
   type UpdateDocumentReviewFilePayload,
 } from '../api/updateDocumentReviewFile';
@@ -42,5 +43,24 @@ export function useDeleteDocumentReviewFile(requestId?: string) {
       return deleteDocumentReviewFile(requestId, fileReviewId);
     },
     onSuccess: () => invalidateDocumentReviewQueries(queryClient, requestId),
+  });
+}
+
+export function useTransferDocumentReviewFileToActiveCycle(requestId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (fileReviewId: string) => {
+      if (!requestId) throw new Error('requestId is required');
+      return transferDocumentReviewFileToActiveCycle(requestId, fileReviewId);
+    },
+    onSuccess: (data: any) => {
+      invalidateDocumentReviewQueries(queryClient, requestId);
+      if (data?.targetRequestId) {
+        queryClient.invalidateQueries({
+          queryKey: ['admin', 'docReviewRequest', data.targetRequestId],
+        });
+      }
+    },
   });
 }

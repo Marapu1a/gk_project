@@ -10,6 +10,7 @@ import {
   useSupervisionContracts,
 } from '../hooks/useSupervisionContracts';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_SIZE_MB = 10;
@@ -162,14 +163,7 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
         aria-labelledby="supervision-contract-title"
         className="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[16px] bg-white px-5 pb-5 pt-4 text-[#1F305E] shadow-[0_16px_40px_rgba(0,0,0,0.24)] sm:px-7 sm:pb-7"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center opacity-65 transition hover:opacity-100"
-          aria-label="Закрыть"
-        >
-          <img src={EXIT_ICON} alt="" className="h-6 w-6" />
-        </button>
+        <ModalCloseButton onClick={onClose} iconClassName="h-6 w-6" />
 
         <h2
           id="supervision-contract-title"

@@ -6,8 +6,8 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { useRegistryProfile } from '../hooks/useRegistryProfile';
 import type { RegistryCertificate } from '../api/getRegistryProfile';
 import { formatCertificateDate, isCertificateDateActive } from '@/features/certificate/utils/certificateDates';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
-const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const COPY_ICON = '/dashboard-v2/icon_copy.svg';
 
 type Props = { userId: string };
@@ -281,15 +281,13 @@ function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertifica
       <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Закрыть просмотр сертификата" />
 
       <div className="relative z-10 flex max-h-[96vh] w-full max-w-[760px] flex-col items-center">
-        <button
-          type="button"
+        <ModalCloseButton
           onClick={onClose}
-          className="absolute right-[34px] top-[-34px] flex h-11 w-11 cursor-pointer items-center justify-center opacity-80 transition hover:opacity-100"
-          aria-label="Закрыть"
-          title="Закрыть"
-        >
-          <img src={EXIT_ICON} alt="" className="h-6 w-6 brightness-0 invert" />
-        </button>
+          variant="light"
+          iconClassName="h-6 w-6 brightness-0 invert"
+          positionClassName="absolute right-[34px] top-[-34px] flex h-11 w-11"
+          className="opacity-80"
+        />
 
         <div className="flex max-h-[calc(96vh-82px)] w-full items-center justify-center">
           <div className="rounded-[6px] bg-white p-2 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
@@ -348,14 +346,7 @@ function CertificateCheckModal({
       <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Закрыть проверку сертификата" />
 
       <div className="relative z-10 w-full max-w-[750px] rounded-[22px] bg-white px-7 py-7 shadow-soft">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-5 top-5 flex h-10 w-10 cursor-pointer items-center justify-center opacity-70 transition hover:opacity-100"
-          aria-label="Закрыть"
-        >
-          <img src={EXIT_ICON} alt="" className="h-7 w-7" />
-        </button>
+        <ModalCloseButton onClick={onClose} iconClassName="h-7 w-7" />
 
         <h2 className="mb-6 flex items-center justify-center gap-2 text-[30px] font-extrabold leading-none text-[var(--color-blue-dark)]">
           {active ? (

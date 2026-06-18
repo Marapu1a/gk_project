@@ -9,7 +9,8 @@ export type AdminReviewerHourState =
   | 'CONFIRMED_BY_ADMIN'
   | 'REJECTED_BY_ADMIN'
   | 'CONFIRMED_BY_REVIEWER'
-  | 'REJECTED_BY_REVIEWER';
+  | 'REJECTED_BY_REVIEWER'
+  | 'ADMIN_CORRECTION';
 export type AdminReviewerCandidateSortBy =
   | 'candidate'
   | 'candidateEmail'
@@ -33,7 +34,9 @@ export type AdminReviewerCandidatesParams = {
 };
 
 export type AdminReviewerCandidateRow = {
+  rowType: 'RELATION' | 'ADMIN_CORRECTION';
   relationId: string;
+  correctionId?: string;
   kind: AdminReviewerCandidateKind;
   relationStatus: AdminReviewerCandidateStatus;
   candidate: { id: string; email: string; fullName: string | null };
@@ -48,6 +51,22 @@ export type AdminReviewerCandidateRow = {
     reviewer: { id: string; email: string; fullName: string | null } | null;
     reviewedBy: { id: string; email: string; fullName: string | null } | null;
     reviewedByAdmin: boolean;
+  } | null;
+  adminCorrection: {
+    id: string;
+    createdAt: string;
+    updatedAt: string;
+    admin: { id: string; email: string; fullName: string | null } | null;
+    notifyUser: boolean;
+    implementing: number;
+    programming: number;
+    mentor: number;
+    distribution: {
+      directIndividual: number;
+      directGroup: number;
+      nonObservingIndividual: number;
+      nonObservingGroup: number;
+    };
   } | null;
   pendingRequests: Array<{
     id: string;

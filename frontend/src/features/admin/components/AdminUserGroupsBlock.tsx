@@ -30,10 +30,24 @@ function isCertificateActive(expiresAt: string | null): boolean {
   return !expiresAt || isCertificateDateActive(expiresAt);
 }
 
-function resolveCurrentLevelByGroupName(groupName: string | null | undefined): TargetLevel | null {
-  if (groupName === 'Инструктор') return 'INSTRUCTOR';
-  if (groupName === 'Куратор') return 'CURATOR';
-  if (groupName === 'Супервизор' || groupName === 'Опытный Супервизор') return 'SUPERVISOR';
+type GroupLike = { name?: string | null; rank?: number | null } | null | undefined;
+
+function normalizeGroupName(groupName: string | null | undefined) {
+  return (groupName ?? '').trim().toLowerCase();
+}
+
+function isExperiencedSupervisorGroup(groupName: string | null | undefined) {
+  return normalizeGroupName(groupName) === 'опытный супервизор';
+}
+
+function resolveCurrentLevelByGroup(group: GroupLike): TargetLevel | null {
+  const groupName = normalizeGroupName(group?.name);
+  if (groupName === 'инструктор') return 'INSTRUCTOR';
+  if (groupName === 'куратор') return 'CURATOR';
+  if (groupName === 'супервизор' || groupName === 'опытный супервизор') return 'SUPERVISOR';
+  if (group?.rank === 2) return 'INSTRUCTOR';
+  if (group?.rank === 3) return 'CURATOR';
+  if ((group?.rank ?? 0) >= 4) return 'SUPERVISOR';
   return null;
 }
 
@@ -56,7 +70,7 @@ function getDisplayedLevelLabel(
 ) {
   if (!level) return '—';
 
-  if (level === 'SUPERVISOR' && mode === 'RENEWAL' && activeGroupName === 'Опытный Супервизор') {
+  if (level === 'SUPERVISOR' && mode === 'RENEWAL' && isExperiencedSupervisorGroup(activeGroupName)) {
     return 'Опытный супервизор';
   }
 
@@ -68,7 +82,7 @@ function getIssuedGroupAfterProcess(
   mode: GoalMode,
   activeGroupName: string | null | undefined,
 ) {
-  if (level === 'SUPERVISOR' && mode === 'RENEWAL' && activeGroupName === 'Опытный Супервизор') {
+  if (level === 'SUPERVISOR' && mode === 'RENEWAL' && isExperiencedSupervisorGroup(activeGroupName)) {
     return 'Опытный супервизор';
   }
 
@@ -113,8 +127,6 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
   const groupChanged = Boolean(selectedGroupId && selectedGroupId !== (savedActiveGroup?.id ?? ''));
   const activeCycle = userDetails?.activeCycle ?? null;
   const latestCertificate = userDetails?.latestCertificate ?? null;
-  const hasActiveCertificate =
-    !!latestCertificate && isCertificateActive(latestCertificate.expiresAt);
   const activeCertificate = useMemo(() => {
     return (
       [...(userDetails?.certificates ?? [])]
@@ -124,7 +136,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
         )[0] ?? null
     );
   }, [userDetails?.certificates]);
-  const currentLevel = resolveCurrentLevelByGroupName(savedActiveGroup?.name);
+  const currentLevel = resolveCurrentLevelByGroup(savedActiveGroup);
   const currentRank = savedActiveGroup?.rank ?? 0;
 
   const availableActions = useMemo<ActionOption[]>(() => {
@@ -140,9 +152,9 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
       }
     }
 
-    if (hasActiveCertificate && currentLevel) {
+    if (currentLevel) {
       const renewalLabel =
-        currentLevel === 'SUPERVISOR' && savedActiveGroup?.name === 'Опытный Супервизор'
+        currentLevel === 'SUPERVISOR' && isExperiencedSupervisorGroup(savedActiveGroup?.name)
           ? 'Начать ресертификацию уровня «Опытный супервизор»'
           : `Начать ресертификацию уровня «${targetLevelLabels[currentLevel]}»`;
 
@@ -154,7 +166,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     }
 
     return result;
-  }, [currentRank, currentLevel, hasActiveCertificate, savedActiveGroup?.name]);
+  }, [currentRank, currentLevel, savedActiveGroup?.name]);
 
   useEffect(() => {
     if (!activeCycle) {
@@ -459,6 +471,10 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
                   Для текущего статуса нет доступных циклов сертификации.
                 </p>
               ) : null}
+              <p className="dashboard-v2-caption mt-2">
+                Ресертификацию можно начать вручную без сертификата в системе. Сначала укажите
+                текущий уровень пользователя; основание проверяет администратор.
+              </p>
               {groupChanged ? (
                 <p className="dashboard-v2-caption mt-2 text-[var(--color-danger)]">
                   Сначала сохраните новый статус пользователя.

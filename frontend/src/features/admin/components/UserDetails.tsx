@@ -12,6 +12,7 @@ import { AdminAccountActionsBlock } from './AdminAccountActionsBlock';
 import { AdminUserNotesModal } from './AdminUserNotesModal';
 import { useUserActionLog } from '../hooks/useUserActionLog';
 import { ReviewerRelationsOverviewBlock } from './ReviewerRelationsOverviewBlock';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
 export default function UserDetails() {
   const { id } = useParams<{ id: string }>();
@@ -117,16 +118,10 @@ export default function UserDetails() {
 
       {isUserDataOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-          <div className="max-h-[90vh] w-full max-w-[960px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+          <div className="relative max-h-[90vh] w-full max-w-[960px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+            <ModalCloseButton onClick={() => setIsUserDataOpen(false)} />
             <div className="mb-4 flex items-center justify-between gap-4">
               <h3 className="dashboard-v2-title">Данные пользователя</h3>
-              <button
-                type="button"
-                className="btn dashboard-v2-action dashboard-v2-action-secondary"
-                onClick={() => setIsUserDataOpen(false)}
-              >
-                Закрыть
-              </button>
             </div>
             <UserBasicBlock
               userId={data.id}
@@ -149,7 +144,8 @@ export default function UserDetails() {
 
       {isStatusOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-          <div className="max-h-[90vh] w-full max-w-[1040px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+          <div className="relative max-h-[90vh] w-full max-w-[1040px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+            <ModalCloseButton onClick={() => setIsStatusOpen(false)} />
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
                 <h3 className="dashboard-v2-title">Статус и сертификат</h3>
@@ -157,13 +153,6 @@ export default function UserDetails() {
                   Управление группой, активным процессом и сертификатом пользователя.
                 </p>
               </div>
-              <button
-                type="button"
-                className="btn dashboard-v2-action dashboard-v2-action-secondary"
-                onClick={() => setIsStatusOpen(false)}
-              >
-                Закрыть
-              </button>
             </div>
             <AdminUserGroupsBlock userId={data.id} />
           </div>

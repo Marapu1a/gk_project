@@ -1,7 +1,13 @@
 // src/handlers/supervision/supervisionSummary.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { PracticeLevel, CycleStatus, TargetLevel, CycleType } from '@prisma/client';
+import {
+  PracticeLevel,
+  CycleStatus,
+  TargetLevel,
+  CycleType,
+  SupervisionAdminCorrectionKind,
+} from '@prisma/client';
 import {
   supervisionRequirementsByGroup,
   renewalSupervisionRequirementsByGroup,
@@ -130,7 +136,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     PracticeLevel.PROGRAMMING,
   ];
 
-  const [confirmed, unconfirmed, rawDistribution, distributionRecords] = await Promise.all([
+  const [confirmed, unconfirmed, rawDistribution, distributionRecords, mentorCorrection] = await Promise.all([
     prisma.supervisionHour.findMany({
       where: {
         status: 'CONFIRMED',
@@ -171,6 +177,15 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
         draftNonObservingGroup: true,
       },
     }),
+    prisma.supervisionAdminCorrection.findUnique({
+      where: {
+        cycleId_kind: {
+          cycleId: activeCycle.id,
+          kind: SupervisionAdminCorrectionKind.MENTORSHIP,
+        },
+      },
+      select: { mentor: true, updatedAt: true },
+    }),
   ]);
 
   const usableAgg = aggregate(confirmed);
@@ -210,11 +225,12 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     activeCycle.targetLevel,
     bonusPractice
   );
+  const practiceCorrection = cycleTotals.adminCorrection;
 
   const usable: SummaryTotals = {
     practice: cycleTotals.practiceConfirmed,
     supervision: cycleTotals.supervisionConfirmed,
-    supervisor: usableAgg.supervisor,
+    supervisor: mentorCorrection?.mentor ?? usableAgg.supervisor,
   };
 
   const pending: SummaryTotals = {
@@ -225,9 +241,9 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
 
   const practiceBreakdown: PracticeBreakdown = {
     total: cycleTotals.practiceConfirmed,
-    legacy: usableAgg.legacy,
-    implementing: usableAgg.implementing,
-    programming: usableAgg.programming,
+    legacy: practiceCorrection ? 0 : usableAgg.legacy,
+    implementing: practiceCorrection?.implementing ?? usableAgg.implementing,
+    programming: practiceCorrection?.programming ?? usableAgg.programming,
     bonus: bonusPractice,
   };
 
@@ -238,21 +254,28 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     programming: pendingAgg.programming,
   };
 
-  const recordDistribution = distributionRecords.reduce<Distribution>(
-    (acc, record) => ({
-      directIndividual: acc.directIndividual + (record.draftDirectIndividual ?? 0),
-      directGroup: acc.directGroup + (record.draftDirectGroup ?? 0),
-      nonObservingIndividual:
-        acc.nonObservingIndividual + (record.draftNonObservingIndividual ?? 0),
-      nonObservingGroup: acc.nonObservingGroup + (record.draftNonObservingGroup ?? 0),
-    }),
-    {
-      directIndividual: 0,
-      directGroup: 0,
-      nonObservingIndividual: 0,
-      nonObservingGroup: 0,
-    },
-  );
+  const recordDistribution = practiceCorrection
+    ? {
+        directIndividual: practiceCorrection.directIndividual,
+        directGroup: practiceCorrection.directGroup,
+        nonObservingIndividual: practiceCorrection.nonObservingIndividual,
+        nonObservingGroup: practiceCorrection.nonObservingGroup,
+      }
+    : distributionRecords.reduce<Distribution>(
+        (acc, record) => ({
+          directIndividual: acc.directIndividual + (record.draftDirectIndividual ?? 0),
+          directGroup: acc.directGroup + (record.draftDirectGroup ?? 0),
+          nonObservingIndividual:
+            acc.nonObservingIndividual + (record.draftNonObservingIndividual ?? 0),
+          nonObservingGroup: acc.nonObservingGroup + (record.draftNonObservingGroup ?? 0),
+        }),
+        {
+          directIndividual: 0,
+          directGroup: 0,
+          nonObservingIndividual: 0,
+          nonObservingGroup: 0,
+        },
+      );
 
   const hasRecordDistribution =
     recordDistribution.directIndividual > 0 ||

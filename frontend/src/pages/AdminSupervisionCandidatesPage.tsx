@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { PageNav } from '@/components/PageNav';
 import { Button } from '@/components/Button';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { AdminNotifyChoiceModal } from '@/features/admin/components/AdminNotifyChoiceModal';
 import { useAdminReviewerCandidates } from '@/features/admin/hooks/supervision/useAdminReviewerCandidates';
 import { useRemovePendingReviewerHours } from '@/features/admin/hooks/supervision/useRemovePendingReviewerHours';
@@ -36,6 +37,7 @@ const HOUR_STATE_OPTIONS: Array<{ value: AdminReviewerHourState | 'ALL'; label: 
   { value: 'CONFIRMED_BY_REVIEWER', label: 'Подтверждены проверяющим' },
   { value: 'REJECTED_BY_REVIEWER', label: 'Отклонены проверяющим' },
   { value: 'REJECTED_BY_ADMIN', label: 'Убраны администратором' },
+  { value: 'ADMIN_CORRECTION', label: 'Корректировки администратора' },
 ];
 
 type HourStateTone = 'danger' | 'muted' | 'normal' | 'success';
@@ -60,9 +62,26 @@ function formatDate(value?: string | null) {
   return date.toLocaleDateString('ru-RU');
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function formatNumber(value?: number | null) {
   if (value == null) return '—';
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function round2(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 function candidateName(fullName: string | null, email: string) {
@@ -80,6 +99,10 @@ const HOUR_LABELS: Record<string, string> = {
 };
 
 function hourState(row: AdminReviewerCandidateRow): { text: string; tone: HourStateTone } {
+  if (row.rowType === 'ADMIN_CORRECTION') {
+    return { text: 'Корректировка администратора', tone: 'normal' };
+  }
+
   if (row.pendingCount > 0) {
     return { text: `Есть новые часы: ${row.pendingCount}`, tone: 'danger' };
   }
@@ -415,9 +438,15 @@ function AdminSupervisionCandidatesContent() {
                       </td>
                       <td className="break-all px-3 py-3 leading-snug">{row.candidate.email}</td>
                       <td className="break-all px-3 py-3 leading-snug">
-                        <div>{row.reviewer.email}</div>
+                        <div>
+                          {row.rowType === 'ADMIN_CORRECTION'
+                            ? row.adminCorrection?.admin?.email ?? row.reviewer.email
+                            : row.reviewer.email}
+                        </div>
                         <div className="dashboard-v2-caption mt-1 text-[#8D96B5]">
-                          {RELATION_STATUS_LABELS[row.relationStatus]}
+                          {row.rowType === 'ADMIN_CORRECTION'
+                            ? 'служебная корректировка'
+                            : RELATION_STATUS_LABELS[row.relationStatus]}
                         </div>
                       </td>
                       <td className="px-3 py-3 text-center">{formatDate(date)}</td>
@@ -452,13 +481,21 @@ function AdminSupervisionCandidatesContent() {
       </div>
 
       {selectedRow ? (
-        <AdminPendingHoursDetailsModal
-          row={selectedRow}
-          kindLabel={KIND_LABELS[kind]}
-          isPending={removePendingHours.isPending}
-          onClose={() => setSelectedRow(null)}
-          onRemove={() => setRemoveTarget(selectedRow)}
-        />
+        selectedRow.rowType === 'ADMIN_CORRECTION' ? (
+          <AdminCorrectionDetailsModal
+            row={selectedRow}
+            kindLabel={KIND_LABELS[kind]}
+            onClose={() => setSelectedRow(null)}
+          />
+        ) : (
+          <AdminPendingHoursDetailsModal
+            row={selectedRow}
+            kindLabel={KIND_LABELS[kind]}
+            isPending={removePendingHours.isPending}
+            onClose={() => setSelectedRow(null)}
+            onRemove={() => setRemoveTarget(selectedRow)}
+          />
+        )
       ) : null}
 
       {removeTarget ? (
@@ -541,6 +578,81 @@ function MiniRow({ label, value, strong }: { label: string; value: number; stron
   );
 }
 
+function AdminCorrectionDetailsModal({
+  row,
+  kindLabel,
+  onClose,
+}: {
+  row: AdminReviewerCandidateRow;
+  kindLabel: string;
+  onClose: () => void;
+}) {
+  const correction = row.adminCorrection;
+  const admin = correction?.admin?.fullName || correction?.admin?.email || row.reviewer.email || '—';
+  const distribution = correction?.distribution ?? {
+    directIndividual: 0,
+    directGroup: 0,
+    nonObservingIndividual: 0,
+    nonObservingGroup: 0,
+  };
+  const practiceTotal = round2((correction?.implementing ?? 0) + (correction?.programming ?? 0));
+  const supervisionTotal = round2(
+    distribution.directIndividual +
+      distribution.directGroup +
+      distribution.nonObservingIndividual +
+      distribution.nonObservingGroup,
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+      <div className="relative max-h-[90vh] w-full max-w-[900px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 text-[#1F305E] shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
+        <ModalCloseButton onClick={onClose} />
+
+        <h3 className="dashboard-v2-page-title mb-5 text-center">Корректировка администратора</h3>
+
+        <div className="mb-5 grid gap-4 md:grid-cols-3">
+          <CompactField label="Дата корректировки" value={formatDateTime(correction?.updatedAt)} />
+          <CompactField label="Кто сделал" value={admin} />
+          <CompactField label="Кому сделал" value={candidateName(row.candidate.fullName, row.candidate.email)} />
+          <CompactField label="Email кандидата" value={row.candidate.email} />
+          <CompactField label="Тип" value={kindLabel} />
+          <CompactField
+            label="Уведомление"
+            value={correction?.notifyUser ? 'Отправлено пользователю' : 'Без уведомления'}
+          />
+        </div>
+
+        <section className="rounded-[14px] bg-[var(--color-blue-soft)] px-4 py-4 dashboard-v2-text">
+          <h4 className="dashboard-v2-title mb-3">Что изменено</h4>
+
+          {row.kind === 'mentorship' ? (
+            <div className="rounded-[10px] bg-white px-3 py-2">
+              <MiniRow label="Итоговые часы менторства" value={correction?.mentor ?? 0} strong />
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <div className="space-y-4">
+                <div className="rounded-[10px] bg-white px-3 py-2">
+                  <MiniRow label="Полевая практика" value={correction?.implementing ?? 0} />
+                  <MiniRow label="Работа с информацией" value={correction?.programming ?? 0} />
+                  <MiniRow label="Итоговая практика" value={practiceTotal} strong />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <DistributionBlock distribution={distribution} />
+                <div className="rounded-[10px] bg-white px-3 py-2">
+                  <MiniRow label="Итоговая супервизия" value={supervisionTotal} strong />
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
 function AdminPendingHoursDetailsModal({
   row,
   kindLabel,
@@ -560,14 +672,7 @@ function AdminPendingHoursDetailsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
       <div className="relative max-h-[90vh] w-full max-w-[900px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 text-[#1F305E] shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-3 flex h-11 w-11 cursor-pointer items-center justify-center opacity-55 transition hover:opacity-100"
-          aria-label="Закрыть"
-        >
-          <img src="/dashboard-v2/exit_btn.svg" alt="" className="h-5 w-5" />
-        </button>
+        <ModalCloseButton onClick={onClose} />
 
         <h3 className="dashboard-v2-page-title mb-5 text-center">Детали отправки часов</h3>
 
@@ -627,15 +732,8 @@ function AdminPendingHoursDetailsModal({
           </div>
         )}
 
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn dashboard-v2-action dashboard-v2-action-secondary"
-          >
-            Закрыть
-          </button>
-          {hasPendingRequests ? (
+        {hasPendingRequests ? (
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
             <button
               type="button"
               onClick={onRemove}
@@ -644,8 +742,8 @@ function AdminPendingHoursDetailsModal({
             >
               Убрать из проверки
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

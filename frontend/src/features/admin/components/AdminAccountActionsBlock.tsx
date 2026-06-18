@@ -8,6 +8,7 @@ import { useToggleUserRole } from '../hooks/useToggleUserRole';
 import { useUpdateUserVisibility } from '../hooks/useUpdateUserVisibility';
 import { useUserActionLog } from '../hooks/useUserActionLog';
 import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
+import { ModalCloseButton } from '@/components/ModalCloseButton';
 
 type ActionKey = 'registryVisible' | 'archived' | 'adminRole';
 
@@ -218,16 +219,10 @@ export function AdminAccountActionsBlock({
 
       {isHistoryOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4">
-          <div className="w-full max-w-3xl rounded-[18px] bg-white p-5 shadow-soft">
+          <div className="relative w-full max-w-3xl rounded-[18px] bg-white p-5 pr-14 shadow-soft">
+            <ModalCloseButton onClick={() => setIsHistoryOpen(false)} />
             <div className="mb-4 flex items-center justify-between gap-4">
               <h3 className="dashboard-v2-title">История действий администратора</h3>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => setIsHistoryOpen(false)}
-              >
-                Закрыть
-              </button>
             </div>
 
             <div className="max-h-[420px] overflow-auto rounded-[14px] border border-[var(--color-blue-soft)]">

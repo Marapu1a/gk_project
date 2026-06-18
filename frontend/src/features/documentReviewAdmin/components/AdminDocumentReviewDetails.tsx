@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { Check, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { PageNav } from '@/components/PageNav';
@@ -12,6 +13,7 @@ import { useUserPaymentsById } from '@/features/payment/hooks/useUserPaymentsByI
 import { useGetDocReviewRequestById } from '../hooks/useGetDocReviewRequestById';
 import {
   useDeleteDocumentReviewFile,
+  useTransferDocumentReviewFileToActiveCycle,
   useUpdateDocumentReviewFile,
 } from '../hooks/useUpdateDocumentReviewFile';
 import type { DocumentReviewFileStatus } from '../api/updateDocumentReviewFile';
@@ -53,6 +55,16 @@ type ReviewFile = {
     type?: string | null;
     comment?: string | null;
   };
+};
+
+type RelatedDocumentRequest = {
+  id: string;
+  status: string;
+  submittedAt?: string | null;
+  cycleId?: string | null;
+  cycle?: { status?: string | null; type?: string | null; targetLevel?: string | null } | null;
+  documentFiles?: { id: string; status: string }[];
+  _count?: { documents?: number; documentFiles?: number };
 };
 
 function formatDate(value?: string | null) {
@@ -113,20 +125,41 @@ function statusConfirmOptions(status: DocumentReviewFileStatus) {
   };
 }
 
+function documentRequestArchiveLabel(request: RelatedDocumentRequest) {
+  if (!request.cycleId) return 'Старая заявка';
+  if (request.cycle?.status && request.cycle.status !== 'ACTIVE') return 'Предыдущий цикл';
+  return 'Текущий цикл';
+}
+
+function documentRequestFilesCount(request: RelatedDocumentRequest) {
+  return request._count?.documentFiles || request._count?.documents || request.documentFiles?.length || 0;
+}
+
+function formatRequestsCount(count: number) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} заявка`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} заявки`;
+  return `${count} заявок`;
+}
+
 export function AdminDocumentReviewDetails() {
   const { id } = useParams<{ id: string }>();
   const { data: request, isLoading, error } = useGetDocReviewRequestById(id);
   const updateFile = useUpdateDocumentReviewFile(id);
   const deleteFileRecord = useDeleteDocumentReviewFile(id);
+  const transferFile = useTransferDocumentReviewFileToActiveCycle(id);
   const { confirm } = useConfirm();
 
   const [comments, setComments] = useState<Record<string, string>>({});
   const [types, setTypes] = useState<Record<string, string>>({});
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
 
   const { data: payments } = useUserPaymentsById(request?.user?.id);
   const documentPayment = payments?.find((p) => p.type === 'DOCUMENT_REVIEW');
 
   const reviewFiles = useMemo(() => normalizeReviewFiles(request), [request]);
+  const relatedRequests: RelatedDocumentRequest[] = request?.relatedRequests ?? [];
 
   useEffect(() => {
     const nextComments: Record<string, string> = {};
@@ -141,11 +174,16 @@ export function AdminDocumentReviewDetails() {
     setTypes(nextTypes);
   }, [reviewFiles]);
 
+  useEffect(() => {
+    setIsArchiveOpen(false);
+  }, [id]);
+
   if (isLoading) return <p className="p-6 text-[var(--color-blue-dark)]">Загрузка...</p>;
   if (error) return <p className="p-6 text-[var(--color-danger)]">Ошибка загрузки</p>;
   if (!request) return <p className="p-6 text-[var(--color-danger)]">Заявка не найдена</p>;
 
   const isLegacyFallback = reviewFiles.some((item) => item.id.startsWith('legacy-'));
+  const isArchiveRequest = !request.cycleId || request.cycle?.status !== 'ACTIVE';
   const activeCycle = request.user?.cycles?.[0] ?? null;
   const activeGroup =
     request.user?.groups
@@ -227,6 +265,28 @@ export function AdminDocumentReviewDetails() {
     }
   };
 
+  const handleTransferToActiveCycle = async (item: ReviewFile) => {
+    const ok = await confirm({
+      message: 'Перенести документ в текущий цикл?',
+      description:
+        'Файл появится в заявке текущего цикла со статусом "На рассмотрении". Старая заявка не изменится.',
+      confirmLabel: 'Перенести',
+    });
+
+    if (!ok) return;
+
+    try {
+      const result = await transferFile.mutateAsync(item.id);
+      toast.success(
+        result?.alreadyExists
+          ? 'Документ уже есть в заявке текущего цикла.'
+          : 'Документ перенесен в текущий цикл.',
+      );
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Не удалось перенести документ.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F0F0F0] px-4 py-6 text-[var(--color-blue-dark)]">
       <section className="mx-auto max-w-[1040px] overflow-hidden rounded-[18px] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
@@ -273,12 +333,78 @@ export function AdminDocumentReviewDetails() {
                 Подтверждение без оплаты разрешено для ресертификации супервизора.
               </div>
             ) : null}
+            {isArchiveRequest ? (
+              <div className="md:col-span-2 rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-3 text-[13px] font-semibold text-[var(--color-blue-dark)]">
+                Это документы из предыдущего периода. Они сохранены для истории и проверки, но не
+                подтверждают документы текущего цикла сертификации.
+              </div>
+            ) : null}
             {isLegacyFallback ? (
               <div className="md:col-span-2 rounded-[10px] bg-[rgba(255,83,100,0.08)] px-4 py-3 text-[13px] text-[var(--color-danger)]">
-                Это старая заявка без новой пофайловой структуры. Она отображается для истории.
+                Это старая заявка из прежней версии раздела документов. Она отображается для
+                истории, часть действий с отдельными файлами может быть недоступна.
               </div>
             ) : null}
           </section>
+
+          {relatedRequests.length > 0 ? (
+            <section className="rounded-[14px] border border-[var(--color-blue-soft)] bg-[#F7F8FA] p-4">
+              <button
+                type="button"
+                className="btn flex w-full items-center justify-between gap-4 text-left text-[var(--color-blue-dark)]"
+                onClick={() => setIsArchiveOpen((prev) => !prev)}
+              >
+                <span>
+                  <span className="block text-[18px] font-extrabold">
+                    Другие заявки документов
+                  </span>
+                  <span className="mt-1 block text-[13px] font-semibold text-[#8D96B5]">
+                    Есть {formatRequestsCount(relatedRequests.length)}. Они сохранены для истории и
+                    не подменяют документы текущего цикла.
+                  </span>
+                </span>
+                <span className="inline-flex h-8 min-w-[92px] items-center justify-center rounded-full bg-[var(--color-blue-dark)] px-3 text-[13px] font-extrabold text-white">
+                  {isArchiveOpen ? 'Скрыть' : 'Показать'}
+                </span>
+              </button>
+
+              {isArchiveOpen ? (
+                <div className="mt-4 space-y-2">
+                  {relatedRequests.map((item) => (
+                    <div
+                      key={item.id}
+                      className="grid gap-3 rounded-[12px] bg-white px-4 py-3 text-[13px] shadow-[0_1px_8px_rgba(31,48,94,0.06)] md:grid-cols-[130px_minmax(0,1fr)_90px_130px_auto] md:items-center"
+                    >
+                      <div>
+                        <span className="block text-[#8D96B5]">Подана</span>
+                        <span className="font-extrabold">{formatDate(item.submittedAt)}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[#8D96B5]">Период</span>
+                        <span className="font-semibold">{documentRequestArchiveLabel(item)}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[#8D96B5]">Файлы</span>
+                        <span className="font-extrabold">{documentRequestFilesCount(item)}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[#8D96B5]">Статус</span>
+                        <span className="font-semibold">
+                          {documentReviewStatusLabels[item.status] || item.status}
+                        </span>
+                      </div>
+                      <Link
+                        to={`/admin/document-review/${item.id}`}
+                        className="btn inline-flex h-9 items-center justify-center rounded-full border border-[var(--color-blue-dark)] px-4 text-[13px] font-extrabold text-[var(--color-blue-dark)] hover:bg-[var(--color-blue-dark)] hover:text-white"
+                      >
+                        Открыть
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
           <section>
             <h2 className="mb-4 text-[20px] font-extrabold">Файлы</h2>
@@ -300,12 +426,17 @@ export function AdminDocumentReviewDetails() {
                       deleteFileRecord.isPending ||
                       item.id.startsWith('legacy-')
                     }
+                    actionsDisabled={
+                      updateFile.isPending || deleteFileRecord.isPending || transferFile.isPending
+                    }
+                    canTransfer={isArchiveRequest && item.status !== 'DELETED'}
                     onTypeChange={(type) => handleTypeChange(item, type)}
                     onCommentChange={(comment) =>
                       setComments((prev) => ({ ...prev, [item.id]: comment }))
                     }
                     onStatus={(status) => handleStatus(item, status)}
                     onDeleteForever={() => handleDeleteForever(item)}
+                    onTransfer={() => handleTransferToActiveCycle(item)}
                   />
                 ))}
               </div>
@@ -331,19 +462,25 @@ function DocumentFileCard({
   type,
   comment,
   disabled,
+  actionsDisabled,
+  canTransfer,
   onTypeChange,
   onCommentChange,
   onStatus,
   onDeleteForever,
+  onTransfer,
 }: {
   item: ReviewFile;
   type: string;
   comment: string;
   disabled: boolean;
+  actionsDisabled: boolean;
+  canTransfer: boolean;
   onTypeChange: (type: string) => void;
   onCommentChange: (comment: string) => void;
   onStatus: (status: DocumentReviewFileStatus) => void;
   onDeleteForever: () => void;
+  onTransfer: () => void;
 }) {
   const fileAvailable = item.status !== 'DELETED';
   const hasDeletionRequest = Boolean(item.deletionRequestedAt) && item.status !== 'DELETED';
@@ -457,49 +594,66 @@ function DocumentFileCard({
         </label>
       </div>
 
-      <div className="flex flex-col justify-center gap-2">
+      <div className="flex flex-col justify-center gap-3">
+        {canTransfer ? (
+          <button
+            type="button"
+            onClick={onTransfer}
+            disabled={actionsDisabled}
+            className="btn min-h-[38px] rounded-full bg-[var(--color-blue-dark)] px-4 text-[13px] font-extrabold leading-tight text-white disabled:cursor-not-allowed disabled:bg-[#B8C4D8]"
+          >
+            Перенести в текущий цикл
+          </button>
+        ) : null}
+
         {item.status === 'DELETED' ? (
           <button
             type="button"
             onClick={onDeleteForever}
-            disabled={disabled}
-            className="btn min-h-[40px] rounded-full bg-[var(--color-danger)] px-4 text-[13px] font-extrabold leading-tight text-white disabled:cursor-not-allowed disabled:bg-[#B8C4D8]"
+            disabled={actionsDisabled || disabled}
+            className="btn min-h-[36px] rounded-full border-2 border-[var(--color-danger)] px-4 text-[13px] font-extrabold leading-tight text-[var(--color-danger)] hover:bg-[rgba(255,83,100,0.08)] disabled:cursor-not-allowed disabled:opacity-45"
           >
             Удалить насовсем
           </button>
         ) : (
-          <>
+          <div className="flex justify-center gap-2">
             {canAccept ? (
               <button
                 type="button"
                 onClick={() => onStatus('CONFIRMED')}
-                disabled={disabled}
-                className="btn h-[36px] rounded-full bg-[var(--color-blue-dark)] px-4 text-[13px] font-extrabold text-white disabled:cursor-not-allowed disabled:bg-[#B8C4D8]"
+                disabled={actionsDisabled || disabled}
+                title="Принять"
+                aria-label="Принять документ"
+                className="btn flex h-10 w-10 items-center justify-center rounded-[12px] bg-[var(--color-blue-dark)] text-white hover:bg-[#172652] disabled:cursor-not-allowed disabled:bg-[#B8C4D8]"
               >
-                Принять
+                <Check className="h-5 w-5" strokeWidth={2.6} />
               </button>
             ) : null}
             {canReject ? (
               <button
                 type="button"
                 onClick={() => onStatus('REJECTED')}
-                disabled={disabled}
-                className="btn h-[36px] rounded-full border-2 border-[var(--color-blue-dark)] px-4 text-[13px] font-extrabold text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
+                disabled={actionsDisabled || disabled}
+                title="Отклонить"
+                aria-label="Отклонить документ"
+                className="btn flex h-10 w-10 items-center justify-center rounded-[12px] border-2 border-[var(--color-blue-dark)] text-[var(--color-blue-dark)] hover:bg-[var(--color-blue-soft)] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                Отклонить
+                <X className="h-5 w-5" strokeWidth={2.6} />
               </button>
             ) : null}
             {canSoftDelete ? (
               <button
                 type="button"
                 onClick={() => onStatus('DELETED')}
-                disabled={disabled}
-                className="btn h-[36px] rounded-full border-2 border-[var(--color-danger)] px-4 text-[13px] font-extrabold text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-45"
+                disabled={actionsDisabled || disabled}
+                title="Удалить"
+                aria-label="Удалить документ"
+                className="btn flex h-10 w-10 items-center justify-center rounded-[12px] border-2 border-[var(--color-danger)] text-[var(--color-danger)] hover:bg-[rgba(255,83,100,0.08)] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                Удалить
+                <Trash2 className="h-5 w-5" strokeWidth={2.4} />
               </button>
             ) : null}
-          </>
+          </div>
         )}
       </div>
     </article>
