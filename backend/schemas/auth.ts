@@ -11,6 +11,7 @@ export const registerSchema = z.object({
   birthDate: z.string().optional(),
   country: z.string().optional(),
   city: z.string().optional(),
+  isExternalSupervisor: z.boolean(),
 })
 
 

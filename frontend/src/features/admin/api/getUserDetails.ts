@@ -23,6 +23,10 @@ export async function getUserDetails(id: string) {
     archiveReason: string | null;
     archiveRequestedAt: string | null;
     archiveRequestReason: string | null;
+    externalSupervisorClaimStatus: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+    externalSupervisorClaimedAt: string | null;
+    externalSupervisorClaimReviewedAt: string | null;
+    externalSupervisorClaimReviewedBy: string | null;
 
     targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
     targetLockRank: number | null;

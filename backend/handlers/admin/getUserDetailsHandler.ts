@@ -40,6 +40,10 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
       archiveReason: true,
       archiveRequestedAt: true,
       archiveRequestReason: true,
+      externalSupervisorClaimStatus: true,
+      externalSupervisorClaimedAt: true,
+      externalSupervisorClaimReviewedAt: true,
+      externalSupervisorClaimReviewedBy: true,
 
       targetLevel: true,
       targetLockRank: true,

@@ -42,6 +42,7 @@ const fieldLabel: Record<string, string> = {
   cities: 'Город',
   password: 'Пароль',
   confirmPassword: 'Повторите пароль',
+  isExternalSupervisor: 'Квалификация супервизора IBAO (BCBA)',
 };
 
 // Ищем первую ошибку по порядку формы
@@ -59,6 +60,7 @@ function getFirstError(errors: FieldErrors<RegisterFormValues>) {
     'cities',
     'password',
     'confirmPassword',
+    'isExternalSupervisor',
   ];
 
   for (const name of order) {
@@ -202,6 +204,7 @@ export function RegisterForm() {
         cities,
         email,
         password,
+        isExternalSupervisor,
       } = raw;
 
       const fullName = buildFullNameRu(lastName, firstName, middleName);
@@ -223,6 +226,7 @@ export function RegisterForm() {
         birthDate,
         country: arrToStr(countries),
         city: arrToStr(cities),
+        isExternalSupervisor: isExternalSupervisor === 'YES',
       });
     },
     (errors) => {
@@ -394,6 +398,49 @@ export function RegisterForm() {
               {...form.register('confirmPassword')}
             />
           </AuthField>
+
+          <div className="rounded-[10px] border border-[var(--color-border-soft)] p-4 sm:col-span-2">
+            <div className="text-[14px] font-extrabold text-blue-dark">
+              Вы уже являетесь супервизором IBAO (BCBA)?
+              <span className="ml-1 text-[var(--color-danger)]">*</span>
+            </div>
+            <p className="mt-1 text-[13px] leading-5 text-[#8D96B5]">
+              Выберите один вариант. Если у вас уже есть такая квалификация, администратор поможет настроить дальнейшую работу в системе.
+            </p>
+            <Controller
+              control={form.control}
+              name="isExternalSupervisor"
+              render={({ field }) => (
+                <div className="mt-3 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Наличие квалификации супервизора IBAO или BCBA">
+                  {([
+                    ['NO', 'Нет'],
+                    ['YES', 'Да'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={field.value === value}
+                      disabled={disabled}
+                      onClick={() => field.onChange(value)}
+                      className={`h-[40px] rounded-[8px] border text-[14px] font-extrabold transition ${
+                        field.value === value
+                          ? 'border-[var(--color-blue-dark)] bg-[var(--color-blue-dark)] text-white'
+                          : 'border-[var(--color-border-soft)] bg-white text-blue-dark hover:bg-[var(--color-blue-soft)]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            />
+            {form.formState.errors.isExternalSupervisor?.message ? (
+              <p className="mt-2 text-[13px] text-[var(--color-danger)]">
+                {form.formState.errors.isExternalSupervisor.message}
+              </p>
+            ) : null}
+          </div>
 
           <div className="space-y-3 rounded-[10px] border border-[var(--color-border-soft)] p-4 sm:col-span-2">
             <div className="text-[14px] font-extrabold text-blue-dark">

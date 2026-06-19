@@ -29,6 +29,7 @@ const ReviewerCandidateDetailsPage = lazy(() => import('./pages/ReviewerCandidat
 const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage'));
 const AdminUserBannerPage = lazy(() => import('./pages/AdminUserBannerPage'));
 const AdminSupervisionCandidatesPage = lazy(() => import('./pages/AdminSupervisionCandidatesPage'));
+const AdminExternalSupervisorClaimsPage = lazy(() => import('./pages/AdminExternalSupervisorClaimsPage'));
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const router = createBrowserRouter([
       { path: 'admin/document-review/:id', element: <AdminDocumentReviewDetailsPage /> },
       { path: 'admin/user-banner', element: <AdminUserBannerPage /> },
       { path: 'admin/supervision-candidates', element: <AdminSupervisionCandidatesPage /> },
+      { path: 'admin/qualification-claims', element: <AdminExternalSupervisorClaimsPage /> },
       { path: 'users', element: <UsersPage /> },
       { path: 'admin/users/:id', element: <UserDetailsPage /> },
       { path: 'exam-applications', element: <ExamApplicationsPage /> },

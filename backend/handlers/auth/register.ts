@@ -36,7 +36,17 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
     return reply.code(400).send({ error: 'Некорректные данные', details: parsed.error.flatten() });
   }
 
-  const { email, fullName, fullNameLatin, phone, birthDate, country, city, password } = parsed.data;
+  const {
+    email,
+    fullName,
+    fullNameLatin,
+    phone,
+    birthDate,
+    country,
+    city,
+    password,
+    isExternalSupervisor,
+  } = parsed.data;
 
   if (await emailExistsByCanonSimple(email)) {
     return reply.code(409).send({ error: 'Email уже используется' });
@@ -68,6 +78,8 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
         role: 'STUDENT',
         targetLevel: null,
         targetLockRank: null,
+        externalSupervisorClaimStatus: isExternalSupervisor ? 'PENDING' : 'NONE',
+        externalSupervisorClaimedAt: isExternalSupervisor ? new Date() : null,
       },
     });
 
@@ -99,7 +111,9 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
         data: admins.map((a) => ({
           userId: a.id,
           type: NotificationType.NEW_USER,
-          message: `Новая регистрация: ${user.email}`,
+          message: isExternalSupervisor
+            ? `Новый пользователь указал, что уже является супервизором IBAO (BCBA): ${user.email}`
+            : `Новая регистрация: ${user.email}`,
           link: `/admin/users/${encodeURIComponent(user.id)}`,
         })),
       });

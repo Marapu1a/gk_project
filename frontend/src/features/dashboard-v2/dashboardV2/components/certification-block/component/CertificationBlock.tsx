@@ -14,7 +14,11 @@ import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { useMyExamApp } from '@/features/exam/hooks/useMyExamApp';
 import { usePatchExamAppStatus } from '@/features/exam/hooks/usePatchExamAppStatus';
 import { examStatusLabels, formatCertificationLevelName } from '@/utils/labels';
-import { getServerErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import {
+  getServerErrorMessage,
+  UI_CERTIFICATION_MESSAGES,
+  UI_TOAST_MESSAGES,
+} from '@/utils/uiMessages';
 import { toast } from 'sonner';
 
 type Props = {
@@ -309,8 +313,8 @@ export function CertificationBlock({ user }: Props) {
         ? `Вы собираетесь выбрать: «${label}».`
         : `Вы собираетесь выбрать уровень: «${label}».`,
       description: isRenewal
-        ? 'После выбора изменить его нельзя, пока не будет завершён текущий цикл.'
-        : 'После выбора изменить его нельзя, пока вы не подтвердите установленную квалификацию.',
+        ? UI_CERTIFICATION_MESSAGES.renewalSelectionWarning
+        : UI_CERTIFICATION_MESSAGES.certificationSelectionWarning,
       confirmLabel: 'Подтвердить',
     });
 
@@ -334,6 +338,22 @@ export function CertificationBlock({ user }: Props) {
   }
 
   if (!targetLevel) {
+    if (user.externalSupervisorClaimStatus === 'PENDING') {
+      return (
+        <section className="card-section flex h-full min-h-[340px] w-full flex-col px-5 py-6 shadow-soft">
+          <h2 className="dashboard-v2-title mb-5 text-center">
+            Сертификация и ресертификация
+          </h2>
+          <div className="dashboard-v2-text flex flex-1 items-center rounded-[8px] bg-[var(--color-blue-soft)] px-5 py-6 text-center leading-6 text-blue-dark">
+            {UI_CERTIFICATION_MESSAGES.externalSupervisorPending}
+          </div>
+          <div className="dashboard-v2-label mt-5 flex h-[42px] items-center justify-center rounded-[8px] bg-[#B8C0D1] px-5 text-white">
+            {UI_CERTIFICATION_MESSAGES.externalSupervisorPendingStatus}
+          </div>
+        </section>
+      );
+    }
+
     return (
       <section className="card-section flex h-full min-h-[340px] w-full flex-col px-5 py-6 shadow-soft">
         <h2 className="dashboard-v2-title mb-5 text-center">
@@ -358,9 +378,7 @@ export function CertificationBlock({ user }: Props) {
               triggerGoalSelection(option);
             }}
             disabled={selectDisabled}
-            title={
-              locked ? 'Сменить можно после повышения уровня или через администратора' : undefined
-            }
+            title={locked ? UI_CERTIFICATION_MESSAGES.targetChangeHelp : undefined}
           >
             <option value="">Выбрать цель сертификации</option>
             {options.map((option) => (
@@ -383,25 +401,14 @@ export function CertificationBlock({ user }: Props) {
           </div>
         </div>
 
-        <div className="dashboard-v2-caption mb-5 space-y-4 text-center text-[#97A0BD]">
+        <div className="dashboard-v2-caption mb-5 text-center text-[#97A0BD]">
           <p>
-            Поменять выбор будет нельзя,
-            <br />
-            пока вы не подтвердите установленный
-            <br />
-            уровень квалификации
-          </p>
-
-          <p>
-            Если допустили ошибку,
-            <br />
+            Изменить уровень сертификации можно после получения сертификата или с помощью администратора:{' '}
             <a
-              href="https://reestrpap.ru/contacts"
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`mailto:${UI_CERTIFICATION_MESSAGES.supportEmail}`}
               className="cursor-pointer text-blue-dark underline underline-offset-2"
             >
-              обратитесь к администрации
+              {UI_CERTIFICATION_MESSAGES.supportEmail}
             </a>
           </p>
         </div>

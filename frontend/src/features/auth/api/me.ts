@@ -38,6 +38,7 @@ export type CurrentUser = {
   bio: string | null;
   ibaoId: string | null;
   supervisionEthicsAcceptedAt: string | null;
+  externalSupervisorClaimStatus: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
   archivedAt?: string | null;
   targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
   targetLockRank: number | null;

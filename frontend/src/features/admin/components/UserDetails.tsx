@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import UserBasicBlock from './UserBasicBlock';
@@ -52,6 +52,23 @@ export default function UserDetails() {
           </span>
         </button>
       </header>
+
+      {data.externalSupervisorClaimStatus === 'PENDING' ? (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-[#FFE0A0] bg-[#FFF7DD] px-5 py-4 shadow-soft">
+          <div>
+            <h2 className="dashboard-v2-title">Ожидает подтверждения квалификации</h2>
+            <p className="mt-1 text-[13px] font-semibold text-[#8A6200]">
+              Пользователь указал при регистрации, что уже является супервизором IBAO (BCBA).
+            </p>
+          </div>
+          <Link
+            to="/admin/qualification-claims"
+            className="btn flex h-[38px] items-center rounded-[8px] border border-blue-dark px-4 text-[14px] font-extrabold"
+          >
+            Открыть обращения
+          </Link>
+        </section>
+      ) : null}
 
       <AdminCandidateSummaryBlock
         user={data}

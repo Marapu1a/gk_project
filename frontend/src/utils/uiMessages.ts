@@ -1,3 +1,16 @@
+export const UI_CERTIFICATION_MESSAGES = {
+  supportEmail: 'cspap@yandex.ru',
+  targetChangeHelp:
+    'Изменить уровень сертификации можно после получения сертификата или с помощью администратора: cspap@yandex.ru.',
+  certificationSelectionWarning:
+    'После подтверждения изменить выбранный уровень можно будет после получения сертификата или с помощью администратора.',
+  renewalSelectionWarning:
+    'После подтверждения изменить выбор можно будет после завершения текущего цикла или с помощью администратора.',
+  externalSupervisorPending:
+    'Вы указали, что уже являетесь супервизором IBAO (BCBA). Администратор свяжется с вами по указанным контактам и сообщит, как продолжить работу в системе.',
+  externalSupervisorPendingStatus: 'Ожидает проверки администратора',
+} as const;
+
 export const SERVER_ERROR_MESSAGES: Record<string, string> = {
   ABANDON_REASON_REQUIRED: 'Укажите причину отмены текущего цикла сертификации.',
   ACTIVE_CYCLE_EXISTS:
@@ -38,10 +51,9 @@ export const SERVER_ERROR_MESSAGES: Record<string, string> = {
     'Выбранные заявки на подтверждение часов не связаны с циклом сертификации пользователя. Перед внесением изменений проверьте, что часы соответствуют датам выбранного цикла.',
   TARGET_GROUP_NOT_CONFIGURED:
     'В системе не настроена группа для выбранного уровня. Обратитесь к техническому специалисту.',
-  TARGET_ALREADY_SELECTED: 'Чтобы изменить уровень сертификации, обратитесь в поддержку пользователей cspap@yandex.ru.',
+  TARGET_ALREADY_SELECTED: UI_CERTIFICATION_MESSAGES.targetChangeHelp,
   TARGET_BELOW_ACTIVE: 'Невозможно выбрать цель сертификации ниже уже полученного уровня.',
-  TARGET_LOCKED:
-    'Вы уже выбрали цель сертификации. Изменить её можно после получения сертификата или через администратора: cspap@yandex.ru.',
+  TARGET_LOCKED: UI_CERTIFICATION_MESSAGES.targetChangeHelp,
   TARGET_NOT_ALLOWED_FOR_ACTIVE_GROUP: 'Эта цель сертификации недоступна для вашего текущего уровня. Выберите другую цель.',
   TARGET_RATIO_NOT_CONFIGURED:
     'В системе не настроены правила распределения часов для выбранного уровня. Обратитесь к техническому специалисту.',

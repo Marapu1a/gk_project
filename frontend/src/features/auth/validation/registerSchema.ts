@@ -66,6 +66,9 @@ export const registerInputSchema = z
 
     password: z.string().min(6, 'Минимум 6 символов').max(100),
     confirmPassword: z.string(),
+    isExternalSupervisor: z.enum(['YES', 'NO'], {
+      required_error: 'Укажите, являетесь ли вы супервизором IBAO (BCBA)',
+    }),
   })
   .refine(d => d.password === d.confirmPassword, {
     path: ['confirmPassword'],
@@ -84,4 +87,5 @@ export type RegisterDto = {
   birthDate: string;
   country: string;
   city: string;
+  isExternalSupervisor: boolean;
 };

@@ -40,6 +40,13 @@ enum ReviewerCandidateStatus {
   REJECTED
 }
 
+enum ExternalSupervisorClaimStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum CEUCategory {
   ETHICS
   CULTURAL_DIVERSITY
@@ -160,6 +167,10 @@ model User {
   isProfileVisible     Boolean   @default(true)
   ibaoId               String?
   supervisionEthicsAcceptedAt DateTime?
+  externalSupervisorClaimStatus ExternalSupervisorClaimStatus @default(NONE)
+  externalSupervisorClaimedAt DateTime?
+  externalSupervisorClaimReviewedAt DateTime?
+  externalSupervisorClaimReviewedBy String?
   archivedAt           DateTime?
   archivedById         String?
   archiveReason        String?
@@ -204,6 +215,7 @@ model User {
 
   @@index([archivedAt])
   @@index([archiveRequestedAt])
+  @@index([externalSupervisorClaimStatus, externalSupervisorClaimedAt])
 }
 
 model AdminUserActionLog {

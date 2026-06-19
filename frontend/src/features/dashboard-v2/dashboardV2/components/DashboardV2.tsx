@@ -94,6 +94,7 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
   const isRenewalCycle = user.activeCycle?.type === 'RENEWAL';
   const isBasicSupervisor = activeGroupName === 'Супервизор';
   const isExperiencedSupervisor = activeGroupName === 'Опытный Супервизор';
+  const canReviewCandidates = isBasicSupervisor || isExperiencedSupervisor;
   const registrationPaid =
     payments.some((payment) => payment.type === 'REGISTRATION' && payment.status === 'PAID') ||
     payments.some((payment) => payment.type === 'FULL_PACKAGE' && payment.status === 'PAID');
@@ -143,12 +144,12 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
             ) : null}
 
             <CeuOverviewBlock level={user.targetLevel} />
-
-            <ReviewerCandidatesBlocks />
           </>
         ) : (
           <CertificationAccessPlaceholder />
         )}
+
+        {canReviewCandidates ? <ReviewerCandidatesBlocks /> : null}
       </div>
     </div>
   );

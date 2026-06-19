@@ -23,6 +23,7 @@ import { useDownloadUsersExport } from '@/features/admin/hooks/useDownloadUsersE
 import { useCreateDbBackup } from '@/features/backup/hooks/useCreateDbBackup';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { useExternalSupervisorClaims } from '@/features/admin/hooks/useExternalSupervisorClaims';
 
 type AdminDashboardProps = {
   user: {
@@ -49,6 +50,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
 
   const { data: notifications = [] } = useNotifications();
   const { data: documentRequests = [] } = useAllDocReviewRequests();
+  const { data: qualificationClaims } = useExternalSupervisorClaims('active', 1, 20);
   const exportUsers = useDownloadUsersExport();
   const backupDb = useCreateDbBackup();
 
@@ -62,6 +64,11 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
 
   const tasks: TaskItem[] = [
     { label: 'Управление пользователями', to: '/users' },
+    {
+      label: 'Подтверждение квалификации',
+      to: '/admin/qualification-claims',
+      count: qualificationClaims?.total ?? 0,
+    },
     { label: 'Баннер для пользователей', to: '/admin/user-banner' },
     { label: 'Проверка документов', to: '/admin/document-review', count: documentCount },
     { label: 'Проверка CEU', to: '/review/ceu' },

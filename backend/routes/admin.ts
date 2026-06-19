@@ -12,6 +12,10 @@ import { archiveUserHandler, restoreUserHandler } from '../handlers/admin/archiv
 import { getUserActionLogHandler } from '../handlers/admin/getUserActionLogHandler';
 import { createUserNoteHandler } from '../handlers/admin/createUserNoteHandler';
 import { deleteUserNoteHandler } from '../handlers/admin/deleteUserNoteHandler';
+import {
+  getExternalSupervisorClaimsHandler,
+  updateExternalSupervisorClaimHandler,
+} from '../handlers/admin/externalSupervisorClaims';
 
 // CEU god-mode
 import { getUserCEUMatrixAdminHandler } from '../handlers/admin/ceu/getUserCEUMatrixAdminHandler';
@@ -40,6 +44,8 @@ export async function usersRoutes(app: FastifyInstance) {
   app.post('/admin/users/:id/notes', { preHandler: verifyToken }, createUserNoteHandler);
   app.delete('/admin/users/:id/notes/:noteId', { preHandler: verifyToken }, deleteUserNoteHandler);
   app.get('/admin/users', { preHandler: verifyToken }, getUsersHandler);
+  app.get('/admin/external-supervisor-claims', { preHandler: verifyToken }, getExternalSupervisorClaimsHandler);
+  app.patch('/admin/external-supervisor-claims/:id', { preHandler: verifyToken }, updateExternalSupervisorClaimHandler);
   app.patch('/admin/users/:id', { preHandler: verifyToken }, updateUserBasicInfoHandler);
   app.patch('/admin/users/:id/visibility', { preHandler: verifyToken }, updateUserVisibilityHandler);
   app.patch('/admin/users/:id/archive', { preHandler: verifyToken }, archiveUserHandler);
