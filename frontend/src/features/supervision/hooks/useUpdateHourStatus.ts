@@ -16,6 +16,7 @@ export function useUpdateHourStatus() {
       await qc.invalidateQueries({ queryKey: ['review', 'supervision'] });
       await qc.invalidateQueries({ queryKey: ['supervision', 'assigned'] });
       await qc.invalidateQueries({ queryKey: ['supervision', 'reviewerCandidates'] });
+      await qc.invalidateQueries({ queryKey: ['supervision', 'reviewerRequests'] });
       await qc.invalidateQueries({ queryKey: ['supervision', 'reviewerCandidateDetails'] });
       await qc.invalidateQueries({ queryKey: ['admin', 'supervision', 'reviewerCandidates'] });
       await qc.invalidateQueries({ queryKey: ['admin', 'supervision', 'reviewerCandidateDetails'] });

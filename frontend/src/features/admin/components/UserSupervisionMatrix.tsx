@@ -4,13 +4,17 @@ import { useUserSupervisionMatrix } from '../hooks/supervision/useUserSupervisio
 import { useUpdateUserSupervisionMatrix } from '../hooks/supervision/useUpdateUserSupervisionMatrix';
 import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
 import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
+import {
+  formatDecimalInput,
+  normalizeDecimalInput,
+  parseDecimalInput,
+  sanitizeDecimalInput,
+} from '@/utils/decimalInput';
 
 type Props = {
   userId: string;
   activeGroupName: string | null;
 };
-
-const hoursInputPattern = /^\d*(?:[.]\d{0,2})?$/;
 
 function round2(value: number) {
   return Math.round(value * 100) / 100;
@@ -74,32 +78,20 @@ function scaleDistributionToMax(
 
 function formatNumber(value: number | null | undefined) {
   if (value == null) return '0';
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return formatDecimalInput(value, 2);
 }
 
 function sanitizeHoursInput(rawValue: string) {
-  const value = rawValue.replace(/\s/g, '').replace(',', '.');
-  return hoursInputPattern.test(value) ? value : null;
+  return sanitizeDecimalInput(rawValue, { maxDecimals: 2 });
 }
 
 function normalizeHoursInput(value: string, max?: number | null) {
-  const sanitized = sanitizeHoursInput(value);
-  if (!sanitized || sanitized === '.') return '0';
-
-  const parsed = Number(sanitized);
-  if (!Number.isFinite(parsed) || parsed < 0) return '0';
-
-  if (max != null) {
-    return String(round2(Math.min(parsed, Math.max(0, max))));
-  }
-
-  return String(round2(parsed));
+  return normalizeDecimalInput(value, { max, maxDecimals: 2 });
 }
 
 function parseHours(value: string) {
-  const normalized = value.replace(',', '.').trim();
-  if (!normalized) return 0;
-  const parsed = Number(normalized);
+  const parsed = parseDecimalInput(value);
+  if (parsed == null) return 0;
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 

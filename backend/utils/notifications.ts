@@ -43,8 +43,8 @@ export function normalizeNotificationLink(
   }
   if (link === '/review/supervision') {
     return normalizedType === NotificationType.MENTORSHIP
-      ? '/reviewer/candidates/mentorship'
-      : '/reviewer/candidates/supervision';
+      ? '/reviewer/candidates/mentorship?status=UNCONFIRMED'
+      : '/reviewer/candidates/supervision?status=UNCONFIRMED';
   }
 
   return link;

@@ -12,6 +12,7 @@ export function useUpdateReviewerCandidateRelation() {
       updateReviewerCandidateRelation(input),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['supervision', 'reviewerCandidates'] });
+      await qc.invalidateQueries({ queryKey: ['supervision', 'reviewerRequests'] });
       await qc.invalidateQueries({ queryKey: ['supervision', 'reviewerCandidateDetails'] });
     },
   });

@@ -74,7 +74,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
         <div className="flex items-start gap-4">
           <ProfileAvatar userId={user.id} avatarUrl={user.avatarUrl} fullName={user.fullName} />
 
-          <div className="flex min-w-0 flex-1 flex-col pt-1">
+          <div className="flex min-h-[152px] min-w-0 flex-1 flex-col pt-1">
             <div className="min-w-0 leading-tight text-blue-dark">
               <p className="dashboard-v2-title break-words">{lastName}</p>
               <p className="dashboard-v2-label break-words font-medium">{firstName}</p>
@@ -96,17 +96,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
               </button>
             </div>
 
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={() => navigate('/supervision/hours?panel=history')}
-                className="btn dashboard-v2-label h-[34px] w-full cursor-pointer rounded-full border border-[var(--color-blue-dark)] text-blue-dark hover:bg-[rgba(31,48,94,0.04)] active:bg-[rgba(31,48,94,0.08)]"
-              >
-                История
-              </button>
-            </div>
-
-            <div className="mt-2 flex items-center justify-between">
+            <div className="mt-auto flex items-center justify-between pt-3">
               <button
                 type="button"
                 onClick={logout}

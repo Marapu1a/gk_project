@@ -1,21 +1,20 @@
 import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useQueryClient } from '@tanstack/react-query';
-import { z } from 'zod';
 import { toast } from 'sonner';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { submitCeuRequest } from '../api/submitCeuRequest';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import {
+  normalizeDecimalInput,
+  parseDecimalInput,
+  sanitizeDecimalInput,
+} from '@/utils/decimalInput';
 
 type CeuCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
 type CeuActivityType = 'TRAINING_ATTENDANCE' | 'PRESENTATION' | 'PUBLICATION' | 'TEACHING';
 
 const MAX_SIZE_MB = 10;
-const ceuValueInputSchema = z.string().refine(
-  (value) => value === '' || /^\d*(?:[.]\d{0,2})?$/.test(value),
-  'Введите неотрицательное число',
-);
-
 const CATEGORIES: Array<{ value: CeuCategory; label: string }> = [
   { value: 'ETHICS', label: 'Этика' },
   { value: 'CULTURAL_DIVERSITY', label: 'Культурное разнообразие' },
@@ -51,25 +50,17 @@ function todayInputValue() {
 }
 
 function parseCeuValue(value: string) {
-  const normalized = value.replace(',', '.').trim();
-  if (!normalized) return 0;
-  const parsed = Number(normalized);
+  const parsed = parseDecimalInput(value);
+  if (parsed == null) return 0;
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function sanitizeCeuValueInput(rawValue: string) {
-  const value = rawValue.replace(/\s/g, '').replace(',', '.');
-  return ceuValueInputSchema.safeParse(value).success ? value : null;
+  return sanitizeDecimalInput(rawValue, { maxDecimals: 2 });
 }
 
 function normalizeCeuValueInput(value: string) {
-  const sanitized = sanitizeCeuValueInput(value);
-  if (!sanitized || sanitized === '.') return '0';
-
-  const parsed = Number(sanitized);
-  if (!Number.isFinite(parsed) || parsed < 0) return '0';
-
-  return String(Math.round(parsed * 100) / 100);
+  return normalizeDecimalInput(value, { maxDecimals: 2 });
 }
 
 function isHalfStep(value: number) {

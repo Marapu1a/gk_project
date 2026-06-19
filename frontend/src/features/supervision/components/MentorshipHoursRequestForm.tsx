@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { z } from 'zod';
 import { toast } from 'sonner';
 
 import { fetchCurrentUser } from '@/features/auth/api/me';
@@ -9,17 +8,14 @@ import { useSubmitSupervisionRequest } from '../hooks/useSubmitSupervisionReques
 import { useSupervisionSummary } from '../hooks/useSupervisionSummary';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import {
+  formatDecimalInput,
+  normalizeDecimalInput,
+  parseDecimalInput,
+  sanitizeDecimalInput,
+} from '@/utils/decimalInput';
 
-const hoursInputSchema = z.string().refine(
-  (value) => value === '' || /^\d*(?:[.]\d{0,2})?$/.test(value),
-  'Введите неотрицательное число',
-);
-
-const MENTORSHIP_FORMATS = [
-  'Очно',
-  'По телефону',
-  'Дистанционно / онлайн',
-] as const;
+const MENTORSHIP_FORMATS = ['Очно', 'По телефону', 'Дистанционно / онлайн'] as const;
 
 const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
 const tokenize = (s: string) =>
@@ -36,25 +32,16 @@ function round2(value: number) {
 }
 
 function sanitizeHoursInput(rawValue: string) {
-  const value = rawValue.replace(/\s/g, '').replace(',', '.');
-  return hoursInputSchema.safeParse(value).success ? value : null;
+  return sanitizeDecimalInput(rawValue, { maxDecimals: 2 });
 }
 
 function normalizeHoursInput(value: string, max?: number | null) {
-  const sanitized = sanitizeHoursInput(value);
-  if (!sanitized || sanitized === '.') return '0';
-
-  const parsed = Number(sanitized);
-  if (!Number.isFinite(parsed) || parsed < 0) return '0';
-
-  const capped = max != null ? Math.min(parsed, Math.max(0, max)) : parsed;
-  return String(round2(capped));
+  return normalizeDecimalInput(value, { max, maxDecimals: 2 });
 }
 
 function parseHours(value: string) {
-  const normalized = value.replace(',', '.').trim();
-  if (!normalized) return 0;
-  const parsed = Number(normalized);
+  const parsed = parseDecimalInput(value);
+  if (parsed == null) return 0;
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
@@ -136,10 +123,25 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
 
   const hoursValue = parseHours(mentorshipHours);
   const mentor = summary?.mentor ?? null;
+  const isRequirementConfirmed = Boolean(
+    mentor && mentor.required > 0 && mentor.total >= mentor.required,
+  );
+  const isRequirementCovered = Boolean(
+    mentor && mentor.required > 0 && mentor.total + mentor.pending >= mentor.required,
+  );
+  const collapsedLabel = isRequirementConfirmed
+    ? 'Необходимое для сертификации количество часов менторства набрано'
+    : isRequirementCovered
+      ? 'Необходимое количество часов менторства уже отправлено на проверку'
+      : 'Добавить часы менторства';
   const remaining =
     mentor && mentor.required > 0
       ? Math.max(0, round2(mentor.required - mentor.total - mentor.pending))
       : null;
+
+  useEffect(() => {
+    if (isRequirementCovered) setIsOpen(false);
+  }, [isRequirementCovered]);
   const effectiveLimit = remaining == null ? null : Math.max(0, remaining);
   const today = todayInputValue();
   const canSubmit =
@@ -212,8 +214,15 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
     <>
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
-        className={`btn btn-dark w-full rounded-[10px] text-[16px] font-extrabold transition-all duration-300 ease-out ${
+        onClick={() => {
+          if (!isRequirementCovered) setIsOpen(true);
+        }}
+        disabled={isRequirementCovered}
+        className={`btn w-full rounded-[10px] text-[16px] font-extrabold transition-all duration-300 ease-out ${
+          isRequirementCovered
+            ? 'cursor-default border border-[#C9D8DD] bg-[#E5EFF1] text-[#1F305E]'
+            : 'btn-dark'
+        } ${
           isOpen
             ? 'pointer-events-none mt-0 h-0 overflow-hidden opacity-0'
             : 'mt-5 h-[48px] opacity-100'
@@ -221,7 +230,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
         aria-hidden={isOpen}
         tabIndex={isOpen ? -1 : 0}
       >
-        Добавить часы менторства
+        {collapsedLabel}
       </button>
 
       <div
@@ -266,7 +275,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
                   </Field>
                 </div>
 
-              <Field label="Наставник (ментор)" className="relative mt-4">
+                <Field label="Наставник (ментор)" className="relative mt-4">
                   <input
                     className="input-design h-[36px]"
                     value={mentorEmail}
@@ -346,9 +355,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
                 ) : null}
 
                 <div className="mt-5">
-                  <p className="mb-3 text-[13px] font-semibold text-[#1F305E]">
-                    Формат менторства
-                  </p>
+                  <p className="mb-3 text-[13px] font-semibold text-[#1F305E]">Формат менторства</p>
                   <div className="grid gap-3">
                     {MENTORSHIP_FORMATS.map((item) => (
                       <label
@@ -459,7 +466,9 @@ function NumberInput({
         const nextValue = sanitizeHoursInput(event.target.value);
         if (nextValue !== null) {
           const parsed = parseHours(nextValue);
-          onChange(max != null && parsed > max ? String(Math.max(0, max)) : nextValue);
+          onChange(
+            max != null && parsed > max ? formatDecimalInput(Math.max(0, max), 2) : nextValue,
+          );
         }
       }}
       max={max ?? undefined}

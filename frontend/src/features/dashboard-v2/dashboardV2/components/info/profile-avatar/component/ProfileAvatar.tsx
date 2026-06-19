@@ -27,11 +27,9 @@ export function ProfileAvatar({ userId, avatarUrl, fullName }: Props) {
           editable
           onClick={() => setIsOpen(true)}
         />
-        <DashboardHelpTooltip
-          content={AVATAR_UPLOAD_HINT}
-          className="absolute right-1 top-1"
-          align="right"
-        />
+        <div className="absolute left-2 top-2 z-10 rounded-full bg-white/90 p-0.5 shadow-sm">
+          <DashboardHelpTooltip content={AVATAR_UPLOAD_HINT} align="left" />
+        </div>
       </div>
 
       {isOpen && (

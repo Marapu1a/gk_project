@@ -5,6 +5,12 @@ import { useUpdateUserCEUMatrix } from '../hooks/ceu/useUpdateUserCEUMatrix';
 import type { CEUCategory } from '../api/ceu/getUserCEUMatrix';
 import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import {
+  formatDecimalInput,
+  normalizeDecimalInput,
+  parseDecimalInput,
+  sanitizeDecimalInput,
+} from '@/utils/decimalInput';
 
 const CATEGORIES: Array<{ key: CEUCategory; label: string; requiredKey: RequiredKey }> = [
   { key: 'ETHICS', label: 'Этика', requiredKey: 'ethics' },
@@ -24,32 +30,30 @@ type Props = {
 
 function formatNumber(value: number | null | undefined) {
   if (value == null) return '0';
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return formatDecimalInput(value, 1);
 }
 
 function normalizeCeuInput(value: string) {
-  const cleaned = value.replace(',', '.').replace(/[^\d.]/g, '');
-  const firstDot = cleaned.indexOf('.');
+  const cleaned = value.replace('.', ',').replace(/[^\d,]/g, '');
+  const firstComma = cleaned.indexOf(',');
   const normalized = (() => {
-    if (firstDot === -1) return cleaned.slice(0, 4);
+    if (firstComma === -1) return cleaned.slice(0, 4);
 
-    const before = cleaned.slice(0, firstDot).slice(0, 4);
-    const after = cleaned.slice(firstDot + 1).replace(/\./g, '').slice(0, 1);
-    return `${before}.${after}`;
+    const before = cleaned.slice(0, firstComma).slice(0, 4);
+    const after = cleaned.slice(firstComma + 1).replace(/,/g, '').slice(0, 1);
+    return `${before},${after}`;
   })();
 
-  return normalized;
+  return sanitizeDecimalInput(normalized, { maxDecimals: 1, maxIntegerDigits: 4 }) ?? '';
 }
 
 function normalizeCeuInputOnBlur(value: string) {
-  const parsed = parseValue(value);
-  if (parsed === null) return '0';
-  return formatNumber(parsed);
+  return normalizeDecimalInput(value, { maxDecimals: 1, maxIntegerDigits: 4 });
 }
 
 function parseValue(value: string) {
-  const parsed = Number(value.replace(',', '.'));
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  const parsed = parseDecimalInput(value);
+  return parsed != null && parsed >= 0 ? parsed : null;
 }
 
 export default function AdminCEUMatrixBlock({ userId, required }: Props) {

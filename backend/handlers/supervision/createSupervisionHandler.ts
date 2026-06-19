@@ -9,6 +9,8 @@ import {
   CycleType,
   NotificationType,
   ReviewerCandidateKind,
+  ReviewerCandidateStatus,
+  SupervisionAdminCorrectionKind,
   TargetLevel,
 } from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
@@ -16,12 +18,20 @@ import {
   renewalSupervisionRequirementsByGroup,
   supervisionRequirementsByGroup,
 } from '../../utils/supervisionRequirements';
-import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
 
 const PRACTICE_REVIEWER_REQUIRED_MESSAGE =
   'Заявку на подтверждение часов практики можно отправить только супервизорам, которые есть в системе. Напишите в поддержку, если вашего супервизора нет в системе или что-то пошло не так.';
 const MENTOR_REVIEWER_REQUIRED_MESSAGE =
   'Заявку на подтверждение часов менторства можно отправить только наставникам, которые есть в системе. Напишите в поддержку, если вашего наставника нет в системе или что-то пошло не так.';
+
+class SupervisionHoursLimitError extends Error {
+  constructor(
+    message: string,
+    readonly remaining: number,
+  ) {
+    super(message);
+  }
+}
 
 function mapTargetLevel(level: TargetLevel) {
   if (level === TargetLevel.INSTRUCTOR) return 'Инструктор';
@@ -36,8 +46,14 @@ function getRequirements(activeCycle: { targetLevel: TargetLevel; type: CycleTyp
     : supervisionRequirementsByGroup[groupName];
 }
 
-async function getBonusPracticeHours(userId: string, activeCycle: { targetLevel: TargetLevel; type: CycleType }) {
-  if (activeCycle.type === CycleType.RENEWAL || activeCycle.targetLevel !== TargetLevel.SUPERVISOR) {
+async function getBonusPracticeHours(
+  userId: string,
+  activeCycle: { targetLevel: TargetLevel; type: CycleType },
+) {
+  if (
+    activeCycle.type === CycleType.RENEWAL ||
+    activeCycle.targetLevel !== TargetLevel.SUPERVISOR
+  ) {
     return 0;
   }
 
@@ -139,7 +155,8 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     return reply.code(400).send({ error: 'SELF_REVIEW_FORBIDDEN' });
   }
 
-  const acceptedEthicsAt = currentUser.supervisionEthicsAcceptedAt ?? (ethicsAccepted ? new Date() : null);
+  const acceptedEthicsAt =
+    currentUser.supervisionEthicsAcceptedAt ?? (ethicsAccepted ? new Date() : null);
   if (!acceptedEthicsAt) {
     return reply.code(400).send({ error: 'Необходимо принять этические принципы IBAO' });
   }
@@ -216,92 +233,162 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
 
   const requirements = getRequirements(activeCycle);
   const incomingTotal = normalized.reduce((sum, entry) => sum + entry.value, 0);
-  if (isAuthorSimpleSupervisor) {
-    const mentorCurrent = await prisma.supervisionHour.aggregate({
-      where: {
-        record: { userId, cycleId: activeCycle.id },
-        type: PracticeLevel.SUPERVISOR,
-        status: { in: [RecordStatus.CONFIRMED, RecordStatus.UNCONFIRMED] },
-      },
-      _sum: { value: true },
-    });
-    const remaining = Math.max(0, (requirements?.supervisor ?? 0) - (mentorCurrent._sum.value ?? 0));
-    if (incomingTotal > remaining) {
-      return reply.code(400).send({
-        error: `Можно добавить не более ${remaining} часов менторства.`,
-        remaining,
-      });
-    }
-  } else {
-    const bonusPractice = await getBonusPracticeHours(userId, activeCycle);
-    const cycleTotals = await getCycleSupervisionTotals(
-      activeCycle.id,
-      activeCycle.targetLevel,
-      bonusPractice,
-    );
-    const remaining = Math.max(0, (requirements?.practice ?? 0) - cycleTotals.practiceTotalWithPending);
-    if (incomingTotal > remaining) {
-      return reply.code(400).send({
-        error: `Можно добавить не более ${remaining} часов практики для текущего цикла.`,
-        remaining,
-      });
-    }
-  }
+  const bonusPractice = isAuthorSimpleSupervisor
+    ? 0
+    : await getBonusPracticeHours(userId, activeCycle);
 
-  const record = await prisma.$transaction(async (tx) => {
-    if (!currentUser.supervisionEthicsAcceptedAt && ethicsAccepted) {
-      await tx.user.update({
-        where: { id: userId },
-        data: { supervisionEthicsAcceptedAt: acceptedEthicsAt },
-      });
-    }
+  let record;
+  try {
+    record = await prisma.$transaction(async (tx) => {
+      // Заявки одного цикла считаются последовательно, чтобы параллельные вкладки
+      // не смогли использовать один и тот же остаток часов.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${activeCycle.id}))`;
 
-    const createdRecord = await tx.supervisionRecord.create({
-      data: {
-        userId,
-        cycleId: activeCycle.id,
-        fileId,
-        periodStartedAt,
-        periodEndedAt,
-        treatmentSetting,
-        description,
-        ethicsAcceptedAt: acceptedEthicsAt,
-        draftDirectIndividual: draftDistribution?.directIndividual,
-        draftDirectGroup: draftDistribution?.directGroup,
-        draftNonObservingIndividual: draftDistribution?.nonObservingIndividual,
-        draftNonObservingGroup: draftDistribution?.nonObservingGroup,
-        hours: {
-          create: normalized.map(({ type, value }) => ({
-            type,
-            value,
-            status: RecordStatus.UNCONFIRMED,
-            reviewerId: reviewer.id,
-          })),
-        },
-      },
-      include: { hours: true },
-    });
+      if (isAuthorSimpleSupervisor) {
+        const [mentorConfirmed, mentorPending, mentorCorrection] = await Promise.all([
+          tx.supervisionHour.aggregate({
+            where: {
+              record: { userId, cycleId: activeCycle.id },
+              type: PracticeLevel.SUPERVISOR,
+              status: RecordStatus.CONFIRMED,
+            },
+            _sum: { value: true },
+          }),
+          tx.supervisionHour.aggregate({
+            where: {
+              record: { userId, cycleId: activeCycle.id },
+              type: PracticeLevel.SUPERVISOR,
+              status: RecordStatus.UNCONFIRMED,
+            },
+            _sum: { value: true },
+          }),
+          tx.supervisionAdminCorrection.findUnique({
+            where: {
+              cycleId_kind: {
+                cycleId: activeCycle.id,
+                kind: SupervisionAdminCorrectionKind.MENTORSHIP,
+              },
+            },
+            select: { mentor: true },
+          }),
+        ]);
+        const current =
+          (mentorCorrection?.mentor ?? mentorConfirmed._sum.value ?? 0) +
+          (mentorPending._sum.value ?? 0);
+        const remaining = Math.max(0, (requirements?.supervisor ?? 0) - current);
+        if (incomingTotal > remaining) {
+          throw new SupervisionHoursLimitError(
+            `Можно добавить не более ${remaining} часов менторства.`,
+            remaining,
+          );
+        }
+      } else {
+        const practiceTypes = [
+          PracticeLevel.PRACTICE,
+          PracticeLevel.IMPLEMENTING,
+          PracticeLevel.PROGRAMMING,
+        ];
+        const [confirmed, pending, correction] = await Promise.all([
+          tx.supervisionHour.aggregate({
+            where: {
+              record: { userId, cycleId: activeCycle.id },
+              type: { in: practiceTypes },
+              status: RecordStatus.CONFIRMED,
+            },
+            _sum: { value: true },
+          }),
+          tx.supervisionHour.aggregate({
+            where: {
+              record: { userId, cycleId: activeCycle.id },
+              type: { in: practiceTypes },
+              status: RecordStatus.UNCONFIRMED,
+            },
+            _sum: { value: true },
+          }),
+          tx.supervisionAdminCorrection.findUnique({
+            where: {
+              cycleId_kind: {
+                cycleId: activeCycle.id,
+                kind: SupervisionAdminCorrectionKind.PRACTICE,
+              },
+            },
+            select: { implementing: true, programming: true },
+          }),
+        ]);
+        const confirmedPractice = correction
+          ? correction.implementing + correction.programming
+          : (confirmed._sum.value ?? 0);
+        const current = confirmedPractice + bonusPractice + (pending._sum.value ?? 0);
+        const remaining = Math.max(0, (requirements?.practice ?? 0) - current);
+        if (incomingTotal > remaining) {
+          throw new SupervisionHoursLimitError(
+            `Можно добавить не более ${remaining} часов практики для текущего цикла.`,
+            remaining,
+          );
+        }
+      }
 
-    await tx.reviewerCandidateRelation.upsert({
-      where: {
-        reviewerId_candidateId_cycleId_kind: {
-          reviewerId: reviewer.id,
-          candidateId: userId,
+      if (!currentUser.supervisionEthicsAcceptedAt && ethicsAccepted) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { supervisionEthicsAcceptedAt: acceptedEthicsAt },
+        });
+      }
+
+      const createdRecord = await tx.supervisionRecord.create({
+        data: {
+          userId,
           cycleId: activeCycle.id,
-          kind: relationKind,
+          fileId,
+          periodStartedAt,
+          periodEndedAt,
+          treatmentSetting,
+          description,
+          ethicsAcceptedAt: acceptedEthicsAt,
+          draftDirectIndividual: draftDistribution?.directIndividual,
+          draftDirectGroup: draftDistribution?.directGroup,
+          draftNonObservingIndividual: draftDistribution?.nonObservingIndividual,
+          draftNonObservingGroup: draftDistribution?.nonObservingGroup,
+          hours: {
+            create: normalized.map(({ type, value }) => ({
+              type,
+              value,
+              status: RecordStatus.UNCONFIRMED,
+              reviewerId: reviewer.id,
+            })),
+          },
         },
-      },
-      create: {
+        include: { hours: true },
+      });
+
+      const relationKey = {
         reviewerId: reviewer.id,
         candidateId: userId,
         cycleId: activeCycle.id,
         kind: relationKind,
-      },
-      update: {},
-    });
+      };
+      const existingRelation = await tx.reviewerCandidateRelation.findUnique({
+        where: { reviewerId_candidateId_cycleId_kind: relationKey },
+        select: { id: true, status: true },
+      });
 
-    return createdRecord;
-  });
+      if (!existingRelation) {
+        await tx.reviewerCandidateRelation.create({ data: relationKey });
+      } else if (existingRelation.status === ReviewerCandidateStatus.REJECTED) {
+        await tx.reviewerCandidateRelation.update({
+          where: { id: existingRelation.id },
+          data: { status: ReviewerCandidateStatus.PENDING },
+        });
+      }
+
+      return createdRecord;
+    });
+  } catch (error) {
+    if (error instanceof SupervisionHoursLimitError) {
+      return reply.code(400).send({ error: error.message, remaining: error.remaining });
+    }
+    throw error;
+  }
 
   try {
     await createNotification({
@@ -309,8 +396,8 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
       type: isAuthorSimpleSupervisor ? NotificationType.MENTORSHIP : NotificationType.SUPERVISION,
       message: `Новая заявка на ${isAuthorSimpleSupervisor ? 'менторство' : 'супервизию'} от ${currentUser.email}`,
       link: isAuthorSimpleSupervisor
-        ? '/reviewer/candidates/mentorship'
-        : '/reviewer/candidates/supervision',
+        ? '/reviewer/candidates/mentorship?status=UNCONFIRMED'
+        : '/reviewer/candidates/supervision?status=UNCONFIRMED',
     });
   } catch (err) {
     req.log.error(err, 'SUPERVISION_CREATE notification failed');

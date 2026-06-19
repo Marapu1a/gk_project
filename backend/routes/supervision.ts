@@ -7,6 +7,7 @@ import { supervisionHistoryRecordsHandler } from '../handlers/supervision/histor
 import { getAssignedHoursHandler } from '../handlers/supervision/getAssignedHoursHandler';
 import { getReviewerCandidatesHandler } from '../handlers/supervision/getReviewerCandidatesHandler';
 import { getReviewerCandidateDetailsHandler } from '../handlers/supervision/getReviewerCandidateDetailsHandler';
+import { getReviewerRequestsHandler } from '../handlers/supervision/getReviewerRequestsHandler';
 import { updateReviewerCandidateRelationHandler } from '../handlers/supervision/updateReviewerCandidateRelationHandler';
 import { updateSupervisionHourHandler } from '../handlers/supervision/updateSupervisionHour';
 import { upsertSupervisionDistributionHandler } from '../handlers/supervision/upsertSupervisionDistributionHandler';
@@ -26,6 +27,7 @@ export async function supervisionRoutes(app: FastifyInstance) {
   app.post('/supervision/contracts', { preHandler: [verifyToken] }, createSupervisionContractHandler);
   app.delete('/supervision/contracts/:id', { preHandler: [verifyToken] }, deleteSupervisionContractHandler);
   app.get('/supervision/reviewer/candidates', { preHandler: [verifyToken] }, getReviewerCandidatesHandler);
+  app.get('/supervision/reviewer/requests', { preHandler: [verifyToken] }, getReviewerRequestsHandler);
   app.patch('/supervision/reviewer/candidates/:id', { preHandler: [verifyToken] }, updateReviewerCandidateRelationHandler);
   app.get('/supervision/reviewer/candidates/:userId', { preHandler: [verifyToken] }, getReviewerCandidateDetailsHandler);
   app.get('/supervision/review', { preHandler: [verifyToken] }, getAssignedHoursHandler);

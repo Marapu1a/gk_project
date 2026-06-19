@@ -544,6 +544,18 @@ select:disabled,
     visibility 0.14s ease;
 }
 
+.dashboard-v2-tooltip-portal {
+  position: fixed;
+  z-index: 10000;
+  transform: none;
+}
+
+.dashboard-v2-tooltip-title {
+  margin-bottom: 7px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .dashboard-v2-tooltip::before {
   content: '';
   position: absolute;

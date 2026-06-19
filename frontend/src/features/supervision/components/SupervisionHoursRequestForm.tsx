@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
-import { z } from 'zod';
 import { toast } from 'sonner';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
@@ -10,13 +9,14 @@ import { useReviewerSuggestions } from '@/features/supervision/hooks/useReviewer
 import { LONG_TEXT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import {
+  formatDecimalInput,
+  normalizeDecimalInput,
+  parseDecimalInput,
+  sanitizeDecimalInput,
+} from '@/utils/decimalInput';
 
 const GUIDE_STORAGE_PREFIX = 'supervision-hours-guide-hidden:v1';
-const hoursInputSchema = z.string().refine(
-  (value) => value === '' || /^\d*(?:[.]\d{0,2})?$/.test(value),
-  'Введите неотрицательное число',
-);
-
 const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
 const tokenize = (s: string) =>
   norm(s)
@@ -24,9 +24,8 @@ const tokenize = (s: string) =>
     .filter(Boolean);
 
 function parseHours(value: string) {
-  const normalized = value.replace(',', '.').trim();
-  if (!normalized) return 0;
-  const parsed = Number(normalized);
+  const parsed = parseDecimalInput(value);
+  if (parsed == null) return 0;
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
@@ -36,23 +35,15 @@ function round2(value: number) {
 
 function formatNumber(value: number | null | undefined) {
   if (value == null) return '0';
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return formatDecimalInput(value, 2);
 }
 
 function sanitizeHoursInput(rawValue: string) {
-  const value = rawValue.replace(/\s/g, '').replace(',', '.');
-  return hoursInputSchema.safeParse(value).success ? value : null;
+  return sanitizeDecimalInput(rawValue, { maxDecimals: 2 });
 }
 
 function normalizeHoursInput(value: string, max?: number | null) {
-  const sanitized = sanitizeHoursInput(value);
-  if (!sanitized || sanitized === '.') return '0';
-
-  const parsed = Number(sanitized);
-  if (!Number.isFinite(parsed) || parsed < 0) return '0';
-
-  const capped = max != null ? Math.min(parsed, Math.max(0, max)) : parsed;
-  return String(round2(capped));
+  return normalizeDecimalInput(value, { max, maxDecimals: 2 });
 }
 
 function todayInputValue() {
@@ -189,7 +180,8 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   }, [suggestions, trimmedSupervisorEmail]);
   const hasResolvedSupervisor = Boolean(
     trimmedSupervisorEmail &&
-      ((selectedSupervisorEmail && norm(selectedSupervisorEmail) === norm(trimmedSupervisorEmail)) ||
+      ((selectedSupervisorEmail &&
+        norm(selectedSupervisorEmail) === norm(trimmedSupervisorEmail)) ||
         exactSupervisorMatch),
   );
 
@@ -198,10 +190,25 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   const practiceTotal = round2(implementingValue + programmingValue);
 
   const practiceBase = (summary?.usable.practice ?? 0) + (summary?.pending.practice ?? 0);
+  const requiredPractice = summary?.required?.practice ?? 0;
+  const confirmedPractice = summary?.usable.practice ?? 0;
+  const pendingPractice = summary?.pending.practice ?? 0;
+  const isRequirementConfirmed = requiredPractice > 0 && confirmedPractice >= requiredPractice;
+  const isRequirementCovered =
+    requiredPractice > 0 && confirmedPractice + pendingPractice >= requiredPractice;
+  const collapsedLabel = isRequirementConfirmed
+    ? 'Необходимое для сертификации количество часов набрано'
+    : isRequirementCovered
+      ? 'Необходимое количество часов уже отправлено на проверку'
+      : 'Добавить часы';
   const practiceLimit =
     summary?.required?.practice != null
       ? Math.max(0, round2(summary.required.practice - practiceBase))
       : null;
+
+  useEffect(() => {
+    if (isRequirementCovered) setIsOpen(false);
+  }, [isRequirementCovered]);
   const supervisionBase = (summary?.usable.supervision ?? 0) + (summary?.pending.supervision ?? 0);
   const supervisionLimit =
     summary?.required?.supervision != null
@@ -213,10 +220,15 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
       : null;
 
   const rawExpectedSupervision = ratio
-    ? Math.max(0, Math.floor((practiceBase + practiceTotal) / ratio) - Math.floor(practiceBase / ratio))
+    ? Math.max(
+        0,
+        Math.floor((practiceBase + practiceTotal) / ratio) - Math.floor(practiceBase / ratio),
+      )
     : 0;
   const expectedSupervision =
-    supervisionLimit != null ? Math.min(rawExpectedSupervision, supervisionLimit) : rawExpectedSupervision;
+    supervisionLimit != null
+      ? Math.min(rawExpectedSupervision, supervisionLimit)
+      : rawExpectedSupervision;
 
   const distribution = {
     directIndividual: parseHours(directIndividual),
@@ -361,8 +373,15 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     <>
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
-        className={`btn btn-dark w-full rounded-[10px] text-[16px] font-extrabold transition-all duration-300 ease-out ${
+        onClick={() => {
+          if (!isRequirementCovered) setIsOpen(true);
+        }}
+        disabled={isRequirementCovered}
+        className={`btn w-full rounded-[10px] text-[16px] font-extrabold transition-all duration-300 ease-out ${
+          isRequirementCovered
+            ? 'cursor-default border border-[#C9D8DD] bg-[#E5EFF1] text-[#1F305E]'
+            : 'btn-dark'
+        } ${
           isOpen
             ? 'pointer-events-none mt-0 h-0 overflow-hidden opacity-0'
             : 'mt-5 h-[48px] opacity-100'
@@ -370,7 +389,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
         aria-hidden={isOpen}
         tabIndex={isOpen ? -1 : 0}
       >
-        Добавить часы
+        {collapsedLabel}
       </button>
 
       <div
@@ -410,250 +429,258 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
             </div>
 
             <div className="grid gap-5 lg:grid-cols-2">
-          <div className={practiceLocked ? 'opacity-70' : undefined}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Дата подачи заявки">
-                <input className="input-design h-[32px]" type="date" value={submittedAt} disabled />
-              </Field>
-              <Field label="Условия практики">
-                <input
-                  className="input-design h-[32px]"
-                  value={treatmentSetting}
-                  onChange={(event) => setTreatmentSetting(event.target.value)}
-                  disabled={practiceLocked}
-                  placeholder="кто / где"
-                />
-              </Field>
-              <Field label="Дата начала">
-                <input
-                  className="input-design h-[32px]"
-                  type="date"
-                  max={submittedAt}
-                  value={periodStartedAt}
-                  onChange={(event) => setPeriodStartedAt(event.target.value)}
-                  disabled={practiceLocked}
-                />
-              </Field>
-              <Field label="Дата окончания">
-                <input
-                  className="input-design h-[32px]"
-                  type="date"
-                  max={submittedAt}
-                  value={periodEndedAt}
-                  onChange={(event) => setPeriodEndedAt(event.target.value)}
-                  disabled={practiceLocked}
-                />
-              </Field>
-            </div>
+              <div className={practiceLocked ? 'opacity-70' : undefined}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Дата подачи заявки">
+                    <input
+                      className="input-design h-[32px]"
+                      type="date"
+                      value={submittedAt}
+                      disabled
+                    />
+                  </Field>
+                  <Field label="Условия практики">
+                    <input
+                      className="input-design h-[32px]"
+                      value={treatmentSetting}
+                      onChange={(event) => setTreatmentSetting(event.target.value)}
+                      disabled={practiceLocked}
+                      placeholder="кто / где"
+                    />
+                  </Field>
+                  <Field label="Дата начала">
+                    <input
+                      className="input-design h-[32px]"
+                      type="date"
+                      max={submittedAt}
+                      value={periodStartedAt}
+                      onChange={(event) => setPeriodStartedAt(event.target.value)}
+                      disabled={practiceLocked}
+                    />
+                  </Field>
+                  <Field label="Дата окончания">
+                    <input
+                      className="input-design h-[32px]"
+                      type="date"
+                      max={submittedAt}
+                      value={periodEndedAt}
+                      onChange={(event) => setPeriodEndedAt(event.target.value)}
+                      disabled={practiceLocked}
+                    />
+                  </Field>
+                </div>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Field label="Полевая практика">
-              <NumberInput
-                  value={implementing}
-                  onChange={setImplementing}
-                  disabled={practiceLocked}
-                  max={practiceLimit}
-                />
-              </Field>
-              <Field label="Работа с информацией">
-              <NumberInput
-                  value={programming}
-                  onChange={setProgramming}
-                  disabled={practiceLocked}
-                  max={practiceLimit}
-                />
-              </Field>
-            </div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <Field label="Полевая практика">
+                    <NumberInput
+                      value={implementing}
+                      onChange={setImplementing}
+                      disabled={practiceLocked}
+                      max={practiceLimit}
+                    />
+                  </Field>
+                  <Field label="Работа с информацией">
+                    <NumberInput
+                      value={programming}
+                      onChange={setProgramming}
+                      disabled={practiceLocked}
+                      max={practiceLimit}
+                    />
+                  </Field>
+                </div>
 
-            <div className="mt-3 rounded-[10px] bg-[#E7F1F4] px-4 py-3 text-[14px] text-[#1F305E]">
-              Всего практики: <strong>{practiceTotal}</strong>. Расчетная супервизия:{' '}
-              <strong>{expectedSupervision}</strong>.
-            </div>
+                <div className="mt-3 rounded-[10px] bg-[#E7F1F4] px-4 py-3 text-[14px] text-[#1F305E]">
+                  Всего практики: <strong>{practiceTotal}</strong>. Расчетная супервизия:{' '}
+                  <strong>{expectedSupervision}</strong>.
+                </div>
 
-            {practiceRuleError || practiceLimitError ? (
-              <p className="mt-2 text-[13px] font-semibold text-[#FF5364]">
-                {practiceRuleError || practiceLimitError}
-              </p>
-            ) : null}
+                {practiceRuleError || practiceLimitError ? (
+                  <p className="mt-2 text-[13px] font-semibold text-[#FF5364]">
+                    {practiceRuleError || practiceLimitError}
+                  </p>
+                ) : null}
 
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={practiceLocked ? () => setPracticeLocked(false) : lockPractice}
-                className="btn h-[40px] rounded-[10px] border border-[#1F305E] px-5 text-[15px] font-bold text-[#1F305E]"
-              >
-                {practiceLocked ? 'Изменить практику' : 'Подтвердить практику'}
-              </button>
-            </div>
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={practiceLocked ? () => setPracticeLocked(false) : lockPractice}
+                    className="btn h-[40px] rounded-[10px] border border-[#1F305E] px-5 text-[15px] font-bold text-[#1F305E]"
+                  >
+                    {practiceLocked ? 'Изменить практику' : 'Подтвердить практику'}
+                  </button>
+                </div>
 
-            <Field label="Описание" className="mt-5">
-              <textarea
-                className="input-design min-h-[132px] resize-y text-[14px]"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                maxLength={LONG_TEXT_MAX_LENGTH}
-                placeholder="Кратко опишите практику"
-              />
-            </Field>
-          </div>
-
-          <div className={!practiceLocked ? 'pointer-events-none opacity-50' : undefined}>
-            <div className="mb-3 rounded-[10px] bg-[#E7F1F4] px-4 py-3 text-[14px] text-[#1F305E]">
-              Распределите <strong>{expectedSupervision}</strong> часов супервизии. Осталось:{' '}
-              <strong className={distributionRemaining === 0 ? undefined : 'text-error'}>
-                {distributionRemaining}
-              </strong>
-              .
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-4 sm:border-r sm:border-[#DCE3EF] sm:pr-4">
-                <Field label="С наблюдением">
-                  <input className="input-design h-[32px]" value={directTotal} disabled />
-                </Field>
-
-                <Field label="Индивидуально">
-                  <NumberInput
-                    value={directIndividual}
-                    onChange={setDirectIndividual}
-                    max={expectedSupervision}
-                  />
-                </Field>
-
-                <Field label="В группе">
-                  <NumberInput value={directGroup} onChange={setDirectGroup} max={expectedSupervision} />
-                </Field>
-              </div>
-
-              <div className="space-y-4">
-                <Field label="Без наблюдения">
-                  <input className="input-design h-[32px]" value={nonObservingTotal} disabled />
-                </Field>
-
-                <Field label="Индивидуально">
-                  <NumberInput
-                    value={nonObservingIndividual}
-                    onChange={setNonObservingIndividual}
-                    max={expectedSupervision}
-                  />
-                </Field>
-
-                <Field label="В группе">
-                  <NumberInput
-                    value={nonObservingGroup}
-                    onChange={setNonObservingGroup}
-                    max={expectedSupervision}
+                <Field label="Описание" className="mt-5">
+                  <textarea
+                    className="input-design min-h-[132px] resize-y text-[14px]"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    maxLength={LONG_TEXT_MAX_LENGTH}
+                    placeholder="Кратко опишите практику"
                   />
                 </Field>
               </div>
-            </div>
 
-            {distributionRuleError ? (
-              <div className="mt-3 rounded-[10px] bg-white px-4 py-3 text-[13px] text-[#1F305E] shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
-                <p className="mb-2 font-extrabold text-[#FF5364]">
-                  Ошибка возможных пропорций часов
+              <div className={!practiceLocked ? 'pointer-events-none opacity-50' : undefined}>
+                <div className="mb-3 rounded-[10px] bg-[#E7F1F4] px-4 py-3 text-[14px] text-[#1F305E]">
+                  Распределите <strong>{expectedSupervision}</strong> часов супервизии. Осталось:{' '}
+                  <strong className={distributionRemaining === 0 ? undefined : 'text-error'}>
+                    {distributionRemaining}
+                  </strong>
+                  .
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-4 sm:border-r sm:border-[#DCE3EF] sm:pr-4">
+                    <Field label="С наблюдением">
+                      <input className="input-design h-[32px]" value={directTotal} disabled />
+                    </Field>
+
+                    <Field label="Индивидуально">
+                      <NumberInput
+                        value={directIndividual}
+                        onChange={setDirectIndividual}
+                        max={expectedSupervision}
+                      />
+                    </Field>
+
+                    <Field label="В группе">
+                      <NumberInput
+                        value={directGroup}
+                        onChange={setDirectGroup}
+                        max={expectedSupervision}
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Field label="Без наблюдения">
+                      <input className="input-design h-[32px]" value={nonObservingTotal} disabled />
+                    </Field>
+
+                    <Field label="Индивидуально">
+                      <NumberInput
+                        value={nonObservingIndividual}
+                        onChange={setNonObservingIndividual}
+                        max={expectedSupervision}
+                      />
+                    </Field>
+
+                    <Field label="В группе">
+                      <NumberInput
+                        value={nonObservingGroup}
+                        onChange={setNonObservingGroup}
+                        max={expectedSupervision}
+                      />
+                    </Field>
+                  </div>
+                </div>
+
+                {distributionRuleError ? (
+                  <div className="mt-3 rounded-[10px] bg-white px-4 py-3 text-[13px] text-[#1F305E] shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
+                    <p className="mb-2 font-extrabold text-[#FF5364]">
+                      Ошибка возможных пропорций часов
+                    </p>
+                    <p>{distributionRuleError}</p>
+                    <p className="mt-2">100% часов могут быть индивидуальными.</p>
+                  </div>
+                ) : null}
+
+                <Field label="Супервизор" className="relative mt-5">
+                  <input
+                    className="input-design h-[36px]"
+                    value={supervisorEmail}
+                    onChange={(event) => {
+                      setSupervisorEmail(event.target.value);
+                      setSelectedSupervisorEmail('');
+                      setShowSuggestions(true);
+                    }}
+                    onFocus={() => {
+                      if (supervisorEmail.trim()) setShowSuggestions(true);
+                    }}
+                    onBlur={() => window.setTimeout(() => setShowSuggestions(false), 150)}
+                    placeholder="Начните вводить ФИО или email"
+                    autoComplete="off"
+                  />
+
+                  {showSuggestions && supervisorEmail.trim() && matchedUsers.length > 0 ? (
+                    <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-[10px] bg-white shadow-[0_2px_12px_rgba(31,48,94,0.16)]">
+                      {matchedUsers.map((suggestion) => (
+                        <button
+                          key={suggestion.id}
+                          type="button"
+                          className="w-full border-b border-[#DCE8EC] px-3 py-2 text-left text-[13px] last:border-b-0 hover:bg-[#F5F8FA]"
+                          onClick={() => {
+                            setSupervisorEmail(suggestion.email);
+                            setSelectedSupervisorEmail(suggestion.email);
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          <span className="block font-semibold text-[#1F305E]">
+                            {suggestion.fullName || 'Без имени'}
+                          </span>
+                          <span className="block text-[#6B7894]">{suggestion.email}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {showSuggestions &&
+                  supervisorEmail.trim() &&
+                  !isUsersLoading &&
+                  matchedUsers.length === 0 ? (
+                    <div className="absolute z-20 mt-1 w-full rounded-[10px] bg-white px-3 py-2 text-[13px] text-[#6B7894] shadow-[0_2px_12px_rgba(31,48,94,0.16)]">
+                      Супервизор не найден в системе.
+                    </div>
+                  ) : null}
+                </Field>
+
+                {trimmedSupervisorEmail && !hasResolvedSupervisor ? (
+                  <p className="mt-2 text-[13px] font-semibold leading-[1.35] text-[#FF5364]">
+                    Выберите супервизора из подсказки.
+                  </p>
+                ) : null}
+
+                <p className="mt-3 text-center text-[13px] leading-[1.35] text-[#6B7894]">
+                  Если вашего супервизора нет в реестре, напишите{' '}
+                  <a
+                    href="mailto:cspap@yandex.ru"
+                    className="font-semibold text-[#1F305E] underline"
+                  >
+                    cspap@yandex.ru
+                  </a>
                 </p>
-                <p>{distributionRuleError}</p>
-                <p className="mt-2">100% часов могут быть индивидуальными.</p>
-              </div>
-            ) : null}
 
-            <Field label="Супервизор" className="relative mt-5">
-              <input
-                className="input-design h-[36px]"
-                value={supervisorEmail}
-                onChange={(event) => {
-                  setSupervisorEmail(event.target.value);
-                  setSelectedSupervisorEmail('');
-                  setShowSuggestions(true);
-                }}
-                onFocus={() => {
-                  if (supervisorEmail.trim()) setShowSuggestions(true);
-                }}
-                onBlur={() => window.setTimeout(() => setShowSuggestions(false), 150)}
-                placeholder="Начните вводить ФИО или email"
-                autoComplete="off"
-              />
-
-              {showSuggestions && supervisorEmail.trim() && matchedUsers.length > 0 ? (
-                <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-[10px] bg-white shadow-[0_2px_12px_rgba(31,48,94,0.16)]">
-                  {matchedUsers.map((suggestion) => (
-                    <button
-                      key={suggestion.id}
-                      type="button"
-                      className="w-full border-b border-[#DCE8EC] px-3 py-2 text-left text-[13px] last:border-b-0 hover:bg-[#F5F8FA]"
-                      onClick={() => {
-                        setSupervisorEmail(suggestion.email);
-                        setSelectedSupervisorEmail(suggestion.email);
-                        setShowSuggestions(false);
-                      }}
+                <label className="mt-5 flex items-start gap-3 text-[13px] text-[#6B7894]">
+                  <input
+                    type="checkbox"
+                    checked={effectiveEthicsAccepted}
+                    onChange={(event) => setEthicsAccepted(event.target.checked)}
+                    disabled={hasStoredEthicsAcceptance}
+                    className="mt-0.5 h-5 w-5 rounded border-[#A7B1C7]"
+                  />
+                  <span>
+                    Ознакомлен и обязуюсь соблюдать{' '}
+                    <a
+                      className="font-semibold text-[#1F305E] underline"
+                      href="https://theibao.com/documents/ethical-guidelines?language=Russian"
+                      target="_blank"
+                      rel="noreferrer"
                     >
-                      <span className="block font-semibold text-[#1F305E]">
-                        {suggestion.fullName || 'Без имени'}
-                      </span>
-                      <span className="block text-[#6B7894]">{suggestion.email}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+                      Этические принципы IBAO
+                    </a>
+                  </span>
+                </label>
 
-              {showSuggestions &&
-              supervisorEmail.trim() &&
-              !isUsersLoading &&
-              matchedUsers.length === 0 ? (
-                <div className="absolute z-20 mt-1 w-full rounded-[10px] bg-white px-3 py-2 text-[13px] text-[#6B7894] shadow-[0_2px_12px_rgba(31,48,94,0.16)]">
-                  Супервизор не найден в системе.
-                </div>
-              ) : null}
-            </Field>
-
-            {trimmedSupervisorEmail && !hasResolvedSupervisor ? (
-              <p className="mt-2 text-[13px] font-semibold leading-[1.35] text-[#FF5364]">
-                Выберите супервизора из подсказки.
-              </p>
-            ) : null}
-
-            <p className="mt-3 text-center text-[13px] leading-[1.35] text-[#6B7894]">
-              Если вашего супервизора нет в реестре, напишите{' '}
-              <a
-                href="mailto:cspap@yandex.ru"
-                className="font-semibold text-[#1F305E] underline"
-              >
-                cspap@yandex.ru
-              </a>
-            </p>
-
-            <label className="mt-5 flex items-start gap-3 text-[13px] text-[#6B7894]">
-              <input
-                type="checkbox"
-                checked={effectiveEthicsAccepted}
-                onChange={(event) => setEthicsAccepted(event.target.checked)}
-                disabled={hasStoredEthicsAcceptance}
-                className="mt-0.5 h-5 w-5 rounded border-[#A7B1C7]"
-              />
-              <span>
-                Ознакомлен и обязуюсь соблюдать{' '}
-                <a
-                  className="font-semibold text-[#1F305E] underline"
-                  href="https://theibao.com/documents/ethical-guidelines?language=Russian"
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={!canSubmit}
+                  className="btn btn-dark mt-5 h-[48px] w-full rounded-[10px] text-[16px] font-extrabold disabled:cursor-not-allowed disabled:bg-[#B7BFCE]"
                 >
-                  Этические принципы IBAO
-                </a>
-              </span>
-            </label>
-
-            <button
-              type="button"
-              onClick={submit}
-              disabled={!canSubmit}
-              className="btn btn-dark mt-5 h-[48px] w-full rounded-[10px] text-[16px] font-extrabold disabled:cursor-not-allowed disabled:bg-[#B7BFCE]"
-            >
-              {mutation.isPending ? 'Отправляем...' : 'Отправить'}
-            </button>
-
-          </div>
+                  {mutation.isPending ? 'Отправляем...' : 'Отправить'}
+                </button>
+              </div>
             </div>
           </section>
         </div>
@@ -727,9 +754,10 @@ function SupervisionHoursGuideModal({
               сумма этих двух полей.
             </p>
             <p className="mt-2">
-              Каждый тип должен быть <strong>не меньше 40% от общего количества часов практики</strong>.
-              Например, если всего вы вносите 100 часов практики, то полевая практика должна быть не
-              меньше 40 часов, и работа с информацией тоже должна быть не меньше 40 часов.
+              Каждый тип должен быть{' '}
+              <strong>не меньше 40% от общего количества часов практики</strong>. Например, если
+              всего вы вносите 100 часов практики, то полевая практика должна быть не меньше 40
+              часов, и работа с информацией тоже должна быть не меньше 40 часов.
             </p>
             <p className="mt-2">
               Оставшиеся 20% можно добавить к любому из двух типов: например 60/40, 50/50 или 40/60.
@@ -803,13 +831,7 @@ function SupervisionHoursGuideModal({
   return createPortal(modal, document.body);
 }
 
-function GuideStep({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function GuideStep({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <li className="rounded-[12px] border border-[#DCE8EC] bg-white px-4 py-3">
       <h3 className="mb-1 text-[15px] font-extrabold">{title}</h3>
