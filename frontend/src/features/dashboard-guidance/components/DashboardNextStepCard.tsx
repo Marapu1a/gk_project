@@ -4,6 +4,7 @@ import type { DashboardGuidanceStep } from '../model/types';
 
 type Props = {
   step: DashboardGuidanceStep;
+  onHide?: () => void;
 };
 
 const toneClass = {
@@ -18,7 +19,7 @@ const toneIcon = {
   success: CheckCircle2,
 } as const;
 
-export function DashboardNextStepCard({ step }: Props) {
+export function DashboardNextStepCard({ step, onHide }: Props) {
   const navigate = useNavigate();
   const Icon = toneIcon[step.tone];
 
@@ -34,9 +35,21 @@ export function DashboardNextStepCard({ step }: Props) {
 
   return (
     <section
-      className={`grid min-h-[92px] items-center gap-4 rounded-[16px] px-5 py-4 shadow-soft sm:grid-cols-[auto_minmax(0,1fr)_auto] ${toneClass[step.tone]}`}
+      className={`relative grid min-h-[92px] items-center gap-4 rounded-[16px] py-4 pl-5 shadow-soft sm:grid-cols-[auto_minmax(0,1fr)_auto] ${onHide ? 'pr-10' : 'pr-5'} ${toneClass[step.tone]}`}
       aria-labelledby="dashboard-next-step-title"
     >
+      {onHide ? (
+        <button
+          type="button"
+          onClick={onHide}
+          className="absolute right-3 top-3 flex size-7 items-center justify-center opacity-25 transition hover:opacity-60"
+          title="Скрыть подсказки"
+          aria-label="Скрыть подсказки"
+        >
+          <img src="/dashboard-v2/exit_btn.svg" alt="" width={16} height={16} />
+        </button>
+      ) : null}
+
       <div className="flex size-10 items-center justify-center rounded-full bg-white text-[var(--color-blue-dark)]">
         <Icon size={22} aria-hidden="true" />
       </div>

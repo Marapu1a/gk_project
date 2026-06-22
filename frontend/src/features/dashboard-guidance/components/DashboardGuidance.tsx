@@ -6,10 +6,11 @@ import { DASHBOARD_GUIDANCE_CONFIG } from '../config';
 type Props = {
   user: CurrentUser;
   hasCertificationAccess: boolean;
+  onHide?: () => void;
 };
 
-export function DashboardGuidance({ user, hasCertificationAccess }: Props) {
+export function DashboardGuidance({ user, hasCertificationAccess, onHide }: Props) {
   const { step, isLoading } = useDashboardGuidance({ user, hasCertificationAccess });
   if (!DASHBOARD_GUIDANCE_CONFIG.enabled || isLoading || !step) return null;
-  return <DashboardNextStepCard step={step} />;
+  return <DashboardNextStepCard step={step} onHide={onHide} />;
 }

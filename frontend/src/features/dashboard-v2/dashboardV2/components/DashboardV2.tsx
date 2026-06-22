@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { Eye } from 'lucide-react';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import { TransborderConsentModal } from '@/features/auth/components/TransborderConsentModal';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
@@ -12,6 +13,7 @@ import { ReviewerCandidatesBlocks } from './reviewer-candidates/component/Review
 import { AdminDashboard } from './admin-dashboard/AdminDashboard';
 import { UserDashboardBanner } from '@/features/userBanner/components/UserDashboardBanner';
 import { DashboardGuidance } from '@/features/dashboard-guidance';
+import { useDashboardGuidanceVisible } from '@/features/dashboard-guidance/hooks/useDashboardGuidanceVisible';
 
 const TARGET_LEVEL_LABELS = {
   INSTRUCTOR: 'Инструктор',
@@ -81,6 +83,7 @@ export function DashboardV2() {
 
 function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurrentUser>['data']> }) {
   const { data: payments = [], isLoading: paymentsLoading } = useUserPayments();
+  const { visible: guidanceVisible, hide: hideGuidance, show: showGuidance } = useDashboardGuidanceVisible();
 
   if (paymentsLoading) {
     return (
@@ -112,7 +115,25 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
     <div className="container-fixed p-6">
       <div className="space-y-6">
         <UserDashboardBanner />
-        <DashboardGuidance user={user} hasCertificationAccess={canUseCertificationContent} />
+        {guidanceVisible ? (
+          <DashboardGuidance
+            user={user}
+            hasCertificationAccess={canUseCertificationContent}
+            onHide={hideGuidance}
+          />
+        ) : (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={showGuidance}
+              className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-[#B8C0D1] shadow-soft transition hover:text-[#7F8AA3]"
+              title="Показать подсказки"
+            >
+              <Eye size={13} strokeWidth={2} />
+              Подсказки
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-3">
           <div id="dashboard-certification" className="flex min-w-0 scroll-mt-6">
