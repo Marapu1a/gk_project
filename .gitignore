@@ -5,3 +5,4 @@ dist/
 .codex-runtime/
 local_reports/
 frontend/public/uploads/
+dev-guidance*.log

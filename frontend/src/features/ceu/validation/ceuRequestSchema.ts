@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+const ceuActivityTypeSchema = z.enum([
+  'TRAINING_ATTENDANCE',
+  'PRESENTATION',
+  'PUBLICATION',
+  'TEACHING',
+]);
+
 export const ceuRequestSchema = z.object({
   eventName: z.string().trim().min(3, 'Введите название мероприятия'),
 
@@ -17,15 +24,14 @@ export const ceuRequestSchema = z.object({
     ),
 
   fileId: z.string().nonempty('Файл обязателен'),
-  activityType: z
-    .enum(['TRAINING_ATTENDANCE', 'PRESENTATION', 'PUBLICATION', 'TEACHING'])
-    .optional(),
+  activityType: ceuActivityTypeSchema.optional(),
 
   entries: z
     .array(
       z.object({
         category: z.enum(['ETHICS', 'CULTURAL_DIVERSITY', 'SUPERVISION', 'GENERAL']),
-        value: z.number().min(0.1, 'Минимум 0.1'),
+        activityType: ceuActivityTypeSchema,
+        value: z.number().positive('Укажите количество баллов'),
       }),
     )
     .min(1, 'Добавьте хотя бы один балл'),

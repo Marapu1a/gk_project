@@ -30,10 +30,11 @@ export async function createCeuHandler(req: FastifyRequest, reply: FastifyReply)
       eventName,
       eventDate: new Date(eventDate),
       fileId,
-      activityType,
+      activityType: activityType ?? entries[0]?.activityType,
       entries: {
         create: entries.map((entry) => ({
           category: entry.category,
+          activityType: entry.activityType,
           value: entry.value,
           status: RecordStatus.CONFIRMED,
         })),

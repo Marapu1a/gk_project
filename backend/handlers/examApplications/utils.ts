@@ -1,4 +1,4 @@
-import { PaymentStatus, PaymentType, TargetLevel } from '@prisma/client';
+import { CycleType, PaymentStatus, PaymentType, TargetLevel } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 
 export type ExamStatus = 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -82,11 +82,17 @@ export async function getMissingExamPaymentTypes(userId: string): Promise<Paymen
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId, status: 'ACTIVE' },
     orderBy: { startedAt: 'desc' },
-    select: { targetLevel: true },
+    select: { targetLevel: true, type: true },
   });
 
   if (!activeCycle) {
     return [PaymentType.REGISTRATION, PaymentType.DOCUMENT_REVIEW, PaymentType.EXAM_ACCESS];
+  }
+
+  // For renewal the only required payment is RENEWAL — checked by buildExamReadiness.
+  // Document review and exam access are not charged again.
+  if (activeCycle.type === CycleType.RENEWAL) {
+    return [];
   }
 
   const payments = await prisma.payment.findMany({

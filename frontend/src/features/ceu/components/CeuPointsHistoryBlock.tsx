@@ -15,6 +15,7 @@ const categoryLabels: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   UNCONFIRMED: 'На рассмотрении',
   CONFIRMED: 'Принято',
+  PARTIALLY_CONFIRMED: 'Частично принято',
   REJECTED: 'Отклонено',
   SPENT: 'Использовано',
 };
@@ -42,6 +43,14 @@ function statusTextClass(status: string) {
   if (status === 'CONFIRMED') return 'text-[#1F305E]';
   if (status === 'REJECTED') return 'text-[#FF5364]';
   return 'text-[#7F8AA3]';
+}
+
+function categorySummary(record: CeuHistoryItem) {
+  if (record.entries.length === 1) {
+    const category = record.entries[0].category;
+    return categoryLabels[category] ?? category;
+  }
+  return 'Несколько (см. детали)';
 }
 
 export function CeuPointsHistoryBlock() {
@@ -87,11 +96,11 @@ export function CeuPointsHistoryBlock() {
                     </div>
                   </td>
                   <td className="px-4 py-4 text-center font-extrabold">
-                    {formatNumber(record.value)}
+                    {formatNumber(record.totalValue)}
                   </td>
                   <td className="px-4 py-4 text-center">{formatDate(record.eventDate)}</td>
                   <td className="px-4 py-4 text-center">
-                    {categoryLabels[record.category] ?? record.category}
+                    {categorySummary(record)}
                   </td>
                   <td className={`px-4 py-4 text-center ${statusTextClass(record.status)}`}>
                     {statusLabels[record.status] ?? record.status}
@@ -138,14 +147,33 @@ function CeuDetailsModal({
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <ReadOnlyField label="Длительность" value={formatNumber(record.value)} />
+              <ReadOnlyField label="Длительность" value={formatNumber(record.totalValue)} />
               <ReadOnlyField label="Дата" value={formatDate(record.eventDate)} />
             </div>
 
-            <ReadOnlyPlain
-              label="Тема CEU"
-              value={categoryLabels[record.category] ?? record.category}
-            />
+            <div>
+              <div className="mb-2 text-[13px] font-semibold text-[#1F305E]">Начисленные баллы</div>
+              <div className="overflow-hidden rounded-[10px] border border-[#DCE8EC]">
+                {record.entries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="grid gap-3 border-b border-[#DCE8EC] px-3 py-3 last:border-b-0 sm:grid-cols-[minmax(0,190px)_48px_minmax(0,1fr)]"
+                  >
+                    <span className="min-w-0 break-words pr-2 text-[13px] font-semibold leading-[1.25] text-[#1F305E]">
+                      {categoryLabels[entry.category] ?? entry.category}
+                    </span>
+                    <span className="text-[13px] font-extrabold text-[#1F305E]">
+                      {formatNumber(entry.value)}
+                    </span>
+                    <span className="text-[12px] leading-snug text-[#6B7894]">
+                      {entry.activityType
+                        ? activityTypeLabels[entry.activityType] ?? entry.activityType
+                        : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <FilePreview file={record.file} />
           </div>
@@ -154,15 +182,6 @@ function CeuDetailsModal({
             <ReadOnlyField
               label="Название или ведущий тренинга"
               value={displayCeuEventName(record.eventName)}
-            />
-
-            <ReadOnlyPlain
-              label="Тип CEU"
-              value={
-                record.activityType
-                  ? activityTypeLabels[record.activityType] ?? record.activityType
-                  : '—'
-              }
             />
 
             <div className="grid gap-4 sm:grid-cols-2">

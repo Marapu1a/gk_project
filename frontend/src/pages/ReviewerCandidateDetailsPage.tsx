@@ -110,7 +110,7 @@ function ReviewerCandidateDetailsContent() {
           supervisionCurrent={hoursCurrent}
           supervisionRequired={hoursRequired}
           supervisionLabel={kind === 'mentorship' ? 'Часы менторства' : 'Часы супервизии'}
-          documentsReady={false}
+          documentsReady={data.documentReview.ready}
         />
         <CandidateCeuCard summary={data.ceuSummary} />
       </div>

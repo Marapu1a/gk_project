@@ -70,7 +70,8 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                     />
                   </button>
                 </th>
-                <th className="rounded-r-[8px] px-3 py-3 text-center font-medium">Статус</th>
+                <th className="px-3 py-3 text-center font-medium">Статус</th>
+                <th className="w-[54px] rounded-r-[8px] px-3 py-3" />
               </tr>
             </thead>
 
@@ -85,18 +86,7 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                       isRejected ? 'text-[#A7B1C7]' : ''
                     }`}
                   >
-                    <td className="px-3 py-4">
-                      <div className="grid grid-cols-[30px_minmax(0,1fr)] items-center gap-4">
-                        <ActionArrowButton
-                          onClick={() => setSelectedRequest(request)}
-                          size={30}
-                          title="Открыть детали заявки"
-                          aria-label="Открыть детали заявки"
-                        />
-
-                        <span>{formatDate(request.createdAt)}</span>
-                      </div>
-                    </td>
+                    <td className="px-3 py-4 text-center">{formatDate(request.createdAt)}</td>
 
                     <td className="px-3 py-4">
                       {request.status === 'CONFIRMED' ? (
@@ -110,6 +100,14 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                           {STATUS_LABELS[request.status]}
                         </div>
                       )}
+                    </td>
+                    <td className="px-3 py-4 text-center">
+                      <ActionArrowButton
+                        onClick={() => setSelectedRequest(request)}
+                        size={30}
+                        title="Открыть детали заявки"
+                        aria-label="Открыть детали заявки"
+                      />
                     </td>
                   </tr>
                 );

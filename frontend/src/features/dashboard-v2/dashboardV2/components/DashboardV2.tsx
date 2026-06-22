@@ -11,6 +11,7 @@ import { CeuOverviewBlock } from './ceu-overview/component/CeuOverviewBlock';
 import { ReviewerCandidatesBlocks } from './reviewer-candidates/component/ReviewerCandidatesBlocks';
 import { AdminDashboard } from './admin-dashboard/AdminDashboard';
 import { UserDashboardBanner } from '@/features/userBanner/components/UserDashboardBanner';
+import { DashboardGuidance } from '@/features/dashboard-guidance';
 
 const TARGET_LEVEL_LABELS = {
   INSTRUCTOR: 'Инструктор',
@@ -107,13 +108,14 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
     <div className="container-fixed p-6">
       <div className="space-y-6">
         <UserDashboardBanner />
+        <DashboardGuidance user={user} hasCertificationAccess={canUseCertificationContent} />
 
         <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-3">
-          <div className="flex min-w-0">
+          <div id="dashboard-certification" className="flex min-w-0 scroll-mt-6">
             <CertificationBlock user={user} />
           </div>
 
-          <div className="flex min-w-0">
+          <div id="dashboard-payments" className="flex min-w-0 scroll-mt-6">
             <PaymentBlock
               activeGroupName={activeGroupName}
               targetLevel={user.targetLevel ?? null}
@@ -149,7 +151,11 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
           <CertificationAccessPlaceholder />
         )}
 
-        {canReviewCandidates ? <ReviewerCandidatesBlocks /> : null}
+        {canReviewCandidates ? (
+          <div id="dashboard-reviewer-work" className="scroll-mt-6">
+            <ReviewerCandidatesBlocks />
+          </div>
+        ) : null}
       </div>
     </div>
   );

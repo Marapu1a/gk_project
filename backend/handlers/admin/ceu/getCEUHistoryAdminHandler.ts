@@ -21,7 +21,13 @@ interface GetCEUHistoryAdminRoute extends RouteGenericInterface {
 }
 
 const CATEGORIES = new Set<string>(['ETHICS', 'CULTURAL_DIVERSITY', 'SUPERVISION', 'GENERAL']);
-const STATUSES = new Set<string>(['UNCONFIRMED', 'CONFIRMED', 'REJECTED', 'SPENT']);
+const STATUSES = new Set<string>([
+  'UNCONFIRMED',
+  'CONFIRMED',
+  'PARTIALLY_CONFIRMED',
+  'REJECTED',
+  'SPENT',
+]);
 const SORT_FIELDS = new Set<string>([
   'createdAt',
   'eventDate',
@@ -32,11 +38,12 @@ const SORT_FIELDS = new Set<string>([
   'points',
 ]);
 
-const categoryLabels: Record<CEUCategory, string> = {
+const categoryLabels: Record<string, string> = {
   ETHICS: 'Этика',
   CULTURAL_DIVERSITY: 'Культурное разнообразие',
   SUPERVISION: 'Супервизия',
   GENERAL: 'Общие',
+  MULTIPLE: 'Несколько',
 };
 
 const statusLabels: Record<RecordStatus, string> = {
@@ -179,10 +186,19 @@ function buildCsv(rows: Awaited<ReturnType<typeof buildCEUHistoryRows>>['rows'])
       row.email,
       row.fullName ?? '',
       row.cycleLabel,
-      categoryLabels[row.category] ?? row.category,
+      row.entries
+        .map((entry) => `${categoryLabels[entry.category] ?? entry.category}: ${entry.value}`)
+        .join(' | '),
       row.points,
-      statusLabels[row.status] ?? row.status,
-      row.activityType ? activityTypeLabels[row.activityType] ?? row.activityType : '',
+      statusLabels[row.status as RecordStatus] ?? row.status,
+      row.entries
+        .map((entry) =>
+          entry.activityType
+            ? activityTypeLabels[entry.activityType] ?? entry.activityType
+            : '',
+        )
+        .filter(Boolean)
+        .join(' | '),
       row.file?.name ?? '',
     ]
       .map(csvCell)
@@ -224,81 +240,87 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
   const perPage = Math.min(toInt(query.perPage, 100), 500);
 
   const where: any = {
-    ...(category !== 'ALL' ? { category } : {}),
-    ...(status !== 'ALL' ? { status } : {}),
-    record: {
-      ...(from || to
-        ? {
-            createdAt: {
-              ...(from ? { gte: from } : {}),
-              ...(to ? { lt: to } : {}),
+    ...(from || to
+      ? {
+          createdAt: {
+            ...(from ? { gte: from } : {}),
+            ...(to ? { lt: to } : {}),
+          },
+        }
+      : {}),
+    ...(search.trim()
+      ? {
+          user: {
+            OR: [
+              { email: { contains: search.trim(), mode: 'insensitive' } },
+              { fullName: { contains: search.trim(), mode: 'insensitive' } },
+            ],
+          },
+        }
+      : {}),
+    ...(category !== 'ALL' || status !== 'ALL'
+      ? {
+          entries: {
+            some: {
+              ...(category !== 'ALL' ? { category } : {}),
+              ...(status !== 'ALL' ? { status } : {}),
             },
-          }
-        : {}),
-      ...(search.trim()
-        ? {
-            user: {
-              OR: [
-                { email: { contains: search.trim(), mode: 'insensitive' } },
-                { fullName: { contains: search.trim(), mode: 'insensitive' } },
-              ],
-            },
-          }
-        : {}),
-    },
+          },
+        }
+      : {}),
   };
 
-  const entries = await prisma.cEUEntry.findMany({
+  const records = await prisma.cEURecord.findMany({
     where,
-    orderBy: [{ record: { createdAt: 'desc' } }, { id: 'desc' }],
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     select: {
       id: true,
-      category: true,
-      value: true,
-      status: true,
-      reviewedAt: true,
-      rejectedReason: true,
-      reviewer: {
-        select: { id: true, email: true, fullName: true },
-      },
-      record: {
+      userId: true,
+      fileId: true,
+      eventName: true,
+      eventDate: true,
+      activityType: true,
+      createdAt: true,
+      user: {
         select: {
           id: true,
-          userId: true,
-          fileId: true,
-          eventName: true,
-          eventDate: true,
+          email: true,
+          fullName: true,
+          role: true,
+          groups: {
+            select: {
+              group: { select: { id: true, name: true, rank: true } },
+            },
+          },
+        },
+      },
+      cycle: {
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          targetLevel: true,
+          startedAt: true,
+        },
+      },
+      entries: {
+        orderBy: { id: 'asc' },
+        select: {
+          id: true,
+          category: true,
           activityType: true,
-          createdAt: true,
-          user: {
-            select: {
-              id: true,
-              email: true,
-              fullName: true,
-              role: true,
-              groups: {
-                select: {
-                  group: { select: { id: true, name: true, rank: true } },
-                },
-              },
-            },
-          },
-          cycle: {
-            select: {
-              id: true,
-              type: true,
-              status: true,
-              targetLevel: true,
-              startedAt: true,
-            },
-          },
+          value: true,
+          status: true,
+          reviewedAt: true,
+          rejectedReason: true,
+          reviewer: { select: { id: true, email: true, fullName: true } },
         },
       },
     },
   });
 
   const fileIds = Array.from(
-    new Set(entries.map((entry) => entry.record.fileId).filter(Boolean) as string[])
+    new Set(records.map((record) => record.fileId).filter(Boolean) as string[])
   );
   const files = fileIds.length
     ? await prisma.uploadedFile.findMany({
@@ -308,33 +330,43 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
     : [];
   const fileByStorageId = new Map(files.map((file) => [file.fileId, file]));
 
-  const rows = entries.map((entry) => {
-    const group = currentGroup(entry.record.user.groups);
-    const file = entry.record.fileId ? fileByStorageId.get(entry.record.fileId) ?? null : null;
-    const cycleLabel = buildCycleLabel(entry.record.cycle, group?.name);
+  const rows = records.map((record) => {
+    const group = currentGroup(record.user.groups);
+    const file = record.fileId ? fileByStorageId.get(record.fileId) ?? null : null;
+    const cycleLabel = buildCycleLabel(record.cycle, group?.name);
+    const statuses = new Set(record.entries.map((entry) => entry.status));
+    const status = statuses.size === 1 ? record.entries[0]?.status ?? 'UNCONFIRMED' : 'PARTIALLY_CONFIRMED';
+    const reviewedEntry = [...record.entries]
+      .filter((entry) => entry.reviewedAt)
+      .sort((a, b) => (b.reviewedAt?.getTime() ?? 0) - (a.reviewedAt?.getTime() ?? 0))[0];
 
     return {
-      entryId: entry.id,
-      recordId: entry.record.id,
-      userId: entry.record.user.id,
-      email: entry.record.user.email,
-      fullName: entry.record.user.fullName,
-      role: entry.record.user.role,
+      entryId: record.entries[0]?.id ?? record.id,
+      recordId: record.id,
+      userId: record.user.id,
+      email: record.user.email,
+      fullName: record.user.fullName,
+      role: record.user.role,
       currentGroup: group,
-      groups: entry.record.user.groups.map((item) => item.group),
-      recordCreatedAt: entry.record.createdAt,
-      eventDate: entry.record.eventDate,
-      eventName: entry.record.eventName,
-      activityType: entry.record.activityType,
-      category: entry.category,
-      points: entry.value,
-      status: entry.status,
-      reviewedAt: entry.reviewedAt,
-      rejectedReason: entry.rejectedReason,
-      reviewer: entry.reviewer,
-      cycle: entry.record.cycle,
+      groups: record.user.groups.map((item) => item.group),
+      recordCreatedAt: record.createdAt,
+      eventDate: record.eventDate,
+      eventName: record.eventName,
+      activityType: record.activityType,
+      category: record.entries.length === 1 ? record.entries[0].category : 'MULTIPLE',
+      points: record.entries.reduce((sum, entry) => sum + entry.value, 0),
+      status,
+      reviewedAt: reviewedEntry?.reviewedAt ?? null,
+      rejectedReason:
+        record.entries.find((entry) => entry.rejectedReason)?.rejectedReason ?? null,
+      reviewer: reviewedEntry?.reviewer ?? null,
+      cycle: record.cycle,
       cycleLabel,
       file,
+      entries: record.entries.map((entry) => ({
+        ...entry,
+        activityType: entry.activityType ?? record.activityType,
+      })),
     };
   }).filter((row) => {
     if (!group.trim()) return true;

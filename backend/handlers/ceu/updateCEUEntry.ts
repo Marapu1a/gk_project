@@ -67,12 +67,24 @@ export async function updateCEUEntryHandler(
           cycleId: true,
           fileId: true,
           eventName: true,
+          entries: {
+            select: {
+              id: true,
+              category: true,
+              value: true,
+              status: true,
+            },
+          },
           user: { select: { email: true } },
         },
       },
     },
   });
   if (!entry) return reply.code(404).send({ error: 'Запись не найдена' });
+
+  if (entry.record.entries.some((recordEntry) => recordEntry.status === 'SPENT')) {
+    return reply.code(400).send({ error: 'Статус SPENT необратим' });
+  }
 
   if (entry.record.userId === reviewerId) {
     return reply.code(403).send({ error: 'Нельзя редактировать свои записи' });
@@ -95,7 +107,7 @@ export async function updateCEUEntryHandler(
 
   const res = await prisma.$transaction(async (tx) => {
     const updateResult = await tx.cEUEntry.updateMany({
-      where: { id, status: { not: 'SPENT' } },
+      where: { recordId: entry.record.id, status: { not: 'SPENT' } },
       data: {
         status,
         reviewedAt: new Date(),
@@ -107,20 +119,6 @@ export async function updateCEUEntryHandler(
     if (updateResult.count === 0) return updateResult;
 
     if (status === 'REJECTED' && deleteFile && entry.record.fileId) {
-      await tx.cEUEntry.updateMany({
-        where: {
-          recordId: entry.record.id,
-          id: { not: id },
-          status: { not: 'SPENT' },
-        },
-        data: {
-          status,
-          reviewedAt: new Date(),
-          rejectedReason: reason,
-          reviewerId,
-        },
-      });
-
       const file = await tx.uploadedFile.findUnique({
         where: { fileId: entry.record.fileId },
         select: { id: true, fileId: true },
@@ -161,8 +159,8 @@ export async function updateCEUEntryHandler(
               : 'Отклонил CEU-баллы',
         details: [
           `Запись: ${entry.record.eventName || entry.record.id}`,
-          `Категория: ${entry.category}`,
-          `Баллы: ${entry.value}`,
+          `Категории: ${entry.record.entries.map((item) => item.category).join(', ')}`,
+          `Всего баллов: ${entry.record.entries.reduce((sum, item) => sum + item.value, 0)}`,
           status === 'REJECTED' ? `Причина: ${reason}` : null,
           deleteFile ? 'Файл удален' : null,
           notifyUser ? 'Пользователь уведомлен' : 'Без уведомления',
@@ -190,7 +188,7 @@ export async function updateCEUEntryHandler(
   return reply.send({
     success: true,
     updated: {
-      id,
+      id: entry.record.id,
       status,
       rejectedReason: status === 'REJECTED' ? reason : null,
       fileDeleted: !!fileIdToDelete,

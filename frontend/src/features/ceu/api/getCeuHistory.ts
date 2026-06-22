@@ -1,15 +1,35 @@
-// src/features/ceu/api/getCeuHistory.ts
 import { api } from '@/lib/axios';
+
+export type CeuCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
+export type CeuActivityType =
+  | 'TRAINING_ATTENDANCE'
+  | 'PRESENTATION'
+  | 'PUBLICATION'
+  | 'TEACHING';
+export type CeuRecordStatus =
+  | 'UNCONFIRMED'
+  | 'CONFIRMED'
+  | 'PARTIALLY_CONFIRMED'
+  | 'REJECTED'
+  | 'SPENT';
+
+export interface CeuHistoryEntry {
+  id: string;
+  category: CeuCategory;
+  activityType: CeuActivityType | null;
+  value: number;
+  status: CeuRecordStatus;
+  rejectedReason: string | null;
+}
 
 export interface CeuHistoryItem {
   id: string;
-  category: 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
-  value: number;
-  status: 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'SPENT';
-  rejectedReason: string;
+  totalValue: number;
+  status: CeuRecordStatus;
+  rejectedReason: string | null;
   eventDate: string;
   eventName: string;
-  activityType: 'TRAINING_ATTENDANCE' | 'PRESENTATION' | 'PUBLICATION' | 'TEACHING' | null;
+  entries: CeuHistoryEntry[];
   file: {
     id: string;
     fileId: string;

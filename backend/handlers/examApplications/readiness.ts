@@ -21,6 +21,7 @@ import {
 } from '../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
 import { resolveDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
+import { ensureRenewalDocumentInheritance } from '../documentReview/ensureRenewalDocumentInheritance';
 
 const RU_BY_LEVEL: Record<TargetLevel, 'Инструктор' | 'Куратор' | 'Супервизор'> = {
   INSTRUCTOR: 'Инструктор',
@@ -99,7 +100,14 @@ function isSupervisionReady(
   );
 }
 
-function requiredPaymentTypes(targetLevel: TargetLevel | null | undefined) {
+function requiredPaymentTypes(
+  targetLevel: TargetLevel | null | undefined,
+  isRenewal: boolean,
+) {
+  if (isRenewal) {
+    return [PaymentType.RENEWAL];
+  }
+
   if (targetLevel === TargetLevel.SUPERVISOR) {
     return [PaymentType.DOCUMENT_REVIEW, PaymentType.EXAM_ACCESS];
   }
@@ -166,10 +174,18 @@ export async function buildExamReadiness(userId: string) {
           ? renewalSupervisionRequirementsByGroup[targetGroupName]
           : supervisionRequirementsByGroup[targetGroupName]) ?? null);
 
+  await prisma.$transaction((tx) =>
+    ensureRenewalDocumentInheritance(tx, userId, {
+      id: activeCycle.id,
+      type: activeCycle.type,
+    }),
+  );
+
   const [
     ceuEntries,
     payments,
     documentRequests,
+    platformCertificate,
   ] = await Promise.all([
     prisma.cEUEntry.findMany({
       where: { status: RecordStatus.CONFIRMED, record: { cycleId: activeCycle.id } },
@@ -184,6 +200,7 @@ export async function buildExamReadiness(userId: string) {
             PaymentType.REGISTRATION,
             PaymentType.DOCUMENT_REVIEW,
             PaymentType.EXAM_ACCESS,
+            PaymentType.RENEWAL,
           ],
         },
         OR: [{ targetLevel: activeCycle.targetLevel }, { targetLevel: null }],
@@ -222,6 +239,11 @@ export async function buildExamReadiness(userId: string) {
         },
       },
       take: 10,
+    }),
+    prisma.certificate.findFirst({
+      where: { userId },
+      orderBy: { issuedAt: 'desc' },
+      select: { id: true },
     }),
   ]);
 
@@ -290,19 +312,25 @@ export async function buildExamReadiness(userId: string) {
     );
   }
 
-  const documentsReady = documentRequestStatus === RecordStatus.CONFIRMED;
+  const documentsReady =
+    documentRequestStatus === RecordStatus.CONFIRMED ||
+    (isRenewal && Boolean(platformCertificate));
   if (!documentsReady) missing.push('Документы не подтверждены');
 
   const fullPackage = payments.find(
     (payment) => payment.type === PaymentType.FULL_PACKAGE && payment.status === PaymentStatus.PAID,
   );
-  const paymentItems: PaymentCheck[] = requiredPaymentTypes(activeCycle.targetLevel).map((type) => {
+  const paymentItems: PaymentCheck[] = requiredPaymentTypes(
+    activeCycle.targetLevel,
+    isRenewal,
+  ).map((type) => {
     const directPaid = payments.find(
       (payment) => payment.type === type && payment.status === PaymentStatus.PAID,
     );
     const directLatest = payments.find((payment) => payment.type === type) ?? null;
-    const paidPayment = fullPackage ?? directPaid ?? null;
-    const requestedPayment = fullPackage ?? directLatest ?? null;
+    const packagePayment = isRenewal ? null : fullPackage;
+    const paidPayment = packagePayment ?? directPaid ?? null;
+    const requestedPayment = packagePayment ?? directLatest ?? null;
 
     return {
       type,

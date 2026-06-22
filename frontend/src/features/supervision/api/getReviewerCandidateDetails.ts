@@ -71,6 +71,10 @@ export type ReviewerCandidateDetailsResponse = {
     canReviewMentorship: boolean;
     requestedKind: ReviewerCandidateKind;
   };
+  documentReview: {
+    status: RecordStatus | 'PARTIALLY_CONFIRMED' | null;
+    ready: boolean;
+  };
   ceuSummary: {
     required: {
       ethics: number;

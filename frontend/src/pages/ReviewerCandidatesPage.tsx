@@ -234,8 +234,15 @@ function ReviewerCandidatesContent() {
               <tbody>
                 {query.data.items.map((request) => (
                   <tr key={request.id} className="border-b border-[#DCE8EC] last:border-b-0">
-                    <td className="px-4 py-3 font-extrabold">
-                      {request.candidate.fullName || request.candidate.email}
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRequest(request)}
+                        className="cursor-pointer text-left font-extrabold transition-colors hover:text-[#526C9D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F305E]"
+                        title="Открыть заявку"
+                      >
+                        {request.candidate.fullName || request.candidate.email}
+                      </button>
                     </td>
                     <td className="px-4 py-3">{request.candidate.email}</td>
                     <td className="px-4 py-3 text-center">{request.totals.total}</td>

@@ -89,12 +89,16 @@ export default function DocumentReviewPage() {
 
   const documentPayment = payments?.find((payment) => payment.type === 'DOCUMENT_REVIEW');
   const paymentStatus = documentPayment?.status ?? 'UNPAID';
+  const isRenewalCycle = currentUser?.activeCycle?.type === 'RENEWAL';
   const isDocumentReviewPaid =
+    isRenewalCycle ||
     paymentStatus === 'PAID' ||
     Boolean(
       payments?.some((payment) => payment.type === 'FULL_PACKAGE' && payment.status === 'PAID'),
     );
-  const paymentStatusLabel = isDocumentReviewPaid
+  const paymentStatusLabel = isRenewalCycle
+    ? 'Не требуется'
+    : isDocumentReviewPaid
     ? paymentStatusLabels.PAID
     : paymentStatusLabels[paymentStatus];
 

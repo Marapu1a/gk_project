@@ -4,6 +4,7 @@ import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisi
 import { useGetDocReviewReq } from '@/features/documentReview/hooks/useGetDocReviewReq';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
+import { useMyCertificates } from '@/features/certificate/hooks/useMyCertificates';
 import type { CeuSummaryResponse } from '@/features/ceu/api/getCeuSummary';
 import type { SupervisionSummaryResponse } from '@/features/supervision/api/getSupervisionSummary';
 
@@ -50,14 +51,12 @@ export function useQualificationProgress(
   const { data: docReview, isLoading: docLoading } = useGetDocReviewReq();
   const { data: payments, isLoading: paymentsLoading } = useUserPayments();
   const { data: currentUser, isLoading: currentUserLoading } = useCurrentUser();
+  const { data: certificates, isLoading: certificatesLoading } = useMyCertificates();
 
-  // 🔧 нормализуем имя группы
-  const g = (activeGroupName ?? '').toLowerCase().trim();
-  const isSupervisorGroup = g === 'супервизор';
-  const isExperiencedSupervisorGroup = g === 'опытный супервизор';
-
+  // Режим задаёт активный цикл, а не текущая группа пользователя.
+  // Это важно для ресертификации Инструкторов и Кураторов.
   const mode: QualificationMode =
-    isSupervisorGroup || isExperiencedSupervisorGroup ? 'RENEWAL' : 'EXAM';
+    currentUser?.activeCycle?.type === 'RENEWAL' ? 'RENEWAL' : 'EXAM';
 
   // 👇 целевая группа только из targetLevel (только для EXAM)
   const targetGroup = mode === 'EXAM' && targetLevel ? RU_BY_LEVEL[targetLevel] : null;
@@ -65,80 +64,53 @@ export function useQualificationProgress(
   // === CEU ===
   let ceuReady = false;
 
-  if (ceuSummary?.percent) {
-    const p = ceuSummary.percent as any;
-
-    if (isSupervisorGroup || isExperiencedSupervisorGroup) {
-      // супервизоры / опытные супервизоры — годовая норма 4+4+4+12
-      ceuReady =
-        p.ethics >= 100 &&
-        p.cultDiver >= 100 &&
-        p.supervision >= 100 &&
-        p.general >= 100;
-    } else {
-      // обычный экзаменационный путь
-      const supervisionOk =
-        targetGroup === 'Супервизор' ? p.supervision >= 100 : true;
-
-      ceuReady =
-        p.ethics >= 100 &&
-        p.cultDiver >= 100 &&
-        supervisionOk &&
-        p.general >= 100;
-    }
-  } else {
-    ceuReady = false;
+  if (ceuSummary?.required) {
+    const required = ceuSummary.required;
+    const usable = ceuSummary.usable;
+    ceuReady = (['ethics', 'cultDiver', 'supervision', 'general'] as const).every(
+      (key) => required[key] <= 0 || usable[key] >= required[key],
+    );
   }
 
   // === Supervision / менторство ===
-  let supervisionReady = false;
+  const isExperiencedSupervisor = activeGroupName === 'Опытный Супервизор';
 
-  if (mode === 'EXAM') {
-    // классический путь: практика + супервизия
-    const p = (supervisionSummary?.percent || {}) as any;
-    supervisionReady = p.practice >= 100 && p.supervision >= 100;
-  } else {
-    // RENEWAL — только супервизоры / опытные супервизоры
-    if (isExperiencedSupervisorGroup) {
-      // опытный супервизор набирает только CEU-баллы
-      supervisionReady = true;
-    } else if (isSupervisorGroup) {
-      // обычный супервизор: смотрим на менторскую шкалу с бэка
-      const mentor = (supervisionSummary as any)?.mentor as
-        | { total: number; required: number; percent: number; pending: number }
-        | null
-        | undefined;
+  // Experienced supervisors have no hour requirements — consistent with buildExamReadiness.
+  let supervisionReady = isExperiencedSupervisor;
 
-      if (mentor && typeof mentor.required === 'number' && mentor.required > 0) {
-        supervisionReady =
-          mentor.percent >= 100 || mentor.total >= mentor.required;
-      } else {
-        supervisionReady = false;
-      }
-    } else {
-      supervisionReady = false;
-    }
+  if (!isExperiencedSupervisor && supervisionSummary?.required) {
+    const required = supervisionSummary.required;
+    const usable = supervisionSummary.usable;
+    supervisionReady =
+      (required.practice <= 0 || usable.practice >= required.practice) &&
+      (required.supervision <= 0 || usable.supervision >= required.supervision) &&
+      (required.supervisor <= 0 || usable.supervisor >= required.supervisor);
   }
 
   // === Документы + платежи ===
-  const isPaid = (type: 'DOCUMENT_REVIEW' | 'EXAM_ACCESS' | 'REGISTRATION' | 'FULL_PACKAGE') =>
+  const isPaid = (
+    type: 'DOCUMENT_REVIEW' | 'EXAM_ACCESS' | 'REGISTRATION' | 'FULL_PACKAGE' | 'RENEWAL',
+  ) =>
     (payments ?? []).some((p) => p.type === type && p.status === 'PAID');
 
   const fullPackagePaid = isPaid('FULL_PACKAGE');
   const registrationPaid = fullPackagePaid || isPaid('REGISTRATION');
-  const documentReviewPaid = fullPackagePaid || isPaid('DOCUMENT_REVIEW');
+  const documentReviewPaid = mode === 'RENEWAL' || fullPackagePaid || isPaid('DOCUMENT_REVIEW');
   const examPaid = fullPackagePaid || isPaid('EXAM_ACCESS');
+  const renewalPaid = isPaid('RENEWAL');
 
   const activeCycleId = currentUser?.activeCycle?.id ?? null;
   const documentsBelongToActiveCycle = activeCycleId
     ? docReview?.cycleId === activeCycleId
     : false;
-  const documentsReady = docReview?.status === 'CONFIRMED' && documentsBelongToActiveCycle;
+  const documentsReady =
+    (docReview?.status === 'CONFIRMED' && documentsBelongToActiveCycle) ||
+    (mode === 'RENEWAL' && Boolean(certificates?.length));
 
   const requiredPaymentsPaid =
     mode === 'EXAM'
       ? registrationPaid && documentReviewPaid && examPaid
-      : documentReviewPaid;
+      : renewalPaid;
 
   // Причины (только EXAM — супервизорам причины не показываем)
   const reasons: string[] = [];
@@ -168,7 +140,13 @@ export function useQualificationProgress(
     documentsReady,
     documentReviewPaid,
     requiredPaymentsPaid,
-    loading: ceuLoading || supervisionLoading || docLoading || paymentsLoading || currentUserLoading,
+    loading:
+      ceuLoading ||
+      supervisionLoading ||
+      docLoading ||
+      paymentsLoading ||
+      currentUserLoading ||
+      certificatesLoading,
     reasons,
     examPaid,
   };

@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { withResolvedDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
+import { ensureRenewalDocumentInheritance } from './ensureRenewalDocumentInheritance';
 
 export async function getDocReviewReq(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -11,8 +12,14 @@ export async function getDocReviewReq(req: FastifyRequest, reply: FastifyReply) 
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId: user.userId, status: 'ACTIVE' },
     orderBy: { startedAt: 'desc' },
-    select: { id: true },
+    select: { id: true, type: true },
   });
+
+  if (activeCycle) {
+    await prisma.$transaction((tx) =>
+      ensureRenewalDocumentInheritance(tx, user.userId, activeCycle),
+    );
+  }
 
   const requests = await prisma.documentReviewRequest.findMany({
     where: { userId: user.userId },

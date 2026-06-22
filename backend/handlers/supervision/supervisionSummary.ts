@@ -121,14 +121,19 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
 
   const targetRu = RU_BY_LEVEL[activeCycle.targetLevel];
   const isRenewal = activeCycle.type === CycleType.RENEWAL;
+  const isExperiencedSupervisor = current === 'Опытный Супервизор';
 
-  const reqSet = isRenewal
-    ? renewalSupervisionRequirementsByGroup[targetRu] ?? null
-    : supervisionRequirementsByGroup[targetRu] ?? null;
+  // Experienced supervisors have no hour requirements for certification or renewal —
+  // consistent with the same bypass in buildExamReadiness.
+  const reqSet = isExperiencedSupervisor
+    ? null
+    : isRenewal
+      ? renewalSupervisionRequirementsByGroup[targetRu] ?? null
+      : supervisionRequirementsByGroup[targetRu] ?? null;
 
-  const shouldShowMentor = isRenewal
+  const shouldShowMentor = !isExperiencedSupervisor && (isRenewal
     ? activeCycle.targetLevel === TargetLevel.SUPERVISOR
-    : current === 'Супервизор';
+    : current === 'Супервизор');
 
   const practiceTypes = [
     PracticeLevel.PRACTICE,

@@ -82,6 +82,10 @@ function statusClass(status: AdminCeuStatus) {
   return 'bg-[var(--color-blue-soft)] text-[#1F305E]';
 }
 
+function categoryLabel(category: AdminCeuHistoryRow['category']) {
+  return category === 'MULTIPLE' ? 'Несколько (см. детали)' : ceuCategoryLabels[category] ?? category;
+}
+
 function downloadBlob(blob: Blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -384,7 +388,7 @@ export default function CeuReviewPage() {
                       </a>
                     </td>
                     <td className="px-4 py-3">{row.cycleLabel || '-'}</td>
-                    <td className="px-4 py-3">{ceuCategoryLabels[row.category] ?? row.category}</td>
+                    <td className="px-4 py-3">{categoryLabel(row.category)}</td>
                     <td className="px-4 py-3 text-center font-extrabold">{row.points}</td>
                     <td className="px-4 py-3 text-center">
                       <span
@@ -506,14 +510,33 @@ function AdminCeuDetailsModal({
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <ReadOnlyField label="Баллы" value={formatNumber(row.points)} />
+              <ReadOnlyField label="Всего баллов" value={formatNumber(row.points)} />
               <ReadOnlyField label="Дата мероприятия" value={formatDate(row.eventDate)} />
             </div>
 
-            <ReadOnlyPlain
-              label="Категория"
-              value={ceuCategoryLabels[row.category] ?? row.category}
-            />
+            <div>
+              <div className="dashboard-v2-small mb-2 font-semibold text-[#1F305E]">
+                Начисленные баллы
+              </div>
+              <div className="overflow-hidden rounded-[10px] border border-[#DCE8EC]">
+                {row.entries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="grid gap-3 border-b border-[#DCE8EC] px-3 py-3 last:border-b-0 sm:grid-cols-[minmax(0,190px)_48px_minmax(0,1fr)]"
+                  >
+                    <span className="dashboard-v2-small min-w-0 break-words pr-2 font-semibold leading-[1.25] text-[#1F305E]">
+                      {ceuCategoryLabels[entry.category] ?? entry.category}
+                    </span>
+                    <span className="dashboard-v2-small font-extrabold text-[#1F305E]">
+                      {formatNumber(entry.value)}
+                    </span>
+                    <span className="dashboard-v2-caption leading-snug text-[#6B7894]">
+                      {entry.activityType ? activityTypeLabel(entry.activityType) : '-'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <AdminCeuFilePreview file={row.file} />
           </div>
@@ -522,11 +545,6 @@ function AdminCeuDetailsModal({
             <ReadOnlyField
               label="Название или ведущий тренинга"
               value={displayCeuEventName(row.eventName)}
-            />
-
-            <ReadOnlyPlain
-              label="Тип CEU"
-              value={row.activityType ? activityTypeLabel(row.activityType) : '-'}
             />
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -576,13 +594,12 @@ function AdminCeuDetailsModal({
                       onChange={(event) => setDeleteFile(event.target.checked)}
                       className="h-4 w-4 cursor-pointer"
                     />
-                    Удалить файл у всей CEU-отправки
+                    Удалить файл у всей заявки CEU
                   </label>
                 ) : null}
                 {deleteFile ? (
                   <p className="dashboard-v2-caption text-[#8D96B5]">
-                    Все неиспользованные CEU-строки этой отправки будут отклонены с этим комментарием,
-                    потому что файл общий.
+                    Вся заявка будет отклонена с этим комментарием, потому что файл общий.
                   </p>
                 ) : null}
               </div>

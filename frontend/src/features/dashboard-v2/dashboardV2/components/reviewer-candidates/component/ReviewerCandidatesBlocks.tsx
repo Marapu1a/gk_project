@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
-import { DashboardHelpTooltip } from '@/components/DashboardHelpTooltip';
+import { DashboardHelpPopover } from '@/features/dashboard-guidance';
 import { CandidateRequestDetailsModal } from '@/features/supervision/components/reviewer-candidate-details/CandidateRequestDetailsModal';
 import { useReviewerCandidates } from '@/features/supervision/hooks/useReviewerCandidates';
 import { useReviewerRequests } from '@/features/supervision/hooks/useReviewerRequests';
@@ -137,11 +137,9 @@ export function ReviewerCandidatesBlocks() {
             ]}
           />
           {mode === 'candidates' ? (
-            <DashboardHelpTooltip
-              title="Подтверждение сотрудничества"
-              content={COOPERATION_HELP}
-              align="left"
-            />
+            <DashboardHelpPopover title="Подтверждение сотрудничества" align="left">
+              {COOPERATION_HELP}
+            </DashboardHelpPopover>
           ) : null}
         </div>
 
@@ -217,13 +215,14 @@ function CandidatesTable({
               <th className="rounded-l-[8px] px-4 py-3 font-medium">ФИО</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 text-center font-medium">Дата заявки</th>
-              <th className="rounded-r-[8px] px-4 py-3 text-center font-medium">Состояние</th>
+              <th className="px-4 py-3 text-center font-medium">Состояние</th>
+              <th className="w-[54px] rounded-r-[8px] px-3 py-3" />
             </tr>
           </thead>
           <tbody>
             {candidates.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-5 text-center text-[#6B7894]">
+                <td colSpan={5} className="px-4 py-5 text-center text-[#6B7894]">
                   Кандидатов пока нет.
                 </td>
               </tr>
@@ -236,7 +235,7 @@ function CandidatesTable({
                     {index === firstAcceptedIndex ? (
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           className="border-b border-[#DCE8EC] bg-[#F7F9FA] px-4 py-2 font-extrabold text-[#1F305E]"
                         >
                           Активные кандидаты
@@ -245,31 +244,30 @@ function CandidatesTable({
                     ) : null}
                     <tr className="border-b border-[#DCE8EC] last:border-b-0">
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <ActionArrowButton
-                          onClick={() =>
-                            navigate(`/reviewer/candidates/${kind}/${candidate.userId}`)
-                          }
-                          disabled={isPending}
-                          size={30}
-                          title={
-                            isPending
-                              ? 'Сначала подтвердите сотрудничество'
-                              : 'Открыть детали кандидата'
-                          }
-                          aria-label={
-                            isPending
-                              ? 'Сначала подтвердите сотрудничество'
-                              : 'Открыть детали кандидата'
-                          }
-                        />
+                      {isPending ? (
                         <div className="min-w-0 leading-[1.15]">
                           <div className="font-extrabold">{nameLines[0]}</div>
                           {nameLines.slice(1).map((line) => (
                             <div key={line}>{line}</div>
                           ))}
                         </div>
-                      </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(`/reviewer/candidates/${kind}/${candidate.userId}`)
+                          }
+                          className="min-w-0 cursor-pointer text-left leading-[1.15] transition-colors hover:text-[#526C9D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F305E]"
+                          title="Открыть детали кандидата"
+                        >
+                          <span className="block font-extrabold">{nameLines[0]}</span>
+                          {nameLines.slice(1).map((line) => (
+                            <span key={line} className="block">
+                              {line}
+                            </span>
+                          ))}
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-3">{candidate.email}</td>
                     <td className="px-4 py-3 text-center">
@@ -302,6 +300,25 @@ function CandidatesTable({
                           </span>
                         </div>
                       )}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <ActionArrowButton
+                        onClick={() =>
+                          navigate(`/reviewer/candidates/${kind}/${candidate.userId}`)
+                        }
+                        disabled={isPending}
+                        size={30}
+                        title={
+                          isPending
+                            ? 'Сначала подтвердите сотрудничество'
+                            : 'Открыть детали кандидата'
+                        }
+                        aria-label={
+                          isPending
+                            ? 'Сначала подтвердите сотрудничество'
+                            : 'Открыть детали кандидата'
+                        }
+                      />
                     </td>
                     </tr>
                   </Fragment>
@@ -340,9 +357,14 @@ function ReviewQueue({
           className="grid items-center gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_150px_90px_36px]"
         >
           <div>
-            <div className="dashboard-v2-text font-extrabold text-[#1F305E]">
+            <button
+              type="button"
+              onClick={() => onOpen(request)}
+              className="dashboard-v2-text cursor-pointer text-left font-extrabold text-[#1F305E] transition-colors hover:text-[#526C9D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F305E]"
+              title="Открыть заявку"
+            >
               {request.candidate.fullName || request.candidate.email}
-            </div>
+            </button>
             <div className="dashboard-v2-caption text-[#6B7894]">{request.candidate.email}</div>
           </div>
           <div className="dashboard-v2-caption text-[#1F305E]">

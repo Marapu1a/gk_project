@@ -1,7 +1,13 @@
 import { api } from '@/lib/axios';
 
 export type AdminCeuCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
-export type AdminCeuStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'SPENT';
+export type AdminCeuDisplayCategory = AdminCeuCategory | 'MULTIPLE';
+export type AdminCeuStatus =
+  | 'UNCONFIRMED'
+  | 'CONFIRMED'
+  | 'PARTIALLY_CONFIRMED'
+  | 'REJECTED'
+  | 'SPENT';
 export type AdminCeuActivityType =
   | 'TRAINING_ATTENDANCE'
   | 'PRESENTATION'
@@ -45,7 +51,7 @@ export type AdminCeuHistoryRow = {
   eventDate: string;
   eventName: string;
   activityType: AdminCeuActivityType;
-  category: AdminCeuCategory;
+  category: AdminCeuDisplayCategory;
   points: number;
   status: AdminCeuStatus;
   reviewedAt: string | null;
@@ -65,6 +71,16 @@ export type AdminCeuHistoryRow = {
     mimeType: string;
     createdAt: string;
   } | null;
+  entries: {
+    id: string;
+    category: AdminCeuCategory;
+    activityType: AdminCeuActivityType;
+    value: number;
+    status: AdminCeuStatus;
+    reviewedAt: string | null;
+    rejectedReason: string | null;
+    reviewer: { id: string; email: string; fullName: string | null } | null;
+  }[];
 };
 
 export type AdminCeuHistoryResponse = {

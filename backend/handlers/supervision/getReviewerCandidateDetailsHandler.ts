@@ -23,6 +23,7 @@ import {
   supervisionRequirementsByGroup,
   type SupervisionRequirement,
 } from '../../utils/supervisionRequirements';
+import { resolveDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
 
 type CandidateKind = 'supervision' | 'mentorship';
 type Query = { kind?: CandidateKind; relationId?: string };
@@ -538,6 +539,8 @@ export async function getReviewerCandidateDetailsHandler(
     distributionRecords,
     confirmedMentorHours,
     pendingMentorHours,
+    documentReviewRequest,
+    platformCertificate,
   ] = await Promise.all([
     prisma.cEUEntry.findMany({
       where: { status: RecordStatus.CONFIRMED, record: { cycleId: activeCycle.id } },
@@ -587,6 +590,19 @@ export async function getReviewerCandidateDetailsHandler(
       },
       _sum: { value: true },
     }),
+    prisma.documentReviewRequest.findFirst({
+      where: { userId: candidateId, cycleId: activeCycle.id },
+      orderBy: { submittedAt: 'desc' },
+      select: {
+        status: true,
+        documentFiles: { select: { status: true } },
+      },
+    }),
+    prisma.certificate.findFirst({
+      where: { userId: candidateId },
+      orderBy: { issuedAt: 'desc' },
+      select: { id: true },
+    }),
   ]);
 
   const ceuUsable = aggregateCeu(confirmedCeu);
@@ -602,6 +618,12 @@ export async function getReviewerCandidateDetailsHandler(
   const mentorRequired = supervisionRequired?.supervisor ?? 0;
   const mentorTotal = round2(confirmedMentorHours._sum.value ?? 0);
   const mentorPending = round2(pendingMentorHours._sum.value ?? 0);
+  const documentReviewStatus = documentReviewRequest
+    ? resolveDocumentReviewRequestStatus(documentReviewRequest)
+    : null;
+  const documentsReady =
+    documentReviewStatus === RecordStatus.CONFIRMED ||
+    (activeCycle.type === CycleType.RENEWAL && Boolean(platformCertificate));
 
   return reply.send({
     candidate: {
@@ -618,6 +640,10 @@ export async function getReviewerCandidateDetailsHandler(
       canReviewSupervision: capabilities.canReviewSupervision,
       canReviewMentorship: capabilities.canReviewMentorship,
       requestedKind,
+    },
+    documentReview: {
+      status: documentsReady ? RecordStatus.CONFIRMED : documentReviewStatus,
+      ready: documentsReady,
     },
     ceuSummary: {
       required: ceuRequired,

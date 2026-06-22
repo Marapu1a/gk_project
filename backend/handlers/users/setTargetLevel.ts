@@ -1,6 +1,7 @@
 // src/handlers/users/setTargetLevel.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { ensureRenewalDocumentInheritance } from '../documentReview/ensureRenewalDocumentInheritance';
 import { TargetLevel, CycleType } from '@prisma/client';
 import {
   supervisionRequirementsByGroup,
@@ -395,7 +396,7 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
       });
     }
 
-    await tx.certificationCycle.create({
+    const createdCycle = await tx.certificationCycle.create({
       data: {
         userId: id,
         targetLevel,
@@ -406,31 +407,71 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
       select: { id: true },
     });
 
+    await ensureRenewalDocumentInheritance(tx, id, {
+      id: createdCycle.id,
+      type: cycleType,
+    });
+
     const updated = await tx.user.update({
       where: { id },
       data: { targetLevel, targetLockRank: activeRank },
       select: { id: true, targetLevel: true, targetLockRank: true },
     });
 
-    const reset = await tx.payment.updateMany({
-      where: {
-        userId: id,
-        type: { in: ['DOCUMENT_REVIEW', 'REGISTRATION', 'EXAM_ACCESS', 'FULL_PACKAGE'] },
-      },
-      data: {
-        status: 'UNPAID',
-        targetLevel,
-        confirmedAt: null,
-        requestedAt: null,
-        comment: `Сброшено из-за смены цели на ${modeRu}: ${targetLevel}`,
-      },
-    });
+    let resetCount = 0;
+
+    if (cycleType === CycleType.RENEWAL) {
+      const renewalPayment = await tx.payment.findFirst({
+        where: { userId: id, type: 'RENEWAL' },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true },
+      });
+
+      if (renewalPayment) {
+        await tx.payment.update({
+          where: { id: renewalPayment.id },
+          data: {
+            status: 'UNPAID',
+            targetLevel,
+            confirmedAt: null,
+            requestedAt: null,
+            comment: `Подготовлено для нового цикла ресертификации: ${targetLevel}`,
+          },
+        });
+        resetCount = 1;
+      } else {
+        await tx.payment.create({
+          data: {
+            userId: id,
+            type: 'RENEWAL',
+            status: 'UNPAID',
+            targetLevel,
+            comment: `Создано для цикла ресертификации: ${targetLevel}`,
+          },
+        });
+      }
+    } else {
+      const reset = await tx.payment.updateMany({
+        where: {
+          userId: id,
+          type: { in: ['DOCUMENT_REVIEW', 'REGISTRATION', 'EXAM_ACCESS', 'FULL_PACKAGE'] },
+        },
+        data: {
+          status: 'UNPAID',
+          targetLevel,
+          confirmedAt: null,
+          requestedAt: null,
+          comment: `Сброшено из-за смены цели на ${modeRu}: ${targetLevel}`,
+        },
+      });
+      resetCount = reset.count;
+    }
 
     if (adminIds.length) {
       const targetName = TARGET_RU_BY_LEVEL[targetLevel];
       const message =
         `Пользователь ${dbUser.fullName ?? dbUser.email ?? dbUser.id} ` +
-        `изменил цель на «${targetName}» (${modeRu}). Сброшено платежей: ${reset.count}.`;
+        `изменил цель на «${targetName}» (${modeRu}). Обновлено платежей: ${resetCount}.`;
 
       await tx.notification.createMany({
         data: adminIds.map((adminId) => ({
@@ -442,7 +483,7 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
       });
     }
 
-    return { updated, resetCount: reset.count };
+    return { updated, resetCount };
   });
 
   return reply.send({ ...updated, resetCount, goalMode });
