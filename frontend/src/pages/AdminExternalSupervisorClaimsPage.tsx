@@ -82,32 +82,31 @@ function ActiveRowActions({
   // Assigned to me — PENDING stage: confirm/reject
   if (isPending && isAssignedToMe) {
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1">
         <button
           type="button"
           disabled={isBusy}
           onClick={() => onDecide(user, 'APPROVED')}
-          className="btn flex h-[34px] items-center gap-1.5 rounded-[8px] bg-[var(--color-green-brand)] px-3 text-[13px] font-extrabold text-white transition hover:brightness-95 disabled:opacity-45"
+          className="btn flex h-[34px] w-[34px] items-center justify-center rounded-[8px] bg-[var(--color-green-brand)] text-white transition hover:brightness-95 disabled:opacity-45"
           title="Подтвердить квалификацию"
         >
-          <Check size={15} strokeWidth={2.5} />
-          Подтвердить
+          <Check size={16} strokeWidth={2.5} />
         </button>
         <button
           type="button"
           disabled={isBusy}
           onClick={() => onDecide(user, 'REJECTED')}
-          className="btn flex h-[34px] items-center gap-1.5 rounded-[8px] border border-[var(--color-danger)] bg-white px-3 text-[13px] font-extrabold text-[var(--color-danger)] transition hover:bg-[var(--color-danger)] hover:text-white disabled:opacity-45"
-          title="Не подтверждать квалификацию"
+          className="btn flex h-[34px] w-[34px] items-center justify-center rounded-[8px] border border-[var(--color-danger)] bg-white text-[var(--color-danger)] transition hover:bg-[var(--color-danger)] hover:text-white disabled:opacity-45"
+          title="Отклонить"
         >
-          <X size={15} strokeWidth={2.5} />
-          Отклонить
+          <X size={16} strokeWidth={2.5} />
         </button>
+        <div className="mx-1 h-5 w-px bg-[#D7E2E7]" />
         <button
           type="button"
           disabled={isBusy}
           onClick={() => onAssign(user, 'unassign')}
-          className="btn flex h-[34px] items-center gap-1 rounded-[8px] px-2 text-[#8D96B5] transition hover:text-blue-dark disabled:opacity-45"
+          className="btn flex h-[34px] w-[34px] items-center justify-center rounded-[8px] text-[#B8C0D1] transition hover:text-[#8D96B5] disabled:opacity-45"
           title="Освободить обращение"
         >
           <Unlock size={14} strokeWidth={2} />
@@ -119,24 +118,24 @@ function ActiveRowActions({
   // Assigned to me — APPROVED stage: setup complete
   if (isApproved && isAssignedToMe) {
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1">
         <button
           type="button"
           disabled={isBusy}
           onClick={() => onSetupComplete(user)}
-          className="btn flex h-[34px] items-center gap-1.5 rounded-[8px] bg-[var(--color-green-brand)] px-3 text-[13px] font-extrabold text-white transition hover:brightness-95 disabled:opacity-45"
+          className="btn flex h-[34px] w-[34px] items-center justify-center rounded-[8px] bg-[var(--color-green-brand)] text-white transition hover:brightness-95 disabled:opacity-45"
+          title="Настройка завершена — разблокировать пользователя"
         >
-          <Check size={15} strokeWidth={2.5} />
-          Настройка завершена
+          <Check size={16} strokeWidth={2.5} />
         </button>
         <button
           type="button"
           disabled={isBusy}
           onClick={() => onDecide(user, 'REJECTED')}
-          className="btn flex h-[34px] items-center gap-1.5 rounded-[8px] border border-[var(--color-danger)] bg-white px-3 text-[13px] font-extrabold text-[var(--color-danger)] transition hover:bg-[var(--color-danger)] hover:text-white disabled:opacity-45"
+          className="btn flex h-[34px] w-[34px] items-center justify-center rounded-[8px] border border-[var(--color-danger)] bg-white text-[var(--color-danger)] transition hover:bg-[var(--color-danger)] hover:text-white disabled:opacity-45"
           title="Отклонить"
         >
-          <X size={15} strokeWidth={2.5} />
+          <X size={16} strokeWidth={2.5} />
         </button>
       </div>
     );
