@@ -1,21 +1,24 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Check, X } from 'lucide-react';
+import { Check, X, UserCheck, Unlock } from 'lucide-react';
 
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 import { PageNav } from '@/components/PageNav';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import {
   useExternalSupervisorClaims,
   useUpdateExternalSupervisorClaim,
+  useAssignExternalSupervisorClaim,
 } from '@/features/admin/hooks/useExternalSupervisorClaims';
 import type { ExternalSupervisorClaimRow } from '@/features/admin/api/externalSupervisorClaims';
 
 const statusLabels = {
   PENDING: 'Ожидает проверки',
-  APPROVED: 'Подтверждено',
+  APPROVED: 'Квалификация подтверждена',
+  SETUP_COMPLETE: 'Настройка завершена',
   REJECTED: 'Не подтверждено',
 } as const;
 
@@ -26,36 +29,186 @@ function formatDateTime(value: string | null) {
   return date.toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+type ActiveRowActionsProps = {
+  user: ExternalSupervisorClaimRow;
+  currentAdminId: string;
+  onAssign: (user: ExternalSupervisorClaimRow, action: 'assign' | 'unassign') => void;
+  onDecide: (user: ExternalSupervisorClaimRow, status: 'APPROVED' | 'REJECTED') => void;
+  onSetupComplete: (user: ExternalSupervisorClaimRow) => void;
+  isBusy: boolean;
+};
+
+function ActiveRowActions({
+  user,
+  currentAdminId,
+  onAssign,
+  onDecide,
+  onSetupComplete,
+  isBusy,
+}: ActiveRowActionsProps) {
+  const isAssignedToMe = user.externalSupervisorClaimAssignedTo === currentAdminId;
+  const isAssignedToOther =
+    user.externalSupervisorClaimAssignedTo !== null && !isAssignedToMe;
+  const isPending = user.externalSupervisorClaimStatus === 'PENDING';
+  const isApproved = user.externalSupervisorClaimStatus === 'APPROVED';
+
+  // Not yet taken by anyone
+  if (!user.externalSupervisorClaimAssignedTo) {
+    return (
+      <button
+        type="button"
+        disabled={isBusy}
+        onClick={() => onAssign(user, 'assign')}
+        className="btn flex h-[34px] items-center gap-1.5 rounded-[8px] bg-[var(--color-blue-dark)] px-3 text-[13px] font-extrabold text-white transition hover:brightness-95 disabled:opacity-45"
+      >
+        <UserCheck size={15} strokeWidth={2.4} />
+        Взять в работу
+      </button>
+    );
+  }
+
+  // Taken by another admin
+  if (isAssignedToOther) {
+    return (
+      <span className="dashboard-v2-caption text-[#8D96B5]" title={user.assignedAdmin?.email}>
+        {isApproved ? 'Настраивает: ' : 'Обрабатывает: '}
+        <strong className="text-blue-dark">
+          {user.assignedAdmin?.fullName ?? user.assignedAdmin?.email ?? '—'}
+        </strong>
+      </span>
+    );
+  }
+
+  // Assigned to me — PENDING stage: confirm/reject
+  if (isPending && isAssignedToMe) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={isBusy}
+          onClick={() => onDecide(user, 'APPROVED')}
+          className="btn flex h-[34px] items-center gap-1.5 rounded-[8px] bg-[var(--color-green-brand)] px-3 text-[13px] font-extrabold text-white transition hover:brightness-95 disabled:opacity-45"
+          title="Подтвердить квалификацию"
+        >
+          <Check size={15} strokeWidth={2.5} />
+          Подтвердить
+        </button>
+        <button
+          type="button"
+          disabled={isBusy}
+          onClick={() => onDecide(user, 'REJECTED')}
+          className="btn flex h-[34px] items-center gap-1.5 rounded-[8px] border border-[var(--color-danger)] bg-white px-3 text-[13px] font-extrabold text-[var(--color-danger)] transition hover:bg-[var(--color-danger)] hover:text-white disabled:opacity-45"
+          title="Не подтверждать квалификацию"
+        >
+          <X size={15} strokeWidth={2.5} />
+          Отклонить
+        </button>
+        <button
+          type="button"
+          disabled={isBusy}
+          onClick={() => onAssign(user, 'unassign')}
+          className="btn flex h-[34px] items-center gap-1 rounded-[8px] px-2 text-[#8D96B5] transition hover:text-blue-dark disabled:opacity-45"
+          title="Освободить обращение"
+        >
+          <Unlock size={14} strokeWidth={2} />
+        </button>
+      </div>
+    );
+  }
+
+  // Assigned to me — APPROVED stage: setup complete
+  if (isApproved && isAssignedToMe) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={isBusy}
+          onClick={() => onSetupComplete(user)}
+          className="btn flex h-[34px] items-center gap-1.5 rounded-[8px] bg-[var(--color-green-brand)] px-3 text-[13px] font-extrabold text-white transition hover:brightness-95 disabled:opacity-45"
+        >
+          <Check size={15} strokeWidth={2.5} />
+          Настройка завершена
+        </button>
+        <button
+          type="button"
+          disabled={isBusy}
+          onClick={() => onDecide(user, 'REJECTED')}
+          className="btn flex h-[34px] items-center gap-1.5 rounded-[8px] border border-[var(--color-danger)] bg-white px-3 text-[13px] font-extrabold text-[var(--color-danger)] transition hover:bg-[var(--color-danger)] hover:text-white disabled:opacity-45"
+          title="Отклонить"
+        >
+          <X size={15} strokeWidth={2.5} />
+        </button>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function AdminExternalSupervisorClaimsPageInner() {
   const [mode, setMode] = useState<'active' | 'history'>('active');
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
   const { data, isLoading, error } = useExternalSupervisorClaims(mode, page, perPage);
   const updateClaim = useUpdateExternalSupervisorClaim();
+  const assignClaim = useAssignExternalSupervisorClaim();
+  const { data: currentUser } = useCurrentUser();
   const { confirm } = useConfirm();
+
+  const isBusy = updateClaim.isPending || assignClaim.isPending;
 
   const changeMode = (nextMode: 'active' | 'history') => {
     setMode(nextMode);
     setPage(1);
   };
 
-  const decide = async (user: ExternalSupervisorClaimRow, status: 'APPROVED' | 'REJECTED') => {
+  const handleAssign = async (user: ExternalSupervisorClaimRow, action: 'assign' | 'unassign') => {
+    try {
+      await assignClaim.mutateAsync({ userId: user.id, action });
+      if (action === 'assign') toast.success('Обращение взято в работу');
+      else toast.success('Обращение освобождено');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Не удалось выполнить действие');
+    }
+  };
+
+  const handleDecide = async (
+    user: ExternalSupervisorClaimRow,
+    status: 'APPROVED' | 'REJECTED',
+  ) => {
     const approved = status === 'APPROVED';
     const ok = await confirm({
-      title: approved ? 'Подтвердить квалификацию?' : 'Не подтверждать квалификацию?',
+      title: approved ? 'Подтвердить квалификацию?' : 'Отклонить обращение?',
       message: approved
-        ? 'Перед подтверждением убедитесь, что уровень и дальнейший процесс пользователя настроены в его карточке.'
+        ? 'Квалификация будет отмечена как подтверждённая. Настройте профиль пользователя в его карточке, затем нажмите «Настройка завершена».'
         : 'После этого пользователь снова сможет самостоятельно выбрать обычную цель сертификации.',
-      confirmLabel: approved ? 'Подтвердить' : 'Не подтверждено',
+      confirmLabel: approved ? 'Подтвердить квалификацию' : 'Отклонить',
       variant: approved ? 'default' : 'danger',
     });
     if (!ok) return;
 
     try {
       await updateClaim.mutateAsync({ userId: user.id, status });
-      toast.success(approved ? 'Квалификация подтверждена' : 'Обращение закрыто без подтверждения');
+      toast.success(approved ? 'Квалификация подтверждена' : 'Обращение отклонено');
     } catch (e: any) {
       toast.error(e?.response?.data?.error || 'Не удалось обработать обращение');
+    }
+  };
+
+  const handleSetupComplete = async (user: ExternalSupervisorClaimRow) => {
+    const ok = await confirm({
+      title: 'Завершить настройку?',
+      message:
+        'Убедитесь, что профиль пользователя полностью настроен: группа, уровень и цикл сертификации. После подтверждения интерфейс пользователя будет разблокирован.',
+      confirmLabel: 'Да, настройка завершена',
+    });
+    if (!ok) return;
+
+    try {
+      await updateClaim.mutateAsync({ userId: user.id, status: 'SETUP_COMPLETE' });
+      toast.success('Профиль пользователя разблокирован');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Не удалось завершить настройку');
     }
   };
 
@@ -73,7 +226,7 @@ function AdminExternalSupervisorClaimsPageInner() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="inline-flex rounded-[10px] bg-[#F0F0F0] p-1">
             {([
-              ['active', 'Ожидают проверки'],
+              ['active', 'В работе'],
               ['history', 'История'],
             ] as const).map(([value, label]) => (
               <button
@@ -119,14 +272,15 @@ function AdminExternalSupervisorClaimsPageInner() {
         ) : null}
 
         {data?.users.length ? (
-          <div className="w-full overflow-hidden">
+          <div className="w-full overflow-x-auto">
             <table className="w-full table-fixed border-collapse">
               {mode === 'active' ? (
                 <colgroup>
-                  <col className="w-[30%]" />
-                  <col className="w-[30%]" />
-                  <col className="w-[25%]" />
-                  <col className="w-[15%]" />
+                  <col className="w-[24%]" />
+                  <col className="w-[22%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[26%]" />
                 </colgroup>
               ) : (
                 <colgroup>
@@ -142,6 +296,7 @@ function AdminExternalSupervisorClaimsPageInner() {
                   {mode === 'active' ? (
                     <>
                       <th className="px-4 py-3 text-center dashboard-v2-label">Заявлено</th>
+                      <th className="px-4 py-3 text-center dashboard-v2-label">Этап</th>
                       <th className="rounded-r-[8px] px-4 py-3 text-center dashboard-v2-label">Действия</th>
                     </>
                   ) : (
@@ -168,28 +323,31 @@ function AdminExternalSupervisorClaimsPageInner() {
                         <td className="px-4 py-4 text-center align-middle dashboard-v2-text">
                           {formatDateTime(user.externalSupervisorClaimedAt)}
                         </td>
+                        <td className="px-4 py-4 text-center align-middle">
+                          <span
+                            className={`inline-flex min-h-[24px] items-center rounded-full px-2.5 text-[11px] font-extrabold ${
+                              user.externalSupervisorClaimStatus === 'APPROVED'
+                                ? 'bg-[rgba(165,203,55,0.25)] text-blue-dark'
+                                : 'bg-[var(--color-blue-soft)] text-[#8D96B5]'
+                            }`}
+                          >
+                            {user.externalSupervisorClaimStatus === 'APPROVED'
+                              ? 'Настройка'
+                              : 'Проверка'}
+                          </span>
+                        </td>
                         <td className="px-4 py-3 align-middle">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              disabled={updateClaim.isPending}
-                              onClick={() => decide(user, 'APPROVED')}
-                              className="btn flex h-[34px] w-[38px] items-center justify-center rounded-[8px] bg-[var(--color-green-brand)] text-white transition hover:brightness-95 disabled:opacity-45"
-                              aria-label="Подтвердить квалификацию"
-                              title="Подтвердить квалификацию"
-                            >
-                              <Check size={18} strokeWidth={2.5} />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={updateClaim.isPending}
-                              onClick={() => decide(user, 'REJECTED')}
-                              className="btn flex h-[34px] w-[38px] items-center justify-center rounded-[8px] border border-[var(--color-danger)] bg-white text-[var(--color-danger)] transition hover:bg-[var(--color-danger)] hover:text-white disabled:opacity-45"
-                              aria-label="Не подтверждать квалификацию"
-                              title="Не подтверждать квалификацию"
-                            >
-                              <X size={18} strokeWidth={2.5} />
-                            </button>
+                          <div className="flex items-center justify-center">
+                            {currentUser ? (
+                              <ActiveRowActions
+                                user={user}
+                                currentAdminId={currentUser.id}
+                                onAssign={handleAssign}
+                                onDecide={handleDecide}
+                                onSetupComplete={handleSetupComplete}
+                                isBusy={isBusy}
+                              />
+                            ) : null}
                           </div>
                         </td>
                       </>
@@ -198,7 +356,7 @@ function AdminExternalSupervisorClaimsPageInner() {
                         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                           <span
                             className={`inline-flex min-h-[26px] shrink-0 items-center rounded-full px-3 text-[12px] font-extrabold ${
-                              user.externalSupervisorClaimStatus === 'APPROVED'
+                              user.externalSupervisorClaimStatus === 'SETUP_COMPLETE'
                                 ? 'bg-[rgba(165,203,55,0.25)] text-blue-dark'
                                 : 'bg-[rgba(255,83,100,0.14)] text-[var(--color-danger)]'
                             }`}

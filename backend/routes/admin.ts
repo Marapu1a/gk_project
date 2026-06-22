@@ -15,6 +15,7 @@ import { deleteUserNoteHandler } from '../handlers/admin/deleteUserNoteHandler';
 import {
   getExternalSupervisorClaimsHandler,
   updateExternalSupervisorClaimHandler,
+  assignExternalSupervisorClaimHandler,
 } from '../handlers/admin/externalSupervisorClaims';
 
 // CEU god-mode
@@ -45,6 +46,7 @@ export async function usersRoutes(app: FastifyInstance) {
   app.delete('/admin/users/:id/notes/:noteId', { preHandler: verifyToken }, deleteUserNoteHandler);
   app.get('/admin/users', { preHandler: verifyToken }, getUsersHandler);
   app.get('/admin/external-supervisor-claims', { preHandler: verifyToken }, getExternalSupervisorClaimsHandler);
+  app.post('/admin/external-supervisor-claims/:id/assign', { preHandler: verifyToken }, assignExternalSupervisorClaimHandler);
   app.patch('/admin/external-supervisor-claims/:id', { preHandler: verifyToken }, updateExternalSupervisorClaimHandler);
   app.patch('/admin/users/:id', { preHandler: verifyToken }, updateUserBasicInfoHandler);
   app.patch('/admin/users/:id/visibility', { preHandler: verifyToken }, updateUserVisibilityHandler);

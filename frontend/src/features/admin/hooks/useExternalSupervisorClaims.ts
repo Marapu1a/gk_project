@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  assignExternalSupervisorClaim,
   getExternalSupervisorClaims,
   updateExternalSupervisorClaim,
 } from '../api/externalSupervisorClaims';
@@ -17,15 +18,32 @@ export function useExternalSupervisorClaims(
   });
 }
 
+function invalidateClaims(queryClient: ReturnType<typeof useQueryClient>, userId: string) {
+  queryClient.invalidateQueries({ queryKey: ['admin', 'external-supervisor-claims'] });
+  queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+}
+
+export function useAssignExternalSupervisorClaim() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, action }: { userId: string; action: 'assign' | 'unassign' }) =>
+      assignExternalSupervisorClaim(userId, action),
+    onSuccess: (_, variables) => invalidateClaims(queryClient, variables.userId),
+  });
+}
+
 export function useUpdateExternalSupervisorClaim() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ userId, status }: { userId: string; status: 'APPROVED' | 'REJECTED' }) =>
-      updateExternalSupervisorClaim(userId, status),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'external-supervisor-claims'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'details', variables.userId] });
-    },
+    mutationFn: ({
+      userId,
+      status,
+    }: {
+      userId: string;
+      status: 'APPROVED' | 'REJECTED' | 'SETUP_COMPLETE';
+    }) => updateExternalSupervisorClaim(userId, status),
+    onSuccess: (_, variables) => invalidateClaims(queryClient, variables.userId),
   });
 }

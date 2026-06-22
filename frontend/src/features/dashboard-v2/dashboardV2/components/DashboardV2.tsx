@@ -104,11 +104,9 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
   const hasRequiredPayment = isRenewalCycle ? true : registrationPaid;
   const canUseCertificationContent = hasRequiredPayment;
 
-  // Claim pending/approved — до настройки профиля администратором, оплата и доступ не актуальны.
+  // Claim активен пока не SETUP_COMPLETE/REJECTED — оплата и доступ к функциям не актуальны.
   const claimStatus = user.externalSupervisorClaimStatus;
-  const isExternalClaimActive =
-    claimStatus === 'PENDING' ||
-    (claimStatus === 'APPROVED' && !user.targetLevel);
+  const isExternalClaimActive = claimStatus === 'PENDING' || claimStatus === 'APPROVED';
 
   return (
     <div className="container-fixed p-6">

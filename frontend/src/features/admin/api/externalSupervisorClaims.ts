@@ -1,6 +1,12 @@
 import { api } from '@/lib/axios';
 
-export type ExternalSupervisorClaimStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type ExternalSupervisorClaimStatus = 'PENDING' | 'APPROVED' | 'SETUP_COMPLETE' | 'REJECTED';
+
+export type AssignedAdmin = {
+  id: string;
+  fullName: string;
+  email: string;
+};
 
 export type ExternalSupervisorClaimRow = {
   id: string;
@@ -9,6 +15,8 @@ export type ExternalSupervisorClaimRow = {
   phone: string | null;
   externalSupervisorClaimStatus: ExternalSupervisorClaimStatus;
   externalSupervisorClaimedAt: string | null;
+  externalSupervisorClaimAssignedTo: string | null;
+  assignedAdmin: AssignedAdmin | null;
   externalSupervisorClaimReviewedAt: string | null;
   externalSupervisorClaimReviewedBy: string | null;
 };
@@ -32,9 +40,17 @@ export async function getExternalSupervisorClaims(
   return data;
 }
 
+export async function assignExternalSupervisorClaim(
+  userId: string,
+  action: 'assign' | 'unassign',
+) {
+  const { data } = await api.post(`/admin/external-supervisor-claims/${userId}/assign`, { action });
+  return data;
+}
+
 export async function updateExternalSupervisorClaim(
   userId: string,
-  status: 'APPROVED' | 'REJECTED',
+  status: 'APPROVED' | 'REJECTED' | 'SETUP_COMPLETE',
 ) {
   const { data } = await api.patch(`/admin/external-supervisor-claims/${userId}`, { status });
   return data;

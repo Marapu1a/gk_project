@@ -338,17 +338,27 @@ export function CertificationBlock({ user }: Props) {
   }
 
   if (!targetLevel) {
-    if (user.externalSupervisorClaimStatus === 'PENDING') {
+    const claimStatus = user.externalSupervisorClaimStatus;
+    if (claimStatus === 'PENDING' || claimStatus === 'APPROVED') {
+      const statusText =
+        claimStatus === 'APPROVED'
+          ? 'Квалификация подтверждена. Ожидайте настройки профиля.'
+          : UI_CERTIFICATION_MESSAGES.externalSupervisorPendingStatus;
+      const bodyText =
+        claimStatus === 'APPROVED'
+          ? 'Администратор завершает настройку вашего профиля. Интерфейс будет доступен после завершения.'
+          : UI_CERTIFICATION_MESSAGES.externalSupervisorPending;
+
       return (
         <section className="card-section flex h-full min-h-[340px] w-full flex-col px-5 py-6 shadow-soft">
           <h2 className="dashboard-v2-title mb-5 text-center">
             Сертификация и ресертификация
           </h2>
           <div className="dashboard-v2-text flex flex-1 items-center rounded-[8px] bg-[var(--color-blue-soft)] px-5 py-6 text-center leading-6 text-blue-dark">
-            {UI_CERTIFICATION_MESSAGES.externalSupervisorPending}
+            {bodyText}
           </div>
           <div className="dashboard-v2-label mt-5 flex h-[42px] items-center justify-center rounded-[8px] bg-[#B8C0D1] px-5 text-white">
-            {UI_CERTIFICATION_MESSAGES.externalSupervisorPendingStatus}
+            {statusText}
           </div>
         </section>
       );
