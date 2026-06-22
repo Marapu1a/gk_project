@@ -27,6 +27,7 @@ type Props = {
   targetLevel: PaymentItem['targetLevel'] | null;
   targetLevelName?: string;
   cycleType?: 'CERTIFICATION' | 'RENEWAL' | null;
+  externalClaimActive?: boolean;
 };
 
 function resolveBillingGroup(targetLevelName?: string, activeGroupName?: string): string {
@@ -53,17 +54,19 @@ function PaymentSummary({ subtitle }: { subtitle: string }) {
   );
 }
 
-function PaymentEmptyState() {
+function PaymentEmptyState({ externalClaimActive }: { externalClaimActive?: boolean }) {
   return (
     <section className="card-section flex h-full min-h-[340px] w-full items-center justify-center px-6 py-6 shadow-soft">
       <p className="dashboard-v2-text max-w-[260px] text-center text-[#8D96B5]">
-        Выберите цель сертификации, чтобы продолжить
+        {externalClaimActive
+          ? 'Оплата будет доступна после настройки профиля администратором'
+          : 'Выберите цель сертификации, чтобы продолжить'}
       </p>
     </section>
   );
 }
 
-export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cycleType }: Props) {
+export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cycleType, externalClaimActive }: Props) {
   const { data: payments, isLoading } = useUserPayments();
   const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
 
@@ -129,7 +132,7 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
   }
 
   if (!targetLevelName) {
-    return <PaymentEmptyState />;
+    return <PaymentEmptyState externalClaimActive={externalClaimActive} />;
   }
 
   const fullPackagePayment = preparedPayments.find((p) => p.type === 'FULL_PACKAGE');

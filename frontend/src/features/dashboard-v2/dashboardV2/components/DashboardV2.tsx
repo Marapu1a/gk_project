@@ -104,6 +104,12 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
   const hasRequiredPayment = isRenewalCycle ? true : registrationPaid;
   const canUseCertificationContent = hasRequiredPayment;
 
+  // Claim pending/approved — до настройки профиля администратором, оплата и доступ не актуальны.
+  const claimStatus = user.externalSupervisorClaimStatus;
+  const isExternalClaimActive =
+    claimStatus === 'PENDING' ||
+    (claimStatus === 'APPROVED' && !user.targetLevel);
+
   return (
     <div className="container-fixed p-6">
       <div className="space-y-6">
@@ -121,6 +127,7 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
               targetLevel={user.targetLevel ?? null}
               targetLevelName={targetLevelName}
               cycleType={user.activeCycle?.type ?? null}
+              externalClaimActive={isExternalClaimActive}
             />
           </div>
 
@@ -148,7 +155,7 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
             <CeuOverviewBlock level={user.targetLevel} />
           </>
         ) : (
-          <CertificationAccessPlaceholder />
+          <CertificationAccessPlaceholder externalClaimActive={isExternalClaimActive} />
         )}
 
         {canReviewCandidates ? (
@@ -161,17 +168,29 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
   );
 }
 
-function CertificationAccessPlaceholder() {
+function CertificationAccessPlaceholder({ externalClaimActive }: { externalClaimActive?: boolean }) {
   return (
     <section className="card-section overflow-hidden px-5 py-5 shadow-soft">
       <div className="rounded-[14px] bg-[var(--color-blue-soft)] px-5 py-5 text-[#1F305E]">
-        <h2 className="dashboard-v2-title mb-3">Доступ к функциям сертификации закрыт</h2>
-        <p className="dashboard-v2-text max-w-[760px]">
-          Для доступа к функциям сертификации нужна оплата{' '}
-          <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
-          После подтверждения оплаты администратором вы сможете добавлять CEU-баллы и отправлять
-          часы практики супервизору.
-        </p>
+        {externalClaimActive ? (
+          <>
+            <h2 className="dashboard-v2-title mb-3">Функции сертификации временно недоступны</h2>
+            <p className="dashboard-v2-text max-w-[760px]">
+              Доступ к часам практики и CEU-баллам откроется после того, как администратор
+              подтвердит вашу квалификацию и настроит ваш профиль.
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 className="dashboard-v2-title mb-3">Доступ к функциям сертификации закрыт</h2>
+            <p className="dashboard-v2-text max-w-[760px]">
+              Для доступа к функциям сертификации нужна оплата{' '}
+              <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
+              После подтверждения оплаты администратором вы сможете добавлять CEU-баллы и отправлять
+              часы практики супервизору.
+            </p>
+          </>
+        )}
       </div>
     </section>
   );
