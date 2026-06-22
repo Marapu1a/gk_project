@@ -4,6 +4,7 @@ import type { DashboardGuidanceContext } from './types';
 
 const readyContext: DashboardGuidanceContext = {
   externalSupervisorPending: false,
+  externalSupervisorApproved: false,
   hasTarget: true,
   hasActiveCycle: true,
   isRenewalCycle: false,
@@ -34,6 +35,28 @@ describe('resolveDashboardNextStep', () => {
 
     expect(step.id).toBe('external-supervisor');
     expect(step.action).toBeUndefined();
+  });
+
+  it('shows approved state when claim is approved but admin has not configured the profile yet', () => {
+    const step = resolveDashboardNextStep({
+      ...readyContext,
+      externalSupervisorApproved: true,
+      hasTarget: false,
+      hasActiveCycle: false,
+    });
+
+    expect(step.id).toBe('external-supervisor-approved');
+    expect(step.action).toBeUndefined();
+  });
+
+  it('does not apply approved state once the admin has set a target level', () => {
+    const step = resolveDashboardNextStep({
+      ...readyContext,
+      externalSupervisorApproved: true,
+      hasTarget: true,
+    });
+
+    expect(step.id).toBe('exam-ready');
   });
 
   it('prioritizes reviewer work over the reviewer own certification', () => {

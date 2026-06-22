@@ -16,6 +16,7 @@ export type DashboardGuidanceStep = {
 
 export type DashboardGuidanceContext = {
   externalSupervisorPending: boolean;
+  externalSupervisorApproved: boolean;
   hasTarget: boolean;
   hasActiveCycle: boolean;
   isRenewalCycle: boolean;

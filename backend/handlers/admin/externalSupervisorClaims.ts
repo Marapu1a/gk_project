@@ -1,6 +1,7 @@
-import { ExternalSupervisorClaimStatus } from '@prisma/client';
+import { ExternalSupervisorClaimStatus, NotificationType } from '@prisma/client';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { createNotification } from '../../utils/notifications';
 
 type ListQuery = {
   mode?: 'active' | 'history';
@@ -88,6 +89,11 @@ export async function updateExternalSupervisorClaimHandler(
     ? 'Подтвердил внешнюю квалификацию супервизора'
     : 'Не подтвердил внешнюю квалификацию супервизора';
 
+  const notificationMessage =
+    status === ExternalSupervisorClaimStatus.APPROVED
+      ? 'Ваша квалификация супервизора IBAO (BCBA) подтверждена. Администратор настроит ваш профиль в ближайшее время.'
+      : 'Ваш запрос на подтверждение квалификации IBAO (BCBA) не был подтверждён. Вы можете самостоятельно выбрать путь сертификации.';
+
   const user = await prisma.$transaction(async (tx) => {
     const updated = await tx.user.update({
       where: { id: current.id },
@@ -113,6 +119,12 @@ export async function updateExternalSupervisorClaimHandler(
     });
 
     return updated;
+  });
+
+  await createNotification({
+    userId: current.id,
+    type: NotificationType.USER,
+    message: notificationMessage,
   });
 
   return reply.send(user);

@@ -14,6 +14,10 @@ export function resolveDashboardNextStep(
     return { id: 'external-supervisor', tone: 'info', ...M.externalSupervisor };
   }
 
+  if (context.externalSupervisorApproved && !context.hasTarget) {
+    return { id: 'external-supervisor-approved', tone: 'success', ...M.externalSupervisorApproved };
+  }
+
   if (pendingReviewCount > 0) {
     const onlyMentorship =
       context.reviewer.pendingMentorshipRequests > 0 &&

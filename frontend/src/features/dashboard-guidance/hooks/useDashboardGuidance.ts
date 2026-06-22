@@ -54,6 +54,7 @@ export function useDashboardGuidance({ user, hasCertificationAccess }: Options) 
 
   const step = resolveDashboardNextStep({
     externalSupervisorPending: user.externalSupervisorClaimStatus === 'PENDING',
+    externalSupervisorApproved: user.externalSupervisorClaimStatus === 'APPROVED',
     hasTarget: Boolean(user.targetLevel),
     hasActiveCycle: Boolean(user.activeCycle),
     isRenewalCycle: user.activeCycle?.type === 'RENEWAL',

@@ -4,6 +4,11 @@ export const DASHBOARD_GUIDANCE_MESSAGES = {
     description:
       'Вы указали, что уже являетесь супервизором IBAO (BCBA). Администратор проверит обращение и свяжется с вами по указанным контактам.',
   },
+  externalSupervisorApproved: {
+    title: 'Квалификация подтверждена',
+    description:
+      'Администратор проверил ваши данные и настроит профиль в ближайшее время. Следите за уведомлениями.',
+  },
   reviewerRequests: {
     title: 'Проверьте новые заявки',
     description: (count: number) =>
