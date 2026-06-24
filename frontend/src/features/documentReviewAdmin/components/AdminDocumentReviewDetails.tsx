@@ -488,11 +488,15 @@ function DocumentFileCard({
   const canReject = item.status !== 'REJECTED' && item.status !== 'DELETED';
   const canSoftDelete = item.status !== 'DELETED';
 
+  const toneClass = hasDeletionRequest
+    ? 'border-[var(--color-danger)] bg-white'
+    : item.status === 'CONFIRMED'
+      ? 'border-[var(--color-green-light)] bg-[rgba(165,203,55,0.12)]'
+      : 'border-[var(--color-blue-soft)] bg-white';
+
   return (
     <article
-      className={`grid gap-4 rounded-[14px] border bg-white p-4 shadow-[0_1px_8px_rgba(31,48,94,0.08)] md:grid-cols-[96px_minmax(0,1fr)_220px] ${
-        hasDeletionRequest ? 'border-[var(--color-danger)]' : 'border-[var(--color-blue-soft)]'
-      }`}
+      className={`grid gap-4 rounded-[14px] border p-4 shadow-[0_1px_8px_rgba(31,48,94,0.08)] md:grid-cols-[96px_minmax(0,1fr)_220px] ${toneClass}`}
     >
       <div className="flex items-center justify-center">
         {item.status === 'DELETED' ? (

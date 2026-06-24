@@ -5,13 +5,14 @@ import type { CurrentUser } from '../../auth/api/me';
 export type UpdateMePayload = Partial<{
   fullName: string;
   fullNameLatin: string;
-  phone: string;
-  birthDate: string; // 'YYYY-MM-DD' или ISO
-  country: string;
-  city: string;
   avatarUrl: string;
-  bio: string;
-  ibaoId: string;
+  // Очищаемые поля: null очищает значение в БД.
+  phone: string | null;
+  birthDate: string | null; // 'YYYY-MM-DD' или ISO
+  country: string | null;
+  city: string | null;
+  bio: string | null;
+  ibaoId: string | null;
 }>;
 
 export async function updateMe(payload: UpdateMePayload): Promise<CurrentUser> {

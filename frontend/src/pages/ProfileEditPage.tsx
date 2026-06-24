@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { isValidPhoneNumber } from 'libphonenumber-js';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 import { PageNav } from '@/components/PageNav';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import { useUpdateMe } from '@/features/user/hooks/useUpdateMe';
@@ -14,7 +17,11 @@ import {
   buildFullNameRu,
   splitFullName,
 } from '@/features/user/utils/name';
-import { normalizePhone } from '@/features/user/utils/phone';
+import { normalizePhone } from '@/shared/validation/profileFields';
+import {
+  profileFormSchema,
+  type ProfileFormValues,
+} from '@/features/user/validation/profileSchema';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 function toDateInput(value?: string | null) {
@@ -40,7 +47,7 @@ export default function ProfileEditPage() {
   const archiveRequest = useRequestProfileArchive();
   const { confirm } = useConfirm();
 
-  const initialForm = useMemo(() => {
+  const defaultValues = useMemo<ProfileFormValues>(() => {
     const namesRu = splitFullName(user?.fullName);
     const namesLatin = splitFullName((user as any)?.fullNameLatin);
     const middleName = namesRu.middleName || '';
@@ -48,7 +55,7 @@ export default function ProfileEditPage() {
     return {
       firstName: namesRu.firstName,
       lastName: namesRu.lastName,
-      middleName,
+      middleName: middleName === '-' ? '' : middleName,
       noMiddleName: !middleName || middleName === '-',
       firstNameLatin: namesLatin.firstName,
       lastNameLatin: namesLatin.lastName,
@@ -61,50 +68,47 @@ export default function ProfileEditPage() {
     };
   }, [user]);
 
-  const [form, setForm] = useState(initialForm);
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+    mode: 'onSubmit',
+    defaultValues,
+  });
 
   useEffect(() => {
-    setForm(initialForm);
-  }, [initialForm]);
+    reset(defaultValues);
+  }, [defaultValues, reset]);
 
-  const handleSave = async () => {
-    const firstName = form.firstName.trim();
-    const lastName = form.lastName.trim();
-    const middleName = form.noMiddleName ? '' : form.middleName.trim();
-    const firstNameLatin = form.firstNameLatin.trim();
-    const lastNameLatin = form.lastNameLatin.trim();
+  const noMiddleName = watch('noMiddleName');
+  const countries = watch('countries');
+  const cities = watch('cities');
+  const bio = watch('bio') ?? '';
 
-    if (!firstName || !lastName) {
-      toast.error(UI_TOAST_MESSAGES.profile.shortFullNameRequired);
-      return;
-    }
-
-    if (!form.noMiddleName && !middleName) {
-      toast.error(UI_TOAST_MESSAGES.profile.middleNameRequired);
-      return;
-    }
-
-    if (!firstNameLatin || !lastNameLatin) {
-      toast.error(UI_TOAST_MESSAGES.profile.latinNameEngRequired);
-      return;
-    }
-
-    const phone = normalizePhone(form.phone);
-    if (phone && !isValidPhoneNumber(phone)) {
-      toast.error(UI_TOAST_MESSAGES.profile.phoneInvalid);
-      return;
-    }
+  const onSubmit = handleSubmit(async (values) => {
+    const middleName = values.noMiddleName ? '' : values.middleName.trim();
+    const phoneIntl = normalizePhone(values.phone);
 
     try {
       await updateMe.mutateAsync({
-        fullName: buildFullNameRu(lastName, firstName, middleName),
-        fullNameLatin: buildFullNameLatin(lastNameLatin, firstNameLatin),
-        country: arrToStr(form.countries) || undefined,
-        city: arrToStr(form.cities) || undefined,
-        birthDate: form.birthDate || undefined,
-        phone: phone || undefined,
-        bio: form.bio.trim() || undefined,
-        ibaoId: form.ibaoId.trim(),
+        fullName: buildFullNameRu(values.lastName.trim(), values.firstName.trim(), middleName),
+        fullNameLatin: buildFullNameLatin(
+          values.lastNameLatin.trim(),
+          values.firstNameLatin.trim(),
+        ),
+        country: arrToStr(values.countries),
+        city: arrToStr(values.cities),
+        // Очищаемые поля: пусто → null (бэкенд очистит значение).
+        birthDate: values.birthDate || null,
+        phone: phoneIntl || null,
+        bio: values.bio.trim() || null,
+        ibaoId: values.ibaoId.trim() || null,
       });
 
       toast.success(UI_TOAST_MESSAGES.profile.dataSaved);
@@ -112,7 +116,7 @@ export default function ProfileEditPage() {
     } catch (e: any) {
       toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.profile.saveFailed);
     }
-  };
+  });
 
   const handleArchiveRequest = async () => {
     const ok = await confirm({
@@ -151,154 +155,149 @@ export default function ProfileEditPage() {
           </p>
         </header>
 
-        <section className="card-section shadow-soft px-5 py-5 md:px-6">
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-[180px_1fr]">
-            <div className="flex justify-center md:justify-start">
-              <ProfileAvatar userId={user.id} avatarUrl={user.avatarUrl} fullName={user.fullName} />
-            </div>
-
-            <div className="grid grid-cols-1 gap-x-5 gap-y-5 md:grid-cols-2">
-              <Field label="Имя">
-                <input
-                  className="input-design h-[32px]"
-                  value={form.firstName}
-                  onChange={(e) => setForm((prev) => ({ ...prev, firstName: e.target.value }))}
-                />
-              </Field>
-
-              <Field label="Фамилия">
-                <input
-                  className="input-design h-[32px]"
-                  value={form.lastName}
-                  onChange={(e) => setForm((prev) => ({ ...prev, lastName: e.target.value }))}
-                />
-              </Field>
-
-              <Field label="Отчество">
-                <input
-                  className="input-design h-[32px]"
-                  value={form.middleName}
-                  disabled={form.noMiddleName}
-                  onChange={(e) => setForm((prev) => ({ ...prev, middleName: e.target.value }))}
-                />
-              </Field>
-
-              <label className="mt-[22px] flex min-h-[32px] items-center gap-2 text-[14px] text-[#8D96B5]">
-                <input
-                  type="checkbox"
-                  checked={form.noMiddleName}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      noMiddleName: e.target.checked,
-                      middleName: e.target.checked ? '' : prev.middleName,
-                    }))
-                  }
-                  className="h-[28px] w-[28px] cursor-pointer accent-[var(--color-blue-dark)]"
-                />
-                У меня нет отчества
-              </label>
-
-              <Field label="Имя ENG" hint="как в загранпаспорте">
-                <input
-                  className="input-design h-[32px]"
-                  value={form.firstNameLatin}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, firstNameLatin: e.target.value }))
-                  }
-                />
-              </Field>
-
-              <Field label="Фамилия ENG" hint="как в загранпаспорте">
-                <input
-                  className="input-design h-[32px]"
-                  value={form.lastNameLatin}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, lastNameLatin: e.target.value }))
-                  }
-                />
-              </Field>
-
-              <div className="profile-edit-select">
-                <UserLocationFields
-                  countries={form.countries}
-                  cities={form.cities}
-                  onChange={({ countries, cities }) =>
-                    setForm((prev) => ({ ...prev, countries, cities }))
-                  }
-                />
+        <form onSubmit={onSubmit} noValidate>
+          <section className="card-section shadow-soft px-5 py-5 md:px-6">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-[180px_1fr]">
+              <div className="flex justify-center md:justify-start">
+                <ProfileAvatar userId={user.id} avatarUrl={user.avatarUrl} fullName={user.fullName} />
               </div>
 
-              <Field label="Дата рождения">
-                <input
-                  type="date"
-                  className="input-design h-[32px]"
-                  value={form.birthDate}
-                  onChange={(e) => setForm((prev) => ({ ...prev, birthDate: e.target.value }))}
-                />
-              </Field>
+              <div className="grid grid-cols-1 gap-x-5 gap-y-5 md:grid-cols-2">
+                <Field label="Имя" error={errors.firstName?.message}>
+                  <input className="input-design h-[32px]" {...register('firstName')} />
+                </Field>
 
-              <Field label="Телефон">
-                <input
-                  type="tel"
-                  className="input-design h-[32px]"
-                  value={form.phone}
-                  onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-                />
-              </Field>
+                <Field label="Фамилия" error={errors.lastName?.message}>
+                  <input className="input-design h-[32px]" {...register('lastName')} />
+                </Field>
 
-              <Field label="О себе" hint="необязательно" className="md:col-span-2">
-                <textarea
-                  className="input-design min-h-[154px] resize-none"
-                  maxLength={500}
-                  value={form.bio}
-                  onChange={(e) => setForm((prev) => ({ ...prev, bio: e.target.value }))}
-                />
-                <div className="mt-1 text-right text-[12px] text-[#8D96B5]">
-                  {form.bio.length}/500
+                <Field label="Отчество" error={errors.middleName?.message}>
+                  <input
+                    className="input-design h-[32px]"
+                    disabled={noMiddleName}
+                    {...register('middleName')}
+                  />
+                </Field>
+
+                <label className="mt-[22px] flex min-h-[32px] items-center gap-2 text-[14px] text-[#8D96B5]">
+                  <Controller
+                    control={control}
+                    name="noMiddleName"
+                    render={({ field }) => (
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(e) => {
+                          field.onChange(e.target.checked);
+                          if (e.target.checked) {
+                            setValue('middleName', '', { shouldValidate: true });
+                          }
+                        }}
+                        className="h-[28px] w-[28px] cursor-pointer accent-[var(--color-blue-dark)]"
+                      />
+                    )}
+                  />
+                  У меня нет отчества
+                </label>
+
+                <Field label="Имя ENG" hint="как в загранпаспорте" error={errors.firstNameLatin?.message}>
+                  <input className="input-design h-[32px]" {...register('firstNameLatin')} />
+                </Field>
+
+                <Field
+                  label="Фамилия ENG"
+                  hint="как в загранпаспорте"
+                  error={errors.lastNameLatin?.message}
+                >
+                  <input className="input-design h-[32px]" {...register('lastNameLatin')} />
+                </Field>
+
+                <div className="profile-edit-select md:col-span-2">
+                  <UserLocationFields
+                    countries={countries}
+                    cities={cities}
+                    onChange={({ countries: nextCountries, cities: nextCities }) => {
+                      setValue('countries', nextCountries, { shouldValidate: true });
+                      setValue('cities', nextCities, { shouldValidate: true });
+                    }}
+                  />
+                  {errors.countries?.message ? (
+                    <p className="text-error">{errors.countries.message}</p>
+                  ) : null}
+                  {errors.cities?.message ? (
+                    <p className="text-error">{errors.cities.message}</p>
+                  ) : null}
                 </div>
-              </Field>
 
-              <Field label="IBAO ID" hint="если есть">
-                <input
-                  className="input-design h-[32px]"
-                  value={form.ibaoId}
-                  onChange={(e) => setForm((prev) => ({ ...prev, ibaoId: e.target.value }))}
-                />
-              </Field>
+                <Field label="Дата рождения" error={errors.birthDate?.message}>
+                  <input type="date" className="input-design h-[32px]" {...register('birthDate')} />
+                </Field>
 
-              <div className="pt-[18px] text-[13px] text-[#8D96B5]">
-                <div>Регистрационный номер ЦСПАП</div>
-                <div className="mt-1 text-[#222]">{user.registrationNumber ?? '—'}</div>
+                <Field label="Телефон" error={errors.phone?.message}>
+                  <Controller
+                    control={control}
+                    name="phone"
+                    render={({ field }) => (
+                      <PhoneInput
+                        country="ru"
+                        enableSearch
+                        containerClass="auth-phone"
+                        inputClass="input-design auth-phone-input"
+                        buttonClass="auth-phone-flag"
+                        specialLabel=""
+                        value={field.value || ''}
+                        onChange={(value) => field.onChange(value)}
+                        inputProps={{ name: 'tel', autoComplete: 'tel' }}
+                      />
+                    )}
+                  />
+                </Field>
+
+                <Field label="О себе" hint="необязательно" className="md:col-span-2" error={errors.bio?.message}>
+                  <textarea
+                    className="input-design min-h-[154px] resize-none"
+                    maxLength={500}
+                    {...register('bio')}
+                  />
+                  <div className="mt-1 text-right text-[12px] text-[#8D96B5]">{bio.length}/500</div>
+                </Field>
+
+                <Field label="IBAO ID" hint="если есть" error={errors.ibaoId?.message}>
+                  <input className="input-design h-[32px]" {...register('ibaoId')} />
+                </Field>
+
+                <div className="pt-[18px] text-[13px] text-[#8D96B5]">
+                  <div>Регистрационный номер ЦСПАП</div>
+                  <div className="mt-1 text-[#222]">{user.registrationNumber ?? '—'}</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="mt-5 grid grid-cols-1 items-end gap-4 md:grid-cols-[180px_1fr_190px]">
-            <button
-              type="button"
-              className="btn h-[52px] rounded-[10px] border border-[var(--color-danger)] px-5 text-[15px] font-extrabold text-[var(--color-danger)] hover:bg-[rgba(255,83,100,0.08)]"
-              onClick={handleArchiveRequest}
-              disabled={archiveRequest.isPending}
-            >
-              {archiveRequest.isPending ? 'Отправляю...' : 'Удалить профиль'}
-            </button>
+            <div className="mt-5 grid grid-cols-1 items-end gap-4 md:grid-cols-[180px_1fr_190px]">
+              <button
+                type="button"
+                className="btn h-[52px] rounded-[10px] border border-[var(--color-danger)] px-5 text-[15px] font-extrabold text-[var(--color-danger)] hover:bg-[rgba(255,83,100,0.08)]"
+                onClick={handleArchiveRequest}
+                disabled={archiveRequest.isPending}
+              >
+                {archiveRequest.isPending ? 'Отправляю...' : 'Удалить профиль'}
+              </button>
 
-            <div className="text-[13px]">
-              <div className="text-[#8D96B5]">Email</div>
-              <div className="mt-1 text-[#222]">{user.email}</div>
+              <div className="text-[13px]">
+                <div className="text-[#8D96B5]">Email</div>
+                <div className="mt-1 text-[#222]">{user.email}</div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={updateMe.isPending}
+                className="btn btn-dark h-[52px] rounded-[10px] px-8 text-[16px] font-extrabold"
+              >
+                {updateMe.isPending ? 'Сохраняю...' : 'Сохранить'}
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={updateMe.isPending}
-              className="btn btn-dark h-[52px] rounded-[10px] px-8 text-[16px] font-extrabold"
-            >
-              {updateMe.isPending ? 'Сохраняю...' : 'Сохранить'}
-            </button>
-          </div>
-        </section>
+          </section>
+        </form>
       </div>
     </div>
   );
@@ -309,17 +308,20 @@ function Field({
   hint,
   children,
   className = '',
+  error,
 }: {
   label: string;
   hint?: string;
   children: React.ReactNode;
   className?: string;
+  error?: string;
 }) {
   return (
     <label className={`block text-[14px] font-medium text-blue-dark ${className}`}>
       {label}
       {hint ? <span className="ml-1 font-normal text-[#8D96B5]">{hint}</span> : null}
       <div className="mt-1">{children}</div>
+      {error ? <p className="text-error">{error}</p> : null}
     </label>
   );
 }

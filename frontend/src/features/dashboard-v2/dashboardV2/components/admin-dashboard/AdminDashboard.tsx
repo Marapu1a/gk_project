@@ -105,10 +105,10 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
           <span className="hidden max-w-[260px] truncate sm:block">{user.email}</span>
           <button
             type="button"
-            onClick={() => navigate('/users')}
+            onClick={() => navigate('/profile')}
             className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--color-blue-dark)] transition-colors hover:bg-[var(--color-blue-soft)]"
-            aria-label="Управление"
-            title="Управление"
+            aria-label="Редактировать профиль"
+            title="Редактировать профиль"
           >
             <Settings size={22} />
           </button>

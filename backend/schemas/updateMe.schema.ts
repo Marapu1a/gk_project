@@ -1,21 +1,30 @@
 import { z } from 'zod';
+import {
+  zFullNameRu,
+  zFullNameLat,
+  zPhone,
+  zBirthDate,
+  zCountry,
+  zCity,
+  zBio,
+  zIbaoId,
+} from '../shared/validation/profileFields';
 
+// Обязательные поля (никогда не очищаются) — optional на уровне payload,
+// т.к. PATCH может прислать только часть полей.
+// Очищаемые поля — .nullish(): null очищает значение в БД, undefined пропускает.
 export const updateMeSchema = z
   .object({
-    fullName: z.string().trim().min(1).max(100).optional(),
-    fullNameLatin: z.string().trim().min(1).max(100).optional(),
-    phone: z.string().trim().max(30).optional(),
-    birthDate: z
-      .union([
-        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ожидается формат YYYY-MM-DD'),
-        z.string().datetime(),
-      ])
-      .optional(),
-    country: z.string().trim().max(100).optional(),
-    city: z.string().trim().max(100).optional(),
+    fullName: zFullNameRu.optional(),
+    fullNameLatin: zFullNameLat.optional(),
     avatarUrl: z.string().trim().max(500).optional(),
-    bio: z.string().trim().max(500).optional(),
-    ibaoId: z.string().trim().max(100).optional(),
+
+    phone: zPhone.nullish(),
+    birthDate: zBirthDate.nullish(),
+    country: zCountry.nullish(),
+    city: zCity.nullish(),
+    bio: zBio.nullish(),
+    ibaoId: zIbaoId.nullish(),
   })
   .strict(); // лишние поля — 400
 

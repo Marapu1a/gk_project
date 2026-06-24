@@ -28,23 +28,37 @@ export async function updateMeHandler(req: FastifyRequest, reply: FastifyReply) 
   }
   const body = parsed.data;
 
-  let birthDateISO: string | undefined;
-  if (body.birthDate) {
-    birthDateISO = /^\d{4}-\d{2}-\d{2}$/.test(body.birthDate)
+  // Для очищаемых строковых полей: null или пустая строка → очистка (null), иначе trim.
+  const clearableString = (value: string | null | undefined) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    const trimmed = value.trim();
+    return trimmed === '' ? null : trimmed;
+  };
+
+  let birthDate: string | null | undefined;
+  if (body.birthDate === undefined) {
+    birthDate = undefined;
+  } else if (!body.birthDate) {
+    birthDate = null; // null или '' → очистка
+  } else {
+    birthDate = /^\d{4}-\d{2}-\d{2}$/.test(body.birthDate)
       ? toISOFromDateOnly(body.birthDate)
       : new Date(body.birthDate).toISOString();
   }
 
   const data: Record<string, any> = {};
+  // Обязательные поля: пишем только при наличии непустого значения.
   if (body.fullName !== undefined) data.fullName = body.fullName.trim();
   if (body.fullNameLatin !== undefined) data.fullNameLatin = body.fullNameLatin.trim();
-  if (body.phone !== undefined) data.phone = body.phone.trim();
-  if (birthDateISO !== undefined) data.birthDate = birthDateISO;
-  if (body.country !== undefined) data.country = body.country.trim();
-  if (body.city !== undefined) data.city = body.city.trim();
   if (body.avatarUrl !== undefined) data.avatarUrl = body.avatarUrl.trim();
-  if (body.bio !== undefined) data.bio = body.bio.trim();
-  if (body.ibaoId !== undefined) data.ibaoId = body.ibaoId.trim() || null;
+  // Очищаемые поля: null/'' → null, иначе trim.
+  if (body.phone !== undefined) data.phone = clearableString(body.phone);
+  if (birthDate !== undefined) data.birthDate = birthDate;
+  if (body.country !== undefined) data.country = clearableString(body.country);
+  if (body.city !== undefined) data.city = clearableString(body.city);
+  if (body.bio !== undefined) data.bio = clearableString(body.bio);
+  if (body.ibaoId !== undefined) data.ibaoId = clearableString(body.ibaoId);
 
   if (Object.keys(data).length === 0) {
     return reply.code(400).send({ error: 'Нет данных для обновления' });
