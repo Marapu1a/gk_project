@@ -47,6 +47,12 @@ export type SupervisionRecordHistoryItem = {
     fullName: string | null;
     email: string;
   } | null;
+  isAdminCorrection?: boolean;
+  correction?: {
+    kind: 'PRACTICE' | 'MENTORSHIP';
+    before: number;
+    after: number;
+  } | null;
 };
 
 export type GetSupervisionRecordHistoryResponse = {

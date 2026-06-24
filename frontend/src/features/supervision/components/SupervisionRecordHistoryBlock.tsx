@@ -17,12 +17,11 @@ function formatNumber(value: number | null | undefined) {
 }
 
 function isAdminCorrection(record: SupervisionRecordHistoryItem) {
-  return (record.description ?? '').toLowerCase().includes('корректировка часов');
+  return record.isAdminCorrection === true || Boolean(record.correction);
 }
 
 function isMentorshipAdminCorrection(record: SupervisionRecordHistoryItem) {
-  const description = (record.description ?? '').toLowerCase();
-  return isAdminCorrection(record) && description.includes('ментор');
+  return record.correction?.kind === 'MENTORSHIP';
 }
 
 function correctionActor(record: SupervisionRecordHistoryItem) {
@@ -105,7 +104,12 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
               </thead>
               <tbody>
                 {records.map((record) => (
-                  <tr key={record.id} className="border-b border-[#DCE8EC] last:border-b-0">
+                  <tr
+                    key={record.id}
+                    className={`border-b border-[#DCE8EC] last:border-b-0 ${
+                      isAdminCorrection(record) ? 'bg-[rgba(255,83,100,0.07)]' : ''
+                    }`}
+                  >
                     <td className="px-4 py-4">{formatDate(recordStartDate(record))}</td>
                     <td className="px-4 py-4 text-center font-extrabold">
                       {formatNumber(record.hours.mentor)}
@@ -141,7 +145,12 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
               </thead>
               <tbody>
                 {records.map((record) => (
-                  <tr key={record.id} className="border-b border-[#DCE8EC] last:border-b-0">
+                  <tr
+                    key={record.id}
+                    className={`border-b border-[#DCE8EC] last:border-b-0 ${
+                      isAdminCorrection(record) ? 'bg-[rgba(255,83,100,0.07)]' : ''
+                    }`}
+                  >
                     <td className="px-4 py-4">{formatDate(recordStartDate(record))}</td>
                     <td className="px-4 py-4">{formatDate(record.periodEndedAt)}</td>
                     <td className="px-4 py-4 text-center text-[#6B7894]">
@@ -319,6 +328,14 @@ function SupervisionRecordDetailsModal({
             <div className="mt-4 rounded-[10px] bg-[#C8CEDB] px-4 py-3 text-center text-[14px] font-semibold text-[#1F305E]">
               {statusLabel(record, mode)}
             </div>
+
+            {record.correction ? (
+              <div className="mt-3 rounded-[10px] bg-[rgba(255,83,100,0.10)] px-4 py-3 text-center text-[14px] font-semibold text-[#C0392B]">
+                {record.correction.kind === 'MENTORSHIP' ? 'Часы менторства' : 'Часы практики'}: было{' '}
+                {formatNumber(record.correction.before)} → стало{' '}
+                {formatNumber(record.correction.after)}
+              </div>
+            ) : null}
 
             {record.rejectedReason ? (
               <div className="mt-3 rounded-[10px] bg-[#FFFFFF] px-4 py-3 text-[14px] text-[#FF5364]">

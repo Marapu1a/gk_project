@@ -88,11 +88,17 @@ export function CeuPointsHistoryBlock() {
 
             <tbody>
               {records.map((record) => (
-                <tr key={record.id} className="border-b border-[#DCE8EC] last:border-b-0">
+                <tr
+                  key={record.id}
+                  className={`border-b border-[#DCE8EC] last:border-b-0 ${
+                    record.isAdminCorrection ? 'bg-[rgba(255,83,100,0.07)]' : ''
+                  }`}
+                >
                   <td className="max-w-[360px] px-4 py-4">
                     <div className="truncate" title={displayCeuEventName(record.eventName)}>
                       {displayCeuEventName(record.eventName)}
                     </div>
+                    {record.isAdminCorrection ? <AdminCorrectionBadge /> : null}
                   </td>
                   <td className="px-4 py-4 text-center font-extrabold">
                     {formatNumber(record.totalValue)}
@@ -140,8 +146,14 @@ function CeuDetailsModal({
         <ModalCloseButton onClick={onClose} />
 
         <h3 className="mb-6 text-center text-[22px] font-extrabold text-[#1F305E]">
-          Детали заявки
+          {record.isAdminCorrection ? 'Детали корректировки' : 'Детали заявки'}
         </h3>
+
+        {record.isAdminCorrection ? (
+          <div className="mb-5 flex justify-center">
+            <AdminCorrectionBadge />
+          </div>
+        ) : null}
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="space-y-5">
@@ -165,9 +177,16 @@ function CeuDetailsModal({
                       {formatNumber(entry.value)}
                     </span>
                     <span className="text-[12px] leading-snug text-[#6B7894]">
-                      {entry.activityType
-                        ? activityTypeLabels[entry.activityType] ?? entry.activityType
-                        : '—'}
+                      {entry.isAdminCorrection ? (
+                        <span className="font-semibold text-[#C0392B]">
+                          было {formatNumber(entry.previousValue ?? 0)} → стало{' '}
+                          {formatNumber(entry.value)}
+                        </span>
+                      ) : entry.activityType ? (
+                        activityTypeLabels[entry.activityType] ?? entry.activityType
+                      ) : (
+                        '—'
+                      )}
                     </span>
                   </div>
                 ))}
@@ -201,6 +220,14 @@ function CeuDetailsModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function AdminCorrectionBadge() {
+  return (
+    <span className="mt-1 inline-flex items-center rounded-full bg-[rgba(255,83,100,0.14)] px-2.5 py-0.5 text-[11px] font-extrabold text-[#C0392B]">
+      Скорректировано администратором
+    </span>
   );
 }
 

@@ -540,6 +540,10 @@ model CEUEntry {
   value    Float
   status   RecordStatus @default(UNCONFIRMED)
 
+  // Админская корректировка: финальное значение зафиксировано админом.
+  isAdminCorrection Boolean @default(false)
+  previousValue     Float? // значение по категории до этой корректировки (для «было → стало»)
+
   reviewerId     String?
   reviewer       User?     @relation("ReviewedCEUEntry", fields: [reviewerId], references: [id])
   reviewedAt     DateTime?

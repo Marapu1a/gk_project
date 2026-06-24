@@ -41,6 +41,8 @@ export async function ceuHistoryHandler(req: FastifyRequest, reply: FastifyReply
           value: true,
           status: true,
           rejectedReason: true,
+          isAdminCorrection: true,
+          previousValue: true,
         },
       },
     },
@@ -62,6 +64,7 @@ export async function ceuHistoryHandler(req: FastifyRequest, reply: FastifyReply
       status: aggregateStatus(record.entries.map((entry) => entry.status)),
       eventDate: record.eventDate,
       eventName: record.eventName,
+      isAdminCorrection: record.entries.some((entry) => entry.isAdminCorrection),
       file: record.fileId ? fileByStorageId.get(record.fileId) ?? null : null,
       user: record.user,
       rejectedReason:

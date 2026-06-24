@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { CycleStatus, PracticeLevel, RecordStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
+import { getCyclePracticeCorrection } from '../../utils/getCyclePracticeCorrection';
 
 type Query = {
   take?: string;
@@ -74,7 +75,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
     return reply.send({ records: [], nextCursor: null });
   }
 
-  const [records, user, mentorshipTotals] = await Promise.all([
+  const [records, user, mentorshipTotals, practiceCorrectionTotals] = await Promise.all([
     prisma.supervisionRecord.findMany({
       where: {
         userId,
@@ -117,6 +118,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
       select: { id: true, fullName: true, email: true },
     }),
     getCycleMentorshipTotal(activeCycle.id),
+    getCyclePracticeCorrection(activeCycle.id),
   ]);
 
   const nextCursor = records.length === limit ? records[records.length - 1].id : null;
@@ -155,6 +157,8 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
       user: record.user,
       supervisor,
       reviewedBy,
+      isAdminCorrection: false,
+      correction: null as null | { kind: 'PRACTICE' | 'MENTORSHIP'; before: number; after: number },
     };
   });
 
@@ -188,6 +192,56 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
       user,
       supervisor: null,
       reviewedBy: mentorCorrection.admin,
+      isAdminCorrection: true,
+      correction: {
+        kind: 'MENTORSHIP',
+        before: round2(mentorshipTotals.rawConfirmed),
+        after: round2(mentorCorrection.mentor),
+      },
+    });
+  }
+
+  const practiceCorrection = practiceCorrectionTotals.adminCorrection;
+  if (!cursor && practiceCorrection && user) {
+    const directIndividual = round2(practiceCorrection.directIndividual);
+    const directGroup = round2(practiceCorrection.directGroup);
+    const nonObservingIndividual = round2(practiceCorrection.nonObservingIndividual);
+    const nonObservingGroup = round2(practiceCorrection.nonObservingGroup);
+
+    mappedRecords.push({
+      id: `admin-practice-${practiceCorrection.id}`,
+      fileId: null,
+      createdAt: practiceCorrection.updatedAt,
+      periodStartedAt: practiceCorrection.updatedAt,
+      periodEndedAt: null,
+      treatmentSetting: 'Служебная корректировка',
+      description: 'Корректировка часов практики и супервизии администратором',
+      ethicsAcceptedAt: null,
+      hours: {
+        implementing: round2(practiceCorrection.implementing),
+        programming: round2(practiceCorrection.programming),
+        mentor: 0,
+      },
+      distribution: {
+        directIndividual,
+        directGroup,
+        nonObservingIndividual,
+        nonObservingGroup,
+        direct: round2(directIndividual + directGroup),
+        nonObserving: round2(nonObservingIndividual + nonObservingGroup),
+      },
+      status: RecordStatus.CONFIRMED,
+      reviewedAt: practiceCorrection.updatedAt,
+      rejectedReason: null,
+      user,
+      supervisor: null,
+      reviewedBy: practiceCorrection.admin,
+      isAdminCorrection: true,
+      correction: {
+        kind: 'PRACTICE',
+        before: round2(practiceCorrectionTotals.rawPractice),
+        after: round2(practiceCorrectionTotals.correctedPractice),
+      },
     });
   }
 

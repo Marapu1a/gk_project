@@ -19,6 +19,8 @@ export interface CeuHistoryEntry {
   value: number;
   status: CeuRecordStatus;
   rejectedReason: string | null;
+  isAdminCorrection: boolean;
+  previousValue: number | null;
 }
 
 export interface CeuHistoryItem {
@@ -28,6 +30,7 @@ export interface CeuHistoryItem {
   rejectedReason: string | null;
   eventDate: string;
   eventName: string;
+  isAdminCorrection: boolean;
   entries: CeuHistoryEntry[];
   file: {
     id: string;

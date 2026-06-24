@@ -32,6 +32,10 @@ const categoryLabels: Record<CEUCategory, string> = {
   GENERAL: 'Общие',
 };
 
+// Все админские корректировки CEU копятся в одной выделенной записи цикла —
+// так они отделены от реальных тренингов и видны в истории как «корректировка».
+const CEU_CORRECTION_EVENT_NAME = 'Корректировка CEU-баллов';
+
 export async function updateUserCEUMatrixAdminHandler(
   req: FastifyRequest<UpdateUserCEUMatrixRoute>,
   reply: FastifyReply
@@ -73,14 +77,19 @@ export async function updateUserCEUMatrixAdminHandler(
   }
 
   await prisma.$transaction(async (tx) => {
+    // Удаляем все записи этой категории+статуса (включая прошлую корректировку).
     await tx.cEUEntry.deleteMany({
       where: { record: { userId, cycleId: activeCycle.id }, category, status },
     });
 
-    if (value <= 0) return;
-
+    // Находим/создаём выделенную запись корректировки (по стабильному имени).
+    const now = new Date();
     let record = await tx.cEURecord.findFirst({
-      where: { userId, cycleId: activeCycle.id },
+      where: {
+        userId,
+        cycleId: activeCycle.id,
+        eventName: CEU_CORRECTION_EVENT_NAME,
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -89,20 +98,27 @@ export async function updateUserCEUMatrixAdminHandler(
         data: {
           userId,
           cycleId: activeCycle.id,
-          eventName: 'Корректировка CEU-баллов',
-          eventDate: new Date(),
+          eventName: CEU_CORRECTION_EVENT_NAME,
+          eventDate: now,
         },
       });
+    } else {
+      // Обновляем дату записи на момент последней корректировки.
+      await tx.cEURecord.update({ where: { id: record.id }, data: { eventDate: now } });
     }
 
+    // Создаём запись-корректировку всегда (в т.ч. для значения 0),
+    // чтобы «было → стало» оставалось видимым в истории.
     await tx.cEUEntry.create({
       data: {
         recordId: record.id,
         category,
         value,
         status,
+        isAdminCorrection: true,
+        previousValue: current,
         reviewerId: req.user.userId,
-        reviewedAt: new Date(),
+        reviewedAt: now,
       },
     });
   });
