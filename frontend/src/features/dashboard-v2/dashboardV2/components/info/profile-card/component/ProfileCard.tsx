@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useLogout } from '@/features/dashboard/hooks/useLogout';
+import { useLogout } from '@/features/auth/hooks/useLogout';
 import { useMyCertificates } from '@/features/certificate/hooks/useMyCertificates';
 import { formatCertificateDate } from '@/features/certificate/utils/certificateDates';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { DatabaseBackup, Download, LogOut, Settings, Trash2, X } from 'lucide-react';
 
 import { ActionArrowButton } from '@/components/ActionArrowButton';
-import { useLogout } from '@/features/dashboard/hooks/useLogout';
+import { useLogout } from '@/features/auth/hooks/useLogout';
 import {
   useNotifications,
   useDeleteNotification,
