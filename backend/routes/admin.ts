@@ -25,6 +25,7 @@ import {
   getCEUHistoryAdminExportHandler,
   getCEUHistoryAdminHandler,
 } from '../handlers/admin/ceu/getCEUHistoryAdminHandler';
+import { deleteCEURecordAdminHandler } from '../handlers/admin/ceu/deleteCEURecordAdminHandler';
 
 // Supervision god-mode
 import { getUserSupervisionMatrixAdminHandler } from '../handlers/admin/supervision/getUserSupervisionMatrixAdminHandler';
@@ -66,6 +67,7 @@ export async function usersRoutes(app: FastifyInstance) {
   // CEU (admin-only)
   app.get('/admin/ceu/history', { preHandler: verifyToken }, getCEUHistoryAdminHandler);
   app.get('/admin/ceu/history/export.csv', { preHandler: verifyToken }, getCEUHistoryAdminExportHandler);
+  app.delete('/admin/ceu/records/:recordId', { preHandler: verifyToken }, deleteCEURecordAdminHandler);
   app.get('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, getUserCEUMatrixAdminHandler);
   app.get('/admin/users/:id/export', { preHandler: verifyToken }, getUserExportHandler);
   app.patch('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, updateUserCEUMatrixAdminHandler);

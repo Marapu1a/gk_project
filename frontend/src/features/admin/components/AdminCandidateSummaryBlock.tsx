@@ -143,6 +143,13 @@ function countPendingHours(user: any, mode: 'supervision' | 'mentorship') {
   }, 0);
 }
 
+function reviewerWorkloadValue(
+  user: any,
+  key: 'supervisionPendingRequests' | 'mentorshipPendingRequests',
+) {
+  return Number(user.reviewerWorkload?.[key] ?? 0);
+}
+
 function getRenewalPayment(user: any) {
   const cycle = user.activeCycle;
   if (!cycle || cycle.type !== 'RENEWAL') return null;
@@ -307,12 +314,27 @@ export function AdminCandidateSummaryBlock({
     search: userSearch,
     hourState: 'NEEDS_REVIEW',
   });
+  const reviewerSupervisionNeedsReviewUrl = buildUrl('/admin/supervision-candidates', {
+    kind: 'supervision',
+    reviewerSearch: userSearch,
+    hourState: 'NEEDS_REVIEW',
+  });
+  const reviewerMentorshipNeedsReviewUrl = buildUrl('/admin/supervision-candidates', {
+    kind: 'mentorship',
+    reviewerSearch: userSearch,
+    hourState: 'NEEDS_REVIEW',
+  });
   const ceuReviewUrl = buildUrl('/review/ceu', { search: userSearch });
   const certificateIssueUrl = buildUrl('/certificate', { email: user.email });
   const examApplicationsUrl = buildUrl('/exam-applications', {
     search: userSearch,
     status: 'ALL',
   });
+  const canReviewSupervision =
+    activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
+  const canReviewMentorship = activeGroupName === 'Опытный Супервизор';
+  const reviewerSupervisionPending = reviewerWorkloadValue(user, 'supervisionPendingRequests');
+  const reviewerMentorshipPending = reviewerWorkloadValue(user, 'mentorshipPendingRequests');
 
   const summaryLines = useMemo(() => {
     if (!activeCycle) return [];
@@ -356,7 +378,7 @@ export function AdminCandidateSummaryBlock({
         to: supervisionUrl,
       });
       lines.push({
-        label: 'Часы на проверке',
+        label: 'Заявки часов на проверке',
         value: pendingSupervision,
         tone: pendingSupervision > 0 ? 'warn' : 'good',
         to: supervisionNeedsReviewUrl,
@@ -374,7 +396,7 @@ export function AdminCandidateSummaryBlock({
         to: mentorshipUrl,
       });
       lines.push({
-        label: 'Менторство на проверке',
+        label: 'Заявки менторства на проверке',
         value: pendingMentorship,
         tone: pendingMentorship > 0 ? 'warn' : 'good',
         to: mentorshipNeedsReviewUrl,
@@ -454,8 +476,46 @@ export function AdminCandidateSummaryBlock({
     supervisionUrl,
   ]);
 
+  const reviewerLines = useMemo(() => {
+    const lines: Array<{
+      label: string;
+      value: ReactNode;
+      tone: 'good' | 'warn' | 'bad' | 'soft';
+      to?: string | null;
+    }> = [];
+
+    if (canReviewSupervision) {
+      lines.push({
+        label: 'Проверка часов',
+        value: reviewerSupervisionPending,
+        tone: reviewerSupervisionPending > 0 ? 'warn' : 'good',
+        to: reviewerSupervisionNeedsReviewUrl,
+      });
+    }
+
+    if (canReviewMentorship) {
+      lines.push({
+        label: 'Проверка менторства',
+        value: reviewerMentorshipPending,
+        tone: reviewerMentorshipPending > 0 ? 'warn' : 'good',
+        to: reviewerMentorshipNeedsReviewUrl,
+      });
+    }
+
+    return lines;
+  }, [
+    canReviewMentorship,
+    canReviewSupervision,
+    reviewerMentorshipNeedsReviewUrl,
+    reviewerMentorshipPending,
+    reviewerSupervisionNeedsReviewUrl,
+    reviewerSupervisionPending,
+  ]);
+
   const requiresAttention =
-    !activeCycle || summaryLines.some((line) => line.tone === 'bad' || line.tone === 'warn');
+    !activeCycle ||
+    summaryLines.some((line) => line.tone === 'bad' || line.tone === 'warn') ||
+    reviewerLines.some((line) => line.tone === 'warn');
 
   return (
     <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
@@ -526,16 +586,35 @@ export function AdminCandidateSummaryBlock({
         </div>
 
         <div className="min-w-0 rounded-[16px] bg-[var(--color-blue-soft)] p-4">
-          {summaryLines.length ? (
-            summaryLines.map((line) => (
-              <SummaryLine
-                key={line.label}
-                label={line.label}
-                value={line.value}
-                tone={line.tone}
-                to={line.to}
-              />
-            ))
+          {summaryLines.length || reviewerLines.length ? (
+            <>
+              {summaryLines.map((line) => (
+                <SummaryLine
+                  key={line.label}
+                  label={line.label}
+                  value={line.value}
+                  tone={line.tone}
+                  to={line.to}
+                />
+              ))}
+
+              {reviewerLines.length ? (
+                <div className={summaryLines.length ? 'mt-3 border-t border-white/80 pt-3' : ''}>
+                  <div className="mb-1 px-1 text-[12px] font-extrabold uppercase tracking-[0.02em] text-[#8D96B5]">
+                    Работа проверяющего
+                  </div>
+                  {reviewerLines.map((line) => (
+                    <SummaryLine
+                      key={line.label}
+                      label={line.label}
+                      value={line.value}
+                      tone={line.tone}
+                      to={line.to}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </>
           ) : (
             <div className="rounded-[14px] bg-white px-4 py-3 text-[14px] font-semibold text-[#8D96B5]">
               Активный процесс не выбран. Требования появятся после выбора цели сертификации или

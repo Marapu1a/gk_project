@@ -1,14 +1,67 @@
 // src/handlers/user/getUserFullDetails.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
+import {
+  CycleStatus,
+  PracticeLevel,
+  RecordStatus,
+  ReviewerCandidateKind,
+  ReviewerCandidateStatus,
+} from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { buildExamReadiness } from '../examApplications/readiness';
 import { withResolvedDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
+
+const SUPERVISION_TYPES = [
+  PracticeLevel.INSTRUCTOR,
+  PracticeLevel.CURATOR,
+  PracticeLevel.PRACTICE,
+  PracticeLevel.IMPLEMENTING,
+  PracticeLevel.PROGRAMMING,
+];
+
+const MENTORSHIP_TYPES = [PracticeLevel.SUPERVISOR, PracticeLevel.SUPERVISION];
 
 // Локальная нормализация: старые значения → новые логические категории
 function normalizeLevel(type: string): string {
   if (type === 'INSTRUCTOR') return 'PRACTICE';
   if (type === 'CURATOR') return 'SUPERVISION';
   return type; // SUPERVISOR, PRACTICE, SUPERVISION — без изменений
+}
+
+async function countPendingReviewerRequests(
+  reviewerId: string,
+  relations: Array<{
+    kind: ReviewerCandidateKind;
+    status: ReviewerCandidateStatus;
+    candidate: { id: string };
+    cycle: { id: string };
+  }>,
+  kind: ReviewerCandidateKind,
+) {
+  const acceptedRelations = relations.filter(
+    (relation) => relation.kind === kind && relation.status === ReviewerCandidateStatus.ACCEPTED,
+  );
+
+  if (!acceptedRelations.length) return 0;
+
+  const types = kind === ReviewerCandidateKind.MENTORSHIP ? MENTORSHIP_TYPES : SUPERVISION_TYPES;
+
+  return prisma.supervisionRecord.count({
+    where: {
+      OR: acceptedRelations.map((relation) => ({
+        userId: relation.candidate.id,
+        cycleId: relation.cycle.id,
+      })),
+      cycle: { status: CycleStatus.ACTIVE },
+      hours: {
+        some: {
+          reviewerId,
+          type: { in: types },
+          status: RecordStatus.UNCONFIRMED,
+        },
+      },
+    },
+  });
 }
 
 export async function getUserFullDetailsHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -236,6 +289,18 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
       .sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime())[0] ?? null;
 
   const examReadiness = await buildExamReadiness(user.id);
+  const [supervisionPendingRequests, mentorshipPendingRequests] = await Promise.all([
+    countPendingReviewerRequests(
+      user.id,
+      user.reviewerCandidateRelations,
+      ReviewerCandidateKind.SUPERVISION,
+    ),
+    countPendingReviewerRequests(
+      user.id,
+      user.reviewerCandidateRelations,
+      ReviewerCandidateKind.MENTORSHIP,
+    ),
+  ]);
 
   return reply.send({
     ...user,
@@ -246,6 +311,10 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
     activeCycleExamApplication,
     latestCertificate,
     examReadiness,
+    reviewerWorkload: {
+      supervisionPendingRequests,
+      mentorshipPendingRequests,
+    },
     targetLevel: user.targetLevel,
     targetLockRank: user.targetLockRank,
   });

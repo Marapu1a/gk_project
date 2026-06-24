@@ -44,3 +44,14 @@ export function normalizeDecimalInput(
   const capped = max == null ? parsed : Math.min(parsed, Math.max(0, max));
   return formatDecimalInput(capped, maxDecimals);
 }
+
+export function getDecimalInputFocusValue(value: string) {
+  return {
+    focusedValue: '',
+    restoreValue: value,
+  };
+}
+
+export function getDecimalInputBlurValue(value: string, restoreValue?: string | null) {
+  return value.trim() === '' && restoreValue != null ? restoreValue : value;
+}

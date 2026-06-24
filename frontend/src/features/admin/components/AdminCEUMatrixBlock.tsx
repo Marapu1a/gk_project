@@ -7,6 +7,8 @@ import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import {
   formatDecimalInput,
+  getDecimalInputBlurValue,
+  getDecimalInputFocusValue,
   normalizeDecimalInput,
   parseDecimalInput,
   sanitizeDecimalInput,
@@ -61,6 +63,7 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
   const mutation = useUpdateUserCEUMatrix(userId);
 
   const [draft, setDraft] = useState<Partial<Record<CEUCategory, string>>>({});
+  const [restoreDraft, setRestoreDraft] = useState<Partial<Record<CEUCategory, string>>>({});
   const [isNotifyChoiceOpen, setIsNotifyChoiceOpen] = useState(false);
 
   const values = useMemo(() => {
@@ -186,15 +189,22 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
                     }))
                   }
                   onFocus={(event) => {
-                    if (event.target.value === '0') {
-                      setDraft((current) => ({ ...current, [category.key]: '' }));
-                    }
+                    const { focusedValue, restoreValue } = getDecimalInputFocusValue(
+                      event.target.value,
+                    );
+                    setRestoreDraft((current) => ({ ...current, [category.key]: restoreValue }));
+                    setDraft((current) => ({ ...current, [category.key]: focusedValue }));
                   }}
                   onBlur={() => {
+                    const rawValue = getDecimalInputBlurValue(
+                      draft[category.key] ?? item.draft,
+                      restoreDraft[category.key],
+                    );
                     setDraft((current) => ({
                       ...current,
-                      [category.key]: normalizeCeuInputOnBlur(current[category.key] ?? item.draft),
+                      [category.key]: normalizeCeuInputOnBlur(rawValue),
                     }));
+                    setRestoreDraft((current) => ({ ...current, [category.key]: undefined }));
                   }}
                   inputMode="decimal"
                   className="h-[38px] w-[82px] rounded-[10px] border border-[#B8C4D8] bg-white px-2 text-right text-[24px] font-extrabold leading-none text-[#1F305E] outline-none transition focus:border-[var(--color-blue-dark)] focus:shadow-[0_0_0_2px_rgba(31,48,94,0.12)] disabled:cursor-not-allowed disabled:border-[#D7DCE7] disabled:bg-[#EEF0F4] disabled:text-[#8D96B5]"

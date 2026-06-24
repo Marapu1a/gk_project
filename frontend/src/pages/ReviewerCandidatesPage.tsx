@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import { DashboardDateInput } from '@/components/DashboardDateInput';
 import { DashboardButton } from '@/components/DashboardButton';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -134,20 +135,20 @@ function ReviewerCandidatesContent() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <label className="dashboard-v2-small text-[#1F305E]">
             Заявки с
-            <input
-              type="date"
+            <DashboardDateInput
               value={dateFrom}
-              onChange={(event) => updateFilters({ dateFrom: event.target.value })}
-              className="input-design mt-1 h-[36px]"
+              onChange={(value) => updateFilters({ dateFrom: value })}
+              className="mt-1 h-[36px]"
+              ariaLabel="Заявки с"
             />
           </label>
           <label className="dashboard-v2-small text-[#1F305E]">
             Заявки по
-            <input
-              type="date"
+            <DashboardDateInput
               value={dateTo}
-              onChange={(event) => updateFilters({ dateTo: event.target.value })}
-              className="input-design mt-1 h-[36px]"
+              onChange={(value) => updateFilters({ dateTo: value })}
+              className="mt-1 h-[36px]"
+              ariaLabel="Заявки по"
             />
           </label>
           <label className="dashboard-v2-small text-[#1F305E]">

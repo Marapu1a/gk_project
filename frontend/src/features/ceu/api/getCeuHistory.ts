@@ -9,7 +9,6 @@ export type CeuActivityType =
 export type CeuRecordStatus =
   | 'UNCONFIRMED'
   | 'CONFIRMED'
-  | 'PARTIALLY_CONFIRMED'
   | 'REJECTED'
   | 'SPENT';
 

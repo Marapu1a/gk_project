@@ -123,6 +123,11 @@ export async function getUserDetails(id: string) {
       };
     }[];
 
+    reviewerWorkload: {
+      supervisionPendingRequests: number;
+      mentorshipPendingRequests: number;
+    };
+
     certificates: {
       id: string;
       number: string;

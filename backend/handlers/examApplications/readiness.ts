@@ -20,6 +20,7 @@ import {
   type SupervisionRequirement,
 } from '../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
+import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
 import { resolveDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
 import { ensureRenewalDocumentInheritance } from '../documentReview/ensureRenewalDocumentInheritance';
 
@@ -289,19 +290,12 @@ export async function buildExamReadiness(userId: string) {
     bonusPractice,
   );
 
-  const mentorAgg = await prisma.supervisionHour.aggregate({
-    where: {
-      status: RecordStatus.CONFIRMED,
-      type: PracticeLevel.SUPERVISOR,
-      record: { cycleId: activeCycle.id },
-    },
-    _sum: { value: true },
-  });
+  const mentorTotals = await getCycleMentorshipTotal(activeCycle.id);
 
   const supervisionCurrent = {
     practice: round2(supervisionTotals.practiceConfirmed),
     supervision: round2(supervisionTotals.supervisionConfirmed),
-    mentor: round2(mentorAgg._sum.value ?? 0),
+    mentor: round2(mentorTotals.confirmed),
   };
   const supervisionReady = isSupervisionReady(supervisionCurrent, supervisionRequired);
   if (!supervisionReady) {

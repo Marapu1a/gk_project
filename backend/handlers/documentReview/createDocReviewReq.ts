@@ -14,6 +14,19 @@ type DocumentPayloadItem = {
   type?: string | null;
 };
 
+function formatFilesCount(count: number) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) return `${count} файл`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} файла`;
+  return `${count} файлов`;
+}
+
+function commentsEqual(left?: string | null, right?: string | null) {
+  return (left?.trim() || null) === (right?.trim() || null);
+}
+
 export async function createDocReviewReq(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
   if (!user?.userId) {
@@ -102,12 +115,12 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
     select: { email: true },
   });
 
-  const notifyDocumentReviewAdmins = async () => {
+  const notifyDocumentReviewAdmins = async (message: string, requestId: string) => {
     try {
       await notifyAdmins({
         type: NotificationType.DOCUMENT,
-        message: `Новая заявка на проверку документов от ${currentUser?.email ?? 'пользователя'}`,
-        link: '/admin/document-review',
+        message,
+        link: `/admin/document-review/${requestId}`,
         excludeUserId: user.userId,
       });
     } catch (err) {
@@ -132,30 +145,33 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
     );
 
   if (activeCycle) {
-    const request = await prisma.$transaction(async (tx) => {
+    const { request, notification } = await prisma.$transaction(async (tx) => {
       await saveDocumentTypes(tx);
 
       const existingForCycle = await tx.documentReviewRequest.findFirst({
         where: { userId: user.userId, cycleId: activeCycle.id },
         orderBy: { submittedAt: 'desc' },
+        select: { id: true, comment: true },
       });
 
-      const targetRequest =
-        existingForCycle ??
-        (await tx.documentReviewRequest.create({
-          data: {
-            userId: user.userId,
-            cycleId: activeCycle.id,
-            comment: trimmedComment,
-          },
-        }));
+      const targetRequest = existingForCycle
+        ? existingForCycle
+        : await tx.documentReviewRequest.create({
+            data: {
+              userId: user.userId,
+              cycleId: activeCycle.id,
+              comment: trimmedComment,
+            },
+            select: { id: true, comment: true },
+          });
+      const isNewRequest = !existingForCycle;
 
       await tx.uploadedFile.updateMany({
         where: { id: { in: fileIds }, userId: user.userId },
         data: { requestId: targetRequest.id },
       });
 
-      await tx.documentReviewFile.createMany({
+      const createdFiles = await tx.documentReviewFile.createMany({
         data: filesWithTypes.map((file) => ({
           requestId: targetRequest.id,
           fileId: file.id,
@@ -173,10 +189,24 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
         },
       });
 
-      return recalculateDocumentReviewRequestStatus(tx, targetRequest.id);
+      const updatedRequest = await recalculateDocumentReviewRequestStatus(tx, targetRequest.id);
+      const email = currentUser?.email ?? 'пользователя';
+      const commentChanged = !isNewRequest && !commentsEqual(targetRequest.comment, trimmedComment);
+      const notification =
+        isNewRequest
+          ? `Новая заявка на проверку документов от ${email}`
+          : createdFiles.count > 0
+            ? `Пользователь ${email} добавил документы к заявке на проверку: ${formatFilesCount(createdFiles.count)}`
+            : commentChanged
+              ? `Пользователь ${email} обновил комментарий к заявке на проверку документов`
+              : null;
+
+      return { request: updatedRequest, notification };
     });
 
-    await notifyDocumentReviewAdmins();
+    if (notification) {
+      await notifyDocumentReviewAdmins(notification, request.id);
+    }
 
     return reply.code(200).send(request);
   }
@@ -193,7 +223,7 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
 
   // 4) Если есть подтверждённая заявка — дополняем её и возвращаем в статус UNCONFIRMED
   if (existingConfirmed) {
-    const updatedReq = await prisma.$transaction(async (tx) => {
+    const { request: updatedReq, notification } = await prisma.$transaction(async (tx) => {
       await saveDocumentTypes(tx);
 
       // привязываем новые файлы к существующей заявке
@@ -202,7 +232,7 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
         data: { requestId: existingConfirmed.id },
       });
 
-      await tx.documentReviewFile.createMany({
+      const createdFiles = await tx.documentReviewFile.createMany({
         data: filesWithTypes.map((file) => ({
           requestId: existingConfirmed.id,
           fileId: file.id,
@@ -222,10 +252,22 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
         },
       });
 
-      return recalculateDocumentReviewRequestStatus(tx, existingConfirmed.id);
+      const request = await recalculateDocumentReviewRequestStatus(tx, existingConfirmed.id);
+      const email = currentUser?.email ?? 'пользователя';
+      const commentChanged = !commentsEqual(existingConfirmed.comment, trimmedComment);
+      const notification =
+        createdFiles.count > 0
+          ? `Пользователь ${email} добавил документы к заявке на проверку: ${formatFilesCount(createdFiles.count)}`
+          : commentChanged
+            ? `Пользователь ${email} обновил комментарий к заявке на проверку документов`
+            : null;
+
+      return { request, notification };
     });
 
-    await notifyDocumentReviewAdmins();
+    if (notification) {
+      await notifyDocumentReviewAdmins(notification, updatedReq.id);
+    }
 
     return reply.code(200).send(updatedReq);
   }
@@ -258,7 +300,10 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
     return recalculateDocumentReviewRequestStatus(tx, created.id);
   });
 
-  await notifyDocumentReviewAdmins();
+  await notifyDocumentReviewAdmins(
+    `Новая заявка на проверку документов от ${currentUser?.email ?? 'пользователя'}`,
+    reqNew.id,
+  );
 
   return reply.code(201).send(reqNew);
 }

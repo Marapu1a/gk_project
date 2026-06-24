@@ -15,7 +15,6 @@ const categoryLabels: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   UNCONFIRMED: 'На рассмотрении',
   CONFIRMED: 'Принято',
-  PARTIALLY_CONFIRMED: 'Частично принято',
   REJECTED: 'Отклонено',
   SPENT: 'Использовано',
 };

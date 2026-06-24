@@ -24,7 +24,6 @@ const CATEGORIES = new Set<string>(['ETHICS', 'CULTURAL_DIVERSITY', 'SUPERVISION
 const STATUSES = new Set<string>([
   'UNCONFIRMED',
   'CONFIRMED',
-  'PARTIALLY_CONFIRMED',
   'REJECTED',
   'SPENT',
 ]);
@@ -46,10 +45,9 @@ const categoryLabels: Record<string, string> = {
   MULTIPLE: 'Несколько',
 };
 
-const statusLabels: Record<RecordStatus, string> = {
+const statusLabels: Partial<Record<RecordStatus, string>> = {
   UNCONFIRMED: 'Не подтверждено',
   CONFIRMED: 'Подтверждено',
-  PARTIALLY_CONFIRMED: 'Частично подтверждено',
   REJECTED: 'Отклонено',
   SPENT: 'Использовано',
 };
@@ -163,6 +161,16 @@ function formatDateTime(value?: Date | string | null) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function aggregateCEURecordStatus(entries: { status: RecordStatus }[]) {
+  const statuses = entries.map((entry) => entry.status);
+  if (statuses.length === 0) return RecordStatus.UNCONFIRMED;
+  if (statuses.every((status) => status === RecordStatus.SPENT)) return RecordStatus.SPENT;
+  if (statuses.includes(RecordStatus.REJECTED)) return RecordStatus.REJECTED;
+  if (statuses.includes(RecordStatus.UNCONFIRMED)) return RecordStatus.UNCONFIRMED;
+  if (statuses.includes(RecordStatus.CONFIRMED)) return RecordStatus.CONFIRMED;
+  return RecordStatus.UNCONFIRMED;
 }
 
 function buildCsv(rows: Awaited<ReturnType<typeof buildCEUHistoryRows>>['rows']) {
@@ -334,8 +342,7 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
     const group = currentGroup(record.user.groups);
     const file = record.fileId ? fileByStorageId.get(record.fileId) ?? null : null;
     const cycleLabel = buildCycleLabel(record.cycle, group?.name);
-    const statuses = new Set(record.entries.map((entry) => entry.status));
-    const status = statuses.size === 1 ? record.entries[0]?.status ?? 'UNCONFIRMED' : 'PARTIALLY_CONFIRMED';
+    const status = aggregateCEURecordStatus(record.entries);
     const reviewedEntry = [...record.entries]
       .filter((entry) => entry.reviewedAt)
       .sort((a, b) => (b.reviewedAt?.getTime() ?? 0) - (a.reviewedAt?.getTime() ?? 0))[0];

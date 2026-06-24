@@ -9,6 +9,7 @@ import { ProgressSummary } from './ProgressSummary';
 import { DashboardTabs } from './DashboardTabs';
 import { NotificationBell } from '@/features/notifications/components/NotificationBell';
 import { NotificationModal } from '@/features/notifications/components/NotificationModal';
+import { CopyEmailLink } from '@/components/CopyEmailLink';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -133,9 +134,9 @@ export function Dashboard() {
                 Уважаемые пользователи! Произошло обновление реестра и кабинета пользователей.
                 Просьба отредактировать ваши личные данные. Будем благодарны за обратную связь,
                 просьба все ваши замечания и пожелания по работе кабинета отправлять на почту{' '}
-                <a href="mailto:CSPAP@yandex.ru" className="underline hover:no-underline">
+                <CopyEmailLink email="CSPAP@yandex.ru" className="underline hover:no-underline">
                   CSPAP@yandex.ru
-                </a>
+                </CopyEmailLink>
                 .
               </p>
             </div>

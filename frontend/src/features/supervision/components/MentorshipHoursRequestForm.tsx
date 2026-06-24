@@ -8,8 +8,11 @@ import { useSubmitSupervisionRequest } from '../hooks/useSubmitSupervisionReques
 import { useSupervisionSummary } from '../hooks/useSupervisionSummary';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { CopyEmailLink } from '@/components/CopyEmailLink';
 import {
   formatDecimalInput,
+  getDecimalInputBlurValue,
+  getDecimalInputFocusValue,
   normalizeDecimalInput,
   parseDecimalInput,
   sanitizeDecimalInput,
@@ -381,12 +384,12 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
 
                 <p className="mt-5 text-center text-[13px] leading-[1.35] text-[#6B7894]">
                   Если вашего ментора нет в реестре, напишите{' '}
-                  <a
-                    href="mailto:cspap@yandex.ru"
+                  <CopyEmailLink
+                    email="cspap@yandex.ru"
                     className="font-semibold text-[#1F305E] underline"
                   >
                     cspap@yandex.ru
-                  </a>
+                  </CopyEmailLink>
                 </p>
 
                 <label className="mt-5 flex items-start gap-3 text-[13px] text-[#6B7894]">
@@ -453,15 +456,23 @@ function NumberInput({
   onChange: (value: string) => void;
   max?: number | null;
 }) {
+  const [restoreValue, setRestoreValue] = useState<string | null>(null);
+
   return (
     <input
       className="input-design h-[32px]"
       inputMode="decimal"
       value={value}
       onFocus={() => {
-        if (value === '0') onChange('');
+        const next = getDecimalInputFocusValue(value);
+        setRestoreValue(next.restoreValue);
+        onChange(next.focusedValue);
       }}
-      onBlur={() => onChange(normalizeHoursInput(value, max))}
+      onBlur={() => {
+        const rawValue = getDecimalInputBlurValue(value, restoreValue);
+        onChange(normalizeHoursInput(rawValue, max));
+        setRestoreValue(null);
+      }}
       onChange={(event) => {
         const nextValue = sanitizeHoursInput(event.target.value);
         if (nextValue !== null) {

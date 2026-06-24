@@ -4,9 +4,12 @@ import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { Button } from '@/components/Button';
+import { CopyEmailLink } from '@/components/CopyEmailLink';
+import { DashboardDateInput } from '@/components/DashboardDateInput';
 import { PageNav } from '@/components/PageNav';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { AdminNotifyChoiceModal } from '@/features/admin/components/AdminNotifyChoiceModal';
 import { useAdminCeuHistory } from '@/features/admin/hooks/ceu/useAdminCeuHistory';
 import {
@@ -17,7 +20,7 @@ import {
   type AdminCeuSortDir,
   type AdminCeuStatus,
 } from '@/features/admin/api/ceu/getAdminCeuHistory';
-import { useUpdateCEUEntry } from '@/features/ceu/hooks/useUpdateCeuEntry';
+import { useDeleteCEURecord, useUpdateCEUEntry } from '@/features/ceu/hooks/useUpdateCeuEntry';
 import { displayCeuEventName } from '@/features/ceu/utils/displayCeuEventName';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { ceuCategoryLabels, recordStatusLabels } from '@/utils/labels';
@@ -218,21 +221,21 @@ export default function CeuReviewPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <label className="dashboard-v2-small block text-[#1F305E]">
             Добавлено с
-            <input
-              type="date"
+            <DashboardDateInput
               value={createdFrom}
-              onChange={(event) => updateQuery({ createdFrom: event.target.value }, { replace: true })}
-              className="input-design mt-1"
+              onChange={(value) => updateQuery({ createdFrom: value }, { replace: true })}
+              className="mt-1 h-[36px]"
+              ariaLabel="Добавлено с"
             />
           </label>
 
           <label className="dashboard-v2-small block text-[#1F305E]">
             Добавлено по
-            <input
-              type="date"
+            <DashboardDateInput
               value={createdTo}
-              onChange={(event) => updateQuery({ createdTo: event.target.value }, { replace: true })}
-              className="input-design mt-1"
+              onChange={(value) => updateQuery({ createdTo: value }, { replace: true })}
+              className="mt-1 h-[36px]"
+              ariaLabel="Добавлено по"
             />
           </label>
 
@@ -345,7 +348,7 @@ export default function CeuReviewPage() {
                       Баллы {sortBy === 'points' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[150px] px-4 py-3 text-center font-medium">
+                  <th className="w-[174px] px-4 py-3 text-center font-medium">
                     <button type="button" onClick={() => setSort('status')} className="font-medium">
                       Статус {sortBy === 'status' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
@@ -380,19 +383,19 @@ export default function CeuReviewPage() {
                         email={row.email}
                         className="block truncate font-extrabold"
                       />
-                      <a
-                        href={`mailto:${row.email}`}
-                        className="dashboard-v2-caption mt-1 block truncate text-[#1F305E] underline-offset-2 hover:underline"
+                      <CopyEmailLink
+                        email={row.email}
+                        className="dashboard-v2-caption mt-1 block max-w-full truncate text-left text-[#1F305E] underline-offset-2 hover:underline"
                       >
                         {row.email}
-                      </a>
+                      </CopyEmailLink>
                     </td>
                     <td className="px-4 py-3">{row.cycleLabel || '-'}</td>
                     <td className="px-4 py-3">{categoryLabel(row.category)}</td>
                     <td className="px-4 py-3 text-center font-extrabold">{row.points}</td>
                     <td className="px-4 py-3 text-center">
                       <span
-                        className={`dashboard-v2-caption inline-flex rounded-full px-3 py-1 ${statusClass(row.status)}`}
+                        className={`dashboard-v2-caption inline-flex max-w-full justify-center rounded-full px-3 py-1 text-center leading-tight ${statusClass(row.status)}`}
                       >
                         {recordStatusLabels[row.status] ?? row.status}
                       </span>
@@ -442,12 +445,16 @@ function AdminCeuDetailsModal({
   onClose: () => void;
 }) {
   const mutation = useUpdateCEUEntry(row.userId, row.email);
+  const deleteMutation = useDeleteCEURecord(row.userId, row.email);
+  const { confirm: confirmDialog } = useConfirm();
   const [rejectedReason, setRejectedReason] = useState(row.rejectedReason ?? '');
   const [deleteFile, setDeleteFile] = useState(false);
   const [pendingAction, setPendingAction] = useState<'CONFIRM' | 'REJECT' | null>(null);
+  const isBrokenRecord = row.entries.length === 0;
   const isSpent = row.status === 'SPENT';
-  const canConfirm = row.status === 'REJECTED';
-  const canReject = !isSpent && !canConfirm;
+  const canConfirm = !isBrokenRecord && row.status === 'REJECTED';
+  const canReject = !isBrokenRecord && !isSpent && !canConfirm;
+  const isActionPending = mutation.isPending || deleteMutation.isPending;
 
   const requestConfirm = () => {
     setPendingAction('CONFIRM');
@@ -500,6 +507,27 @@ function AdminCeuDetailsModal({
     }
   };
 
+  const removeBrokenRecord = async () => {
+    const ok = await confirmDialog({
+      title: 'Удалить CEU-запись?',
+      message:
+        'Запись будет удалена полностью. Если к ней прикреплен файл и он не используется в других местах, файл тоже будет удален.',
+      confirmLabel: 'Удалить',
+      cancelLabel: 'Отмена',
+      variant: 'danger',
+    });
+
+    if (!ok) return;
+
+    try {
+      await deleteMutation.mutateAsync(row.recordId);
+      toast.success(UI_TOAST_MESSAGES.ceu.recordDeleted);
+      onClose();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.ceu.deleteRecordFailed);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
       <div className="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
@@ -519,7 +547,8 @@ function AdminCeuDetailsModal({
                 Начисленные баллы
               </div>
               <div className="overflow-hidden rounded-[10px] border border-[#DCE8EC]">
-                {row.entries.map((entry) => (
+                {row.entries.length > 0 ? (
+                  row.entries.map((entry) => (
                   <div
                     key={entry.id}
                     className="grid gap-3 border-b border-[#DCE8EC] px-3 py-3 last:border-b-0 sm:grid-cols-[minmax(0,190px)_48px_minmax(0,1fr)]"
@@ -534,7 +563,13 @@ function AdminCeuDetailsModal({
                       {entry.activityType ? activityTypeLabel(entry.activityType) : '-'}
                     </span>
                   </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="dashboard-v2-text bg-[#FFF1F3] px-4 py-4 text-[var(--color-danger)]">
+                    В записи нет начисленных CEU-баллов. Это служебно поврежденная запись, ее
+                    можно удалить полностью.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -609,11 +644,20 @@ function AdminCeuDetailsModal({
 
         {!isSpent ? (
           <div className="mt-6 flex flex-wrap justify-end gap-3">
-            {canConfirm ? (
+            {isBrokenRecord ? (
+              <button
+                type="button"
+                onClick={removeBrokenRecord}
+                disabled={isActionPending}
+                className="btn btn-outline dashboard-v2-label h-[42px] min-w-[190px] rounded-full border-[var(--color-danger)] px-6 text-[var(--color-danger)] disabled:opacity-60"
+              >
+                Удалить запись полностью
+              </button>
+            ) : canConfirm ? (
               <button
                 type="button"
                 onClick={requestConfirm}
-                disabled={mutation.isPending}
+                disabled={isActionPending}
                 className="btn btn-dark dashboard-v2-label h-[42px] min-w-[140px] rounded-full px-6 disabled:bg-[#B7BFCE]"
               >
                 Подтвердить
@@ -622,7 +666,7 @@ function AdminCeuDetailsModal({
               <button
                 type="button"
                 onClick={requestReject}
-                disabled={mutation.isPending}
+                disabled={isActionPending}
                 className="btn btn-dark dashboard-v2-label h-[42px] min-w-[150px] rounded-full px-6 disabled:bg-[#B7BFCE]"
               >
                 Отклонить как ошибочную

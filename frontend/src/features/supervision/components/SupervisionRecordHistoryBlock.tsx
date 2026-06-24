@@ -20,6 +20,11 @@ function isAdminCorrection(record: SupervisionRecordHistoryItem) {
   return (record.description ?? '').toLowerCase().includes('корректировка часов');
 }
 
+function isMentorshipAdminCorrection(record: SupervisionRecordHistoryItem) {
+  const description = (record.description ?? '').toLowerCase();
+  return isAdminCorrection(record) && description.includes('ментор');
+}
+
 function correctionActor(record: SupervisionRecordHistoryItem) {
   return record.reviewedBy?.fullName || record.reviewedBy?.email || 'администратор';
 }
@@ -68,7 +73,9 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
   const records = useMemo(() => {
     const allRecords = data ? data.pages.flatMap((page) => page.records) : [];
     return allRecords.filter((record) =>
-      mode === 'mentorship' ? record.hours.mentor > 0 : record.hours.mentor <= 0,
+      mode === 'mentorship'
+        ? record.hours.mentor > 0 || isMentorshipAdminCorrection(record)
+        : record.hours.mentor <= 0 && !isMentorshipAdminCorrection(record),
     );
   }, [data, mode]);
 

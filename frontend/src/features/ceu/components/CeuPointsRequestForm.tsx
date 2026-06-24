@@ -6,6 +6,9 @@ import { uploadFile } from '@/features/files/api/uploadFile';
 import { submitCeuRequest } from '../api/submitCeuRequest';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import {
+  formatDecimalInput,
+  getDecimalInputBlurValue,
+  getDecimalInputFocusValue,
   normalizeDecimalInput,
   parseDecimalInput,
   sanitizeDecimalInput,
@@ -16,7 +19,6 @@ type CeuActivityType = 'TRAINING_ATTENDANCE' | 'PRESENTATION' | 'PUBLICATION' | 
 type CeuCategoryDraft = {
   selected: boolean;
   value: string;
-  activityType: CeuActivityType | '';
 };
 
 const MAX_SIZE_MB = 10;
@@ -52,10 +54,10 @@ const ACTIVITY_TYPES: Array<{ value: CeuActivityType; label: string }> = [
 
 function createInitialEntries(): Record<CeuCategory, CeuCategoryDraft> {
   return {
-    ETHICS: { selected: false, value: '0', activityType: '' },
-    CULTURAL_DIVERSITY: { selected: false, value: '0', activityType: '' },
-    SUPERVISION: { selected: false, value: '0', activityType: '' },
-    GENERAL: { selected: true, value: '0', activityType: '' },
+    ETHICS: { selected: false, value: '0' },
+    CULTURAL_DIVERSITY: { selected: false, value: '0' },
+    SUPERVISION: { selected: false, value: '0' },
+    GENERAL: { selected: true, value: '0' },
   };
 }
 
@@ -90,14 +92,17 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [eventDate, setEventDate] = useState('');
   const [eventName, setEventName] = useState('');
+  const [activityType, setActivityType] = useState<CeuActivityType>('TRAINING_ATTENDANCE');
   const [categoryEntries, setCategoryEntries] = useState(createInitialEntries);
+  const [restoreCategoryValues, setRestoreCategoryValues] = useState<
+    Partial<Record<CeuCategory, string>>
+  >({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const selectedEntries = CATEGORIES.filter((item) => categoryEntries[item.value].selected).map(
     (item) => ({
       category: item.value,
       value: parseCeuValue(categoryEntries[item.value].value),
-      activityType: categoryEntries[item.value].activityType,
     }),
   );
   const totalValue = selectedEntries.reduce((sum, entry) => sum + entry.value, 0);
@@ -128,6 +133,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
   const resetForm = () => {
     setEventDate('');
     setEventName('');
+    setActivityType('TRAINING_ATTENDANCE');
     setCategoryEntries(createInitialEntries());
     setSelectedFile(null);
   };
@@ -151,7 +157,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
       return;
     }
 
-    if (selectedEntries.some((entry) => !entry.activityType)) {
+    if (!activityType) {
       toast.error(UI_TOAST_MESSAGES.ceu.activityTypeRequired);
       return;
     }
@@ -183,9 +189,10 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
         eventName: trimmedEventName,
         eventDate,
         fileId: uploaded.fileId,
+        activityType,
         entries: selectedEntries.map((entry) => ({
           ...entry,
-          activityType: entry.activityType as CeuActivityType,
+          activityType,
         })),
       });
 
@@ -242,16 +249,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_236px]">
               <div className="min-w-0">
-                <div className="grid gap-4 md:grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.8fr)]">
-                  <Field label="Длительность">
-                    <input
-                      className="input-design h-[32px] bg-[#EFF1F5]"
-                      value={totalValue ? String(totalValue).replace('.', ',') : '0'}
-                      readOnly
-                      aria-label="Общее количество баллов"
-                    />
-                  </Field>
-
+                <div className="grid gap-4 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.8fr)]">
                   <Field label="Дата">
                     <input
                       className="input-design h-[32px]"
@@ -274,103 +272,110 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
                   </Field>
                 </div>
 
-                <div className="mt-6 space-y-3">
-                  <div className="hidden grid-cols-[210px_110px_minmax(0,1fr)] gap-4 px-3 text-[13px] font-semibold text-[#1F305E] md:grid">
-                    <span>Тема CEU</span>
-                    <span>Баллы</span>
-                    <span>Тип CEU</span>
+                <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-4 px-3 text-[13px] font-semibold text-[#1F305E]">
+                      <span>Тема CEU</span>
+                      <span>Баллы</span>
+                    </div>
+
+                    {CATEGORIES.map((item) => {
+                      const draft = categoryEntries[item.value];
+                      return (
+                        <div
+                          key={item.value}
+                          className={`grid gap-3 rounded-[10px] px-3 py-3 sm:grid-cols-[minmax(0,1fr)_110px] sm:items-center ${
+                            draft.selected ? 'bg-[#E5EFF1]' : 'bg-[#F7F9FB]'
+                          }`}
+                        >
+                          <CheckOption
+                            label={item.label}
+                            checked={draft.selected}
+                            disabled={submitting}
+                            onChange={() =>
+                              setCategoryEntries((current) => ({
+                                ...current,
+                                [item.value]: {
+                                  ...current[item.value],
+                                  selected: !current[item.value].selected,
+                                },
+                              }))
+                            }
+                          />
+
+                          <label className="block text-[12px] font-semibold text-[#1F305E]">
+                            <span className="mb-1 block sm:hidden">Баллы</span>
+                            <input
+                              className="input-design h-[34px]"
+                              inputMode="decimal"
+                              value={draft.value}
+                              onFocus={() => {
+                                const { focusedValue, restoreValue } = getDecimalInputFocusValue(
+                                  draft.value,
+                                );
+                                setRestoreCategoryValues((current) => ({
+                                  ...current,
+                                  [item.value]: restoreValue,
+                                }));
+                                setCategoryEntries((current) => ({
+                                  ...current,
+                                  [item.value]: { ...current[item.value], value: focusedValue },
+                                }));
+                              }}
+                              onBlur={() => {
+                                const rawValue = getDecimalInputBlurValue(
+                                  categoryEntries[item.value].value,
+                                  restoreCategoryValues[item.value],
+                                );
+                                setCategoryEntries((current) => ({
+                                  ...current,
+                                  [item.value]: {
+                                    ...current[item.value],
+                                    value: normalizeCeuValueInput(rawValue),
+                                  },
+                                }));
+                                setRestoreCategoryValues((current) => ({
+                                  ...current,
+                                  [item.value]: undefined,
+                                }));
+                              }}
+                              onChange={(event) => {
+                                const nextValue = sanitizeCeuValueInput(event.target.value);
+                                if (nextValue !== null) {
+                                  setCategoryEntries((current) => ({
+                                    ...current,
+                                    [item.value]: { ...current[item.value], value: nextValue },
+                                  }));
+                                }
+                              }}
+                              disabled={submitting || !draft.selected}
+                              placeholder="0"
+                            />
+                          </label>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {CATEGORIES.map((item) => {
-                    const draft = categoryEntries[item.value];
-                    return (
-                      <div
-                        key={item.value}
-                        className={`grid gap-3 rounded-[10px] px-3 py-3 md:grid-cols-[210px_110px_minmax(0,1fr)] md:items-center ${
-                          draft.selected ? 'bg-[#E5EFF1]' : 'bg-[#F7F9FB]'
-                        }`}
-                      >
+                  <div className="space-y-3">
+                    <div className="px-3 text-[13px] font-semibold text-[#1F305E]">Тип CEU</div>
+                    <div className="space-y-2 rounded-[10px] bg-[#F7F9FB] px-3 py-3">
+                      {ACTIVITY_TYPES.map((item) => (
                         <CheckOption
+                          key={item.value}
                           label={item.label}
-                          checked={draft.selected}
+                          checked={activityType === item.value}
                           disabled={submitting}
-                          onChange={() =>
-                            setCategoryEntries((current) => ({
-                              ...current,
-                              [item.value]: {
-                                ...current[item.value],
-                                selected: !current[item.value].selected,
-                              },
-                            }))
-                          }
+                          onChange={() => setActivityType(item.value)}
                         />
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
-                        <label className="block text-[12px] font-semibold text-[#1F305E]">
-                          <span className="mb-1 block md:hidden">Баллы</span>
-                          <input
-                            className="input-design h-[34px]"
-                            inputMode="decimal"
-                            value={draft.value}
-                            onFocus={() => {
-                              if (draft.value === '0') {
-                                setCategoryEntries((current) => ({
-                                  ...current,
-                                  [item.value]: { ...current[item.value], value: '' },
-                                }));
-                              }
-                            }}
-                            onBlur={() =>
-                              setCategoryEntries((current) => ({
-                                ...current,
-                                [item.value]: {
-                                  ...current[item.value],
-                                  value: normalizeCeuValueInput(current[item.value].value),
-                                },
-                              }))
-                            }
-                            onChange={(event) => {
-                              const nextValue = sanitizeCeuValueInput(event.target.value);
-                              if (nextValue !== null) {
-                                setCategoryEntries((current) => ({
-                                  ...current,
-                                  [item.value]: { ...current[item.value], value: nextValue },
-                                }));
-                              }
-                            }}
-                            disabled={submitting || !draft.selected}
-                            placeholder="0"
-                          />
-                        </label>
-
-                        <label className="block text-[12px] font-semibold text-[#1F305E]">
-                          <span className="mb-1 block md:hidden">Тип CEU</span>
-                          <select
-                            className="input-design h-[34px]"
-                            value={draft.activityType}
-                            onChange={(event) =>
-                              setCategoryEntries((current) => ({
-                                ...current,
-                                [item.value]: {
-                                  ...current[item.value],
-                                  activityType: event.target.value as CeuActivityType,
-                                },
-                              }))
-                            }
-                            disabled={submitting || !draft.selected}
-                          >
-                            <option value="" disabled>
-                              — Выберите тип —
-                            </option>
-                            {ACTIVITY_TYPES.map((activity) => (
-                              <option key={activity.value} value={activity.value}>
-                                {activity.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-                    );
-                  })}
+                <div className="mt-4 rounded-[10px] bg-[#E5EFF1] px-4 py-3 text-[14px] font-semibold text-[#1F305E]">
+                  Всего баллов по заявке:{' '}
+                  <span className="font-extrabold">{formatDecimalInput(totalValue, 2)}</span>
                 </div>
               </div>
 

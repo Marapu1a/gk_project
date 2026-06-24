@@ -10,6 +10,7 @@ import { useCeuSummary } from '@/features/ceu/hooks/useCeuSummary';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
 import { useSetTargetLevel } from '@/features/user/hooks/useSetTargetLevel';
 import type { TargetLevel as ApiTargetLevel, GoalMode } from '@/features/user/api/setTargetLevel';
+import { CopyEmailLink } from '@/components/CopyEmailLink';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { useMyExamApp } from '@/features/exam/hooks/useMyExamApp';
 import { usePatchExamAppStatus } from '@/features/exam/hooks/usePatchExamAppStatus';
@@ -414,12 +415,12 @@ export function CertificationBlock({ user }: Props) {
         <div className="dashboard-v2-caption mb-5 text-center text-[#97A0BD]">
           <p>
             Изменить уровень сертификации можно после получения сертификата или с помощью администратора:{' '}
-            <a
-              href={`mailto:${UI_CERTIFICATION_MESSAGES.supportEmail}`}
+            <CopyEmailLink
+              email={UI_CERTIFICATION_MESSAGES.supportEmail}
               className="cursor-pointer text-blue-dark underline underline-offset-2"
             >
               {UI_CERTIFICATION_MESSAGES.supportEmail}
-            </a>
+            </CopyEmailLink>
           </p>
         </div>
 

@@ -246,7 +246,7 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
       usable,
       pending,
       bonus: bonusPractice > 0 ? { practice: bonusPractice, fromCycleId: bonusSourceCycleId } : null,
-      mentor: isBasicSupervisor ? mentor(usableRaw, pendingRaw) : null,
+      mentor: isBasicSupervisor ? mentor(usable, pending) : null,
       practiceBreakdown: practiceCorrection
         ? {
             total: round2(practiceCorrection.implementing + practiceCorrection.programming + bonusPractice),

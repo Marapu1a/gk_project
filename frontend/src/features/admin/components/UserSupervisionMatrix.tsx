@@ -6,6 +6,8 @@ import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
 import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
 import {
   formatDecimalInput,
+  getDecimalInputBlurValue,
+  getDecimalInputFocusValue,
   normalizeDecimalInput,
   parseDecimalInput,
   sanitizeDecimalInput,
@@ -558,6 +560,8 @@ function NumberInput({
   large?: boolean;
   max?: number | null;
 }) {
+  const [restoreValue, setRestoreValue] = useState<string | null>(null);
+
   return (
     <input
       className={
@@ -568,9 +572,15 @@ function NumberInput({
       inputMode="decimal"
       value={value}
       onFocus={() => {
-        if (value === '0') onChange('');
+        const next = getDecimalInputFocusValue(value);
+        setRestoreValue(next.restoreValue);
+        onChange(next.focusedValue);
       }}
-      onBlur={() => onChange(normalizeHoursInput(value, max))}
+      onBlur={() => {
+        const rawValue = getDecimalInputBlurValue(value, restoreValue);
+        onChange(normalizeHoursInput(rawValue, max));
+        setRestoreValue(null);
+      }}
       onChange={(event) => {
         const nextValue = sanitizeHoursInput(event.target.value);
         if (nextValue !== null) {

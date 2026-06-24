@@ -35,21 +35,9 @@ export function DashboardNextStepCard({ step, onHide }: Props) {
 
   return (
     <section
-      className={`relative grid min-h-[92px] items-center gap-4 rounded-[16px] py-4 pl-5 shadow-soft sm:grid-cols-[auto_minmax(0,1fr)_auto] ${onHide ? 'pr-10' : 'pr-5'} ${toneClass[step.tone]}`}
+      className={`grid min-h-[92px] items-center gap-4 rounded-[16px] px-5 py-4 shadow-soft sm:grid-cols-[auto_minmax(0,1fr)_auto] ${toneClass[step.tone]}`}
       aria-labelledby="dashboard-next-step-title"
     >
-      {onHide ? (
-        <button
-          type="button"
-          onClick={onHide}
-          className="absolute right-3 top-3 flex size-7 items-center justify-center opacity-25 transition hover:opacity-60"
-          title="Скрыть подсказки"
-          aria-label="Скрыть подсказки"
-        >
-          <img src="/dashboard-v2/exit_btn.svg" alt="" width={16} height={16} />
-        </button>
-      ) : null}
-
       <div className="flex size-10 items-center justify-center rounded-full bg-white text-[var(--color-blue-dark)]">
         <Icon size={22} aria-hidden="true" />
       </div>
@@ -62,15 +50,29 @@ export function DashboardNextStepCard({ step, onHide }: Props) {
         <p className="dashboard-v2-text text-[#52617C]">{step.description}</p>
       </div>
 
-      {step.action ? (
-        <button
-          type="button"
-          onClick={handleAction}
-          className="btn btn-dark dashboard-v2-label flex min-h-[40px] cursor-pointer items-center justify-center gap-2 rounded-[8px] px-5"
-        >
-          {step.action.label}
-          <ArrowRight size={17} aria-hidden="true" />
-        </button>
+      {onHide || step.action ? (
+        <div className="flex flex-wrap items-center justify-start gap-3 sm:justify-end">
+          {onHide ? (
+            <button
+              type="button"
+              onClick={onHide}
+              className="dashboard-v2-label min-h-[40px] cursor-pointer rounded-[8px] border border-[rgba(31,48,94,0.35)] bg-white/45 px-5 text-[var(--color-blue-dark)] transition hover:bg-white/75"
+            >
+              Скрыть
+            </button>
+          ) : null}
+
+          {step.action ? (
+            <button
+              type="button"
+              onClick={handleAction}
+              className="btn btn-dark dashboard-v2-label flex min-h-[40px] cursor-pointer items-center justify-center gap-2 rounded-[8px] px-5"
+            >
+              {step.action.label}
+              <ArrowRight size={17} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </section>
   );

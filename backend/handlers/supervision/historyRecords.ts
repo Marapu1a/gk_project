@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { CycleStatus, PracticeLevel, RecordStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
 
 type Query = {
   take?: string;
@@ -73,84 +74,127 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
     return reply.send({ records: [], nextCursor: null });
   }
 
-  const records = await prisma.supervisionRecord.findMany({
-    where: {
-      userId,
-      cycleId: activeCycle.id,
-    },
-    select: {
-      id: true,
-      fileId: true,
-      createdAt: true,
-      periodStartedAt: true,
-      periodEndedAt: true,
-      treatmentSetting: true,
-      description: true,
-      ethicsAcceptedAt: true,
-      draftDirectIndividual: true,
-      draftDirectGroup: true,
-      draftNonObservingIndividual: true,
-      draftNonObservingGroup: true,
-      user: { select: { id: true, fullName: true, email: true } },
-      hours: {
-        select: {
-          id: true,
-          type: true,
-          value: true,
-          status: true,
-          reviewedAt: true,
-          rejectedReason: true,
-          reviewer: { select: { id: true, fullName: true, email: true } },
-          reviewedBy: { select: { id: true, fullName: true, email: true } },
-        },
-        orderBy: { id: 'asc' },
+  const [records, user, mentorshipTotals] = await Promise.all([
+    prisma.supervisionRecord.findMany({
+      where: {
+        userId,
+        cycleId: activeCycle.id,
       },
-    },
-    take: limit,
-    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: { id: 'desc' },
-  });
+      select: {
+        id: true,
+        fileId: true,
+        createdAt: true,
+        periodStartedAt: true,
+        periodEndedAt: true,
+        treatmentSetting: true,
+        description: true,
+        ethicsAcceptedAt: true,
+        draftDirectIndividual: true,
+        draftDirectGroup: true,
+        draftNonObservingIndividual: true,
+        draftNonObservingGroup: true,
+        user: { select: { id: true, fullName: true, email: true } },
+        hours: {
+          select: {
+            id: true,
+            type: true,
+            value: true,
+            status: true,
+            reviewedAt: true,
+            rejectedReason: true,
+            reviewer: { select: { id: true, fullName: true, email: true } },
+            reviewedBy: { select: { id: true, fullName: true, email: true } },
+          },
+          orderBy: { id: 'asc' },
+        },
+      },
+      take: limit,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { id: 'desc' },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullName: true, email: true },
+    }),
+    getCycleMentorshipTotal(activeCycle.id),
+  ]);
 
   const nextCursor = records.length === limit ? records[records.length - 1].id : null;
+  const mappedRecords = records.map((record) => {
+    const hours = record.hours;
+    const hourTotals = aggregateHours(hours);
+    const statusSummary = summarizeStatus(hours);
+    const supervisor = hours.find((hour) => hour.reviewer)?.reviewer ?? null;
+    const reviewedBy = hours.find((hour) => hour.reviewedBy)?.reviewedBy ?? null;
+    const directIndividual = record.draftDirectIndividual ?? 0;
+    const directGroup = record.draftDirectGroup ?? 0;
+    const nonObservingIndividual = record.draftNonObservingIndividual ?? 0;
+    const nonObservingGroup = record.draftNonObservingGroup ?? 0;
+
+    return {
+      id: record.id,
+      fileId: record.fileId,
+      createdAt: record.createdAt,
+      periodStartedAt: record.periodStartedAt,
+      periodEndedAt: record.periodEndedAt,
+      treatmentSetting: record.treatmentSetting,
+      description: record.description,
+      ethicsAcceptedAt: record.ethicsAcceptedAt,
+      hours: hourTotals,
+      distribution: {
+        directIndividual,
+        directGroup,
+        nonObservingIndividual,
+        nonObservingGroup,
+        direct: round2(directIndividual + directGroup),
+        nonObserving: round2(nonObservingIndividual + nonObservingGroup),
+      },
+      status: statusSummary.status,
+      reviewedAt: statusSummary.reviewedAt,
+      rejectedReason: statusSummary.rejectedReason,
+      user: record.user,
+      supervisor,
+      reviewedBy,
+    };
+  });
+
+  const mentorCorrection = mentorshipTotals.adminCorrection;
+  if (!cursor && mentorCorrection && user) {
+    mappedRecords.push({
+      id: `admin-mentorship-${mentorCorrection.id}`,
+      fileId: null,
+      createdAt: mentorCorrection.updatedAt,
+      periodStartedAt: mentorCorrection.updatedAt,
+      periodEndedAt: null,
+      treatmentSetting: 'Служебная корректировка',
+      description: 'Корректировка часов менторства администратором',
+      ethicsAcceptedAt: null,
+      hours: {
+        implementing: 0,
+        programming: 0,
+        mentor: round2(mentorCorrection.mentor),
+      },
+      distribution: {
+        directIndividual: 0,
+        directGroup: 0,
+        nonObservingIndividual: 0,
+        nonObservingGroup: 0,
+        direct: 0,
+        nonObserving: 0,
+      },
+      status: RecordStatus.CONFIRMED,
+      reviewedAt: mentorCorrection.updatedAt,
+      rejectedReason: null,
+      user,
+      supervisor: null,
+      reviewedBy: mentorCorrection.admin,
+    });
+  }
+
+  mappedRecords.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return reply.send({
-    records: records.map((record) => {
-      const hours = record.hours;
-      const hourTotals = aggregateHours(hours);
-      const statusSummary = summarizeStatus(hours);
-      const supervisor = hours.find((hour) => hour.reviewer)?.reviewer ?? null;
-      const reviewedBy = hours.find((hour) => hour.reviewedBy)?.reviewedBy ?? null;
-      const directIndividual = record.draftDirectIndividual ?? 0;
-      const directGroup = record.draftDirectGroup ?? 0;
-      const nonObservingIndividual = record.draftNonObservingIndividual ?? 0;
-      const nonObservingGroup = record.draftNonObservingGroup ?? 0;
-
-      return {
-        id: record.id,
-        fileId: record.fileId,
-        createdAt: record.createdAt,
-        periodStartedAt: record.periodStartedAt,
-        periodEndedAt: record.periodEndedAt,
-        treatmentSetting: record.treatmentSetting,
-        description: record.description,
-        ethicsAcceptedAt: record.ethicsAcceptedAt,
-        hours: hourTotals,
-        distribution: {
-          directIndividual,
-          directGroup,
-          nonObservingIndividual,
-          nonObservingGroup,
-          direct: round2(directIndividual + directGroup),
-          nonObserving: round2(nonObservingIndividual + nonObservingGroup),
-        },
-        status: statusSummary.status,
-        reviewedAt: statusSummary.reviewedAt,
-        rejectedReason: statusSummary.rejectedReason,
-        user: record.user,
-        supervisor,
-        reviewedBy,
-      };
-    }),
+    records: mappedRecords,
     nextCursor,
   });
 }

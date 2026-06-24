@@ -5,7 +5,6 @@ export type AdminCeuDisplayCategory = AdminCeuCategory | 'MULTIPLE';
 export type AdminCeuStatus =
   | 'UNCONFIRMED'
   | 'CONFIRMED'
-  | 'PARTIALLY_CONFIRMED'
   | 'REJECTED'
   | 'SPENT';
 export type AdminCeuActivityType =

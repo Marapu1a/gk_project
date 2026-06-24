@@ -68,6 +68,32 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
     }
   }
 
+  const bundledTypes: PaymentType[] = [
+    PaymentType.DOCUMENT_REVIEW,
+    PaymentType.EXAM_ACCESS,
+    PaymentType.REGISTRATION,
+  ];
+
+  if (bundledTypes.includes(dbPayment.type)) {
+    const activePackage = await prisma.payment.findFirst({
+      where: {
+        userId: dbPayment.userId,
+        type: PaymentType.FULL_PACKAGE,
+        status: { in: ['PENDING', 'PAID'] },
+        OR: dbPayment.targetLevel
+          ? [{ targetLevel: dbPayment.targetLevel }, { targetLevel: null }]
+          : [{ targetLevel: null }, { targetLevel: { not: null } }],
+      },
+      select: { id: true },
+    });
+
+    if (activePackage) {
+      return reply.code(409).send({
+        error: 'Платеж входит в пакет. Сначала отмените пакетную оплату.',
+      });
+    }
+  }
+
   const now = new Date();
 
   const result = await prisma.$transaction(async (tx) => {
@@ -90,12 +116,6 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
 
     let activated = 0;
     let synced = 0;
-
-    const bundledTypes: PaymentType[] = [
-      PaymentType.DOCUMENT_REVIEW,
-      PaymentType.EXAM_ACCESS,
-      PaymentType.REGISTRATION,
-    ];
 
     if (status === 'PAID' && dbPayment.type === 'FULL_PACKAGE') {
       const res = await tx.payment.updateMany({

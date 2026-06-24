@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatDecimalInput,
+  getDecimalInputBlurValue,
+  getDecimalInputFocusValue,
   normalizeDecimalInput,
   parseDecimalInput,
   sanitizeDecimalInput,
@@ -29,5 +31,14 @@ describe('decimalInput', () => {
   it('rejects extra decimal places and repeated separators', () => {
     expect(sanitizeDecimalInput('1,234')).toBeNull();
     expect(sanitizeDecimalInput('1,2,3')).toBeNull();
+  });
+
+  it('clears any numeric value on focus and restores it when left empty', () => {
+    expect(getDecimalInputFocusValue('22')).toEqual({
+      focusedValue: '',
+      restoreValue: '22',
+    });
+    expect(getDecimalInputBlurValue('', '22')).toBe('22');
+    expect(getDecimalInputBlurValue('3,5', '22')).toBe('3,5');
   });
 });

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useUsers } from '../hooks/useUsers';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
+import { DashboardDateInput } from '@/components/DashboardDateInput';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 import { formatCertificationLevelName, systemRoleLabels } from '@/utils/labels';
 
@@ -178,21 +179,21 @@ export function UsersTable() {
       <section className="card-section grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <label className="dashboard-v2-small block">
           Регистрация с
-          <input
-            type="date"
+          <DashboardDateInput
             value={registeredFrom}
-            onChange={(event) => resetPage(() => setRegisteredFrom(event.target.value))}
-            className="input-design mt-1"
+            onChange={(value) => resetPage(() => setRegisteredFrom(value))}
+            className="mt-1 h-[36px]"
+            ariaLabel="Регистрация с"
           />
         </label>
 
         <label className="dashboard-v2-small block">
           Регистрация по
-          <input
-            type="date"
+          <DashboardDateInput
             value={registeredTo}
-            onChange={(event) => resetPage(() => setRegisteredTo(event.target.value))}
-            className="input-design mt-1"
+            onChange={(value) => resetPage(() => setRegisteredTo(value))}
+            className="mt-1 h-[36px]"
+            ariaLabel="Регистрация по"
           />
         </label>
 

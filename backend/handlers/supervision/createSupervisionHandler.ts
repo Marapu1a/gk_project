@@ -142,6 +142,14 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     ? MENTOR_REVIEWER_REQUIRED_MESSAGE
     : PRACTICE_REVIEWER_REQUIRED_MESSAGE;
 
+  if (!periodStartedAt) {
+    return reply.code(400).send({ error: 'Укажите дату начала периода.' });
+  }
+
+  if (!periodEndedAt) {
+    return reply.code(400).send({ error: 'Укажите дату окончания периода.' });
+  }
+
   const reviewer = await prisma.user.findFirst({
     where: { email: { equals: supervisorEmail, mode: 'insensitive' }, archivedAt: null },
     include: { groups: { include: { group: true } } },

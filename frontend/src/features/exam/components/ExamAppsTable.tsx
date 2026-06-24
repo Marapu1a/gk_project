@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
+import { CopyEmailLink } from '@/components/CopyEmailLink';
 import { useExamApps } from '../hooks/useExamApps';
 import ExamAppModal from './ExamAppModal';
 import type { ExamApp, ExamStatus } from '../api/getMyExamApp';
@@ -148,12 +149,12 @@ export default function ExamAppsTable() {
                       </AdminUserNameLink>
                     </td>
                     <td className="px-4 py-3">
-                      <a
-                        href={`mailto:${row.user.email}`}
-                        className="truncate underline-offset-2 hover:underline"
+                      <CopyEmailLink
+                        email={row.user.email}
+                        className="block max-w-full truncate text-left underline-offset-2 hover:underline"
                       >
                         {row.user.email}
-                      </a>
+                      </CopyEmailLink>
                     </td>
                     <td className="px-4 py-3 text-center">
                       {row.cycle?.targetLevel ? targetLevelLabels[row.cycle.targetLevel] : '-'}

@@ -13,3 +13,8 @@ export async function updateCEUEntry(id: string, payload: UpdateCEUEntryPayload)
   const response = await api.patch(`/ceu/entry/${id}`, payload);
   return response.data;
 }
+
+export async function deleteCEURecord(recordId: string) {
+  const response = await api.delete(`/admin/ceu/records/${recordId}`);
+  return response.data;
+}

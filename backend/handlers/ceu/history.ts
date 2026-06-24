@@ -3,9 +3,12 @@ import { RecordStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 
 function aggregateStatus(statuses: RecordStatus[]) {
-  const unique = new Set(statuses);
-  if (unique.size === 1) return statuses[0];
-  return RecordStatus.PARTIALLY_CONFIRMED;
+  if (statuses.length === 0) return RecordStatus.UNCONFIRMED;
+  if (statuses.every((status) => status === RecordStatus.SPENT)) return RecordStatus.SPENT;
+  if (statuses.includes(RecordStatus.REJECTED)) return RecordStatus.REJECTED;
+  if (statuses.includes(RecordStatus.UNCONFIRMED)) return RecordStatus.UNCONFIRMED;
+  if (statuses.includes(RecordStatus.CONFIRMED)) return RecordStatus.CONFIRMED;
+  return RecordStatus.UNCONFIRMED;
 }
 
 export async function ceuHistoryHandler(req: FastifyRequest, reply: FastifyReply) {

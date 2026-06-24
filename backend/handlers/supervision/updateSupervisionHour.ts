@@ -190,7 +190,7 @@ export async function updateSupervisionHourHandler(
     const message =
       desiredStatus === 'CONFIRMED'
         ? `Ваши ${label} подтверждены (${existing.record.user.email})`
-        : `Ваши ${label} отклонены (${existing.record.user.email}). Причина: ${rejectedReason}`;
+        : `Ваши ${label} отклонены. Откройте историю заявок, чтобы посмотреть детали.`;
 
     await createNotification({
       userId: recordOwnerId,

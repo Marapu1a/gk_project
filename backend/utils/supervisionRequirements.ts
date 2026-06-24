@@ -31,7 +31,7 @@ export const renewalSupervisionRequirementsByGroup: Partial<
   'Инструктор': { practice: 200, supervision: 5, supervisor: 0 },
   'Куратор': { practice: 240, supervision: 12, supervisor: 0 },
   'Супервизор': { practice: 0, supervision: 0, supervisor: 24 },
-  'Опытный Супервизор': { practice: 0, supervision: 0, supervisor: 24 },
+  'Опытный Супервизор': { practice: 0, supervision: 0, supervisor: 0 },
 };
 
 export function getPracticeToSupervisionRatio(groupName: string): number | null {

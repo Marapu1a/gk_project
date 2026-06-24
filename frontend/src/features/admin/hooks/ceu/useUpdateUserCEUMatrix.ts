@@ -11,12 +11,19 @@ export function useUpdateUserCEUMatrix(userId: string) {
     UpdateUserCEUMatrixBody
   >({
     mutationFn: (data) => updateUserCEUMatrix(userId, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-ceu-matrix', userId] });
-      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
-      qc.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] });
-      qc.invalidateQueries({ queryKey: ['admin', 'ceu-history'] });
-      qc.invalidateQueries({ queryKey: ['ceuSummary'] });
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['admin-ceu-matrix', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'ceu-history'] }),
+        qc.invalidateQueries({ queryKey: ['ceuSummary'] }),
+      ]);
+
+      await Promise.all([
+        qc.refetchQueries({ queryKey: ['admin-ceu-matrix', userId], type: 'active' }),
+        qc.refetchQueries({ queryKey: ['admin', 'user', 'details', userId], type: 'active' }),
+      ]);
     },
   });
 }

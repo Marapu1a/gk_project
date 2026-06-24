@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
+import { DashboardDateInput } from '@/components/DashboardDateInput';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { PageNav } from '@/components/PageNav';
 import { Button } from '@/components/Button';
@@ -295,21 +296,21 @@ function AdminSupervisionCandidatesContent() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <label className="dashboard-v2-small block text-[#1F305E]">
             Часы добавлены с
-            <input
-              type="date"
+            <DashboardDateInput
               value={createdFrom}
-              onChange={(event) => updateQuery({ createdFrom: event.target.value }, { replace: true })}
-              className="input-design mt-1"
+              onChange={(value) => updateQuery({ createdFrom: value }, { replace: true })}
+              className="mt-1 h-[36px]"
+              ariaLabel="Часы добавлены с"
             />
           </label>
 
           <label className="dashboard-v2-small block text-[#1F305E]">
             Часы добавлены по
-            <input
-              type="date"
+            <DashboardDateInput
               value={createdTo}
-              onChange={(event) => updateQuery({ createdTo: event.target.value }, { replace: true })}
-              className="input-design mt-1"
+              onChange={(value) => updateQuery({ createdTo: value }, { replace: true })}
+              className="mt-1 h-[36px]"
+              ariaLabel="Часы добавлены по"
             />
           </label>
 

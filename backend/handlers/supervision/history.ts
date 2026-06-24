@@ -2,6 +2,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { RecordStatus, CycleStatus } from '@prisma/client';
+import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
 
 type Query = {
   status?: RecordStatus; // UNCONFIRMED | CONFIRMED | REJECTED | SPENT
@@ -42,44 +43,73 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
     ...(status ? { status } : {}),
   };
 
-  const hours = await prisma.supervisionHour.findMany({
-    where,
-    select: {
-      id: true,
-      type: true,
-      value: true,
-      status: true,
-      reviewedAt: true,
-      rejectedReason: true,
-      reviewer: { select: { id: true, fullName: true, email: true } },
-      reviewedBy: { select: { id: true, fullName: true, email: true } },
-      record: { select: { id: true, createdAt: true, fileId: true } },
-    },
-    take: limit,
-    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: { id: 'desc' }, // ✅ стабильная пагинация
-  });
+  const [hours, mentorshipTotals] = await Promise.all([
+    prisma.supervisionHour.findMany({
+      where,
+      select: {
+        id: true,
+        type: true,
+        value: true,
+        status: true,
+        reviewedAt: true,
+        rejectedReason: true,
+        reviewer: { select: { id: true, fullName: true, email: true } },
+        reviewedBy: { select: { id: true, fullName: true, email: true } },
+        record: { select: { id: true, createdAt: true, fileId: true } },
+      },
+      take: limit,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { id: 'desc' }, // ✅ стабильная пагинация
+    }),
+    getCycleMentorshipTotal(activeCycle.id),
+  ]);
 
   const nextCursor = hours.length === limit ? hours[hours.length - 1].id : null;
+  const items = hours.map((h) => ({
+    id: h.id,
+    recordId: h.record.id,
+    fileId: h.record.fileId,
+    type: normalizeLevel(h.type),
+    value: h.value,
+    status: h.status,
+    createdAt: h.record.createdAt,
+    reviewedAt: h.reviewedAt,
+    rejectedReason: h.rejectedReason,
+    reviewer: h.reviewer
+      ? { id: h.reviewer.id, fullName: h.reviewer.fullName, email: h.reviewer.email }
+      : null,
+    reviewedBy: h.reviewedBy
+      ? { id: h.reviewedBy.id, fullName: h.reviewedBy.fullName, email: h.reviewedBy.email }
+      : null,
+  }));
+
+  const mentorCorrection = mentorshipTotals.adminCorrection;
+  if (!cursor && (!status || status === RecordStatus.CONFIRMED) && mentorCorrection) {
+    items.push({
+      id: `admin-mentorship-${mentorCorrection.id}`,
+      recordId: mentorCorrection.id,
+      fileId: null,
+      type: 'SUPERVISOR',
+      value: mentorCorrection.mentor,
+      status: RecordStatus.CONFIRMED,
+      createdAt: mentorCorrection.updatedAt,
+      reviewedAt: mentorCorrection.updatedAt,
+      rejectedReason: null,
+      reviewer: null,
+      reviewedBy: mentorCorrection.admin
+        ? {
+            id: mentorCorrection.admin.id,
+            fullName: mentorCorrection.admin.fullName,
+            email: mentorCorrection.admin.email,
+          }
+        : null,
+    });
+  }
+
+  items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return reply.send({
-    items: hours.map((h) => ({
-      id: h.id,
-      recordId: h.record.id,
-      fileId: h.record.fileId,
-      type: normalizeLevel(h.type),
-      value: h.value,
-      status: h.status,
-      createdAt: h.record.createdAt,
-      reviewedAt: h.reviewedAt,
-      rejectedReason: h.rejectedReason,
-      reviewer: h.reviewer
-        ? { id: h.reviewer.id, fullName: h.reviewer.fullName, email: h.reviewer.email }
-        : null,
-      reviewedBy: h.reviewedBy
-        ? { id: h.reviewedBy.id, fullName: h.reviewedBy.fullName, email: h.reviewedBy.email }
-        : null,
-    })),
+    items,
     nextCursor,
   });
 }

@@ -165,11 +165,11 @@ export default function PaymentsBlock({
   }, [visiblePayments]);
 
   const fullPackage = visiblePayments.find((payment) => payment.type === 'FULL_PACKAGE');
-  const isFullPackagePending = fullPackage?.status === 'PENDING';
+  const isFullPackageActive = fullPackage?.status === 'PENDING' || fullPackage?.status === 'PAID';
 
   const getDisplayStatus = (payment: Payment) => {
-    if (isFullPackagePending && payment.type !== 'FULL_PACKAGE' && payment.status === 'UNPAID') {
-      return 'Ожидает пакет';
+    if (isFullPackageActive && payment.type !== 'FULL_PACKAGE') {
+      return 'В составе пакета';
     }
 
     return paymentStatusLabels[payment.status] || payment.status;
@@ -237,7 +237,7 @@ export default function PaymentsBlock({
             const isPaid = payment.status === 'PAID';
             const nextStatus = isPaid ? 'UNPAID' : 'PAID';
             const inheritedPending =
-              Boolean(isFullPackagePending) && payment.type !== 'FULL_PACKAGE' && payment.status === 'UNPAID';
+              Boolean(isFullPackageActive) && payment.type !== 'FULL_PACKAGE';
 
             return (
               <div
@@ -268,18 +268,24 @@ export default function PaymentsBlock({
                 </div>
 
                 <div className="flex justify-end">
-                  <button
-                    type="button"
-                    className={`btn dashboard-v2-action w-full max-w-[180px] ${
-                      isPaid
-                        ? 'dashboard-v2-action-secondary border-[var(--color-danger)] text-[var(--color-danger)]'
-                        : 'dashboard-v2-action-primary'
-                    }`}
-                    onClick={() => setPendingAction({ payment, nextStatus })}
-                    disabled={mutate.isPending}
-                  >
-                    {isPaid ? 'Отменить' : 'Подтвердить'}
-                  </button>
+                  {inheritedPending ? (
+                    <div className="dashboard-v2-action flex min-h-[44px] w-full max-w-[180px] items-center justify-center rounded-[999px] bg-[var(--color-blue-soft)] px-4 text-center text-[13px] font-extrabold leading-tight text-[#7F8AA3]">
+                      Управляется пакетом
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`btn dashboard-v2-action w-full max-w-[180px] ${
+                        isPaid
+                          ? 'dashboard-v2-action-secondary border-[var(--color-danger)] text-[var(--color-danger)]'
+                          : 'dashboard-v2-action-primary'
+                      }`}
+                      onClick={() => setPendingAction({ payment, nextStatus })}
+                      disabled={mutate.isPending}
+                    >
+                      {isPaid ? 'Отменить' : 'Подтвердить'}
+                    </button>
+                  )}
                 </div>
               </div>
             );

@@ -1,3 +1,5 @@
+import { CopyEmailLink } from '@/components/CopyEmailLink';
+
 export default function SiteFooter() {
   return (
     <footer className="bg-[#070022] text-white">
@@ -147,11 +149,9 @@ export default function SiteFooter() {
               </li>
 
               <li>
-                <a
-                  href="mailto:info@reestrpap.ru"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-start gap-[11px] hover:underline"
+                <CopyEmailLink
+                  email="CSPAP@yandex.ru"
+                  className="flex items-start gap-[11px] text-left hover:underline"
                 >
                   <span className="w-[18px] h-[17px] shrink-0 mt-[1px] flex items-center justify-center">
                     <svg
@@ -171,7 +171,7 @@ export default function SiteFooter() {
                     </svg>
                   </span>
                   <span>CSPAP@yandex.ru</span>
-                </a>
+                </CopyEmailLink>
               </li>
 
               <li className="flex items-start gap-[11px]">

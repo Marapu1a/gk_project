@@ -114,14 +114,21 @@ export function UserPaymentDashboard({
     ordered = renewal ? [renewal] : [];
   } else {
     const isSupervisorTarget = targetLevel === 'SUPERVISOR';
+    const fullPackage = payments.find((p) => p.type === 'FULL_PACKAGE');
+    const isFullPackageActive =
+      fullPackage?.status === 'PENDING' || fullPackage?.status === 'PAID';
 
-    const types = isSupervisorTarget
-      ? ORDERED_TYPES.filter((t) => t !== 'REGISTRATION' && t !== 'RENEWAL')
-      : ORDERED_TYPES.filter((t) => t !== 'RENEWAL');
+    if (isFullPackageActive && fullPackage) {
+      ordered = [fullPackage];
+    } else {
+      const types = isSupervisorTarget
+        ? ORDERED_TYPES.filter((t) => t !== 'REGISTRATION' && t !== 'RENEWAL')
+        : ORDERED_TYPES.filter((t) => t !== 'RENEWAL');
 
-    ordered = types
-      .map((type) => payments.find((p) => p.type === type))
-      .filter(Boolean) as PaymentItem[];
+      ordered = types
+        .map((type) => payments.find((p) => p.type === type))
+        .filter(Boolean) as PaymentItem[];
+    }
   }
 
   if (!ordered.length) return null;
