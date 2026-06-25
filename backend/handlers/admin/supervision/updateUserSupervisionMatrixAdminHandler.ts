@@ -84,11 +84,7 @@ function round2(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-function mapTargetLevel(level: TargetLevel) {
-  if (level === TargetLevel.INSTRUCTOR) return 'Инструктор';
-  if (level === TargetLevel.CURATOR) return 'Куратор';
-  return 'Супервизор';
-}
+import { targetLevelToGroupName as mapTargetLevel } from '../../../domain/levels';
 
 function getRequirements(activeCycle: { targetLevel: TargetLevel; type: CycleType }) {
   const groupName = mapTargetLevel(activeCycle.targetLevel);

@@ -14,11 +14,7 @@ import { getCycleSupervisionTotals } from '../../../utils/getCycleSupervisionTot
 type Level = 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR';
 const STATUSES: RecordStatus[] = ['CONFIRMED', 'UNCONFIRMED'];
 
-const RU_BY_LEVEL: Record<TargetLevel, 'Инструктор' | 'Куратор' | 'Супервизор'> = {
-  INSTRUCTOR: 'Инструктор',
-  CURATOR: 'Куратор',
-  SUPERVISOR: 'Супервизор',
-};
+import { targetLevelToGroupName } from '../../../domain/levels';
 
 type RequirementsGroupKey = keyof typeof supervisionRequirementsByGroup;
 
@@ -111,7 +107,7 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
   }
 
   // ===== target строго из цикла =====
-  const targetRu: RequirementsGroupKey | null = RU_BY_LEVEL[activeCycle.targetLevel] ?? null;
+  const targetRu: RequirementsGroupKey | null = targetLevelToGroupName(activeCycle.targetLevel) ?? null;
   const required = targetRu ? supervisionRequirementsByGroup[targetRu] ?? null : null;
 
   const usableRaw: SupervisionSummary = {

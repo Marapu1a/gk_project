@@ -61,11 +61,7 @@ type PracticeAgg = {
   supervisor: number;
 };
 
-const RU_BY_LEVEL: Record<TargetLevel, 'Инструктор' | 'Куратор' | 'Супервизор'> = {
-  INSTRUCTOR: 'Инструктор',
-  CURATOR: 'Куратор',
-  SUPERVISOR: 'Супервизор',
-};
+import { targetLevelToGroupName } from '../../domain/levels';
 
 export async function supervisionSummaryHandler(req: FastifyRequest, reply: FastifyReply) {
   const { user } = req as any;
@@ -119,7 +115,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     });
   }
 
-  const targetRu = RU_BY_LEVEL[activeCycle.targetLevel];
+  const targetRu = targetLevelToGroupName(activeCycle.targetLevel);
   const isRenewal = activeCycle.type === CycleType.RENEWAL;
   const isExperiencedSupervisor = current === 'Опытный Супервизор';
 

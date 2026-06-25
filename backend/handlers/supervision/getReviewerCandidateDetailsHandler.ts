@@ -50,11 +50,7 @@ const SUPERVISION_TYPES = [
 
 const MENTORSHIP_TYPES = [PracticeLevel.SUPERVISOR, PracticeLevel.SUPERVISION];
 
-const RU_BY_LEVEL: Record<TargetLevel, 'Инструктор' | 'Куратор' | 'Супервизор'> = {
-  INSTRUCTOR: 'Инструктор',
-  CURATOR: 'Куратор',
-  SUPERVISOR: 'Супервизор',
-};
+import { targetLevelToGroupName } from '../../domain/levels';
 
 function typesForKind(kind: CandidateKind) {
   return kind === 'mentorship' ? MENTORSHIP_TYPES : SUPERVISION_TYPES;
@@ -309,12 +305,12 @@ function resolveCeuRequirement(params: {
   const { activeCycle, candidateTargetLevel, primaryGroupName } = params;
 
   if (activeCycle.type === CycleType.RENEWAL) {
-    const groupName = RU_BY_LEVEL[activeCycle.targetLevel] as GroupName;
+    const groupName = targetLevelToGroupName(activeCycle.targetLevel) as GroupName;
     return renewalCeuRequirementsByGroup[groupName] ?? null;
   }
 
   const targetGroupName =
-    (candidateTargetLevel && RU_BY_LEVEL[candidateTargetLevel]) ||
+    (candidateTargetLevel && targetLevelToGroupName(candidateTargetLevel)) ||
     (primaryGroupName ? getNextGroupName(primaryGroupName) : null);
 
   return (targetGroupName && ceuRequirementsByGroup[targetGroupName as GroupName]) || null;
@@ -324,7 +320,7 @@ function resolveSupervisionRequirement(activeCycle: {
   type: CycleType;
   targetLevel: TargetLevel;
 }): SupervisionRequirement | null {
-  const groupName = RU_BY_LEVEL[activeCycle.targetLevel];
+  const groupName = targetLevelToGroupName(activeCycle.targetLevel);
   return activeCycle.type === CycleType.RENEWAL
     ? renewalSupervisionRequirementsByGroup[groupName] ?? null
     : supervisionRequirementsByGroup[groupName] ?? null;

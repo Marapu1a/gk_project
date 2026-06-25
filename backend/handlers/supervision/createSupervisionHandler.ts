@@ -18,6 +18,7 @@ import {
   renewalSupervisionRequirementsByGroup,
   supervisionRequirementsByGroup,
 } from '../../utils/supervisionRequirements';
+import { targetLevelToGroupName as mapTargetLevel } from '../../domain/levels';
 
 const PRACTICE_REVIEWER_REQUIRED_MESSAGE =
   'Заявку на подтверждение часов практики можно отправить только супервизорам, которые есть в системе. Напишите в поддержку, если вашего супервизора нет в системе или что-то пошло не так.';
@@ -31,12 +32,6 @@ class SupervisionHoursLimitError extends Error {
   ) {
     super(message);
   }
-}
-
-function mapTargetLevel(level: TargetLevel) {
-  if (level === TargetLevel.INSTRUCTOR) return 'Инструктор';
-  if (level === TargetLevel.CURATOR) return 'Куратор';
-  return 'Супервизор';
 }
 
 function getRequirements(activeCycle: { targetLevel: TargetLevel; type: CycleType }) {

@@ -24,11 +24,7 @@ import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
 import { resolveDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
 import { ensureRenewalDocumentInheritance } from '../documentReview/ensureRenewalDocumentInheritance';
 
-const RU_BY_LEVEL: Record<TargetLevel, 'Инструктор' | 'Куратор' | 'Супервизор'> = {
-  INSTRUCTOR: 'Инструктор',
-  CURATOR: 'Куратор',
-  SUPERVISOR: 'Супервизор',
-};
+import { targetLevelToGroupName } from '../../domain/levels';
 
 const PAYMENT_LABELS: Record<PaymentType, string> = {
   FULL_PACKAGE: 'Полный пакет',
@@ -159,7 +155,7 @@ export async function buildExamReadiness(userId: string) {
     };
   }
 
-  const targetGroupName = RU_BY_LEVEL[activeCycle.targetLevel];
+  const targetGroupName = targetLevelToGroupName(activeCycle.targetLevel);
   const isRenewal = activeCycle.type === CycleType.RENEWAL;
   const isExperiencedSupervisor = currentGroup?.name === 'Опытный Супервизор';
 

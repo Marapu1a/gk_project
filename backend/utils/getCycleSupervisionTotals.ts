@@ -5,6 +5,7 @@ import {
   calcAutoSupervisionHours,
   calcAutoRenewalSupervisionHours,
 } from './supervisionRequirements';
+import { targetLevelToGroupName as mapTargetLevel } from '../domain/levels';
 
 type RuTargetLevel = 'Инструктор' | 'Куратор' | 'Супервизор';
 
@@ -119,8 +120,3 @@ export async function getCycleSupervisionTotals(
   };
 }
 
-function mapTargetLevel(level: TargetLevel): RuTargetLevel {
-  if (level === 'INSTRUCTOR') return 'Инструктор';
-  if (level === 'CURATOR') return 'Куратор';
-  return 'Супервизор';
-}

@@ -18,11 +18,7 @@ type Body = {
 
 type RequirementsGroupName = keyof typeof supervisionRequirementsByGroup;
 
-const TARGET_RU_BY_LEVEL: Record<TargetLevel, RequirementsGroupName> = {
-  INSTRUCTOR: 'Инструктор',
-  CURATOR: 'Куратор',
-  SUPERVISOR: 'Супервизор',
-};
+import { targetLevelToGroupName, TARGET_GROUP_NAMES } from '../../domain/levels';
 
 // Какие цели можно выбирать с конкретной активной группы для ПЕРВИЧНОЙ сертификации
 const ALLOWED_CERTIFICATION_TARGETS_BY_GROUP: Record<string, TargetLevel[]> = {
@@ -70,7 +66,7 @@ function sendError(reply: FastifyReply, code: number, error: ErrorCode) {
 }
 
 function buildRequirementsSnapshot(targetLevel: TargetLevel, goalMode: GoalMode) {
-  const ru = TARGET_RU_BY_LEVEL[targetLevel];
+  const ru = targetLevelToGroupName(targetLevel);
 
   if (goalMode === 'RENEWAL') {
     const req = renewalSupervisionRequirementsByGroup[ru];
@@ -217,12 +213,12 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
   // --- валидация цели ---
   if (targetLevel) {
     const targetGroups = await prisma.group.findMany({
-      where: { name: { in: Object.values(TARGET_RU_BY_LEVEL) } },
+      where: { name: { in: TARGET_GROUP_NAMES } },
       select: { name: true, rank: true },
     });
 
     const rankByName = new Map(targetGroups.map((g) => [g.name, g.rank]));
-    const targetName = TARGET_RU_BY_LEVEL[targetLevel];
+    const targetName = targetLevelToGroupName(targetLevel);
     const targetRank = rankByName.get(targetName);
 
     if (typeof targetRank !== 'number') {
@@ -468,7 +464,7 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
     }
 
     if (adminIds.length) {
-      const targetName = TARGET_RU_BY_LEVEL[targetLevel];
+      const targetName = targetLevelToGroupName(targetLevel);
       const message =
         `Пользователь ${dbUser.fullName ?? dbUser.email ?? dbUser.id} ` +
         `изменил цель на «${targetName}» (${modeRu}). Обновлено платежей: ${resetCount}.`;
