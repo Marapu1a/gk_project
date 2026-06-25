@@ -11,10 +11,6 @@ export async function updateTargetLevelHandler(req: FastifyRequest, reply: Fasti
     goalMode?: 'CERTIFICATION' | 'RENEWAL';
   };
 
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Недостаточно прав' });
-  }
-
   // 1) Если уже есть активный цикл — здесь запрещаем менять/ставить цель.
   // Для этого будет отдельная ручка "abort".
   const activeCycle = await prisma.certificationCycle.findFirst({

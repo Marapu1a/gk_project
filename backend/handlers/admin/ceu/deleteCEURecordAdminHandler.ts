@@ -3,16 +3,14 @@ import fs from 'fs/promises';
 import path from 'path';
 import { prisma } from '../../../lib/prisma';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR;
+import { UPLOAD_ROOT } from '../../../config/storage';
 
 interface DeleteCEURecordAdminRoute extends RouteGenericInterface {
   Params: { recordId: string };
 }
 
 async function deletePhysicalFile(fileId: string) {
-  const baseDir = UPLOAD_DIR
-    ? path.resolve(UPLOAD_DIR)
-    : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+  const baseDir = UPLOAD_ROOT;
 
   try {
     await fs.unlink(path.join(baseDir, fileId));
@@ -28,10 +26,6 @@ export async function deleteCEURecordAdminHandler(
   const adminId = req.user?.userId;
   const role = req.user?.role;
   const { recordId } = req.params;
-
-  if (!adminId || role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Только администратор может удалить CEU-запись' });
-  }
 
   const record = await prisma.cEURecord.findUnique({
     where: { id: recordId },

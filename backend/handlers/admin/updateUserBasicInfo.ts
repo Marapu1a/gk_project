@@ -16,10 +16,6 @@ const updateUserSchema = z.object({
 export async function updateUserBasicInfoHandler(req: FastifyRequest, reply: FastifyReply) {
   const { id } = req.params as { id: string };
 
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const parsed = updateUserSchema.safeParse(req.body);
   if (!parsed.success) {
     return reply.code(400).send({ error: 'Невалидные данные', details: parsed.error.flatten() });

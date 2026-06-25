@@ -6,7 +6,7 @@ import { prisma } from '../../lib/prisma';
 import { NotificationType } from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR;
+import { UPLOAD_ROOT } from '../../config/storage';
 
 interface UpdateCEUEntryRoute extends RouteGenericInterface {
   Params: { id: string };
@@ -20,9 +20,7 @@ interface UpdateCEUEntryRoute extends RouteGenericInterface {
 }
 
 async function deletePhysicalFile(fileId: string) {
-  const baseDir = UPLOAD_DIR
-    ? path.resolve(UPLOAD_DIR)
-    : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+  const baseDir = UPLOAD_ROOT;
 
   try {
     await fs.unlink(path.join(baseDir, fileId));

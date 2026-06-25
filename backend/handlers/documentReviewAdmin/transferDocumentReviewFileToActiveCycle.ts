@@ -10,10 +10,6 @@ export async function transferDocumentReviewFileToActiveCycle(
   const user = req.user as any;
   const { id, fileReviewId } = req.params as { id: string; fileReviewId: string };
 
-  if (!user?.userId || user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Нет доступа' });
-  }
-
   const sourceRequest = await prisma.documentReviewRequest.findUnique({
     where: { id },
     select: {

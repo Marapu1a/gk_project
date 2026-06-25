@@ -5,12 +5,10 @@ import { DocumentReviewFileStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { recalculateDocumentReviewRequestStatus } from './documentReviewFileStatusUtils';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR;
+import { UPLOAD_ROOT } from '../../config/storage';
 
 async function deletePhysicalFile(fileId: string) {
-  const baseDir = UPLOAD_DIR
-    ? path.resolve(UPLOAD_DIR)
-    : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+  const baseDir = UPLOAD_ROOT;
 
   try {
     await fs.unlink(path.join(baseDir, fileId));
@@ -22,10 +20,6 @@ async function deletePhysicalFile(fileId: string) {
 export async function deleteDocumentReviewFile(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
   const { id, fileReviewId } = req.params as { id: string; fileReviewId: string };
-
-  if (!user?.userId || user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Нет доступа' });
-  }
 
   const reviewFile = await prisma.documentReviewFile.findFirst({
     where: { id: fileReviewId, requestId: id },

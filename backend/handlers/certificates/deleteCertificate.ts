@@ -9,7 +9,7 @@ interface DeleteCertificateRoute extends RouteGenericInterface {
   Body: { deleteFile?: boolean };
 }
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR;
+import { UPLOAD_ROOT } from '../../config/storage';
 
 function getChainGroupNames(
   groupName: string
@@ -105,9 +105,7 @@ export async function deleteCertificateHandler(
   }
 
   if (deleteFile && fileRecord?.fileId) {
-    const baseDir = UPLOAD_DIR
-      ? path.resolve(UPLOAD_DIR)
-      : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+    const baseDir = UPLOAD_ROOT;
 
     const filePath = path.join(baseDir, fileRecord.fileId);
     try {

@@ -16,7 +16,7 @@ interface UpdateCertificateRoute extends RouteGenericInterface {
   };
 }
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR;
+import { UPLOAD_ROOT } from '../../config/storage';
 
 function getChainGroupNames(
   groupName: string
@@ -217,9 +217,7 @@ export async function updateCertificateHandler(
     });
 
     if (oldFileToDelete?.fileId) {
-      const baseDir = UPLOAD_DIR
-        ? path.resolve(UPLOAD_DIR)
-        : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+      const baseDir = UPLOAD_ROOT;
       const filePath = path.join(baseDir, oldFileToDelete.fileId);
 
       try {

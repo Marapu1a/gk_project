@@ -6,10 +6,6 @@ export async function getDocumentReviewRequestById(req: FastifyRequest, reply: F
   const user = req.user as any;
   const { id } = req.params as { id: string };
 
-  if (!user?.userId || user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Нет доступа' });
-  }
-
   const request = await prisma.documentReviewRequest.findUnique({
     where: { id },
     include: {

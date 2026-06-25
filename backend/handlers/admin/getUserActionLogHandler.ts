@@ -2,10 +2,6 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../../lib/prisma';
 
 export async function getUserActionLogHandler(req: FastifyRequest, reply: FastifyReply) {
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const { id } = req.params as { id: string };
 
   const logs = await prisma.adminUserActionLog.findMany({

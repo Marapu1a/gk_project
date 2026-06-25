@@ -7,10 +7,6 @@ export async function getAllDocumentReviewRequests(req: FastifyRequest, reply: F
   const user = req.user as any;
   const { email } = req.query as { email?: string };
 
-  if (!user?.userId || user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Нет доступа' });
-  }
-
   const requests = await prisma.documentReviewRequest.findMany({
     where: email ? {
       user: {

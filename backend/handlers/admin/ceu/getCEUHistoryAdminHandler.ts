@@ -411,10 +411,6 @@ export async function getCEUHistoryAdminHandler(
   req: FastifyRequest<GetCEUHistoryAdminRoute>,
   reply: FastifyReply
 ) {
-  if (req.user?.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const result = await buildCEUHistoryRows(req.query);
   if (result.error) return reply.code(400).send({ error: result.error });
 
@@ -434,10 +430,6 @@ export async function getCEUHistoryAdminExportHandler(
   req: FastifyRequest<GetCEUHistoryAdminRoute>,
   reply: FastifyReply,
 ) {
-  if (req.user?.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const result = await buildCEUHistoryRows(req.query);
   if (result.error) return reply.code(400).send({ error: result.error });
 

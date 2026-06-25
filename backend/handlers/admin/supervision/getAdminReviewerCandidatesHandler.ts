@@ -172,10 +172,6 @@ export async function getAdminReviewerCandidatesHandler(
   req: FastifyRequest<GetAdminReviewerCandidatesRoute>,
   reply: FastifyReply,
 ) {
-  if (req.user?.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const {
     kind = 'supervision',
     createdFrom,

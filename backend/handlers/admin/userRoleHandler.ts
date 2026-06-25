@@ -15,10 +15,6 @@ export async function toggleUserRoleHandler(
 ) {
   const userId = req.params.id;
 
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Недостаточно прав для изменения ролей' });
-  }
-
   if (req.user.userId === userId) {
     return reply.code(400).send({ error: 'Нельзя изменить права администратора у самого себя' });
   }

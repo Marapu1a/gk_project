@@ -66,10 +66,6 @@ async function countPendingReviewerRequests(
 
 export async function getUserFullDetailsHandler(req: FastifyRequest, reply: FastifyReply) {
   const { id } = req.params as { id: string };
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const user = await prisma.user.findUnique({
     where: { id },
     select: {

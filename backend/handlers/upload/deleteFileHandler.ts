@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { prisma } from '../../lib/prisma';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR; // на серве есть, локально может отсутствовать
+import { UPLOAD_ROOT } from '../../config/storage';
 
 export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -58,9 +58,7 @@ export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply
     });
   });
 
-  const baseDir = UPLOAD_DIR
-    ? path.resolve(UPLOAD_DIR)
-    : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+  const baseDir = UPLOAD_ROOT;
 
   const filePath = path.join(baseDir, file.fileId);
 

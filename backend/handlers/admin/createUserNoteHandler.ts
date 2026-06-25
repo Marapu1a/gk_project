@@ -8,10 +8,6 @@ const bodySchema = z.object({
 });
 
 export async function createUserNoteHandler(req: FastifyRequest, reply: FastifyReply) {
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const { id } = req.params as { id: string };
   const parsed = bodySchema.safeParse(req.body);
 

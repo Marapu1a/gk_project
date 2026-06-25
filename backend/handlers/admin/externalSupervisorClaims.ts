@@ -24,10 +24,6 @@ export async function getExternalSupervisorClaimsHandler(
   req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const query = req.query as ListQuery;
   const mode = query.mode === 'history' ? 'history' : 'active';
   const page = Math.max(1, Number(query.page) || 1);
@@ -88,10 +84,6 @@ export async function assignExternalSupervisorClaimHandler(
   req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const { id } = req.params as { id: string };
   const { action } = (req.body ?? {}) as { action?: 'assign' | 'unassign' };
 
@@ -149,10 +141,6 @@ export async function updateExternalSupervisorClaimHandler(
   req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const { id } = req.params as { id: string };
   const { status } = (req.body ?? {}) as { status?: ExternalSupervisorClaimStatus };
 

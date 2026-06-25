@@ -5,10 +5,9 @@ import fs from 'fs/promises';
 import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR;
+import { UPLOAD_ROOT, MAX_FILE_SIZE_MB, MAX_FILE_SIZE_BYTES } from '../../config/storage';
+
 const MAX_FILES = 10;
-const MAX_FILE_SIZE_MB = 10;
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -73,9 +72,7 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
   const ext = path.extname(data.filename).replace(/[^a-zA-Z0-9.]/g, '');
   const fileName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`;
 
-  const baseDir = UPLOAD_DIR
-    ? path.resolve(UPLOAD_DIR)
-    : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+  const baseDir = UPLOAD_ROOT;
 
   const dir = path.join(baseDir, String(ownerUserId), category);
 

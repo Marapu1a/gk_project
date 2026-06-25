@@ -36,8 +36,6 @@ type Distribution = {
 };
 
 export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<Route>, reply: FastifyReply) {
-  if (req.user.role !== 'ADMIN') return reply.code(403).send({ error: 'Только администратор' });
-
   const { userId } = req.params;
 
   const user = await prisma.user.findUnique({

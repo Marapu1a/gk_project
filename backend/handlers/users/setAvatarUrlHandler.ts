@@ -4,7 +4,7 @@ import path from 'path';
 import { prisma } from '../../lib/prisma';
 
 const UPLOADS_PREFIX = '/uploads/';
-const UPLOAD_DIR = process.env.UPLOAD_DIR;
+import { UPLOAD_ROOT } from '../../config/storage';
 
 function avatarFileIdFromUrl(avatarUrl: string | null | undefined): string | null {
   if (typeof avatarUrl !== 'string') return null;
@@ -17,9 +17,7 @@ function avatarFileIdFromUrl(avatarUrl: string | null | undefined): string | nul
 }
 
 async function deletePhysicalAvatar(fileId: string) {
-  const baseDir = UPLOAD_DIR
-    ? path.resolve(UPLOAD_DIR)
-    : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+  const baseDir = UPLOAD_ROOT;
 
   try {
     await fs.unlink(path.join(baseDir, fileId));

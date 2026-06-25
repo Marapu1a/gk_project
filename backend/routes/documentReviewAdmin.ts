@@ -8,13 +8,14 @@ import { deleteDocumentReviewFile } from '../handlers/documentReviewAdmin/delete
 import { transferDocumentReviewFileToActiveCycle } from '../handlers/documentReviewAdmin/transferDocumentReviewFileToActiveCycle';
 
 import { verifyToken } from '../middlewares/verifyToken';
+import { requireAdmin } from '../middlewares/requireRole';
 
 export async function documentReviewRoutesAdmin(app: FastifyInstance) {
 
-  app.get('/document-review-requests', { preHandler: [verifyToken] }, getAllDocumentReviewRequests);
-  app.get('/document-review-requests/:id', { preHandler: [verifyToken] }, getDocumentReviewRequestById);
-  app.patch('/document-review-requests/:id/files/:fileReviewId', { preHandler: [verifyToken] }, updateDocumentReviewFile);
-  app.post('/document-review-requests/:id/files/:fileReviewId/transfer-to-active-cycle', { preHandler: [verifyToken] }, transferDocumentReviewFileToActiveCycle);
-  app.delete('/document-review-requests/:id/files/:fileReviewId', { preHandler: [verifyToken] }, deleteDocumentReviewFile);
-  app.patch('/document-review-requests/:id/paid', { preHandler: [verifyToken] }, updateDocumentReviewRequestPaid);
+  app.get('/document-review-requests', { preHandler: [verifyToken, requireAdmin] }, getAllDocumentReviewRequests);
+  app.get('/document-review-requests/:id', { preHandler: [verifyToken, requireAdmin] }, getDocumentReviewRequestById);
+  app.patch('/document-review-requests/:id/files/:fileReviewId', { preHandler: [verifyToken, requireAdmin] }, updateDocumentReviewFile);
+  app.post('/document-review-requests/:id/files/:fileReviewId/transfer-to-active-cycle', { preHandler: [verifyToken, requireAdmin] }, transferDocumentReviewFileToActiveCycle);
+  app.delete('/document-review-requests/:id/files/:fileReviewId', { preHandler: [verifyToken, requireAdmin] }, deleteDocumentReviewFile);
+  app.patch('/document-review-requests/:id/paid', { preHandler: [verifyToken, requireAdmin] }, updateDocumentReviewRequestPaid);
 }

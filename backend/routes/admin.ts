@@ -35,46 +35,47 @@ import { removePendingReviewerHoursAdminHandler } from '../handlers/admin/superv
 import { getReviewerCandidateDetailsHandler } from '../handlers/supervision/getReviewerCandidateDetailsHandler';
 
 import { verifyToken } from '../middlewares/verifyToken';
+import { requireAdmin } from '../middlewares/requireRole';
 
 // импорт целевого уровня
 import { updateTargetLevelHandler } from '../handlers/admin/updateTargetLevel';
 
 export async function usersRoutes(app: FastifyInstance) {
-  app.patch('/admin/users/:id/role', { preHandler: verifyToken }, toggleUserRoleHandler);
-  app.get('/admin/users/:id/details', { preHandler: verifyToken }, getUserFullDetailsHandler);
-  app.get('/admin/users/:id/action-log', { preHandler: verifyToken }, getUserActionLogHandler);
-  app.post('/admin/users/:id/notes', { preHandler: verifyToken }, createUserNoteHandler);
-  app.delete('/admin/users/:id/notes/:noteId', { preHandler: verifyToken }, deleteUserNoteHandler);
-  app.get('/admin/users', { preHandler: verifyToken }, getUsersHandler);
-  app.get('/admin/external-supervisor-claims', { preHandler: verifyToken }, getExternalSupervisorClaimsHandler);
-  app.post('/admin/external-supervisor-claims/:id/assign', { preHandler: verifyToken }, assignExternalSupervisorClaimHandler);
-  app.patch('/admin/external-supervisor-claims/:id', { preHandler: verifyToken }, updateExternalSupervisorClaimHandler);
-  app.patch('/admin/users/:id', { preHandler: verifyToken }, updateUserBasicInfoHandler);
-  app.patch('/admin/users/:id/visibility', { preHandler: verifyToken }, updateUserVisibilityHandler);
-  app.patch('/admin/users/:id/archive', { preHandler: verifyToken }, archiveUserHandler);
-  app.patch('/admin/users/:id/restore', { preHandler: verifyToken }, restoreUserHandler);
+  app.patch('/admin/users/:id/role', { preHandler: [verifyToken, requireAdmin] }, toggleUserRoleHandler);
+  app.get('/admin/users/:id/details', { preHandler: [verifyToken, requireAdmin] }, getUserFullDetailsHandler);
+  app.get('/admin/users/:id/action-log', { preHandler: [verifyToken, requireAdmin] }, getUserActionLogHandler);
+  app.post('/admin/users/:id/notes', { preHandler: [verifyToken, requireAdmin] }, createUserNoteHandler);
+  app.delete('/admin/users/:id/notes/:noteId', { preHandler: [verifyToken, requireAdmin] }, deleteUserNoteHandler);
+  app.get('/admin/users', { preHandler: [verifyToken, requireAdmin] }, getUsersHandler);
+  app.get('/admin/external-supervisor-claims', { preHandler: [verifyToken, requireAdmin] }, getExternalSupervisorClaimsHandler);
+  app.post('/admin/external-supervisor-claims/:id/assign', { preHandler: [verifyToken, requireAdmin] }, assignExternalSupervisorClaimHandler);
+  app.patch('/admin/external-supervisor-claims/:id', { preHandler: [verifyToken, requireAdmin] }, updateExternalSupervisorClaimHandler);
+  app.patch('/admin/users/:id', { preHandler: [verifyToken, requireAdmin] }, updateUserBasicInfoHandler);
+  app.patch('/admin/users/:id/visibility', { preHandler: [verifyToken, requireAdmin] }, updateUserVisibilityHandler);
+  app.patch('/admin/users/:id/archive', { preHandler: [verifyToken, requireAdmin] }, archiveUserHandler);
+  app.patch('/admin/users/:id/restore', { preHandler: [verifyToken, requireAdmin] }, restoreUserHandler);
 
   // Добавлен новый маршрут для таргет-левела
-  app.patch('/admin/users/:id/target-level', { preHandler: verifyToken }, updateTargetLevelHandler);
+  app.patch('/admin/users/:id/target-level', { preHandler: [verifyToken, requireAdmin] }, updateTargetLevelHandler);
 
   // Supervision (admin-only)
-  app.get('/admin/supervision/reviewer-candidates', { preHandler: verifyToken }, getAdminReviewerCandidatesHandler);
-  app.patch('/admin/supervision/reviewer-candidates/:relationId/remove-pending', { preHandler: verifyToken }, removePendingReviewerHoursAdminHandler);
-  app.get('/admin/supervision/reviewer-candidates/:relationId', { preHandler: verifyToken }, getReviewerCandidateDetailsHandler);
-  app.get('/admin/supervision/:userId/matrix', { preHandler: verifyToken }, getUserSupervisionMatrixAdminHandler);
-  app.patch('/admin/supervision/:userId/matrix', { preHandler: verifyToken }, updateUserSupervisionMatrixAdminHandler);
+  app.get('/admin/supervision/reviewer-candidates', { preHandler: [verifyToken, requireAdmin] }, getAdminReviewerCandidatesHandler);
+  app.patch('/admin/supervision/reviewer-candidates/:relationId/remove-pending', { preHandler: [verifyToken, requireAdmin] }, removePendingReviewerHoursAdminHandler);
+  app.get('/admin/supervision/reviewer-candidates/:relationId', { preHandler: [verifyToken, requireAdmin] }, getReviewerCandidateDetailsHandler);
+  app.get('/admin/supervision/:userId/matrix', { preHandler: [verifyToken, requireAdmin] }, getUserSupervisionMatrixAdminHandler);
+  app.patch('/admin/supervision/:userId/matrix', { preHandler: [verifyToken, requireAdmin] }, updateUserSupervisionMatrixAdminHandler);
 
   // CEU (admin-only)
-  app.get('/admin/ceu/history', { preHandler: verifyToken }, getCEUHistoryAdminHandler);
-  app.get('/admin/ceu/history/export.csv', { preHandler: verifyToken }, getCEUHistoryAdminExportHandler);
-  app.delete('/admin/ceu/records/:recordId', { preHandler: verifyToken }, deleteCEURecordAdminHandler);
-  app.get('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, getUserCEUMatrixAdminHandler);
-  app.get('/admin/users/:id/export', { preHandler: verifyToken }, getUserExportHandler);
-  app.patch('/admin/ceu/:userId/matrix', { preHandler: verifyToken }, updateUserCEUMatrixAdminHandler);
+  app.get('/admin/ceu/history', { preHandler: [verifyToken, requireAdmin] }, getCEUHistoryAdminHandler);
+  app.get('/admin/ceu/history/export.csv', { preHandler: [verifyToken, requireAdmin] }, getCEUHistoryAdminExportHandler);
+  app.delete('/admin/ceu/records/:recordId', { preHandler: [verifyToken, requireAdmin] }, deleteCEURecordAdminHandler);
+  app.get('/admin/ceu/:userId/matrix', { preHandler: [verifyToken, requireAdmin] }, getUserCEUMatrixAdminHandler);
+  app.get('/admin/users/:id/export', { preHandler: [verifyToken, requireAdmin] }, getUserExportHandler);
+  app.patch('/admin/ceu/:userId/matrix', { preHandler: [verifyToken, requireAdmin] }, updateUserCEUMatrixAdminHandler);
 
   // Users
-  app.patch('/admin/users/:id/password', { preHandler: verifyToken }, updateUserPasswordAdminHandler);
+  app.patch('/admin/users/:id/password', { preHandler: [verifyToken, requireAdmin] }, updateUserPasswordAdminHandler);
 
   // Exel export
-  app.get("/admin/users/export.xlsx", { preHandler: verifyToken }, getUsersExportXlsxHandler);
+  app.get("/admin/users/export.xlsx", { preHandler: [verifyToken, requireAdmin] }, getUsersExportXlsxHandler);
 }

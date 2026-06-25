@@ -167,10 +167,6 @@ export async function getUsersExportXlsxHandler(
   req: FastifyRequest,
   reply: FastifyReply
 ) {
-  if (req.user.role !== "ADMIN") {
-    return reply.code(403).send({ error: "Доступ запрещён" });
-  }
-
   const users = await prisma.user.findMany({
     select: {
       createdAt: true,

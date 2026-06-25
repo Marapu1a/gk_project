@@ -181,10 +181,6 @@ export async function updateUserSupervisionMatrixAdminHandler(
   req: FastifyRequest<Route>,
   reply: FastifyReply
 ) {
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Только администратор' });
-  }
-
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) {
     return reply.code(400).send({ error: 'Неверные данные', details: parsed.error.flatten() });

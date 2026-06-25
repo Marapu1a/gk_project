@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { prisma } from '../../lib/prisma';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR;
+import { UPLOAD_ROOT } from '../../config/storage';
 
 export async function deleteSupervisionContractHandler(req: FastifyRequest, reply: FastifyReply) {
   const userId = req.user?.userId;
@@ -30,9 +30,7 @@ export async function deleteSupervisionContractHandler(req: FastifyRequest, repl
     await tx.uploadedFile.delete({ where: { id: contract.fileId } });
   });
 
-  const baseDir = UPLOAD_DIR
-    ? path.resolve(UPLOAD_DIR)
-    : path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+  const baseDir = UPLOAD_ROOT;
 
   try {
     await fs.unlink(path.join(baseDir, contract.file.fileId));

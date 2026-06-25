@@ -4,10 +4,6 @@ import { prisma } from '../../lib/prisma';
 const NOTE_ACTION = 'Заметка администратора';
 
 export async function deleteUserNoteHandler(req: FastifyRequest, reply: FastifyReply) {
-  if (req.user.role !== 'ADMIN') {
-    return reply.code(403).send({ error: 'Доступ запрещён' });
-  }
-
   const { id, noteId } = req.params as { id: string; noteId: string };
 
   const note = await prisma.adminUserActionLog.findFirst({

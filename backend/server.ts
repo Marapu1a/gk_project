@@ -25,12 +25,11 @@ import { cycleRoutes } from './routes/cycleRoutes';
 import { backupRoutes } from './routes/backup';
 import { locationRoutes } from './routes/location';
 import { userBannerRoutes } from './routes/userBanner';
+import { MAX_FILE_SIZE_MB, UPLOAD_ROOT } from './config/storage';
 
 dotenv.config()
 
 const app = Fastify()
-
-const MAX_FILE_SIZE_MB = 10
 
 app.register(cors, {
   origin: true,
@@ -44,9 +43,7 @@ app.register(multipart, {
   },
 });
 
-const STATIC_UPLOADS_ROOT =
-  process.env.UPLOAD_DIR ||
-  path.resolve(process.cwd(), '..', 'frontend', 'public', 'uploads');
+const STATIC_UPLOADS_ROOT = UPLOAD_ROOT;
 
 app.register(fastifyStatic, {
   root: STATIC_UPLOADS_ROOT,

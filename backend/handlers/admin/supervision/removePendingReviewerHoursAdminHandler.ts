@@ -51,7 +51,6 @@ export async function removePendingReviewerHoursAdminHandler(
 ) {
   const adminId = req.user?.userId;
   if (!adminId) return reply.code(401).send({ error: 'Не авторизован' });
-  if (req.user?.role !== 'ADMIN') return reply.code(403).send({ error: 'Доступ запрещён' });
 
   const { relationId } = req.params;
   const notifyUser = req.body?.notifyUser === true;
