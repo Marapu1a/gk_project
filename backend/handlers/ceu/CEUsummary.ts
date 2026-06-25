@@ -17,11 +17,7 @@ const CEU_KEYS: Array<Exclude<keyof CEUSummary, 'total'>> = [
   'general',
 ];
 
-const RU_BY_LEVEL: Record<'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR', string> = {
-  INSTRUCTOR: 'Инструктор',
-  CURATOR: 'Куратор',
-  SUPERVISOR: 'Супервизор',
-};
+import { targetLevelToGroupName } from '../../domain/levels';
 
 type Query = { level?: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' };
 
@@ -97,7 +93,7 @@ export async function ceuSummaryHandler(req: FastifyRequest, reply: FastifyReply
   let required: CEUSummary | null = null;
 
   if (activeCycle.type === CycleType.RENEWAL) {
-    const renewalGroupName = RU_BY_LEVEL[activeCycle.targetLevel] as GroupName;
+    const renewalGroupName = targetLevelToGroupName(activeCycle.targetLevel) as GroupName;
     required = renewalCeuRequirementsByGroup[renewalGroupName] ?? null;
   } else {
     const q = (req.query ?? {}) as Query;
@@ -105,8 +101,8 @@ export async function ceuSummaryHandler(req: FastifyRequest, reply: FastifyReply
     const targetFromUser = dbUser.targetLevel ?? undefined;
 
     const targetGroupName =
-      (explicitLevel && RU_BY_LEVEL[explicitLevel]) ||
-      (targetFromUser && RU_BY_LEVEL[targetFromUser]) ||
+      (explicitLevel && targetLevelToGroupName(explicitLevel)) ||
+      (targetFromUser && targetLevelToGroupName(targetFromUser)) ||
       getNextGroupName(primaryGroup.name);
 
     required =

@@ -1,6 +1,7 @@
 // src/routes/cycleRoutes.ts
 import { FastifyInstance } from 'fastify';
 import { verifyToken } from '../middlewares/verifyToken';
+import { requireAdmin } from '../middlewares/requireRole';
 
 import { getActiveCycleDashboardHandler } from '../handlers/cycles/getActiveCycleDashboardHandler';
 import { abortCycleHandler } from '../handlers/cycles/abortCycleHandler';
@@ -10,5 +11,5 @@ export async function cycleRoutes(app: FastifyInstance) {
   app.get('/cycles/active/dashboard', { preHandler: [verifyToken] }, getActiveCycleDashboardHandler);
 
   // ❗ прерывание цикла админом
-  app.post('/cycles/:id/abort', { preHandler: [verifyToken] }, abortCycleHandler);
+  app.post('/cycles/:id/abort', { preHandler: [verifyToken, requireAdmin] }, abortCycleHandler);
 }

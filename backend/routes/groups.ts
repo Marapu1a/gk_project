@@ -7,11 +7,12 @@ import { getUserGroupsByIdHandler } from '../handlers/groups/getUserGroupsByIdHa
 import { searchUsersHandler } from '../handlers/groups/searchUsersHandler';
 
 import { verifyToken } from '../middlewares/verifyToken';
+import { requireAdmin } from '../middlewares/requireRole';
 
 export async function groupsRoutes(app: FastifyInstance) {
   // по userId
   app.get('/admin/users/:id/groups', { preHandler: verifyToken }, getUserGroupsByIdHandler);
-  app.post('/admin/users/:id/groups', { preHandler: verifyToken }, updateUserGroupsHandler);
+  app.post('/admin/users/:id/groups', { preHandler: [verifyToken, requireAdmin] }, updateUserGroupsHandler);
 
   // по email (нужно для старого поиска/формы)
   app.get('/admin/users/by-email/:email/groups', { preHandler: verifyToken }, getUserGroupsByEmailHandler);

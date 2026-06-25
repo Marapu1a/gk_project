@@ -3,9 +3,10 @@ import { getPaymentsByUserHandler } from '../handlers/payment/getPaymentsByUserH
 import { updatePaymentStatusHandler } from '../handlers/payment/updatePaymentStatusHandler';
 import { getPaymentsByUserIdHandler } from '../handlers/payment/getPaymentsByUserIdHandler';
 import { verifyToken } from '../middlewares/verifyToken';
+import { requireAdmin } from '../middlewares/requireRole';
 
 export async function paymentRoutes(app: FastifyInstance) {
   app.get('/payment', { preHandler: verifyToken }, getPaymentsByUserHandler);
   app.patch('/payment/:id', { preHandler: verifyToken }, updatePaymentStatusHandler);
-  app.get('/payment/user/:userId', { preHandler: verifyToken }, getPaymentsByUserIdHandler);
+  app.get('/payment/user/:userId', { preHandler: [verifyToken, requireAdmin] }, getPaymentsByUserIdHandler);
 }

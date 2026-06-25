@@ -7,12 +7,13 @@ import { getCEUByEmailHandler } from '../handlers/ceu/getCEUByEmail';
 import { updateCEUEntryHandler } from '../handlers/ceu/updateCEUEntry';
 
 import { verifyToken } from '../middlewares/verifyToken'
+import { requireAdmin } from '../middlewares/requireRole'
 
 export async function ceuRoutes(app: FastifyInstance) {
   app.post('/ceu/create', { preHandler: [verifyToken] }, createCeuHandler);
   app.get('/ceu/list', { preHandler: [verifyToken] }, listCeuHandler);
   app.get('/ceu/summary', { preHandler: [verifyToken] }, ceuSummaryHandler);
   app.get('/ceu/history', { preHandler: [verifyToken] }, ceuHistoryHandler);
-  app.get('/ceu/by-email', { preHandler: [verifyToken] }, getCEUByEmailHandler);
+  app.get('/ceu/by-email', { preHandler: [verifyToken, requireAdmin] }, getCEUByEmailHandler);
   app.patch('/ceu/entry/:id', { preHandler: [verifyToken] }, updateCEUEntryHandler);
 }

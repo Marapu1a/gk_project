@@ -1,6 +1,7 @@
 // src/routes/users.ts
 import { FastifyInstance } from 'fastify';
 import { verifyToken } from '../middlewares/verifyToken';
+import { requireAdmin } from '../middlewares/requireRole';
 import { getModeratorsHandler } from '../handlers/users/getModeratorsHandler';
 import { getUserByEmailHandler } from '../handlers/users/getUserByEmail';
 import { setAvatarUrlHandler } from '../handlers/users/setAvatarUrlHandler';
@@ -22,5 +23,5 @@ export async function moderatorsRoutes(app: FastifyInstance) {
   app.patch('/users/:id/abandon-cycle', { preHandler: [verifyToken] }, abandonActiveCycleHandler);
   app.post('/users/me/archive-request', { preHandler: [verifyToken] }, requestProfileArchiveHandler);
 
-  app.delete('/admin/users/:id', { preHandler: [verifyToken] }, deleteUserHandler);
+  app.delete('/admin/users/:id', { preHandler: [verifyToken, requireAdmin] }, deleteUserHandler);
 }

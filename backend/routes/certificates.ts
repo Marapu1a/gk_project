@@ -6,11 +6,12 @@ import { getUserCertificatesHandler } from '../handlers/certificates/getUserCert
 import { deleteCertificateHandler } from '../handlers/certificates/deleteCertificate';
 import { updateCertificateHandler } from '../handlers/certificates/updateCertificate';
 import { verifyToken } from '../middlewares/verifyToken';
+import { requireAdmin } from '../middlewares/requireRole';
 
 export async function certificatesRoutes(app: FastifyInstance) {
-  app.post('/admin/certificates/issue', { preHandler: verifyToken }, issueCertificateHandler);
-  app.patch('/admin/certificates/:id', { preHandler: verifyToken }, updateCertificateHandler);
-  app.delete('/admin/certificates/:id', { preHandler: verifyToken }, deleteCertificateHandler);
+  app.post('/admin/certificates/issue', { preHandler: [verifyToken, requireAdmin] }, issueCertificateHandler);
+  app.patch('/admin/certificates/:id', { preHandler: [verifyToken, requireAdmin] }, updateCertificateHandler);
+  app.delete('/admin/certificates/:id', { preHandler: [verifyToken, requireAdmin] }, deleteCertificateHandler);
   app.get('/me/certificates', { preHandler: verifyToken }, getMyCertificatesHandler);
-  app.get('/admin/users/:id/certificates', { preHandler: verifyToken }, getUserCertificatesHandler);
+  app.get('/admin/users/:id/certificates', { preHandler: [verifyToken, requireAdmin] }, getUserCertificatesHandler);
 }

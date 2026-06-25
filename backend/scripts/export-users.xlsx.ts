@@ -7,6 +7,7 @@ import {
 import ExcelJS from "exceljs";
 import fs from "node:fs";
 import path from "node:path";
+import { targetLevelLabel } from "../domain/levels";
 
 const prisma = new PrismaClient();
 
@@ -54,17 +55,7 @@ function dateTimeValue(d: Date | string | null | undefined): string {
 }
 
 function targetLevelRu(v: string | null | undefined): string {
-  if (!v) return "";
-  switch (v) {
-    case "INSTRUCTOR":
-      return "Инструктор";
-    case "CURATOR":
-      return "Куратор";
-    case "SUPERVISOR":
-      return "Супервизор";
-    default:
-      return String(v);
-  }
+  return targetLevelLabel(v) || String(v ?? "");
 }
 
 function consentSourceRu(v: string | null | undefined): string {

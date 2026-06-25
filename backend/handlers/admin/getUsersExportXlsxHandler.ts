@@ -5,6 +5,7 @@ import {
   ConsentDocumentType,
 } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { targetLevelLabel } from "../../domain/levels";
 
 function paymentStatusRu(status: string): string {
   switch (status) {
@@ -41,17 +42,7 @@ function dateTimeValue(d: Date | string | null | undefined): string {
 }
 
 function targetLevelRu(v: string | null | undefined): string {
-  if (!v) return "";
-  switch (v) {
-    case "INSTRUCTOR":
-      return "Инструктор";
-    case "CURATOR":
-      return "Куратор";
-    case "SUPERVISOR":
-      return "Супервизор";
-    default:
-      return String(v);
-  }
+  return targetLevelLabel(v) || String(v ?? "");
 }
 
 function consentSourceRu(v: string | null | undefined): string {
