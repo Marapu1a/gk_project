@@ -1,7 +1,7 @@
 // handlers/payment/updatePaymentStatusHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { NotificationType, PaymentType } from '@prisma/client';
+import { NotificationType, PaymentType, PaymentStatus, Role } from '@prisma/client';
 import { updatePaymentSchema } from '../../schemas/updatePaymentSchema';
 import { createNotification, notifyAdmins } from '../../utils/notifications';
 import { logAdminUserAction } from '../../utils/adminUserActionLog';
@@ -52,14 +52,14 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
     return reply.code(404).send({ error: 'Платёж не найден' });
   }
 
-  if (user.role !== 'ADMIN' && dbPayment.userId !== user.userId) {
+  if (user.role !== Role.ADMIN && dbPayment.userId !== user.userId) {
     return reply.code(403).send({ error: 'Нет доступа к этому платежу' });
   }
 
-  if (user.role !== 'ADMIN') {
+  if (user.role !== Role.ADMIN) {
     const isAllowedUserTransition =
-      (dbPayment.status === 'UNPAID' && status === 'PENDING') ||
-      (dbPayment.status === 'PENDING' && status === 'UNPAID');
+      (dbPayment.status === PaymentStatus.UNPAID && status === PaymentStatus.PENDING) ||
+      (dbPayment.status === PaymentStatus.PENDING && status === PaymentStatus.UNPAID);
 
     if (!isAllowedUserTransition) {
       return reply.code(403).send({
@@ -79,7 +79,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
       where: {
         userId: dbPayment.userId,
         type: PaymentType.FULL_PACKAGE,
-        status: { in: ['PENDING', 'PAID'] },
+        status: { in: [PaymentStatus.PENDING, PaymentStatus.PAID] },
         OR: dbPayment.targetLevel
           ? [{ targetLevel: dbPayment.targetLevel }, { targetLevel: null }]
           : [{ targetLevel: null }, { targetLevel: { not: null } }],
@@ -102,14 +102,14 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
       data: {
         status,
         requestedAt:
-          user.role !== 'ADMIN' && status === 'PENDING'
+          user.role !== Role.ADMIN && status === PaymentStatus.PENDING
             ? now
-            : status === 'UNPAID'
+            : status === PaymentStatus.UNPAID
               ? null
-              : status === 'PAID'
+              : status === PaymentStatus.PAID
                 ? dbPayment.requestedAt ?? now
                 : dbPayment.requestedAt,
-        confirmedAt: status === 'PAID' ? now : status === 'UNPAID' ? null : dbPayment.confirmedAt,
+        confirmedAt: status === PaymentStatus.PAID ? now : status === PaymentStatus.UNPAID ? null : dbPayment.confirmedAt,
         comment,
       },
     });
@@ -117,7 +117,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
     let activated = 0;
     let synced = 0;
 
-    if (status === 'PAID' && dbPayment.type === 'FULL_PACKAGE') {
+    if (status === PaymentStatus.PAID && dbPayment.type === PaymentType.FULL_PACKAGE) {
       const res = await tx.payment.updateMany({
         where: {
           userId: dbPayment.userId,
@@ -125,10 +125,10 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
           OR: dbPayment.targetLevel
             ? [{ targetLevel: dbPayment.targetLevel }, { targetLevel: null }]
             : [{ targetLevel: null }],
-          status: { not: 'PAID' },
+          status: { not: PaymentStatus.PAID },
         },
         data: {
-          status: 'PAID',
+          status: PaymentStatus.PAID,
           targetLevel: dbPayment.targetLevel,
           requestedAt: dbPayment.requestedAt ?? now,
           confirmedAt: now,
@@ -139,7 +139,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
       activated = res.count;
     }
 
-    if (dbPayment.type === 'FULL_PACKAGE' && (status === 'PENDING' || status === 'UNPAID')) {
+    if (dbPayment.type === PaymentType.FULL_PACKAGE && (status === PaymentStatus.PENDING || status === PaymentStatus.UNPAID)) {
       const res = await tx.payment.updateMany({
         where: {
           userId: dbPayment.userId,
@@ -147,12 +147,12 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
           OR: dbPayment.targetLevel
             ? [{ targetLevel: dbPayment.targetLevel }, { targetLevel: null }]
             : [{ targetLevel: null }],
-          status: status === 'PENDING' ? { not: 'PAID' } : { not: 'UNPAID' },
+          status: status === PaymentStatus.PENDING ? { not: PaymentStatus.PAID } : { not: PaymentStatus.UNPAID },
         },
         data: {
           status,
           targetLevel: dbPayment.targetLevel,
-          requestedAt: status === 'PENDING' ? now : null,
+          requestedAt: status === PaymentStatus.PENDING ? now : null,
           confirmedAt: null,
           comment: null,
         },
@@ -164,11 +164,11 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
     return { updated, activated, synced };
   });
 
-  if (user.role === 'ADMIN' && dbPayment.status !== status) {
+  if (user.role === Role.ADMIN && dbPayment.status !== status) {
     const action =
-      status === 'PAID'
+      status === PaymentStatus.PAID
         ? 'Подтвердил оплату'
-        : status === 'UNPAID'
+        : status === PaymentStatus.UNPAID
           ? 'Отменил оплату'
           : 'Изменил статус оплаты';
 
@@ -189,7 +189,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
 
   if (notify) {
     try {
-      if (user.role !== 'ADMIN' && (status === 'PENDING' || status === 'UNPAID')) {
+      if (user.role !== Role.ADMIN && (status === PaymentStatus.PENDING || status === PaymentStatus.UNPAID)) {
         const actor = await prisma.user.findUnique({
           where: { id: user.userId },
           select: { email: true },
@@ -198,7 +198,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
         await notifyAdmins({
           type: NotificationType.PAYMENT,
           message:
-            status === 'PENDING'
+            status === PaymentStatus.PENDING
               ? `Новая отметка об оплате от ${actor?.email ?? 'пользователя'}`
               : `Пользователь ${actor?.email ?? 'пользователь'} отменил отметку об оплате`,
           link: `/admin/users/${dbPayment.userId}`,
@@ -206,7 +206,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
         });
       }
 
-      if (user.role === 'ADMIN' && status === 'PAID' && dbPayment.status !== 'PAID') {
+      if (user.role === Role.ADMIN && status === PaymentStatus.PAID && dbPayment.status !== PaymentStatus.PAID) {
         await createNotification({
           userId: dbPayment.userId,
           type: NotificationType.PAYMENT,
@@ -218,7 +218,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
         });
       }
 
-      if (user.role === 'ADMIN' && status === 'UNPAID' && dbPayment.status !== 'UNPAID') {
+      if (user.role === Role.ADMIN && status === PaymentStatus.UNPAID && dbPayment.status !== PaymentStatus.UNPAID) {
         const baseMessage =
           dbPayment.type === PaymentType.FULL_PACKAGE
             ? 'Пакетная оплата отменена'
