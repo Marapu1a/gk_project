@@ -6,6 +6,7 @@ import { getPaymentLink } from '@/utils/getPaymentLink';
 import type { PaymentItem } from '@/features/payment/api/getUserPayments';
 import { useSubmitPaymentMark } from '@/features/payment/hooks/useSubmitPaymentMark';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { getShortPaymentTypeLabel } from '@/utils/labels';
 
 type PaymentModalProps = {
   payment: PaymentItem | null;
@@ -13,14 +14,6 @@ type PaymentModalProps = {
   billingGroup: string;
   targetLevelName?: string;
   onClose: () => void;
-};
-
-const TITLE_BY_TYPE: Record<PaymentItem['type'], string> = {
-  FULL_PACKAGE: 'Сертификация - пакет со скидкой 10%',
-  REGISTRATION: 'Подача заявки на сертификацию и учет часов практики',
-  DOCUMENT_REVIEW: 'Экспертиза документов',
-  EXAM_ACCESS: 'Экзамен',
-  RENEWAL: 'Ресертификация',
 };
 
 function getLinkedPayments(
@@ -67,10 +60,7 @@ export function PaymentModal({
   if (!payment) return null;
 
   const paymentLink = getPaymentLink(payment.type, billingGroup);
-  const title =
-    payment.type === 'DOCUMENT_REVIEW' && billingGroup === 'куратор'
-      ? 'Подача заявки на сертификацию, экспертиза документов'
-      : TITLE_BY_TYPE[payment.type];
+  const title = getShortPaymentTypeLabel(payment.type, { billingGroup, targetLevelName });
 
   const isPending = relatedPayments.some((p) => p.status === 'PENDING');
   const isPaid = relatedPayments.some((p) => p.status === 'PAID');

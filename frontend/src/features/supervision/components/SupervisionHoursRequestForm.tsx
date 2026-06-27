@@ -387,6 +387,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
 
       toast.success(UI_TOAST_MESSAGES.supervision.requestSent);
       resetForm();
+      setIsOpen(false);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.supervision.requestSendFailed);
     }

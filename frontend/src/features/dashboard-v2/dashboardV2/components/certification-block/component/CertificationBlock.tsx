@@ -244,6 +244,7 @@ export function CertificationBlock({ user }: Props) {
 
   const isMentorshipTarget = activeGroupName === 'Супервизор';
   const isExperiencedSupervisor = activeGroupName === 'Опытный Супервизор';
+  const isSupervisorRenewal = activeCycleType === 'RENEWAL' && targetLevel === 'SUPERVISOR';
   const supervisionCurrent = isMentorshipTarget
     ? Number(supervisionSummary?.mentor?.total ?? 0)
     : Number(supervisionSummary?.usable?.supervision ?? 0);
@@ -264,12 +265,18 @@ export function CertificationBlock({ user }: Props) {
 
   const examButtonLabel = (() => {
     if (patchExamApp.isPending) return 'Отправляем...';
-    if (examApp?.status === 'PENDING') return 'Заявка на рассмотрении';
-    if (examApp?.status === 'APPROVED') return 'Заявка одобрена';
+    if (examApp?.status === 'PENDING') {
+      return isSupervisorRenewal ? 'Запрос на рассмотрении' : 'Заявка на рассмотрении';
+    }
+    if (examApp?.status === 'APPROVED') {
+      return isSupervisorRenewal ? 'Запрос одобрен' : 'Заявка одобрена';
+    }
     if (!progress.isEligible) return 'Не все условия выполнены';
     if (!progress.requiredPaymentsPaid) return 'Не все оплаты внесены';
-    if (examApp?.status === 'REJECTED') return 'Подать заявку повторно';
-    return 'Подать заявку на экзамен';
+    if (examApp?.status === 'REJECTED') {
+      return isSupervisorRenewal ? 'Запросить повторно' : 'Подать заявку повторно';
+    }
+    return isSupervisorRenewal ? 'Получить новый сертификат' : 'Подать заявку на экзамен';
   })();
 
   const submitExamApplication = () => {
@@ -477,7 +484,7 @@ export function CertificationBlock({ user }: Props) {
         />
       </ul>
 
-      {!progress.documentReviewPaid ? (
+      {!progress.documentReviewPaid && activeCycleType !== 'RENEWAL' ? (
         <p className="dashboard-v2-small mt-3 text-center text-[var(--color-danger)]">
           Проверка документов не оплачена
         </p>

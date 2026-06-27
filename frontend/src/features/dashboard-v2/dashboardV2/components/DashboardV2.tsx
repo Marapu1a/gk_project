@@ -99,12 +99,21 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
   const isBasicSupervisor = activeGroupName === 'Супервизор';
   const isExperiencedSupervisor = activeGroupName === 'Опытный Супервизор';
   const canReviewCandidates = isBasicSupervisor || isExperiencedSupervisor;
-  const registrationPaid =
-    payments.some((payment) => payment.type === 'REGISTRATION' && payment.status === 'PAID') ||
-    payments.some((payment) => payment.type === 'FULL_PACKAGE' && payment.status === 'PAID');
+  const fullPackagePaid = payments.some(
+    (payment) => payment.type === 'FULL_PACKAGE' && payment.status === 'PAID',
+  );
+  const directRegistrationPaid = payments.some(
+    (payment) => payment.type === 'REGISTRATION' && payment.status === 'PAID',
+  );
+  const supervisorRegistrationPaid = Boolean(
+    user.targetLevel === 'SUPERVISOR' &&
+      payments.some((payment) => payment.type === 'DOCUMENT_REVIEW' && payment.status === 'PAID'),
+  );
+  const hasCertificationEntryPayment =
+    directRegistrationPaid || supervisorRegistrationPaid || fullPackagePaid;
 
   // Повторяет текущую продовую логику: для ресертификации проверка оплаты временно отключена.
-  const hasRequiredPayment = isRenewalCycle ? true : registrationPaid;
+  const hasRequiredPayment = isRenewalCycle ? true : hasCertificationEntryPayment;
   const canUseCertificationContent = hasRequiredPayment;
 
   // Claim активен пока не SETUP_COMPLETE/REJECTED — оплата и доступ к функциям не актуальны.
@@ -203,10 +212,9 @@ function CertificationAccessPlaceholder({ externalClaimActive }: { externalClaim
           <>
             <h2 className="dashboard-v2-title mb-3">Доступ к функциям сертификации закрыт</h2>
             <p className="dashboard-v2-text max-w-[760px]">
-              Для доступа к функциям сертификации нужна оплата{' '}
-              <strong>«Регистрация и супервизия»</strong> или <strong>«Полный пакет»</strong>.
-              После подтверждения оплаты администратором вы сможете добавлять CEU-баллы и отправлять
-              часы практики супервизору.
+              Для доступа к функциям сертификации нужна подтвержденная оплата первого платежа или
+              полного пакета. После подтверждения оплаты администратором вы сможете добавлять
+              CEU-баллы и отправлять часы практики супервизору.
             </p>
           </>
         )}

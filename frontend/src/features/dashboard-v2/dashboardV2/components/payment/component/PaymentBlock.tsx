@@ -5,15 +5,7 @@ import type { PaymentItem } from '@/features/payment/api/getUserPayments';
 import { PaymentCard } from './PaymentCard';
 import { PaymentModal } from './PaymentModal';
 import { PaymentStatusIcon } from './PaymentStatusIcon';
-import { formatCertificationLevelName } from '@/utils/labels';
-
-const LABELS: Record<PaymentItem['type'], string> = {
-  FULL_PACKAGE: 'Сертификация - пакет со скидкой 10%',
-  REGISTRATION: 'Подача заявки на сертификацию и учет часов практики',
-  DOCUMENT_REVIEW: 'Экспертиза документов',
-  EXAM_ACCESS: 'Экзамен',
-  RENEWAL: 'Ресертификация',
-};
+import { formatCertificationLevelName, getShortPaymentTypeLabel } from '@/utils/labels';
 
 const ORDER: PaymentItem['type'][] = [
   'FULL_PACKAGE',
@@ -171,7 +163,11 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
         visibleNonPackagePayments.every((payment) => payment.status === 'PAID');
 
   if (isFullPackagePaid) {
-    return <PaymentSummary subtitle="Сертификация - пакет со скидкой 10% оплачена" />;
+    return (
+      <PaymentSummary
+        subtitle={`${getShortPaymentTypeLabel('FULL_PACKAGE')} оплачена`}
+      />
+    );
   }
 
   if (areAllSeparatePaid) {
@@ -193,11 +189,7 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
           {preparedPayments.map((payment) => (
             <PaymentCard
               key={payment.id}
-              title={
-                payment.type === 'DOCUMENT_REVIEW' && targetLevel === 'SUPERVISOR'
-                  ? 'Подача заявки на сертификацию, экспертиза документов'
-                  : LABELS[payment.type]
-              }
+              title={getShortPaymentTypeLabel(payment.type, { targetLevel })}
               status={payment.status}
               isFullPackage={payment.type === 'FULL_PACKAGE'}
               disabled={payment.uiDisabled}

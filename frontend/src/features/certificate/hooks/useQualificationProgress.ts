@@ -94,7 +94,8 @@ export function useQualificationProgress(
     (payments ?? []).some((p) => p.type === type && p.status === 'PAID');
 
   const fullPackagePaid = isPaid('FULL_PACKAGE');
-  const registrationPaid = fullPackagePaid || isPaid('REGISTRATION');
+  const supervisorRegistrationPaid = targetLevel === 'SUPERVISOR' && isPaid('DOCUMENT_REVIEW');
+  const registrationPaid = fullPackagePaid || isPaid('REGISTRATION') || supervisorRegistrationPaid;
   const documentReviewPaid = mode === 'RENEWAL' || fullPackagePaid || isPaid('DOCUMENT_REVIEW');
   const examPaid = fullPackagePaid || isPaid('EXAM_ACCESS');
   const renewalPaid = isPaid('RENEWAL');

@@ -489,6 +489,29 @@ select:disabled,
   line-height: 1;
 }
 
+.dashboard-v2-metric-complete {
+  border: 1px solid color-mix(in srgb, var(--color-green-brand) 34%, var(--color-white));
+  background-color: color-mix(in srgb, var(--color-green-light) 42%, var(--color-white));
+}
+
+.dashboard-v2-metric-complete .dashboard-v2-metric-value,
+.dashboard-v2-metric-complete .dashboard-v2-metric-value-lg {
+  color: var(--color-green-darker);
+}
+
+.dashboard-v2-total-complete {
+  border: 1px solid color-mix(in srgb, var(--color-green-brand) 34%, var(--color-white));
+  background-color: color-mix(in srgb, var(--color-green-light) 42%, var(--color-white));
+}
+
+.dashboard-v2-total-complete .dashboard-v2-total-circle-inner {
+  background-color: color-mix(in srgb, var(--color-green-light) 42%, var(--color-white));
+}
+
+.dashboard-v2-total-complete .dashboard-v2-metric-value {
+  color: var(--color-green-darker);
+}
+
 .dashboard-v2-help-wrap {
   position: relative;
   display: inline-flex;

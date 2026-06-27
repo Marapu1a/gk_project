@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { paymentStatusLabels, paymentTypeLabels } from '@/utils/labels';
+import { getShortPaymentTypeLabel, paymentStatusLabels } from '@/utils/labels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useUpdatePaymentStatus } from '@/features/payment/hooks/useUpdatePaymentStatus';
 import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
@@ -189,7 +189,7 @@ export default function PaymentsBlock({
       return 'Ресертификация';
     }
 
-    return paymentTypeLabels[payment.type] || payment.type;
+    return getShortPaymentTypeLabel(payment.type, { targetLevel: activeCycle?.targetLevel });
   };
 
   const submitAction = async (notify: boolean) => {

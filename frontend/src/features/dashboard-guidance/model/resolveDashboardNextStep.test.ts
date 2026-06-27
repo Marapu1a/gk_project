@@ -6,6 +6,7 @@ const readyContext: DashboardGuidanceContext = {
   externalSupervisorPending: false,
   externalSupervisorApproved: false,
   hasTarget: true,
+  targetLevel: 'CURATOR',
   hasActiveCycle: true,
   isRenewalCycle: false,
   hasCertificationAccess: true,
@@ -33,8 +34,8 @@ describe('resolveDashboardNextStep', () => {
       hasActiveCycle: false,
     });
 
-    expect(step.id).toBe('external-supervisor');
-    expect(step.action).toBeUndefined();
+    expect(step?.id).toBe('external-supervisor');
+    expect(step?.action).toBeUndefined();
   });
 
   it('shows approved state when claim is approved but admin has not configured the profile yet', () => {
@@ -45,8 +46,8 @@ describe('resolveDashboardNextStep', () => {
       hasActiveCycle: false,
     });
 
-    expect(step.id).toBe('external-supervisor-approved');
-    expect(step.action).toBeUndefined();
+    expect(step?.id).toBe('external-supervisor-approved');
+    expect(step?.action).toBeUndefined();
   });
 
   it('does not apply approved state once the admin has set a target level', () => {
@@ -56,7 +57,7 @@ describe('resolveDashboardNextStep', () => {
       hasTarget: true,
     });
 
-    expect(step.id).toBe('exam-ready');
+    expect(step?.id).toBe('exam-ready');
   });
 
   it('prioritizes reviewer work over the reviewer own certification', () => {
@@ -69,7 +70,7 @@ describe('resolveDashboardNextStep', () => {
       },
     });
 
-    expect(step.id).toBe('reviewer-requests');
+    expect(step?.id).toBe('reviewer-requests');
   });
 
   it('allows parallel progress while paid documents are under review', () => {
@@ -80,7 +81,19 @@ describe('resolveDashboardNextStep', () => {
       hoursReady: false,
     });
 
-    expect(step.id).toBe('hours');
+    expect(step?.id).toBe('hours');
+  });
+
+  it('combines hours and CEU guidance when both requirements are incomplete', () => {
+    const step = resolveDashboardNextStep({
+      ...readyContext,
+      hoursReady: false,
+      ceuReady: false,
+    });
+
+    expect(step?.id).toBe('hours-and-ceu');
+    expect(step?.description).toContain('часы практики');
+    expect(step?.description).toContain('CEU-баллы');
   });
 
   it('waits for document review only after other requirements are complete', () => {
@@ -90,17 +103,49 @@ describe('resolveDashboardNextStep', () => {
       documentsReady: false,
     });
 
-    expect(step.id).toBe('documents-pending');
+    expect(step?.id).toBe('documents-pending');
   });
 
   it('directs a ready user to the exam application', () => {
-    expect(resolveDashboardNextStep(readyContext).id).toBe('exam-ready');
+    expect(resolveDashboardNextStep(readyContext)?.id).toBe('exam-ready');
+  });
+
+  it('shows a certificate prompt instead of exam prompt for supervisor renewal', () => {
+    const step = resolveDashboardNextStep({
+      ...readyContext,
+      isRenewalCycle: true,
+      targetLevel: 'SUPERVISOR',
+    });
+
+    expect(step?.id).toBe('renewal-certificate-ready');
+    expect(step?.title).toBe('Получить новый сертификат');
+  });
+
+  it('uses certificate wording for supervisor renewal request statuses', () => {
+    const step = resolveDashboardNextStep({
+      ...readyContext,
+      isRenewalCycle: true,
+      targetLevel: 'SUPERVISOR',
+      examStatus: 'PENDING',
+    });
+
+    expect(step?.id).toBe('renewal-certificate-pending');
+    expect(step?.title).toBe('Запрос рассматривается');
+  });
+
+  it('does not show a top guidance card when only required payments are missing', () => {
+    const step = resolveDashboardNextStep({
+      ...readyContext,
+      requiredPaymentsPaid: false,
+    });
+
+    expect(step).toBeNull();
   });
 
   it('does not ask to select a target again when only the active cycle is missing', () => {
     const step = resolveDashboardNextStep({ ...readyContext, hasActiveCycle: false });
-    expect(step.id).toBe('cycle-missing');
-    expect(step.action).toBeUndefined();
+    expect(step?.id).toBe('cycle-missing');
+    expect(step?.action).toBeUndefined();
   });
 
   it('does not request a separate document review payment for renewal', () => {
@@ -111,7 +156,7 @@ describe('resolveDashboardNextStep', () => {
       hoursReady: false,
     });
 
-    expect(step.id).toBe('hours');
+    expect(step?.id).toBe('hours');
   });
 
   it('directs an experienced supervisor to CEU when hours are satisfied', () => {
@@ -123,6 +168,6 @@ describe('resolveDashboardNextStep', () => {
       ceuReady: false,
     });
 
-    expect(step.id).toBe('ceu');
+    expect(step?.id).toBe('ceu');
   });
 });

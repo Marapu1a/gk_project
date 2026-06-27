@@ -1,7 +1,7 @@
 // handlers/payment/updatePaymentStatusHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { NotificationType, PaymentType, PaymentStatus, Role } from '@prisma/client';
+import { NotificationType, PaymentType, PaymentStatus, Role, TargetLevel } from '@prisma/client';
 import { updatePaymentSchema } from '../../schemas/updatePaymentSchema';
 import { createNotification, notifyAdmins } from '../../utils/notifications';
 import { logAdminUserAction } from '../../utils/adminUserActionLog';
@@ -116,6 +116,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
 
     let activated = 0;
     let synced = 0;
+    let linked = 0;
 
     if (status === PaymentStatus.PAID && dbPayment.type === PaymentType.FULL_PACKAGE) {
       const res = await tx.payment.updateMany({
@@ -161,7 +162,34 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
       synced = res.count;
     }
 
-    return { updated, activated, synced };
+    if (
+      dbPayment.type === PaymentType.DOCUMENT_REVIEW &&
+      dbPayment.targetLevel === TargetLevel.SUPERVISOR
+    ) {
+      const res = await tx.payment.updateMany({
+        where: {
+          userId: dbPayment.userId,
+          type: PaymentType.REGISTRATION,
+          OR: [{ targetLevel: TargetLevel.SUPERVISOR }, { targetLevel: null }],
+        },
+        data: {
+          status,
+          targetLevel: TargetLevel.SUPERVISOR,
+          requestedAt:
+            status === PaymentStatus.PENDING
+              ? now
+              : status === PaymentStatus.UNPAID
+                ? null
+                : dbPayment.requestedAt ?? now,
+          confirmedAt: status === PaymentStatus.PAID ? now : null,
+          comment: null,
+        },
+      });
+
+      linked = res.count;
+    }
+
+    return { updated, activated, synced, linked };
   });
 
   if (user.role === Role.ADMIN && dbPayment.status !== status) {
@@ -181,6 +209,7 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
         notify ? 'с уведомлением' : 'без уведомления',
         result.activated ? `активировано платежей пакета: ${result.activated}` : null,
         result.synced ? `синхронизировано платежей пакета: ${result.synced}` : null,
+        result.linked ? `синхронизировано связанных платежей: ${result.linked}` : null,
       ]
         .filter(Boolean)
         .join('; '),
@@ -240,5 +269,6 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
     payment: result.updated,
     activatedCount: result.activated,
     syncedCount: result.synced,
+    linkedCount: result.linked,
   });
 }

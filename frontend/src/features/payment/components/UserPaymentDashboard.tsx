@@ -3,14 +3,7 @@ import { useUserPayments } from '../hooks/useUserPayments';
 import { PaymentStatusToggle } from '../components/PaymentStatusToggle';
 import { getPaymentLink } from '@/utils/getPaymentLink';
 import type { PaymentItem } from '../api/getUserPayments';
-import { targetLevelLabels } from '@/utils/labels';
-
-const LABELS: Record<Exclude<PaymentItem['type'], 'RENEWAL'>, string> = {
-  DOCUMENT_REVIEW: 'Экспертиза документов',
-  EXAM_ACCESS: 'Экзамен',
-  REGISTRATION: 'Подача заявки на сертификацию и учет часов практики',
-  FULL_PACKAGE: 'Сертификация - пакет со скидкой 10%',
-};
+import { getShortPaymentTypeLabel, targetLevelLabels } from '@/utils/labels';
 
 const STATUS_LABELS: Record<PaymentItem['status'], string> = {
   UNPAID: 'Не оплачено',
@@ -59,15 +52,7 @@ function getPaymentLabel(
   payment: PaymentItem,
   targetLevel: PaymentItem['targetLevel'] | null,
 ): string {
-  if (payment.type === 'RENEWAL') {
-    return 'Ресертификация';
-  }
-
-  if (payment.type === 'DOCUMENT_REVIEW' && targetLevel === 'SUPERVISOR') {
-    return 'Подача заявки на сертификацию, экспертиза документов на уровень Супервизор ПАП';
-  }
-
-  return LABELS[payment.type];
+  return getShortPaymentTypeLabel(payment.type, { targetLevel });
 }
 
 export function UserPaymentDashboard({

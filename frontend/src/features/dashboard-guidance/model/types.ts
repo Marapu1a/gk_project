@@ -18,6 +18,7 @@ export type DashboardGuidanceContext = {
   externalSupervisorPending: boolean;
   externalSupervisorApproved: boolean;
   hasTarget: boolean;
+  targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
   hasActiveCycle: boolean;
   isRenewalCycle: boolean;
   hasCertificationAccess: boolean;

@@ -1,14 +1,12 @@
 import { DASHBOARD_GUIDANCE_MESSAGES as M } from './messages';
 import type { DashboardGuidanceContext, DashboardGuidanceStep } from './types';
 
-const section = (target: string, label: string) => ({ type: 'section' as const, target, label });
-const route = (target: string, label: string) => ({ type: 'route' as const, target, label });
-
 export function resolveDashboardNextStep(
   context: DashboardGuidanceContext,
-): DashboardGuidanceStep {
+): DashboardGuidanceStep | null {
   const pendingReviewCount =
     context.reviewer.pendingSupervisionRequests + context.reviewer.pendingMentorshipRequests;
+  const isSupervisorRenewal = context.isRenewalCycle && context.targetLevel === 'SUPERVISOR';
 
   if (context.externalSupervisorPending) {
     return { id: 'external-supervisor', tone: 'info', ...M.externalSupervisor };
@@ -19,18 +17,11 @@ export function resolveDashboardNextStep(
   }
 
   if (pendingReviewCount > 0) {
-    const onlyMentorship =
-      context.reviewer.pendingMentorshipRequests > 0 &&
-      context.reviewer.pendingSupervisionRequests === 0;
-    const target = onlyMentorship
-      ? '/reviewer/candidates/mentorship?status=UNCONFIRMED'
-      : '/reviewer/candidates/supervision?status=UNCONFIRMED';
     return {
       id: 'reviewer-requests',
       tone: 'attention',
       title: M.reviewerRequests.title,
       description: M.reviewerRequests.description(pendingReviewCount),
-      action: route(target, 'Перейти к проверке'),
     };
   }
 
@@ -40,7 +31,6 @@ export function resolveDashboardNextStep(
       tone: 'attention',
       title: M.reviewerRelations.title,
       description: M.reviewerRelations.description(context.reviewer.pendingRelations),
-      action: section('dashboard-reviewer-work', 'Открыть кандидатов'),
     };
   }
 
@@ -49,7 +39,6 @@ export function resolveDashboardNextStep(
       id: 'target',
       tone: 'attention',
       ...M.target,
-      action: section('dashboard-certification', 'Выбрать уровень'),
     };
   }
 
@@ -70,7 +59,6 @@ export function resolveDashboardNextStep(
       id: 'documents-upload',
       tone: 'attention',
       ...M.documentsUpload,
-      action: route('/document-review', 'Перейти к документам'),
     };
   }
 
@@ -79,7 +67,6 @@ export function resolveDashboardNextStep(
       id: 'documents-correction',
       tone: 'attention',
       ...M.documentsCorrection,
-      action: route('/document-review', 'Открыть документы'),
     };
   }
 
@@ -91,12 +78,19 @@ export function resolveDashboardNextStep(
     };
   }
 
+  if (!context.hoursReady && !context.ceuReady) {
+    return {
+      id: 'hours-and-ceu',
+      tone: 'info',
+      ...M.hoursAndCeu,
+    };
+  }
+
   if (!context.hoursReady) {
     return {
       id: 'hours',
       tone: 'info',
       ...M.hours,
-      action: route('/supervision/hours', 'Перейти к часам'),
     };
   }
 
@@ -105,16 +99,11 @@ export function resolveDashboardNextStep(
       id: 'ceu',
       tone: 'info',
       ...M.ceu,
-      action: route('/ceu/points', 'Перейти к CEU'),
     };
   }
 
   if (!context.requiredPaymentsPaid) {
-    return {
-      id: 'payments',
-      tone: 'attention',
-      ...M.payments,
-    };
+    return null;
   }
 
   if (!context.documentsReady) {
@@ -122,19 +111,38 @@ export function resolveDashboardNextStep(
   }
 
   if (context.examStatus === 'PENDING') {
-    return { id: 'exam-pending', tone: 'info', ...M.examPending };
+    return isSupervisorRenewal
+      ? { id: 'renewal-certificate-pending', tone: 'info', ...M.renewalCertificatePending }
+      : { id: 'exam-pending', tone: 'info', ...M.examPending };
   }
 
   if (context.examStatus === 'APPROVED') {
-    return { id: 'exam-approved', tone: 'success', ...M.examApproved };
+    return isSupervisorRenewal
+      ? { id: 'renewal-certificate-approved', tone: 'success', ...M.renewalCertificateApproved }
+      : { id: 'exam-approved', tone: 'success', ...M.examApproved };
   }
 
   if (context.examStatus === 'REJECTED') {
+    if (isSupervisorRenewal) {
+      return {
+        id: 'renewal-certificate-rejected',
+        tone: 'attention',
+        ...M.renewalCertificateRejected,
+      };
+    }
+
     return {
       id: 'exam-rejected',
       tone: 'attention',
       ...M.examRejected,
-      action: section('dashboard-certification', 'Открыть заявку'),
+    };
+  }
+
+  if (isSupervisorRenewal) {
+    return {
+      id: 'renewal-certificate-ready',
+      tone: 'success',
+      ...M.renewalCertificateReady,
     };
   }
 
@@ -142,6 +150,5 @@ export function resolveDashboardNextStep(
     id: 'exam-ready',
     tone: 'success',
     ...M.examReady,
-    action: section('dashboard-certification', 'Подать заявку'),
   };
 }

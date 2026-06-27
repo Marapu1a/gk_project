@@ -208,6 +208,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
 
       toast.success(UI_TOAST_MESSAGES.supervision.mentorshipRequestSent);
       resetForm();
+      setIsOpen(false);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.supervision.requestSendFailed);
     }

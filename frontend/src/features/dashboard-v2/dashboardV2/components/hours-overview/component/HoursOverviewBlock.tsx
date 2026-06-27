@@ -18,9 +18,27 @@ function capToRequired(value: number, required?: number | null) {
   return Math.min(current, required);
 }
 
-function MetricCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function isRequirementComplete(current: number, required?: number | null) {
+  return required != null && required > 0 && current >= required;
+}
+
+function MetricCard({
+  label,
+  value,
+  hint,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  compact?: boolean;
+}) {
   return (
-    <div className="rounded-[14px] bg-[var(--color-blue-soft)] px-3 py-2.5">
+    <div
+      className={`rounded-[14px] bg-[var(--color-blue-soft)] px-3 ${
+        compact ? 'py-3' : 'py-2.5'
+      }`}
+    >
       <div className="mb-1.5 flex items-start justify-between gap-2">
         <span className="dashboard-v2-metric-label text-[#1F305E]">{label}</span>
         {hint ? <DashboardHelpTooltip content={hint} align="right" /> : null}
@@ -70,24 +88,42 @@ function TotalCircle({
   label,
   value,
   progress,
+  complete = false,
+  compact = false,
 }: {
   label: string;
   value: string;
   progress: number;
+  complete?: boolean;
+  compact?: boolean;
 }) {
   const normalizedProgress = Math.max(0, Math.min(100, progress));
+  const sizeClass = compact ? 'h-[76px] w-[76px]' : 'h-[86px] w-[86px]';
+  const innerInset = compact ? 'inset-[7px]' : 'inset-[8px]';
 
   return (
-    <div className="flex h-full min-h-[138px] flex-col items-center justify-center rounded-[16px] bg-[var(--color-blue-soft)] px-5 py-4">
-      <span className="dashboard-v2-metric-label mb-4 text-[#1F305E]">{label}</span>
+    <div
+      className={`flex h-full flex-col items-center justify-center rounded-[16px] bg-[var(--color-blue-soft)] px-5 ${
+        compact ? 'min-h-[112px] py-3' : 'min-h-[138px] py-4'
+      } ${complete ? 'dashboard-v2-total-complete' : ''}`}
+    >
+      <span className={`dashboard-v2-metric-label text-[#1F305E] ${compact ? 'mb-2.5' : 'mb-4'}`}>
+        {label}
+      </span>
       <div
-        className="relative flex h-[86px] w-[86px] items-center justify-center rounded-full"
+        className={`relative flex ${sizeClass} items-center justify-center rounded-full`}
         style={{
-          background: `conic-gradient(#D8DFEA ${normalizedProgress}%, #FFFFFF ${normalizedProgress}% 100%)`,
+          background: `conic-gradient(${
+            complete ? 'var(--color-green-brand)' : '#D8DFEA'
+          } ${normalizedProgress}%, #FFFFFF ${normalizedProgress}% 100%)`,
         }}
       >
-        <div className="absolute inset-[4px] rounded-full bg-[var(--color-blue-soft)]" />
-        <div className="absolute inset-[8px] rounded-full border-[3px] border-[#D6DDEA] bg-white" />
+        <div className="dashboard-v2-total-circle-inner absolute inset-[4px] rounded-full bg-[var(--color-blue-soft)]" />
+        <div
+          className={`absolute ${innerInset} rounded-full border-[3px] ${
+            complete ? 'border-[var(--color-green-light)]' : 'border-[#D6DDEA]'
+          } bg-white`}
+        />
         <span className="dashboard-v2-metric-value relative z-10 text-[#26396E]">{value}</span>
       </div>
     </div>
@@ -143,13 +179,14 @@ export function HoursOverviewBlock({
     const mentor = summary.mentor ?? { total: 0, required: 24, percent: 0, pending: 0 };
     const mentorRemaining = Math.max(0, mentor.required - mentor.total - mentor.pending);
     const mentorDisplayTotal = capToRequired(mentor.total, mentor.required);
+    const isMentorComplete = isRequirementComplete(mentor.total, mentor.required);
 
     return (
-      <section className="card-section overflow-hidden px-5 py-5">
+      <section className="card-section overflow-hidden px-5 py-4">
         <div className="mb-3 flex items-start justify-between gap-4">
           <div className="flex items-center gap-2">
             <h3 className="dashboard-v2-title">Часы менторства</h3>
-            <DashboardHelpTooltip content="Подтвержденные часы менторства в текущем активном цикле." />
+            <DashboardHelpTooltip content={`Подтвержденные часы менторства в текущем активном цикле. Для сертификации необходимо ${formatNumber(mentor.required)} часов.`} />
           </div>
 
           {showActions ? (
@@ -173,28 +210,27 @@ export function HoursOverviewBlock({
           ) : null}
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[150px_minmax(0,1fr)]">
+        <div className="grid gap-3 lg:grid-cols-[136px_minmax(0,1fr)]">
           <TotalCircle
-            label="Всего"
+            label="Набрано"
             value={formatNumber(mentorDisplayTotal)}
             progress={mentor.percent}
+            complete={isMentorComplete}
+            compact
           />
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <MetricCard
-              label="Требуется"
-              value={formatNumber(mentor.required)}
-              hint="Фиксированное количество часов менторства для текущего цикла."
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
             <MetricCard
               label="На рассмотрении"
               value={formatNumber(mentor.pending)}
               hint="Часы менторства, отправленные ментору и ожидающие проверки."
+              compact
             />
             <MetricCard
-              label="Осталось"
+              label="Осталось набрать"
               value={formatNumber(mentorRemaining)}
               hint="Сколько часов менторства осталось отправить до выполнения условия."
+              compact
             />
           </div>
         </div>
@@ -222,6 +258,14 @@ export function HoursOverviewBlock({
     summary.supervisionBreakdown.total,
     summary.required?.supervision,
   );
+  const isPracticeComplete = isRequirementComplete(
+    summary.practiceBreakdown.total,
+    summary.required?.practice,
+  );
+  const isSupervisionComplete = isRequirementComplete(
+    summary.supervisionBreakdown.total,
+    summary.required?.supervision,
+  );
 
   return (
     <section className="card-section overflow-hidden px-5 py-5">
@@ -239,9 +283,10 @@ export function HoursOverviewBlock({
           <div className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)]">
             <div>
               <TotalCircle
-                label="Всего"
+                label="Набрано"
                 value={formatNumber(practiceDisplayTotal)}
                 progress={practiceProgress}
+                complete={isPracticeComplete}
               />
             </div>
 
@@ -295,9 +340,10 @@ export function HoursOverviewBlock({
           <div className="grid gap-3 lg:grid-cols-[146px_minmax(0,1fr)]">
             <div>
               <TotalCircle
-                label="Всего"
+                label="Набрано"
                 value={formatNumber(supervisionDisplayTotal)}
                 progress={supervisionProgress}
+                complete={isSupervisionComplete}
               />
             </div>
 

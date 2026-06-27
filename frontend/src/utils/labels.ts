@@ -63,13 +63,37 @@ export const paymentTypeLabels: Record<string, string> = {
   RENEWAL: 'Ресертификация',
 };
 
+export const supervisorDocumentReviewPaymentLabel =
+  'Подача заявки на сертификацию и экспертиза документов';
+
+export function getShortPaymentTypeLabel(
+  type: string,
+  options: {
+    targetLevel?: string | null;
+    targetLevelName?: string | null;
+    billingGroup?: string | null;
+  } = {},
+): string {
+  const isSupervisorDocumentReview =
+    type === 'DOCUMENT_REVIEW' &&
+    (options.targetLevel === 'SUPERVISOR' ||
+      options.targetLevelName === 'Супервизор' ||
+      options.billingGroup === 'куратор');
+
+  if (isSupervisorDocumentReview) {
+    return supervisorDocumentReviewPaymentLabel;
+  }
+
+  return paymentTypeLabels[type] || type;
+}
+
 // Если нужен красивый вывод с уровнем
 export function getPaymentTypeLabel(type: string, targetLevel?: string | null): string {
   if (type === 'RENEWAL') {
     return 'Ресертификация';
   }
 
-  return paymentTypeLabels[type] || type;
+  return getShortPaymentTypeLabel(type, { targetLevel });
 }
 
 // Статусы платежей

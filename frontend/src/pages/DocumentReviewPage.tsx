@@ -12,6 +12,7 @@ import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { documentTypeLabels } from '@/utils/documentTypeLabels';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getDocumentRequirementHint } from '@/features/documentReview/utils/documentRequirementHints';
 
 type FileStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'DELETED';
 
@@ -101,6 +102,9 @@ export default function DocumentReviewPage() {
     : isDocumentReviewPaid
     ? paymentStatusLabels.PAID
     : paymentStatusLabels[paymentStatus];
+  const documentRequirementHint = getDocumentRequirementHint(
+    currentUser?.activeCycle?.targetLevel ?? currentUser?.targetLevel,
+  );
 
   const reviewFiles = useMemo(() => normalizeReviewFiles(request), [request]);
   const activeCycleId = currentUser?.activeCycle?.id ?? null;
@@ -123,6 +127,19 @@ export default function DocumentReviewPage() {
         </div>
 
         <div className="mx-auto max-w-[620px]">
+          {documentRequirementHint ? (
+            <div className="mb-4 rounded-[12px] bg-[var(--color-blue-soft)] px-5 py-4 text-[var(--color-blue-dark)]">
+              <h2 className="text-[15px] font-extrabold leading-tight">
+                {documentRequirementHint.title}
+              </h2>
+              <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-[13px] font-semibold leading-[1.35]">
+                {documentRequirementHint.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ol>
+            </div>
+          ) : null}
+
           <button
             type="button"
             onClick={() => setIsUploadOpen(true)}
@@ -157,9 +174,9 @@ export default function DocumentReviewPage() {
 
           {isArchiveRequest ? (
             <div className="mx-auto mb-4 max-w-[620px] rounded-[12px] bg-[var(--color-blue-soft)] px-5 py-4 text-[14px] font-semibold text-[var(--color-blue-dark)]">
-              Ниже показаны документы из предыдущего периода. Они сохранены для истории, но не
-              подтверждают документы текущего цикла сертификации. Для текущего цикла загрузите
-              документы заново.
+              Ранее загруженные документы сохранены в истории. Они относятся к прошлой
+              сертификации, поэтому для текущей сертификации документы нужно загрузить заново:
+              список зависит от выбранного уровня.
             </div>
           ) : null}
 

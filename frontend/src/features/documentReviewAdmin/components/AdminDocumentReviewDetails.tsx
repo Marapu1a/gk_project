@@ -267,9 +267,9 @@ export function AdminDocumentReviewDetails() {
 
   const handleTransferToActiveCycle = async (item: ReviewFile) => {
     const ok = await confirm({
-      message: 'Перенести документ в текущий цикл?',
+      message: 'Перенести документ в текущую сертификацию?',
       description:
-        'Файл появится в заявке текущего цикла со статусом "На рассмотрении". Старая заявка не изменится.',
+        'Файл появится в заявке текущей сертификации со статусом "На рассмотрении". Старая заявка не изменится.',
       confirmLabel: 'Перенести',
     });
 
@@ -279,8 +279,8 @@ export function AdminDocumentReviewDetails() {
       const result = await transferFile.mutateAsync(item.id);
       toast.success(
         result?.alreadyExists
-          ? 'Документ уже есть в заявке текущего цикла.'
-          : 'Документ перенесен в текущий цикл.',
+          ? 'Документ уже есть в заявке текущей сертификации.'
+          : 'Документ перенесен в текущую сертификацию.',
       );
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Не удалось перенести документ.');
@@ -336,7 +336,7 @@ export function AdminDocumentReviewDetails() {
             {isArchiveRequest ? (
               <div className="md:col-span-2 rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-3 text-[13px] font-semibold text-[var(--color-blue-dark)]">
                 Это документы из предыдущего периода. Они сохранены для истории и проверки, но не
-                подтверждают документы текущего цикла сертификации.
+                подтверждают документы текущей сертификации.
               </div>
             ) : null}
             {isLegacyFallback ? (
@@ -360,7 +360,7 @@ export function AdminDocumentReviewDetails() {
                   </span>
                   <span className="mt-1 block text-[13px] font-semibold text-[#8D96B5]">
                     Есть {formatRequestsCount(relatedRequests.length)}. Они сохранены для истории и
-                    не подменяют документы текущего цикла.
+                    не подменяют документы текущей сертификации.
                   </span>
                 </span>
                 <span className="inline-flex h-8 min-w-[92px] items-center justify-center rounded-full bg-[var(--color-blue-dark)] px-3 text-[13px] font-extrabold text-white">
@@ -606,7 +606,7 @@ function DocumentFileCard({
             disabled={actionsDisabled}
             className="btn min-h-[38px] rounded-full bg-[var(--color-blue-dark)] px-4 text-[13px] font-extrabold leading-tight text-white disabled:cursor-not-allowed disabled:bg-[#B8C4D8]"
           >
-            Перенести в текущий цикл
+            В текущую сертификацию
           </button>
         ) : null}
 
