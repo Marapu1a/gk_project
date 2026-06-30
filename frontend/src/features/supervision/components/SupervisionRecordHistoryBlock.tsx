@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { useSupervisionRecordHistory } from '../hooks/useSupervisionRecordHistory';
 import type { SupervisionRecordHistoryItem } from '../api/getSupervisionRecordHistory';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { getSupervisionRequestDateLabel } from '../utils/requestDateLabels';
 
 type HistoryMode = 'supervision' | 'mentorship';
 
@@ -30,6 +31,14 @@ function correctionActor(record: SupervisionRecordHistoryItem) {
 
 function recordStartDate(record: SupervisionRecordHistoryItem) {
   return isAdminCorrection(record) ? record.periodStartedAt || record.createdAt : record.periodStartedAt;
+}
+
+function recordSupervisionDate(record: SupervisionRecordHistoryItem) {
+  return record.supervisionDate || (isAdminCorrection(record) ? record.createdAt : record.createdAt);
+}
+
+function recordPracticePeriod(record: SupervisionRecordHistoryItem) {
+  return `${formatDate(record.periodStartedAt)} — ${formatDate(record.periodEndedAt)}`;
 }
 
 function statusLabel(record: SupervisionRecordHistoryItem, mode: HistoryMode = 'supervision') {
@@ -61,6 +70,7 @@ function statusLabel(record: SupervisionRecordHistoryItem, mode: HistoryMode = '
 
 export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?: HistoryMode }) {
   const [selectedRecord, setSelectedRecord] = useState<SupervisionRecordHistoryItem | null>(null);
+  const requestDateLabel = getSupervisionRequestDateLabel(mode);
   const {
     data,
     status,
@@ -95,7 +105,7 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
             <table className="w-full min-w-[780px] text-[14px] text-[#1F305E]">
               <thead>
                 <tr className="bg-[#E7F1F4] text-left">
-                  <th className="rounded-l-[10px] px-4 py-3 font-medium">Дата</th>
+                  <th className="rounded-l-[10px] px-4 py-3 font-medium">{requestDateLabel}</th>
                   <th className="px-4 py-3 text-center font-medium">Часы менторства</th>
                   <th className="px-4 py-3 font-medium">Формат</th>
                   <th className="px-4 py-3 font-medium">Статус</th>
@@ -110,7 +120,7 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
                       isAdminCorrection(record) ? 'bg-[rgba(255,83,100,0.07)]' : ''
                     }`}
                   >
-                    <td className="px-4 py-4">{formatDate(recordStartDate(record))}</td>
+                    <td className="px-4 py-4">{formatDate(recordSupervisionDate(record))}</td>
                     <td className="px-4 py-4 text-center font-extrabold">
                       {formatNumber(record.hours.mentor)}
                     </td>
@@ -133,8 +143,8 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
             <table className="w-full min-w-[960px] text-[14px] text-[#1F305E]">
               <thead>
                 <tr className="bg-[#E7F1F4] text-left">
-                  <th className="rounded-l-[10px] px-4 py-3 font-medium">Начало</th>
-                  <th className="px-4 py-3 font-medium">Окончание</th>
+                  <th className="rounded-l-[10px] px-4 py-3 font-medium">Дата супервизии</th>
+                  <th className="px-4 py-3 font-medium">Период практики</th>
                   <th className="px-4 py-3 text-center font-medium">Полевая практика</th>
                   <th className="px-4 py-3 text-center font-medium">Работа с информацией</th>
                   <th className="px-4 py-3 text-center font-medium">С наблюдением</th>
@@ -151,8 +161,8 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
                       isAdminCorrection(record) ? 'bg-[rgba(255,83,100,0.07)]' : ''
                     }`}
                   >
-                    <td className="px-4 py-4">{formatDate(recordStartDate(record))}</td>
-                    <td className="px-4 py-4">{formatDate(record.periodEndedAt)}</td>
+                    <td className="px-4 py-4">{formatDate(recordSupervisionDate(record))}</td>
+                    <td className="px-4 py-4">{recordPracticePeriod(record)}</td>
                     <td className="px-4 py-4 text-center text-[#6B7894]">
                       {formatNumber(record.hours.implementing)}
                     </td>
@@ -228,23 +238,29 @@ function SupervisionRecordDetailsModal({
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <ReadOnlyField label="Дата подачи заявки" value={formatDate(record.createdAt)} />
+              <ReadOnlyField
+                label={requestDateLabel}
+                value={formatDate(recordSupervisionDate(record))}
+              />
               <ReadOnlyField
                 label={mode === 'mentorship' ? 'Формат менторства' : 'Условия практики'}
                 value={record.treatmentSetting || '—'}
               />
-              <ReadOnlyField
-                label={
-                  isAdminCorrection(record)
-                    ? 'Дата корректировки'
-                    : mode === 'mentorship'
-                      ? 'Дата менторства'
-                      : 'Дата начала'
-                }
-                value={formatDate(recordStartDate(record))}
-              />
+              {mode === 'supervision' || isAdminCorrection(record) ? (
+                <ReadOnlyField
+                  label={
+                    isAdminCorrection(record)
+                      ? 'Дата корректировки'
+                      : 'Дата начала периода практики'
+                  }
+                  value={formatDate(recordStartDate(record))}
+                />
+              ) : null}
               {mode === 'supervision' ? (
-                <ReadOnlyField label="Дата окончания" value={formatDate(record.periodEndedAt)} />
+                <ReadOnlyField
+                  label="Дата окончания периода практики"
+                  value={formatDate(record.periodEndedAt)}
+                />
               ) : null}
             </div>
 

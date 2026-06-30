@@ -8,6 +8,7 @@ import { CandidateRequestDetailsModal } from '@/features/supervision/components/
 import { useReviewerCandidates } from '@/features/supervision/hooks/useReviewerCandidates';
 import { useReviewerRequests } from '@/features/supervision/hooks/useReviewerRequests';
 import { useUpdateReviewerCandidateRelation } from '@/features/supervision/hooks/useUpdateReviewerCandidateRelation';
+import { getSupervisionRequestDateLabel } from '@/features/supervision/utils/requestDateLabels';
 import type { ReviewerCandidate } from '@/features/supervision/api/getReviewerCandidates';
 import type { ReviewerRequestListItem } from '@/features/supervision/api/getReviewerRequests';
 
@@ -156,6 +157,7 @@ export function ReviewerCandidatesBlocks() {
         <CandidatesTable kind={kind} candidates={candidates} />
       ) : (
         <ReviewQueue
+          kind={kind}
           isLoading={pendingRequests.isLoading}
           isError={pendingRequests.isError}
           items={pendingRequests.data?.items ?? []}
@@ -333,16 +335,20 @@ function CandidatesTable({
 }
 
 function ReviewQueue({
+  kind,
   items,
   isLoading,
   isError,
   onOpen,
 }: {
+  kind: CandidateKind;
   items: ReviewerRequestListItem[];
   isLoading: boolean;
   isError: boolean;
   onOpen: (request: ReviewerRequestListItem) => void;
 }) {
+  const requestDateLabel = getSupervisionRequestDateLabel(kind);
+
   if (isLoading) return <p className="py-6 text-center text-[#6B7894]">Загрузка заявок...</p>;
   if (isError) return <p className="py-6 text-center text-[var(--color-danger)]">Не удалось загрузить заявки.</p>;
   if (!items.length) {
@@ -371,7 +377,8 @@ function ReviewQueue({
             {request.totals.total} ч.
           </div>
           <div className="dashboard-v2-caption text-[#6B7894]">
-            {formatDate(request.createdAt)}
+            <span className="sr-only">{requestDateLabel}: </span>
+            {formatDate(request.supervisionDate ?? request.createdAt)}
           </div>
           <ActionArrowButton
             onClick={() => onOpen(request)}

@@ -162,6 +162,10 @@ function rowTimestamp(row: { latestPendingRequestAt: Date | null; latestRequestA
   return row.latestPendingRequestAt ?? row.latestRequestAt ?? row.relationCreatedAt;
 }
 
+function requestTimestamp(record: { supervisionDate: Date | null; createdAt: Date }) {
+  return record.supervisionDate ?? record.createdAt;
+}
+
 function correctionKind(kind: CandidateKind) {
   return kind === 'mentorship'
     ? SupervisionAdminCorrectionKind.MENTORSHIP
@@ -247,6 +251,7 @@ export async function getAdminReviewerCandidatesHandler(
     Array<{
       id: string;
       createdAt: Date;
+      supervisionDate: Date | null;
       periodStartedAt: Date | null;
       periodEndedAt: Date | null;
       treatmentSetting: string | null;
@@ -285,6 +290,7 @@ export async function getAdminReviewerCandidatesHandler(
         userId: true,
         cycleId: true,
         createdAt: true,
+        supervisionDate: true,
         periodStartedAt: true,
         periodEndedAt: true,
         treatmentSetting: true,
@@ -311,7 +317,7 @@ export async function getAdminReviewerCandidatesHandler(
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ supervisionDate: 'desc' }, { createdAt: 'desc' }],
     });
 
     for (const record of records) {
@@ -329,6 +335,7 @@ export async function getAdminReviewerCandidatesHandler(
         list.push({
           id: record.id,
           createdAt: record.createdAt,
+          supervisionDate: record.supervisionDate,
           periodStartedAt: record.periodStartedAt,
           periodEndedAt: record.periodEndedAt,
           treatmentSetting: record.treatmentSetting,
@@ -352,8 +359,8 @@ export async function getAdminReviewerCandidatesHandler(
       const pendingRecords = records.filter((record) =>
         record.hours.some((hour) => hour.status === RecordStatus.UNCONFIRMED),
       );
-      const latestRequestAt = records[0]?.createdAt ?? relation.createdAt;
-      const latestPendingRequestAt = pendingRecords[0]?.createdAt ?? null;
+      const latestRequestAt = records[0] ? requestTimestamp(records[0]) : relation.createdAt;
+      const latestPendingRequestAt = pendingRecords[0] ? requestTimestamp(pendingRecords[0]) : null;
       const pendingCount = pendingRecords.length;
       const latestReviewedHour =
         records
@@ -391,6 +398,7 @@ export async function getAdminReviewerCandidatesHandler(
         pendingRequests: pendingRecords.map((record) => ({
           id: record.id,
           createdAt: record.createdAt,
+          supervisionDate: record.supervisionDate,
           periodStartedAt: record.periodStartedAt,
           periodEndedAt: record.periodEndedAt,
           treatmentSetting: record.treatmentSetting,
@@ -539,6 +547,7 @@ export async function getAdminReviewerCandidatesHandler(
       pendingRequests: row.pendingRequests.map((request) => ({
         ...request,
         createdAt: request.createdAt.toISOString(),
+        supervisionDate: request.supervisionDate?.toISOString() ?? null,
         periodStartedAt: request.periodStartedAt?.toISOString() ?? null,
         periodEndedAt: request.periodEndedAt?.toISOString() ?? null,
       })),

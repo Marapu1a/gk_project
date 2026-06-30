@@ -71,6 +71,7 @@ export type AdminReviewerCandidateRow = {
   pendingRequests: Array<{
     id: string;
     createdAt: string;
+    supervisionDate: string | null;
     periodStartedAt: string | null;
     periodEndedAt: string | null;
     treatmentSetting: string | null;

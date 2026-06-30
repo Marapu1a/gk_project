@@ -12,6 +12,7 @@ import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { AdminNotifyChoiceModal } from '@/features/admin/components/AdminNotifyChoiceModal';
 import { useAdminReviewerCandidates } from '@/features/admin/hooks/supervision/useAdminReviewerCandidates';
 import { useRemovePendingReviewerHours } from '@/features/admin/hooks/supervision/useRemovePendingReviewerHours';
+import { getSupervisionRequestDateLabel } from '@/features/supervision/utils/requestDateLabels';
 import type {
   AdminReviewerCandidateKind,
   AdminReviewerCandidateRow,
@@ -669,6 +670,7 @@ function AdminPendingHoursDetailsModal({
 }) {
   const pendingRequests = row.pendingRequests ?? [];
   const hasPendingRequests = pendingRequests.length > 0;
+  const requestDateLabel = getSupervisionRequestDateLabel(row.kind);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
@@ -682,7 +684,7 @@ function AdminPendingHoursDetailsModal({
           <CompactField label="Email кандидата" value={row.candidate.email} />
           <CompactField label="Назначенный проверяющий" value={row.reviewer.email} />
           <CompactField label="Тип" value={kindLabel} />
-          <CompactField label="Последняя заявка" value={formatDate(row.latestPendingRequestAt ?? row.latestRequestAt)} />
+          <CompactField label={requestDateLabel} value={formatDate(row.latestPendingRequestAt ?? row.latestRequestAt)} />
           <CompactField label="Состояние" value={hourState(row).text} />
         </div>
 
@@ -698,7 +700,7 @@ function AdminPendingHoursDetailsModal({
                     {pendingRequests.length > 1 ? `Заявка ${index + 1}` : 'Заявка'}
                   </h4>
                   <span className="dashboard-v2-caption text-[#8D96B5]">
-                    {formatDate(request.createdAt)}
+                    {requestDateLabel}: {formatDate(request.supervisionDate ?? request.createdAt)}
                   </span>
                 </div>
 
@@ -712,8 +714,14 @@ function AdminPendingHoursDetailsModal({
 
                   <div className="space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <CompactField label="Дата начала" value={formatDate(request.periodStartedAt)} />
-                      <CompactField label="Дата окончания" value={formatDate(request.periodEndedAt)} />
+                      <CompactField
+                        label="Дата начала периода практики"
+                        value={formatDate(request.periodStartedAt)}
+                      />
+                      <CompactField
+                        label="Дата окончания периода практики"
+                        value={formatDate(request.periodEndedAt)}
+                      />
                     </div>
                     <CompactField label="Условия практики" value={request.treatmentSetting || '—'} />
                     <div>

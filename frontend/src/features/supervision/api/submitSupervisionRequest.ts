@@ -20,6 +20,7 @@ export async function submitSupervisionRequest(
 ): Promise<SubmitSupervisionRequestResponse> {
   const payload = {
     supervisorEmail: data.supervisorEmail,
+    supervisionDate: data.supervisionDate || data.periodStartedAt || undefined,
     periodStartedAt: data.periodStartedAt || undefined,
     periodEndedAt: data.periodEndedAt || undefined,
     treatmentSetting: data.treatmentSetting || undefined,

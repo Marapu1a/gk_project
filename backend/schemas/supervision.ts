@@ -25,6 +25,7 @@ const draftDistributionSchema = z.object({
 export const createSupervisionSchema = z.object({
   supervisorEmail: z.string().trim().email(),
   fileId: z.string().optional(),
+  supervisionDate: z.coerce.date().optional(),
   periodStartedAt: z.coerce.date().optional(),
   periodEndedAt: z.coerce.date().optional(),
   treatmentSetting: z.string().trim().max(120).optional(),

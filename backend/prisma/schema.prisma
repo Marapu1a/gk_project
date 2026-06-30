@@ -557,6 +557,7 @@ model SupervisionRecord {
   fileId    String?
   createdAt DateTime @default(now())
 
+  supervisionDate  DateTime?
   periodStartedAt  DateTime?
   periodEndedAt    DateTime?
   treatmentSetting String?

@@ -27,17 +27,19 @@ function MetricCard({
   value,
   hint,
   compact = false,
+  complete = false,
 }: {
   label: string;
   value: string;
   hint?: string;
   compact?: boolean;
+  complete?: boolean;
 }) {
   return (
     <div
       className={`rounded-[14px] bg-[var(--color-blue-soft)] px-3 ${
         compact ? 'py-3' : 'py-2.5'
-      }`}
+      } ${complete ? 'dashboard-v2-metric-complete' : ''}`}
     >
       <div className="mb-1.5 flex items-start justify-between gap-2">
         <span className="dashboard-v2-metric-label text-[#1F305E]">{label}</span>
@@ -52,16 +54,18 @@ function MetricSegment({
   label,
   value,
   side,
+  complete = false,
 }: {
   label: string;
   value: string;
   side: 'left' | 'right';
+  complete?: boolean;
 }) {
   return (
     <div
       className={`bg-[var(--color-blue-soft)] px-3 py-2.5 ${
         side === 'left' ? 'rounded-l-[14px]' : 'rounded-r-[14px] border-l border-white'
-      }`}
+      } ${complete ? 'dashboard-v2-metric-complete' : ''}`}
     >
       <div className="dashboard-v2-caption mb-1.5 text-[#1F305E]">{label}</div>
       <div className="dashboard-v2-metric-value text-[#1F305E]">{value}</div>
@@ -72,14 +76,16 @@ function MetricSegment({
 function MetricSegmentPair({
   leftValue,
   rightValue,
+  complete = false,
 }: {
   leftValue: string;
   rightValue: string;
+  complete?: boolean;
 }) {
   return (
     <div className="grid grid-cols-2">
-      <MetricSegment label="Индивидуально" value={leftValue} side="left" />
-      <MetricSegment label="В группе" value={rightValue} side="right" />
+      <MetricSegment label="Индивидуально" value={leftValue} side="left" complete={complete} />
+      <MetricSegment label="В группе" value={rightValue} side="right" complete={complete} />
     </div>
   );
 }
@@ -153,7 +159,9 @@ export function HoursOverviewBlock({
   if (isError || !summary) {
     return (
       <section className="card-section">
-        <p className="dashboard-v2-text text-error">Не удалось загрузить часы практики и супервизии</p>
+        <p className="dashboard-v2-text text-error">
+          Не удалось загрузить часы практики и супервизии
+        </p>
       </section>
     );
   }
@@ -186,7 +194,9 @@ export function HoursOverviewBlock({
         <div className="mb-3 flex items-start justify-between gap-4">
           <div className="flex items-center gap-2">
             <h3 className="dashboard-v2-title">Часы менторства</h3>
-            <DashboardHelpTooltip content={`Подтвержденные часы менторства в текущем активном цикле. Для сертификации необходимо ${formatNumber(mentor.required)} часов.`} />
+            <DashboardHelpTooltip
+              content={`Подтвержденные часы менторства в текущем активном цикле. Для сертификации необходимо ${formatNumber(mentor.required)} часов.`}
+            />
           </div>
 
           {showActions ? (
@@ -277,7 +287,7 @@ export function HoursOverviewBlock({
             }`}
           >
             <h3 className="dashboard-v2-title">Часы практики</h3>
-            <DashboardHelpTooltip content="Подтвержденные часы практики в текущем активном цикле." />
+            <DashboardHelpTooltip content="Подтвержденные часы практики для текущего уровня сертификации." />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)]">
@@ -294,13 +304,15 @@ export function HoursOverviewBlock({
               <MetricCard
                 label="Полевая практика"
                 value={formatNumber(fieldPractice)}
-                hint="Временно включает старые записи практики без подтипов и новый подтип практики."
+                hint="Часы прямой практической работы и взаимодействия с клиентами, родителями, коллегами и тп."
+                complete={isPracticeComplete}
               />
 
               <MetricCard
                 label="Работа с информацией"
                 value={formatNumber(infoPractice)}
-                hint="Подтвержденные часы практики по соответствующему подтипу."
+                hint="Часы практики, посвященные работе с информацией."
+                complete={isPracticeComplete}
               />
             </div>
           </div>
@@ -313,7 +325,7 @@ export function HoursOverviewBlock({
           <div className="mb-3 flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
               <h3 className="dashboard-v2-title">Часы супервизии</h3>
-              <DashboardHelpTooltip content="Распределите подтипы часов супервизии, чтобы увидеть разбивку по наблюдению и формату работы." />
+              <DashboardHelpTooltip content="Часы супервизии рассчитанные на основе подтвержденных супервизором часов практики." />
             </div>
 
             {showActions ? (
@@ -343,7 +355,7 @@ export function HoursOverviewBlock({
                 label="Набрано"
                 value={formatNumber(supervisionDisplayTotal)}
                 progress={supervisionProgress}
-                complete={isSupervisionComplete}
+                complete={isPracticeComplete || isSupervisionComplete}
               />
             </div>
 
@@ -353,6 +365,7 @@ export function HoursOverviewBlock({
                   label="С наблюдением"
                   value={formatNumber(hasDistribution ? summary.supervisionBreakdown.direct : null)}
                   hint="Сумма индивидуальной и групповой супервизии с наблюдением."
+                  complete={isPracticeComplete || isSupervisionComplete}
                 />
 
                 <MetricCard
@@ -361,6 +374,7 @@ export function HoursOverviewBlock({
                     hasDistribution ? summary.supervisionBreakdown.nonObserving : null,
                   )}
                   hint="Сумма индивидуальной и групповой супервизии без наблюдения."
+                  complete={isPracticeComplete || isSupervisionComplete}
                 />
               </div>
 
@@ -372,6 +386,7 @@ export function HoursOverviewBlock({
                   rightValue={formatNumber(
                     hasDistribution ? summary.supervisionBreakdown.directGroup : null,
                   )}
+                  complete={isPracticeComplete || isSupervisionComplete}
                 />
 
                 <MetricSegmentPair
@@ -381,6 +396,7 @@ export function HoursOverviewBlock({
                   rightValue={formatNumber(
                     hasDistribution ? summary.supervisionBreakdown.nonObservingGroup : null,
                   )}
+                  complete={isPracticeComplete || isSupervisionComplete}
                 />
               </div>
             </div>

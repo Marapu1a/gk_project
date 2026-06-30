@@ -6,6 +6,7 @@ import type {
 } from '../../api/getReviewerCandidateDetails';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { CandidateRequestDetailsModal } from './CandidateRequestDetailsModal';
+import { getSupervisionRequestDateLabel } from '../../utils/requestDateLabels';
 
 type CandidateRequestsCardProps = {
   kind: ReviewerCandidateKind;
@@ -34,10 +35,11 @@ function statusClass(status: ReviewerCandidateRequest['status']) {
 export function CandidateRequestsCard({ kind, title, requests }: CandidateRequestsCardProps) {
   const [selectedRequest, setSelectedRequest] = useState<ReviewerCandidateRequest | null>(null);
   const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
+  const requestDateLabel = getSupervisionRequestDateLabel(kind);
 
   const sortedRequests = [...requests].sort((a, b) => {
-    const aTime = new Date(a.createdAt).getTime();
-    const bTime = new Date(b.createdAt).getTime();
+    const aTime = new Date(a.supervisionDate ?? a.createdAt).getTime();
+    const bTime = new Date(b.supervisionDate ?? b.createdAt).getTime();
     return sortDirection === 'desc' ? bTime - aTime : aTime - bTime;
   });
 
@@ -60,7 +62,7 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                     }
                     className="mx-auto inline-flex cursor-pointer items-center gap-1"
                   >
-                    Дата заявки
+                    {requestDateLabel}
                     <img
                       src="/dashboard-v2/icon_sort_by.svg"
                       alt=""
@@ -86,7 +88,9 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                       isRejected ? 'text-[#A7B1C7]' : ''
                     }`}
                   >
-                    <td className="px-3 py-4 text-center">{formatDate(request.createdAt)}</td>
+                    <td className="px-3 py-4 text-center">
+                      {formatDate(request.supervisionDate ?? request.createdAt)}
+                    </td>
 
                     <td className="px-3 py-4">
                       {request.status === 'CONFIRMED' ? (

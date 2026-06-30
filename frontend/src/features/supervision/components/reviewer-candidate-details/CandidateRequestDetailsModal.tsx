@@ -5,6 +5,7 @@ import { useUpdateHourStatus } from '../../hooks/useUpdateHourStatus';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { getSupervisionRequestDateLabel } from '../../utils/requestDateLabels';
 import type {
   ReviewerCandidateKind,
   ReviewerCandidateRequest,
@@ -68,6 +69,7 @@ export function CandidateRequestDetailsModal({
   request,
   onClose,
 }: CandidateRequestDetailsModalProps) {
+  const requestDateLabel = getSupervisionRequestDateLabel(kind);
   const mutation = useUpdateHourStatus();
   const [rejectMode, setRejectMode] = useState(false);
   const [rejectedReason, setRejectedReason] = useState('');
@@ -124,7 +126,10 @@ export function CandidateRequestDetailsModal({
         </h3>
 
         <div className="mb-5 grid gap-4 sm:grid-cols-3">
-          <ReadOnlyField label="Дата заявки" value={formatDate(request.createdAt)} />
+          <ReadOnlyField
+            label={requestDateLabel}
+            value={formatDate(request.supervisionDate ?? request.createdAt)}
+          />
           <ReadOnlyField
             label="Тип часов"
             value={kind === 'mentorship' ? 'Менторство' : 'Супервизия'}
@@ -185,8 +190,14 @@ export function CandidateRequestDetailsModal({
 
           <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <ReadOnlyField label="Дата начала" value={formatDate(request.periodStartedAt)} />
-              <ReadOnlyField label="Дата окончания" value={formatDate(request.periodEndedAt)} />
+              <ReadOnlyField
+                label="Дата начала периода практики"
+                value={formatDate(request.periodStartedAt)}
+              />
+              <ReadOnlyField
+                label="Дата окончания периода практики"
+                value={formatDate(request.periodEndedAt)}
+              />
             </div>
 
             <ReadOnlyField label="Условия практики" value={request.treatmentSetting || '—'} />

@@ -103,7 +103,7 @@ function getPracticeRuleError(implementingValue: number, programmingValue: numbe
 
   const minEachType = total * 0.4;
   if (implementingValue < minEachType || programmingValue < minEachType) {
-    return 'Часы полевой практики и работы с информацией должны быть в пропорции 40/40. Оставшиеся 20% можно отдать любому из двух типов.';
+    return 'Часы полевой практики и работы с информацией должны быть распределены сбалансированно: не менее 40% часов — полевая практика и не менее 40% — работа с информацией. Оставшиеся 20% можно добавить к любому из этих двух типов.';
   }
 
   return null;

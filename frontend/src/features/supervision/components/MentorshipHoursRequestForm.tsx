@@ -9,6 +9,7 @@ import { useSupervisionSummary } from '../hooks/useSupervisionSummary';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { CopyEmailLink } from '@/components/CopyEmailLink';
+import { MENTORSHIP_REQUEST_DATE_LABEL } from '../utils/requestDateLabels';
 import {
   formatDecimalInput,
   getDecimalInputBlurValue,
@@ -169,7 +170,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
 
   const submit = async () => {
     if (mentorshipDate > today) {
-      toast.error(UI_TOAST_MESSAGES.supervision.startDateInFuture);
+      toast.error(UI_TOAST_MESSAGES.supervision.mentorshipDateInFuture);
       return;
     }
 
@@ -260,7 +261,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
             <div className="grid gap-5 lg:grid-cols-2">
               <div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Дата">
+                  <Field label={MENTORSHIP_REQUEST_DATE_LABEL}>
                     <input
                       className="input-design h-[32px]"
                       type="date"

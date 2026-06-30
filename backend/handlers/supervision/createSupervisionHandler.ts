@@ -24,6 +24,11 @@ const PRACTICE_REVIEWER_REQUIRED_MESSAGE =
   'Заявку на подтверждение часов практики можно отправить только супервизорам, которые есть в системе. Напишите в поддержку, если вашего супервизора нет в системе или что-то пошло не так.';
 const MENTOR_REVIEWER_REQUIRED_MESSAGE =
   'Заявку на подтверждение часов менторства можно отправить только наставникам, которые есть в системе. Напишите в поддержку, если вашего наставника нет в системе или что-то пошло не так.';
+const SUPERVISION_DATE_REQUIRED_MESSAGE = 'Укажите дату проведения супервизии.';
+const MENTORSHIP_DATE_REQUIRED_MESSAGE = 'Укажите дату получения наставничества (менторства).';
+const SUPERVISION_DATE_IN_FUTURE_MESSAGE = 'Дата проведения супервизии не может быть в будущем';
+const MENTORSHIP_DATE_IN_FUTURE_MESSAGE =
+  'Дата получения наставничества (менторства) не может быть в будущем';
 
 class SupervisionHoursLimitError extends Error {
   constructor(
@@ -88,6 +93,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   const {
     fileId,
     entries,
+    supervisionDate,
     periodStartedAt,
     periodEndedAt,
     treatmentSetting,
@@ -97,11 +103,12 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   } = parsed.data;
   const supervisorEmail = parsed.data.supervisorEmail.trim();
 
+  const now = new Date();
+
   if (periodStartedAt && periodEndedAt && periodEndedAt < periodStartedAt) {
     return reply.code(400).send({ error: 'Дата окончания не может быть раньше даты начала' });
   }
 
-  const now = new Date();
   if (periodStartedAt && periodStartedAt > now) {
     return reply.code(400).send({ error: 'Дата начала не может быть в будущем' });
   }
@@ -136,6 +143,16 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   const reviewerRequiredMessage = isAuthorSimpleSupervisor
     ? MENTOR_REVIEWER_REQUIRED_MESSAGE
     : PRACTICE_REVIEWER_REQUIRED_MESSAGE;
+  const requestDateRequiredMessage = isAuthorSimpleSupervisor
+    ? MENTORSHIP_DATE_REQUIRED_MESSAGE
+    : SUPERVISION_DATE_REQUIRED_MESSAGE;
+  const requestDateInFutureMessage = isAuthorSimpleSupervisor
+    ? MENTORSHIP_DATE_IN_FUTURE_MESSAGE
+    : SUPERVISION_DATE_IN_FUTURE_MESSAGE;
+
+  if (supervisionDate && supervisionDate > now) {
+    return reply.code(400).send({ error: requestDateInFutureMessage });
+  }
 
   if (!periodStartedAt) {
     return reply.code(400).send({ error: 'Укажите дату начала периода.' });
@@ -173,6 +190,12 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     return reply.code(400).send({
       error: 'Опытные супервизоры не набирают часы менторства.',
     });
+  }
+
+  const resolvedSupervisionDate = supervisionDate ?? (isAuthorSimpleSupervisor ? periodStartedAt : null);
+
+  if (!resolvedSupervisionDate) {
+    return reply.code(400).send({ error: requestDateRequiredMessage });
   }
 
   if (isAuthorSimpleSupervisor && !isReviewerExperienced) {
@@ -343,6 +366,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
           userId,
           cycleId: activeCycle.id,
           fileId,
+          supervisionDate: resolvedSupervisionDate,
           periodStartedAt,
           periodEndedAt,
           treatmentSetting,

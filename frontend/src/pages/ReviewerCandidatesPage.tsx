@@ -13,6 +13,7 @@ import type {
 } from '@/features/supervision/api/getReviewerRequests';
 import { CandidateRequestDetailsModal } from '@/features/supervision/components/reviewer-candidate-details/CandidateRequestDetailsModal';
 import { useReviewerRequests } from '@/features/supervision/hooks/useReviewerRequests';
+import { getSupervisionRequestDateLabel } from '@/features/supervision/utils/requestDateLabels';
 
 const STATUS_LABELS: Record<ReviewerRequestStatus, string> = {
   ALL: 'Все состояния',
@@ -55,6 +56,7 @@ function ReviewerCandidatesContent() {
   const limit = [20, 50, 100, 250, 500].includes(Number(searchParams.get('limit')))
     ? Number(searchParams.get('limit'))
     : 20;
+  const requestDateLabel = getSupervisionRequestDateLabel(kind);
 
   const query = useReviewerRequests({
     kind,
@@ -226,7 +228,7 @@ function ReviewerCandidatesContent() {
                       onClick={() => updateFilters({ sortOrder: sortOrder === 'asc' ? 'desc' : 'asc' })}
                       className="cursor-pointer font-medium"
                     >
-                      Дата {sortOrder === 'asc' ? '↑' : '↓'}
+                      {requestDateLabel} {sortOrder === 'asc' ? '↑' : '↓'}
                     </button>
                   </th>
                   <th className="rounded-r-[8px] px-3 py-3" />
@@ -250,7 +252,9 @@ function ReviewerCandidatesContent() {
                     <td className="px-4 py-3 text-center">
                       {REQUEST_STATUS_LABELS[request.status]}
                     </td>
-                    <td className="px-4 py-3 text-center">{formatDate(request.createdAt)}</td>
+                    <td className="px-4 py-3 text-center">
+                      {formatDate(request.supervisionDate ?? request.createdAt)}
+                    </td>
                     <td className="px-3 py-3 text-center">
                       <ActionArrowButton
                         onClick={() => setSelectedRequest(request)}

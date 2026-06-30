@@ -18,7 +18,7 @@ const CATEGORIES: Array<{ key: CategoryKey; label: string }> = [
 ];
 
 function formatNumber(value: number | null | undefined) {
-  if (value == null) return '0';
+  if (value == null) return '—';
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
@@ -32,7 +32,7 @@ function CeuMetricCard({
   required: number;
 }) {
   const displayValue = Math.max(0, value);
-  const isEmpty = displayValue <= 0 && required <= 0;
+  const isNotRequired = required <= 0;
   const isComplete = required > 0 && displayValue >= required;
 
   return (
@@ -46,16 +46,29 @@ function CeuMetricCard({
       </span>
 
       <span
-        className={`shrink-0 whitespace-nowrap text-[26px] font-extrabold leading-none ${
+        className={`shrink-0 whitespace-nowrap text-right leading-none ${
           isComplete
             ? 'text-[var(--color-green-darker)]'
-            : isEmpty
+            : isNotRequired
               ? 'text-[#A7B1C7]'
               : 'text-[#1F305E]'
         }`}
       >
-        {formatNumber(displayValue)}
-        <span className="ml-1 text-[14px] font-semibold text-[#7F8AA3]">/{formatNumber(required)}</span>
+        {isNotRequired ? (
+          <span className="flex flex-col items-end gap-1">
+            <span className="text-[24px] font-extrabold">—</span>
+            <span className="text-[12px] font-semibold leading-[1.15] text-[#7F8AA3]">
+              Не требуется
+            </span>
+          </span>
+        ) : (
+          <span className="text-[26px] font-extrabold">
+            {formatNumber(displayValue)}
+            <span className="ml-1 text-[14px] font-semibold text-[#7F8AA3]">
+              /{formatNumber(required)}
+            </span>
+          </span>
+        )}
       </span>
     </div>
   );

@@ -59,7 +59,7 @@ function getPracticeRuleError(implementingValue: number, programmingValue: numbe
 
   const minEachType = total * 0.4;
   if (implementingValue < minEachType || programmingValue < minEachType) {
-    return 'Часы полевой практики и работы с информацией должны быть в пропорции 40/40. Оставшиеся 20% можно отдать любому из двух типов.';
+    return 'Часы полевой практики и работы с информацией должны быть распределены сбалансированно: не менее 40% часов — полевая практика и не менее 40% — работа с информацией. Оставшиеся 20% можно добавить к любому из этих двух типов.';
   }
 
   return null;
@@ -109,7 +109,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
 
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [practiceLocked, setPracticeLocked] = useState(false);
-  const [submittedAt] = useState(todayInputValue);
+  const [supervisionDate, setSupervisionDate] = useState('');
   const [periodStartedAt, setPeriodStartedAt] = useState('');
   const [periodEndedAt, setPeriodEndedAt] = useState('');
   const [treatmentSetting, setTreatmentSetting] = useState('');
@@ -247,6 +247,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   const distributionTotal = round2(directTotal + nonObservingTotal);
   const groupTotal = round2(distribution.directGroup + distribution.nonObservingGroup);
   const distributionRemaining = round2(expectedSupervision - distributionTotal);
+  const today = todayInputValue();
   const practiceRuleError = getPracticeRuleError(implementingValue, programmingValue);
   const practiceLimitError =
     practiceLimit != null && practiceTotal > practiceLimit
@@ -265,6 +266,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     !practiceRuleError &&
     !practiceLimitError &&
     isDistributionValid &&
+    Boolean(supervisionDate) &&
     hasResolvedSupervisor &&
     effectiveEthicsAccepted &&
     !mutation.isPending;
@@ -300,7 +302,16 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
       return;
     }
 
-    const today = todayInputValue();
+    if (!supervisionDate) {
+      toast.error(UI_TOAST_MESSAGES.supervision.supervisionDateRequired);
+      return;
+    }
+
+    if (supervisionDate > today) {
+      toast.error(UI_TOAST_MESSAGES.supervision.supervisionDateInFuture);
+      return;
+    }
+
     if (periodStartedAt && periodStartedAt > today) {
       toast.error(UI_TOAST_MESSAGES.supervision.startDateInFuture);
       return;
@@ -316,6 +327,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
 
   const resetForm = () => {
     setPracticeLocked(false);
+    setSupervisionDate('');
     setPeriodStartedAt('');
     setPeriodEndedAt('');
     setTreatmentSetting('');
@@ -351,6 +363,11 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
       return;
     }
 
+    if (!supervisionDate) {
+      toast.error(UI_TOAST_MESSAGES.supervision.supervisionDateRequired);
+      return;
+    }
+
     if (!periodStartedAt) {
       toast.error(UI_TOAST_MESSAGES.supervision.startDateRequired);
       return;
@@ -376,6 +393,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     try {
       await mutation.mutateAsync({
         supervisorEmail: exactSupervisorMatch?.email ?? trimmedSupervisorEmail,
+        supervisionDate: supervisionDate || undefined,
         periodStartedAt: periodStartedAt || undefined,
         periodEndedAt: periodEndedAt || undefined,
         treatmentSetting: treatmentSetting.trim() || undefined,
@@ -455,12 +473,14 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
             <div className="grid gap-5 lg:grid-cols-2">
               <div className={practiceLocked ? 'opacity-70' : undefined}>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Дата подачи заявки">
+                  <Field label="Дата проведения супервизии">
                     <input
                       className="input-design h-[32px]"
                       type="date"
-                      value={submittedAt}
-                      disabled
+                      max={today}
+                      value={supervisionDate}
+                      onChange={(event) => setSupervisionDate(event.target.value)}
+                      disabled={practiceLocked}
                     />
                   </Field>
                   <Field label="Условия практики">
@@ -472,21 +492,21 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                       placeholder="кто / где"
                     />
                   </Field>
-                  <Field label="Дата начала">
+                  <Field label="Дата начала периода практики">
                     <input
                       className="input-design h-[32px]"
                       type="date"
-                      max={submittedAt}
+                      max={today}
                       value={periodStartedAt}
                       onChange={(event) => setPeriodStartedAt(event.target.value)}
                       disabled={practiceLocked}
                     />
                   </Field>
-                  <Field label="Дата окончания">
+                  <Field label="Дата окончания периода практики">
                     <input
                       className="input-design h-[32px]"
                       type="date"
-                      max={submittedAt}
+                      max={today}
                       value={periodEndedAt}
                       onChange={(event) => setPeriodEndedAt(event.target.value)}
                       disabled={practiceLocked}
@@ -825,8 +845,9 @@ function SupervisionHoursGuideModal({
         </ol>
 
         <div className="mt-5 rounded-[12px] bg-[#E7F1F4] px-4 py-3 text-[14px] leading-[1.45]">
-          <strong>Важно:</strong> если система не дает отправить заявку, проверьте пропорцию 40/40,
-          сумму распределенной супервизии, лимит групповых часов и выбранного супервизора.
+          <strong>Важно:</strong> если система не дает отправить заявку, проверьте баланс полевой
+          практики и работы с информацией, сумму распределенной супервизии, лимит групповых часов и
+          выбранного супервизора.
         </div>
 
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

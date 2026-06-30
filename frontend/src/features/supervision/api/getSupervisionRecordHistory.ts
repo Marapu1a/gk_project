@@ -11,6 +11,7 @@ export type SupervisionRecordHistoryItem = {
   id: string;
   fileId: string | null;
   createdAt: string;
+  supervisionDate: string | null;
   periodStartedAt: string | null;
   periodEndedAt: string | null;
   treatmentSetting: string | null;

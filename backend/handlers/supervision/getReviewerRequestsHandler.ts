@@ -114,6 +114,7 @@ function serializeRequest(record: any) {
     id: record.id,
     candidate: record.user,
     createdAt: record.createdAt,
+    supervisionDate: record.supervisionDate,
     periodStartedAt: record.periodStartedAt,
     periodEndedAt: record.periodEndedAt,
     treatmentSetting: record.treatmentSetting,
@@ -195,6 +196,13 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
   const candidate = query.candidate?.trim();
   const dateFrom = query.dateFrom ? startOfUtcDay(query.dateFrom) : null;
   const dateTo = query.dateTo ? endOfUtcDay(query.dateTo) : null;
+  const dateRange =
+    dateFrom || dateTo
+      ? {
+          ...(dateFrom ? { gte: dateFrom } : {}),
+          ...(dateTo ? { lte: dateTo } : {}),
+        }
+      : null;
 
   const hoursWhere: Prisma.SupervisionHourWhereInput = {
     reviewerId,
@@ -218,10 +226,14 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
           }
         : {}),
     },
-    createdAt: {
-      ...(dateFrom ? { gte: dateFrom } : {}),
-      ...(dateTo ? { lte: dateTo } : {}),
-    },
+    ...(dateRange
+      ? {
+          OR: [
+            { supervisionDate: dateRange },
+            { supervisionDate: null, createdAt: dateRange },
+          ],
+        }
+      : {}),
     hours: { some: hoursWhere },
   };
 
@@ -232,6 +244,7 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
       select: {
         id: true,
         createdAt: true,
+        supervisionDate: true,
         periodStartedAt: true,
         periodEndedAt: true,
         treatmentSetting: true,
@@ -255,7 +268,7 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
           },
         },
       },
-      orderBy: { createdAt: sortOrder },
+      orderBy: [{ supervisionDate: sortOrder }, { createdAt: sortOrder }],
       skip: (page - 1) * limit,
       take: limit,
     }),

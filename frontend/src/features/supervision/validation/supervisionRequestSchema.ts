@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 export const supervisionRequestSchema = z.object({
   supervisorEmail: z.string().trim().email({ message: 'Неверный формат email' }),
+  supervisionDate: z.string().optional(),
   periodStartedAt: z.string().optional(),
   periodEndedAt: z.string().optional(),
   treatmentSetting: z.string().optional(),

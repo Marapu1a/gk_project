@@ -234,6 +234,7 @@ function aggregateDistribution(
 function serializeRequest(record: {
   id: string;
   createdAt: Date;
+  supervisionDate: Date | null;
   periodStartedAt: Date | null;
   periodEndedAt: Date | null;
   treatmentSetting: string | null;
@@ -254,6 +255,7 @@ function serializeRequest(record: {
   return {
     id: record.id,
     createdAt: record.createdAt,
+    supervisionDate: record.supervisionDate,
     periodStartedAt: record.periodStartedAt,
     periodEndedAt: record.periodEndedAt,
     treatmentSetting: record.treatmentSetting,
@@ -461,6 +463,7 @@ export async function getReviewerCandidateDetailsHandler(
       select: {
         id: true,
         createdAt: true,
+        supervisionDate: true,
         periodStartedAt: true,
         periodEndedAt: true,
         treatmentSetting: true,
@@ -497,6 +500,7 @@ export async function getReviewerCandidateDetailsHandler(
           select: {
             id: true,
             createdAt: true,
+            supervisionDate: true,
             periodStartedAt: true,
             periodEndedAt: true,
             treatmentSetting: true,

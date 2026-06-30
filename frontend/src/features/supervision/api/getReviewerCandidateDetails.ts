@@ -15,6 +15,7 @@ export type PracticeLevel =
 export type ReviewerCandidateRequest = {
   id: string;
   createdAt: string;
+  supervisionDate: string | null;
   periodStartedAt: string | null;
   periodEndedAt: string | null;
   treatmentSetting: string | null;
