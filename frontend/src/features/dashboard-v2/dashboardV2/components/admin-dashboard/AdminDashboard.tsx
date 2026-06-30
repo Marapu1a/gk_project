@@ -24,6 +24,7 @@ import { useCreateDbBackup } from '@/features/backup/hooks/useCreateDbBackup';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useExternalSupervisorClaims } from '@/features/admin/hooks/useExternalSupervisorClaims';
+import { AdminUserSearch } from '@/features/admin/components/AdminUserSearch';
 
 type AdminDashboardProps = {
   user: {
@@ -123,6 +124,14 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
           </button>
         </div>
       </header>
+
+      <section className="mb-5 flex justify-center">
+        <AdminUserSearch
+          size="large"
+          placeholder="Найти пользователя: ФИО, email, телефон, рег. номер"
+          className="max-w-[680px]"
+        />
+      </section>
 
       <div className="grid w-full grid-cols-1 items-stretch gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
         <div className="grid min-w-0 gap-4 lg:grid-rows-[1fr_auto]">

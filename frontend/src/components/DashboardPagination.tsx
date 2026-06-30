@@ -99,10 +99,12 @@ export function PageSizeSelect({
   value,
   onChange,
   className = '',
+  includeAll = false,
 }: {
   value: number;
   onChange: (value: number) => void;
   className?: string;
+  includeAll?: boolean;
 }) {
   return (
     <label className={`dashboard-v2-caption flex items-center gap-2 text-[#6B7894] ${className}`}>
@@ -112,11 +114,12 @@ export function PageSizeSelect({
         onChange={(event) => onChange(Number(event.target.value))}
         className="input-design h-[34px] w-[78px] rounded-full py-0"
       >
-        {PAGE_SIZE_OPTIONS.map((option) => (
+        {PAGE_SIZE_OPTIONS.filter((option) => !includeAll || option !== 500).map((option) => (
           <option key={option} value={option}>
             {option}
           </option>
         ))}
+        {includeAll ? <option value={0}>Все</option> : null}
       </select>
     </label>
   );

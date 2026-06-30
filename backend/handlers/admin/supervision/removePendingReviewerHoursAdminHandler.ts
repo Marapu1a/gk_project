@@ -68,7 +68,7 @@ export async function removePendingReviewerHoursAdminHandler(
     },
   });
 
-  if (!relation) return reply.code(404).send({ error: 'Связь с проверяющим не найдена' });
+  if (!relation) return reply.code(404).send({ error: 'Сотрудничество с проверяющим не найдено' });
 
   const hourTypes = typesForKind(relation.kind);
   const now = new Date();

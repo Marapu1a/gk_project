@@ -24,9 +24,9 @@ type Props = {
 };
 
 const STATUS_LABELS: Record<RelationStatus, string> = {
-  ACCEPTED: 'Связь принята',
-  PENDING: 'Ожидает принятия',
-  REJECTED: 'Связь отклонена',
+  ACCEPTED: 'Сотрудничество подтверждено',
+  PENDING: 'Ожидает подтверждения',
+  REJECTED: 'Сотрудничество отклонено',
 };
 
 function formatDate(value?: string | null) {

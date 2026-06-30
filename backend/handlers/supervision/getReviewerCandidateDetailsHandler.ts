@@ -363,7 +363,7 @@ export async function getReviewerCandidateDetailsHandler(
       },
     });
 
-    if (!adminRelation) return reply.code(404).send({ error: 'Связь с проверяющим не найдена' });
+    if (!adminRelation) return reply.code(404).send({ error: 'Сотрудничество с проверяющим не найдено' });
 
     reviewerId = adminRelation.reviewerId;
     candidateId = adminRelation.candidateId;
@@ -431,7 +431,7 @@ export async function getReviewerCandidateDetailsHandler(
   }
 
   if (adminMode && relation.status === ReviewerCandidateStatus.REJECTED) {
-    return reply.code(403).send({ error: 'Связь с проверяющим отклонена' });
+    return reply.code(403).send({ error: 'Сотрудничество с проверяющим отклонено' });
   }
 
   const requestedKindAccessCount = await prisma.supervisionRecord.count({

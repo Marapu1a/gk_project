@@ -1,10 +1,10 @@
 // src/features/admin/components/UsersTable.tsx
 import { useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
 import { useUsers } from '../hooks/useUsers';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { DashboardDateInput } from '@/components/DashboardDateInput';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
+import { AdminUserSearch } from './AdminUserSearch';
 import { formatCertificationLevelName, systemRoleLabels } from '@/utils/labels';
 
 type Role = 'ADMIN' | 'STUDENT' | 'REVIEWER';
@@ -105,6 +105,7 @@ export function UsersTable() {
   const [status, setStatus] = useState<UserStatus>('ACTIVE');
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(100);
+  const requestPerPage = perPage === 0 ? 10000 : perPage;
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -118,14 +119,14 @@ export function UsersTable() {
     () => ({
       search,
       page,
-      perPage,
+      perPage: requestPerPage,
       group,
       registeredFrom,
       registeredTo,
       status,
       archived: status === 'ALL' ? 'with' as const : 'active' as const,
     }),
-    [group, page, perPage, registeredFrom, registeredTo, search, status],
+    [group, page, registeredFrom, registeredTo, requestPerPage, search, status],
   );
 
   const { data, isLoading, error, isFetching } = useUsers(params);
@@ -143,38 +144,41 @@ export function UsersTable() {
 
   return (
     <div className="mx-auto max-w-[1180px] space-y-4">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+      <div className="grid grid-cols-1 items-center gap-3 lg:grid-cols-[110px_minmax(360px,1fr)_auto_auto]">
         <div className="dashboard-v2-caption text-[#6B7894]">
           Всего: <span className="font-extrabold text-[var(--color-blue-dark)]">{total}</span>
           {isFetching && !isLoading ? <span className="ml-2">обновляю...</span> : null}
         </div>
 
-        <label className="relative block w-full max-w-[360px]">
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="ФИО, Name, Email"
-            className="input-design h-[34px] rounded-full pl-4 pr-10"
-          />
-          <Search
-            size={17}
-            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#8D96B5]"
-          />
-        </label>
+        <AdminUserSearch
+          value={searchInput}
+          onChange={setSearchInput}
+          autoFocus
+          size="large"
+          placeholder="ФИО, email, телефон, рег. номер"
+          className="mx-auto max-w-[560px]"
+        />
 
-        <div className="flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => downloadCsv(users)}
-            disabled={!users.length}
-            className="btn h-[34px] rounded-full border border-[var(--color-blue-dark)] px-4 text-[13px] font-medium text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            CSV текущей страницы
-          </button>
-          <PageSizeSelect value={perPage} onChange={(value) => resetPage(() => setPerPage(value))} />
-        </div>
+        <button
+          type="button"
+          onClick={() => downloadCsv(users)}
+          disabled={!users.length}
+          className="btn h-[34px] whitespace-nowrap rounded-full border border-[var(--color-blue-dark)] px-4 text-[13px] font-medium text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          CSV текущей страницы
+        </button>
+
+        <PageSizeSelect
+          value={perPage}
+          includeAll
+          onChange={(value) => resetPage(() => setPerPage(value))}
+        />
       </div>
+
+      <p className="dashboard-v2-caption text-center text-[#8D96B5]">
+        Быстрый переход к поиску: <span className="font-extrabold text-blue-dark">/</span> или{' '}
+        <span className="font-extrabold text-blue-dark">Ctrl+K</span>.
+      </p>
 
       <section className="card-section grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <label className="dashboard-v2-small block">

@@ -4,7 +4,10 @@ import { api } from '@/lib/axios';
 export type UserSuggestion = {
   id: string;
   fullName: string;
+  fullNameLatin?: string | null;
   email: string;
+  phone?: string | null;
+  registrationNumber?: string | null;
   groupName: string | null; // активная группа (статус) или null
 };
 

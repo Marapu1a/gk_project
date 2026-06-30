@@ -28,9 +28,9 @@ const KIND_LABELS: Record<AdminReviewerCandidateKind, string> = {
 };
 
 const RELATION_STATUS_LABELS: Record<AdminReviewerCandidateRow['relationStatus'], string> = {
-  PENDING: 'связь ожидает принятия',
-  ACCEPTED: 'связь принята',
-  REJECTED: 'связь отклонена',
+  PENDING: 'Сотрудничество ожидает подтверждения',
+  ACCEPTED: 'Сотрудничество подтверждено',
+  REJECTED: 'Сотрудничество отклонено',
 };
 
 const HOUR_STATE_OPTIONS: Array<{ value: AdminReviewerHourState | 'ALL'; label: string }> = [
@@ -129,7 +129,7 @@ function hourState(row: AdminReviewerCandidateRow): { text: string; tone: HourSt
   }
 
   if (row.relationStatus === 'REJECTED') {
-    return { text: 'Связь отклонена проверяющим', tone: 'muted' };
+    return { text: 'Сотрудничество отклонено проверяющим', tone: 'muted' };
   }
 
   return { text: 'Нет часов на проверку', tone: 'muted' };

@@ -76,7 +76,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
     return reply.code(403).send({ error: 'Доступ запрещён' });
   }
 
-  const take = Math.min(toInt(perPage, 50), 500);
+  const take = Math.min(toInt(perPage, 50), 10000);
   const pageNum = toInt(page, 1);
   const skip = (pageNum - 1) * take;
 

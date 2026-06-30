@@ -29,12 +29,12 @@ export async function updateReviewerCandidateRelationHandler(
     select: { id: true, reviewerId: true, status: true },
   });
 
-  if (!relation) return reply.code(404).send({ error: 'Связь с кандидатом не найдена' });
+  if (!relation) return reply.code(404).send({ error: 'Сотрудничество с кандидатом не найдено' });
   if (relation.reviewerId !== reviewerId) {
     return reply.code(403).send({ error: 'Доступ запрещён' });
   }
   if (relation.status !== ReviewerCandidateStatus.PENDING) {
-    return reply.code(400).send({ error: 'Связь уже обработана' });
+    return reply.code(400).send({ error: 'Сотрудничество уже обработано' });
   }
 
   const updated = await prisma.reviewerCandidateRelation.update({

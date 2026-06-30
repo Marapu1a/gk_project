@@ -84,7 +84,7 @@ export function RegistryProfile({ userId }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => toast.info('Связь со специалистом пока не подключена')}
+                onClick={() => toast.info('Контакт со специалистом пока не подключен')}
                 className="btn min-h-[44px] rounded-[8px] bg-[var(--color-blue-dark)] px-4 text-[15px] font-extrabold text-white hover:bg-[#16254A]"
               >
                 Связаться
