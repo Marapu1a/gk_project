@@ -7,9 +7,12 @@ ENV VITE_API_URL=$VITE_API_URL
 # Лимит памяти node для сборки на маленьком VPS (тюнинг с сервера).
 ENV NODE_OPTIONS="--max-old-space-size=768"
 
+# Зеркало npm: на VPS/в РФ registry.npmjs.org может отдавать ETIMEDOUT.
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+
 COPY package*.json ./
 # --include=dev: vite и build-инструменты лежат в devDependencies.
-RUN npm ci --include=dev
+RUN npm ci --include=dev --registry=$NPM_REGISTRY
 COPY . .
 RUN npm run build
 

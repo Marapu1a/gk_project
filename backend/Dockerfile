@@ -4,11 +4,13 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma/schema.prisma ./prisma/schema.prisma
 
-# Разделено: меньше пиковая память + видно в логе, какой шаг падает.
-# --maxsockets/--no-audit/--no-fund снижают параллелизм и расход памяти npm.
-# --include=dev форсирует devDependencies (prisma, typescript) даже при NODE_ENV=production в окружении VPS.
-RUN npm ci --include=dev --no-audit --no-fund --maxsockets=1
-# Локальный бинарник напрямую (без npx) — npx иначе дёргает npm-реестр и ловит ETIMEDOUT на этом VPS.
+# Зеркало npm: на VPS/в РФ registry.npmjs.org может отдавать ETIMEDOUT
+# (npm при этом завершается с exit 0, оставляя битый node_modules без .bin).
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+
+# --ignore-scripts: пропускаем postinstall (его делает отдельный prisma generate ниже).
+RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund --maxsockets=1 --registry=$NPM_REGISTRY
+# Локальный бинарник напрямую (без npx, чтобы не дёргать сеть).
 RUN ./node_modules/.bin/prisma generate
 
 FROM deps AS build
