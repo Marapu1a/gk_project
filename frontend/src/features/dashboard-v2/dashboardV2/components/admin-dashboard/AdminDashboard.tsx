@@ -161,7 +161,10 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
           </AdminPanel>
         </div>
 
-        <AdminPanel title="Уведомления" className="min-w-0 px-0 py-4">
+        <AdminPanel
+          title={<NotificationsTitle notifications={notifications} />}
+          className="min-w-0 px-0 py-4"
+        >
           <AdminNotifications notifications={notifications} />
         </AdminPanel>
       </div>
@@ -174,7 +177,7 @@ function AdminPanel({
   children,
   className = '',
 }: {
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -185,6 +188,17 @@ function AdminPanel({
       </h2>
       {children}
     </section>
+  );
+}
+
+function NotificationsTitle({ notifications }: { notifications: Notification[] }) {
+  const unreadCount = notifications.filter((notification) => !notification.isRead).length;
+
+  return (
+    <span className="inline-flex items-center justify-center gap-2">
+      <span>Уведомления</span>
+      {unreadCount > 0 ? <TaskBadge count={unreadCount} /> : null}
+    </span>
   );
 }
 
@@ -242,7 +256,7 @@ function AdminNotifications({ notifications }: { notifications: Notification[] }
   }
 
   return (
-    <div className="notification-scroll mt-3 max-h-[430px] overflow-y-auto pr-1">
+    <div className="notification-scroll mt-3 max-h-[430px] overflow-y-scroll pr-1">
       {notifications.map((notification) => (
         <NotificationRow key={notification.id} notification={notification} />
       ))}
