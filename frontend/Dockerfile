@@ -1,13 +1,16 @@
 # build
-FROM node:20 AS build
+FROM node:20-alpine AS build
 WORKDIR /app
-COPY package*.json ./
-# --include=dev: vite и прочие build-инструменты лежат в devDependencies,
-# а на VPS при сборке активен NODE_ENV=production (иначе npm ci их пропускает).
-RUN npm ci --include=dev
-COPY . .
+
 ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
+# Лимит памяти node для сборки на маленьком VPS (тюнинг с сервера).
+ENV NODE_OPTIONS="--max-old-space-size=768"
+
+COPY package*.json ./
+# --include=dev: vite и build-инструменты лежат в devDependencies.
+RUN npm ci --include=dev
+COPY . .
 RUN npm run build
 
 # serve
@@ -15,3 +18,4 @@ FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY ./deploy/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
