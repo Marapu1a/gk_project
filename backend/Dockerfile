@@ -4,7 +4,10 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma/schema.prisma ./prisma/schema.prisma
 
-RUN npm ci --omit=optional && npx prisma generate
+# Разделено: меньше пиковая память + видно в логе, какой шаг падает.
+# --maxsockets/--no-audit/--no-fund снижают параллелизм и расход памяти npm.
+RUN npm ci --omit=optional --no-audit --no-fund --maxsockets=1
+RUN npx prisma generate
 
 FROM deps AS build
 WORKDIR /app
