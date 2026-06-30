@@ -6,7 +6,8 @@ COPY prisma/schema.prisma ./prisma/schema.prisma
 
 # Разделено: меньше пиковая память + видно в логе, какой шаг падает.
 # --maxsockets/--no-audit/--no-fund снижают параллелизм и расход памяти npm.
-RUN npm ci --omit=optional --no-audit --no-fund --maxsockets=1
+# --include=dev форсирует devDependencies (prisma, typescript) даже при NODE_ENV=production в окружении VPS.
+RUN npm ci --include=dev --no-audit --no-fund --maxsockets=1
 # Локальный бинарник напрямую (без npx) — npx иначе дёргает npm-реестр и ловит ETIMEDOUT на этом VPS.
 RUN ./node_modules/.bin/prisma generate
 
