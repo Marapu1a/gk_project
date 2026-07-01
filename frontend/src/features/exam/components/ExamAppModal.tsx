@@ -124,7 +124,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
               <InfoRow label="ФИО" value={summary?.user.fullName || app.user.fullName || '-'} />
               <InfoRow label="Email" value={summary?.user.email || app.user.email} />
               <InfoRow
-                label="Текущий уровень"
+                label="Уровень"
                 value={summary?.user.currentGroup?.name || '-'}
               />
               <InfoRow

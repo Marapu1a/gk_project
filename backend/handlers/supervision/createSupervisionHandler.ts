@@ -19,6 +19,7 @@ import {
   supervisionRequirementsByGroup,
 } from '../../utils/supervisionRequirements';
 import { targetLevelToGroupName as mapTargetLevel } from '../../domain/levels';
+import { getSupervisorBonusPracticeHours } from '../../utils/getSupervisorBonusPracticeHours';
 
 const PRACTICE_REVIEWER_REQUIRED_MESSAGE =
   'Заявку на подтверждение часов практики можно отправить только супервизорам, которые есть в системе. Напишите в поддержку, если вашего супервизора нет в системе или что-то пошло не так.';
@@ -44,41 +45,6 @@ function getRequirements(activeCycle: { targetLevel: TargetLevel; type: CycleTyp
   return activeCycle.type === CycleType.RENEWAL
     ? renewalSupervisionRequirementsByGroup[groupName]
     : supervisionRequirementsByGroup[groupName];
-}
-
-async function getBonusPracticeHours(
-  userId: string,
-  activeCycle: { targetLevel: TargetLevel; type: CycleType },
-) {
-  if (
-    activeCycle.type === CycleType.RENEWAL ||
-    activeCycle.targetLevel !== TargetLevel.SUPERVISOR
-  ) {
-    return 0;
-  }
-
-  const lastCompletedCurator = await prisma.certificationCycle.findFirst({
-    where: {
-      userId,
-      status: CycleStatus.COMPLETED,
-      targetLevel: TargetLevel.CURATOR,
-    },
-    orderBy: { endedAt: 'desc' },
-    select: { id: true },
-  });
-
-  if (!lastCompletedCurator) return 0;
-
-  const bonusAgg = await prisma.supervisionHour.aggregate({
-    where: {
-      status: RecordStatus.CONFIRMED,
-      type: { in: [PracticeLevel.PRACTICE, PracticeLevel.IMPLEMENTING, PracticeLevel.PROGRAMMING] },
-      record: { cycleId: lastCompletedCurator.id },
-    },
-    _sum: { value: true },
-  });
-
-  return bonusAgg._sum.value ?? 0;
 }
 
 export async function createSupervisionHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -261,7 +227,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   const incomingTotal = normalized.reduce((sum, entry) => sum + entry.value, 0);
   const bonusPractice = isAuthorSimpleSupervisor
     ? 0
-    : await getBonusPracticeHours(userId, activeCycle);
+    : (await getSupervisorBonusPracticeHours(userId, activeCycle)).value;
 
   let record;
   try {

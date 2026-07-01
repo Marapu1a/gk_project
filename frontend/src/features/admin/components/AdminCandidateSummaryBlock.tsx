@@ -194,7 +194,7 @@ function documentStatus(user: any) {
 
   if (user.activeCycle && hasArchivedRequests) {
     return {
-      label: 'Нет заявки текущего цикла',
+      label: 'Нет заявки активной сертификации',
       tone: 'bad' as const,
       to: null,
       mode: 'history' as const,
@@ -287,7 +287,6 @@ export function AdminCandidateSummaryBlock({
   const renewalPayment = getRenewalPayment(user);
 
   const activeCycleText = resolveProcessLabel(user, activeGroupName);
-  const afterCertificateText = resolveAfterCertificateLabel(user, activeGroupName);
 
   const pendingSupervision = countPendingHours(user, 'supervision');
   const pendingMentorship = countPendingHours(user, 'mentorship');
@@ -550,7 +549,7 @@ export function AdminCandidateSummaryBlock({
               setOpenTooltipKey={setOpenTooltipKey}
             />
             <Meta
-              label="Подтвержденный уровень сертификации"
+              label="Уровень сертификации"
               value={formatCertificationLevelName(activeGroupName)}
             />
             <Meta
@@ -562,8 +561,7 @@ export function AdminCandidateSummaryBlock({
             />
             <Meta label="Цель сертификации" value={resolveTargetLabel(user)} />
             <Meta label="Последний сертификат" value={latestCertificateText(latestCertificate)} />
-            <Meta label="После выдачи сертификата" value={afterCertificateText} />
-            <Meta label="Текущий цикл сертификации" value={activeCycleText} wide />
+            <Meta label="Активная сертификация" value={activeCycleText} wide />
           </div>
 
           <div className="mt-4 flex flex-wrap justify-end gap-3 border-t border-white/70 pt-4">

@@ -5,11 +5,11 @@ import {
   PracticeLevel,
   RecordStatus,
   CycleStatus,
-  TargetLevel,
   SupervisionAdminCorrectionKind,
 } from '@prisma/client';
 import { supervisionRequirementsByGroup, calcAutoSupervisionHours } from '../../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../../utils/getCycleSupervisionTotals';
+import { getSupervisorBonusPracticeHours } from '../../../utils/getSupervisorBonusPracticeHours';
 
 type Level = 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR';
 const STATUSES: RecordStatus[] = ['CONFIRMED', 'UNCONFIRMED'];
@@ -51,7 +51,7 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
   // ACTIVE cycle обязателен: в эпоху циклов админ смотрит матрицу только внутри цикла
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId, status: CycleStatus.ACTIVE },
-    select: { id: true, targetLevel: true },
+    select: { id: true, targetLevel: true, type: true },
   });
   if (!activeCycle) return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
 
@@ -159,36 +159,8 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
     });
   }
 
-  let bonusPractice = 0;
-  let bonusSourceCycleId: string | null = null;
-
-  if (activeCycle.targetLevel === TargetLevel.SUPERVISOR) {
-    const lastCompletedCurator = await prisma.certificationCycle.findFirst({
-      where: {
-        userId,
-        status: CycleStatus.COMPLETED,
-        targetLevel: TargetLevel.CURATOR,
-      },
-      orderBy: { endedAt: 'desc' },
-      select: { id: true },
-    });
-
-    if (lastCompletedCurator) {
-      const bonusAgg = await prisma.supervisionHour.aggregate({
-        where: {
-          status: 'CONFIRMED',
-          type: {
-            in: [PracticeLevel.PRACTICE, PracticeLevel.IMPLEMENTING, PracticeLevel.PROGRAMMING],
-          },
-          record: { cycleId: lastCompletedCurator.id },
-        },
-        _sum: { value: true },
-      });
-
-      bonusPractice = bonusAgg._sum.value ?? 0;
-      bonusSourceCycleId = lastCompletedCurator.id;
-    }
-  }
+  const { value: bonusPractice, sourceCycleId: bonusSourceCycleId } =
+    await getSupervisorBonusPracticeHours(userId, activeCycle);
 
   const cycleTotals = await getCycleSupervisionTotals(
     activeCycle.id,

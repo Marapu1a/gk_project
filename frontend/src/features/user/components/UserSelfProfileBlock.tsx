@@ -158,7 +158,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
           <Meta label="Город" value={arrToStr(strToArr(user.city)) || '—'} />
           <Meta label="Страна" value={arrToStr(strToArr(user.country)) || '—'} />
           <Meta label="Права в системе" value={systemRoleLabels[user.role] || user.role} />
-          <Meta label="Текущий уровень сертификации" value={formatCertificationLevelName(user.activeGroup?.name)} />
+          <Meta label="Уровень сертификации" value={formatCertificationLevelName(user.activeGroup?.name)} />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -248,7 +248,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
             <Field label="Права в системе">
               <div>{systemRoleLabels[user.role] || user.role}</div>
             </Field>
-            <Field label="Текущий уровень сертификации">
+            <Field label="Уровень сертификации">
               <div>{formatCertificationLevelName(user.activeGroup?.name)}</div>
             </Field>
           </div>

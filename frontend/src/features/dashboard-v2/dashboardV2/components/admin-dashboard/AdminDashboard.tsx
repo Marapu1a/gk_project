@@ -8,6 +8,7 @@ import { useLogout } from '@/features/auth/hooks/useLogout';
 import {
   useNotifications,
   useDeleteNotification,
+  useDeleteAllNotifications,
   useMarkNotificationRead,
 } from '@/features/notifications/hooks/useNotifications';
 import { NotificationMessage } from '@/features/notifications/components/NotificationMessage';
@@ -247,6 +248,11 @@ function ActionButton({
 }
 
 function AdminNotifications({ notifications }: { notifications: Notification[] }) {
+  const deleteAllNotifications = useDeleteAllNotifications();
+  const markRead = useMarkNotificationRead();
+  const { confirm } = useConfirm();
+  const unreadNotifications = notifications.filter((notification) => !notification.isRead);
+
   if (!notifications.length) {
     return (
       <div className="dashboard-v2-text flex min-h-[180px] items-center justify-center px-4 text-center text-[#8D96B5]">
@@ -255,12 +261,61 @@ function AdminNotifications({ notifications }: { notifications: Notification[] }
     );
   }
 
+  const onMarkAllRead = async () => {
+    try {
+      for (const notification of unreadNotifications) {
+        await markRead.mutateAsync(notification.id);
+      }
+      toast.success('Все уведомления отмечены прочитанными');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Не удалось отметить уведомления прочитанными');
+    }
+  };
+
+  const onDeleteAll = async () => {
+    const ok = await confirm({
+      message: 'Удалить все уведомления?',
+      confirmLabel: 'Удалить все',
+      variant: 'danger',
+    });
+
+    if (!ok) return;
+
+    try {
+      await deleteAllNotifications.mutateAsync();
+      toast.success('Все уведомления удалены');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Не удалось удалить уведомления');
+    }
+  };
+
   return (
-    <div className="notification-scroll mt-3 max-h-[430px] overflow-y-scroll pr-1">
-      {notifications.map((notification) => (
-        <NotificationRow key={notification.id} notification={notification} />
-      ))}
-    </div>
+    <>
+      <div className="mt-3 flex flex-wrap justify-end gap-2 px-5">
+        <button
+          type="button"
+          onClick={onMarkAllRead}
+          disabled={!unreadNotifications.length || markRead.isPending}
+          className="btn h-[30px] rounded-full border border-[var(--color-blue-soft)] px-3 text-[12px] font-medium text-[var(--color-blue-dark)] transition hover:border-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          Отметить все прочитанным
+        </button>
+        <button
+          type="button"
+          onClick={onDeleteAll}
+          disabled={deleteAllNotifications.isPending}
+          className="btn h-[30px] rounded-full border border-[var(--color-danger)] px-3 text-[12px] font-medium text-[var(--color-danger)] transition hover:bg-[var(--color-danger)] hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          Удалить все
+        </button>
+      </div>
+
+      <div className="notification-scroll mt-2 max-h-[390px] overflow-y-scroll pr-1">
+        {notifications.map((notification) => (
+          <NotificationRow key={notification.id} notification={notification} />
+        ))}
+      </div>
+    </>
   );
 }
 

@@ -127,8 +127,8 @@ function statusConfirmOptions(status: DocumentReviewFileStatus) {
 
 function documentRequestArchiveLabel(request: RelatedDocumentRequest) {
   if (!request.cycleId) return 'Старая заявка';
-  if (request.cycle?.status && request.cycle.status !== 'ACTIVE') return 'Предыдущий цикл';
-  return 'Текущий цикл';
+  if (request.cycle?.status && request.cycle.status !== 'ACTIVE') return 'Предыдущая сертификация';
+  return 'Текущая сертификация';
 }
 
 function documentRequestFilesCount(request: RelatedDocumentRequest) {

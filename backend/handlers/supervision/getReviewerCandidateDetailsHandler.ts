@@ -11,6 +11,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
+import { getSupervisorBonusPracticeHours } from '../../utils/getSupervisorBonusPracticeHours';
 import {
   ceuRequirementsByGroup,
   renewalCeuRequirementsByGroup,
@@ -161,13 +162,13 @@ function aggregateRequestHours(hours: ReviewHour[]) {
   );
 }
 
-function aggregatePracticeBreakdown(rows: Array<{ type: PracticeLevel; value: number }>) {
+function aggregatePracticeBreakdown(rows: Array<{ type: PracticeLevel; value: number }>, bonus = 0) {
   const summary = {
     total: 0,
     legacy: 0,
     implementing: 0,
     programming: 0,
-    bonus: 0,
+    bonus,
   };
 
   for (const row of rows) {
@@ -189,7 +190,7 @@ function aggregatePracticeBreakdown(rows: Array<{ type: PracticeLevel; value: nu
     legacy: round2(summary.legacy),
     implementing: round2(summary.implementing),
     programming: round2(summary.programming),
-    bonus: 0,
+    bonus: round2(summary.bonus),
   };
 }
 
@@ -534,7 +535,6 @@ export async function getReviewerCandidateDetailsHandler(
   const [
     confirmedCeu,
     spentCeu,
-    supervisionTotals,
     confirmedPracticeHours,
     distributionRecords,
     confirmedMentorHours,
@@ -550,7 +550,6 @@ export async function getReviewerCandidateDetailsHandler(
       where: { status: RecordStatus.SPENT, record: { cycleId: activeCycle.id } },
       select: { category: true, value: true },
     }),
-    getCycleSupervisionTotals(activeCycle.id, activeCycle.targetLevel),
     prisma.supervisionHour.findMany({
       where: {
         status: RecordStatus.CONFIRMED,
@@ -605,6 +604,13 @@ export async function getReviewerCandidateDetailsHandler(
     }),
   ]);
 
+  const { value: bonusPractice } = await getSupervisorBonusPracticeHours(candidateId, activeCycle);
+  const supervisionTotals = await getCycleSupervisionTotals(
+    activeCycle.id,
+    activeCycle.targetLevel,
+    bonusPractice,
+  );
+
   const ceuUsable = aggregateCeu(confirmedCeu);
   const ceuSpent = aggregateCeu(spentCeu);
   const ceuTotal = addCeu(ceuUsable, ceuSpent);
@@ -658,7 +664,7 @@ export async function getReviewerCandidateDetailsHandler(
       practicePending: supervisionTotals.practicePending,
       supervisionConfirmed: supervisionTotals.supervisionConfirmed,
       supervisionPending: supervisionTotals.supervisionPending,
-      practiceBreakdown: aggregatePracticeBreakdown(confirmedPracticeHours),
+      practiceBreakdown: aggregatePracticeBreakdown(confirmedPracticeHours, bonusPractice),
       supervisionBreakdown: aggregateDistribution(
         distributionRecords,
         supervisionTotals.supervisionConfirmed,

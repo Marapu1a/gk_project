@@ -7,6 +7,7 @@ import {
   SupervisionDistributionInput,
 } from '../../schemas/supervisionDistributionSchema';
 import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
+import { getSupervisorBonusPracticeHours } from '../../utils/getSupervisorBonusPracticeHours';
 
 export async function upsertSupervisionDistributionHandler(
   req: FastifyRequest,
@@ -35,6 +36,7 @@ export async function upsertSupervisionDistributionHandler(
     select: {
       id: true,
       targetLevel: true,
+      type: true,
     },
   });
 
@@ -42,7 +44,7 @@ export async function upsertSupervisionDistributionHandler(
     return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
   }
 
-  const bonusPractice = await getBonusPracticeHours(userId, activeCycle.targetLevel);
+  const { value: bonusPractice } = await getSupervisorBonusPracticeHours(userId, activeCycle);
 
   const cycleTotals = await getCycleSupervisionTotals(
     activeCycle.id,
@@ -86,41 +88,6 @@ export async function upsertSupervisionDistributionHandler(
     success: true,
     distribution,
   });
-}
-
-async function getBonusPracticeHours(userId: string, targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR') {
-  if (targetLevel !== 'SUPERVISOR') return 0;
-
-  const lastCompletedCurator = await prisma.certificationCycle.findFirst({
-    where: {
-      userId,
-      status: CycleStatus.COMPLETED,
-      targetLevel: 'CURATOR',
-    },
-    orderBy: {
-      endedAt: 'desc',
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  if (!lastCompletedCurator) return 0;
-
-  const practiceTypes = ['PRACTICE', 'IMPLEMENTING', 'PROGRAMMING'] as const;
-
-  const bonusAgg = await prisma.supervisionHour.aggregate({
-    where: {
-      status: 'CONFIRMED',
-      type: { in: [...practiceTypes] },
-      record: { cycleId: lastCompletedCurator.id },
-    },
-    _sum: {
-      value: true,
-    },
-  });
-
-  return bonusAgg._sum.value ?? 0;
 }
 
 function normalize(data: SupervisionDistributionInput): SupervisionDistributionInput {

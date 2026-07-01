@@ -18,6 +18,7 @@ import {
   supervisionRequirementsByGroup,
 } from '../../../utils/supervisionRequirements';
 import { logAdminUserAction } from '../../../utils/adminUserActionLog';
+import { getSupervisorBonusPracticeHours } from '../../../utils/getSupervisorBonusPracticeHours';
 
 // Принимаем legacy-уровни, но внутри работаем только с новыми.
 type IncomingLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | 'PRACTICE' | 'SUPERVISION';
@@ -91,37 +92,6 @@ function getRequirements(activeCycle: { targetLevel: TargetLevel; type: CycleTyp
   return activeCycle.type === CycleType.RENEWAL
     ? renewalSupervisionRequirementsByGroup[groupName]
     : supervisionRequirementsByGroup[groupName];
-}
-
-async function getBonusPracticeHours(userId: string, activeCycle: { targetLevel: TargetLevel; type: CycleType }) {
-  if (activeCycle.type === CycleType.RENEWAL || activeCycle.targetLevel !== TargetLevel.SUPERVISOR) {
-    return 0;
-  }
-
-  const lastCompletedCurator = await prisma.certificationCycle.findFirst({
-    where: {
-      userId,
-      status: CycleStatus.COMPLETED,
-      targetLevel: TargetLevel.CURATOR,
-    },
-    orderBy: { endedAt: 'desc' },
-    select: { id: true },
-  });
-
-  if (!lastCompletedCurator) return 0;
-
-  const bonusAgg = await prisma.supervisionHour.aggregate({
-    where: {
-      status: RecordStatus.CONFIRMED,
-      type: {
-        in: [PracticeLevel.PRACTICE, PracticeLevel.IMPLEMENTING, PracticeLevel.PROGRAMMING],
-      },
-      record: { cycleId: lastCompletedCurator.id },
-    },
-    _sum: { value: true },
-  });
-
-  return bonusAgg._sum.value ?? 0;
 }
 
 function getPracticeRuleError(implementing: number, programming: number) {
@@ -219,7 +189,7 @@ export async function updateUserSupervisionMatrixAdminHandler(
     if (practiceRuleError) return reply.code(400).send({ error: practiceRuleError });
 
     const groupName = mapTargetLevel(activeCycle.targetLevel);
-    const bonusPractice = await getBonusPracticeHours(userId, activeCycle);
+    const { value: bonusPractice } = await getSupervisorBonusPracticeHours(userId, activeCycle);
     const practiceHoursForSupervision = round2(practiceTotal + bonusPractice);
     if (requirements && requirements.practice > 0 && practiceHoursForSupervision > requirements.practice) {
       return reply.code(400).send({

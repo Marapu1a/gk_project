@@ -204,8 +204,8 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
 
     const message =
       groupChanged && (activeCycle || userDetails?.targetLevel)
-        ? 'Сменить текущий уровень сертификации? Текущий цикл будет закрыт, цель сертификации будет сброшена.'
-        : 'Сохранить текущий уровень сертификации?';
+        ? 'Сменить уровень сертификации? Активная сертификация будет закрыта, цель сертификации будет сброшена.'
+        : 'Сохранить уровень сертификации?';
 
     const ok = await confirm({
       message,
@@ -248,7 +248,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     }
 
     const ok = await confirm({
-      message: 'Отменить текущий цикл пользователя?',
+      message: 'Отменить активную сертификацию пользователя?',
       confirmLabel: 'Отменить цикл',
       variant: 'danger',
     });
@@ -278,8 +278,8 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
         <div className="overflow-hidden rounded-[12px] bg-white/45">
           <Meta label="ФИО" value={data.user.fullName || '—'} />
           <Meta label="Email" value={data.user.email} />
-          <Meta label="Текущий уровень сертификации" value={formatCertificationLevelName(savedActiveGroup?.name)} />
-          <Meta label="Текущий цикл сертификации" value={processText} />
+          <Meta label="Уровень сертификации" value={formatCertificationLevelName(savedActiveGroup?.name)} />
+          <Meta label="Активная сертификация" value={processText} />
           <Meta
             label="Последний сертификат"
             value={
@@ -293,7 +293,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
 
         {userDetails.targetLevel && !activeCycle ? (
           <div className="mt-4 rounded-[12px] bg-[rgba(255,83,100,0.08)] px-4 py-3 text-[13px] font-semibold text-[var(--color-danger)]">
-            У пользователя выбрана цель сертификации, но активный цикл не найден. Проверьте состояние
+            У пользователя выбрана цель сертификации, но активная сертификация не найдена. Проверьте состояние
             перед выдачей сертификата.
           </div>
         ) : null}
@@ -384,7 +384,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
       <section className="rounded-[16px] bg-white p-4 shadow-[0_2px_12px_rgba(31,48,94,0.08)]">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
-            <label className="dashboard-v2-label mb-1 block">Текущий уровень сертификации</label>
+            <label className="dashboard-v2-label mb-1 block">Уровень сертификации пользователя</label>
             <select
               className="input-design h-[38px]"
               value={selectedGroupId}
@@ -412,7 +412,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
 
         {groupChanged ? (
           <div className="mt-3 rounded-[12px] bg-[rgba(255,83,100,0.08)] px-4 py-3 text-[13px] font-semibold text-[var(--color-danger)]">
-            При смене уровня текущий цикл будет закрыт, а цель сертификации сброшена.
+            При смене уровня активная сертификация будет закрыта, а цель сертификации сброшена.
           </div>
         ) : null}
       </section>
@@ -421,9 +421,9 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
         {activeCycle ? (
           <div className="space-y-4">
             <div>
-              <h3 className="dashboard-v2-title">Текущий цикл</h3>
+              <h3 className="dashboard-v2-title">Активная сертификация</h3>
               <p className="dashboard-v2-text mt-2">
-                {processText}. Выдать сертификат можно именно по этому циклу.
+                {processText}. Выдать сертификат можно именно по этой сертификации.
               </p>
             </div>
 
@@ -445,7 +445,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
               onClick={handleAbandonCycle}
               disabled={abandonCycle.isPending}
             >
-              {abandonCycle.isPending ? 'Отменяем...' : 'Отменить текущий цикл'}
+              {abandonCycle.isPending ? 'Отменяем...' : 'Отменить активную сертификацию'}
             </button>
           </div>
         ) : (
@@ -473,11 +473,11 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
               ) : null}
               <p className="dashboard-v2-caption mt-2">
                 Ресертификацию можно начать вручную без сертификата в системе. Сначала укажите
-                текущий уровень пользователя; основание проверяет администратор.
+                уровень сертификации пользователя; основание проверяет администратор.
               </p>
               {groupChanged ? (
                 <p className="dashboard-v2-caption mt-2 text-[var(--color-danger)]">
-                  Сначала сохраните новый статус пользователя.
+                  Сначала сохраните новый уровень сертификации пользователя.
                 </p>
               ) : null}
             </div>

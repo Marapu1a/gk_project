@@ -4,7 +4,6 @@ import {
   CycleType,
   PaymentStatus,
   PaymentType,
-  PracticeLevel,
   RecordStatus,
   TargetLevel,
 } from '@prisma/client';
@@ -20,6 +19,7 @@ import {
   type SupervisionRequirement,
 } from '../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
+import { getSupervisorBonusPracticeHours } from '../../utils/getSupervisorBonusPracticeHours';
 import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
 import { resolveDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
 import { ensureRenewalDocumentInheritance } from '../documentReview/ensureRenewalDocumentInheritance';
@@ -254,31 +254,7 @@ export async function buildExamReadiness(userId: string) {
   const ceuReady = isCeuReady(ceuCurrent, ceuRequired);
   if (!ceuReady) missing.push('Недостаточно CEU-баллов');
 
-  let bonusPractice = 0;
-  if (!isRenewal && activeCycle.targetLevel === TargetLevel.SUPERVISOR) {
-    const lastCompletedCurator = await prisma.certificationCycle.findFirst({
-      where: {
-        userId,
-        status: CycleStatus.COMPLETED,
-        targetLevel: TargetLevel.CURATOR,
-      },
-      orderBy: { endedAt: 'desc' },
-      select: { id: true },
-    });
-
-    if (lastCompletedCurator) {
-      const bonusAgg = await prisma.supervisionHour.aggregate({
-        where: {
-          status: RecordStatus.CONFIRMED,
-          type: { in: [PracticeLevel.PRACTICE, PracticeLevel.IMPLEMENTING, PracticeLevel.PROGRAMMING] },
-          record: { cycleId: lastCompletedCurator.id },
-        },
-        _sum: { value: true },
-      });
-
-      bonusPractice = bonusAgg._sum.value ?? 0;
-    }
-  }
+  const { value: bonusPractice } = await getSupervisorBonusPracticeHours(userId, activeCycle);
 
   const supervisionTotals = await getCycleSupervisionTotals(
     activeCycle.id,

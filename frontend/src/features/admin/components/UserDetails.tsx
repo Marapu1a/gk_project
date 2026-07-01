@@ -150,6 +150,7 @@ export default function UserDetails() {
               birthDate={data.birthDate}
               country={data.country}
               city={data.city}
+              ibaoId={data.ibaoId}
               avatarUrl={data.avatarUrl}
               role={data.role}
               createdAt={data.createdAt}

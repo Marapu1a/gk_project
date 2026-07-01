@@ -42,7 +42,7 @@ export function useUpdateUserGroups(userId: string, isSelf = false) {
       if (data.groupsChanged) {
         toast.success(
           data.closedCycleCount
-            ? 'Уровень сертификации обновлен, текущий цикл закрыт.'
+            ? 'Уровень сертификации обновлен, активная сертификация закрыта.'
             : 'Уровень сертификации пользователя обновлен.',
         );
       } else if (data.upgraded) {

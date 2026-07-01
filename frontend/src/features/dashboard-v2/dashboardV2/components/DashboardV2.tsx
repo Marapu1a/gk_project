@@ -1,8 +1,13 @@
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Eye } from 'lucide-react';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import { TransborderConsentModal } from '@/features/auth/components/TransborderConsentModal';
+import {
+  CertificateIssuedModal,
+  type CertificateIssuedReport,
+} from '@/features/certificate/components/CertificateIssuedModal';
 import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { ProfileCard } from './info/profile-card/component/ProfileCard';
 import { PaymentBlock } from './payment/component/PaymentBlock';
@@ -23,8 +28,22 @@ const TARGET_LEVEL_LABELS = {
 
 export function DashboardV2() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { data: user, isLoading, isError } = useCurrentUser();
+
+  // Отчёт о выдаче сертификата прилетает через router-state со страницы выдачи.
+  const [certificateReport, setCertificateReport] = useState<CertificateIssuedReport | null>(
+    () => (location.state as { certificateIssued?: CertificateIssuedReport } | null)?.certificateIssued ?? null,
+  );
+
+  // Гасим router-state, чтобы при refresh/возврате модалка не всплывала повторно.
+  useEffect(() => {
+    if ((location.state as { certificateIssued?: CertificateIssuedReport } | null)?.certificateIssued) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleReauth = () => {
     localStorage.removeItem('token');
@@ -77,6 +96,13 @@ export function DashboardV2() {
         onAccepted={() => {}}
         onLogout={handleReauth}
       />
+
+      {certificateReport ? (
+        <CertificateIssuedModal
+          report={certificateReport}
+          onClose={() => setCertificateReport(null)}
+        />
+      ) : null}
     </>
   );
 }

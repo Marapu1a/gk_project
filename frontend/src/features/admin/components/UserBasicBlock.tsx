@@ -22,6 +22,7 @@ type Props = {
   birthDate: string | null;
   country: string | null;
   city: string | null;
+  ibaoId: string | null;
   avatarUrl: string | null;
   role: 'ADMIN' | 'REVIEWER' | 'STUDENT';
   createdAt: string;
@@ -102,6 +103,7 @@ export default function UserBasicBlock(props: Props) {
     birthDate,
     country,
     city,
+    ibaoId,
     avatarUrl,
     role,
     createdAt,
@@ -128,6 +130,7 @@ export default function UserBasicBlock(props: Props) {
     birthDate: birthDate ? toDateInput(birthDate) : '',
     countries: strToArr(country),
     cities: strToArr(city),
+    ibaoId: ibaoId ?? '',
   });
 
   useEffect(() => {
@@ -144,11 +147,12 @@ export default function UserBasicBlock(props: Props) {
       birthDate: birthDate ? toDateInput(birthDate) : '',
       countries: strToArr(country),
       cities: strToArr(city),
+      ibaoId: ibaoId ?? '',
     });
 
     setDisplayFullName(fullName);
     setDisplayFullNameLatin(fullNameLatin ?? null);
-  }, [fullName, fullNameLatin, phone, birthDate, country, city]);
+  }, [fullName, fullNameLatin, phone, birthDate, country, city, ibaoId]);
 
   const onCancel = () => {
     const nRu = splitFullName(fullName);
@@ -164,6 +168,7 @@ export default function UserBasicBlock(props: Props) {
       birthDate: birthDate ? toDateInput(birthDate) : '',
       countries: strToArr(country),
       cities: strToArr(city),
+      ibaoId: ibaoId ?? '',
     });
     setEdit(false);
   };
@@ -196,6 +201,7 @@ export default function UserBasicBlock(props: Props) {
         birthDate: birth,
         country: countriesStr || undefined,
         city: citiesStr || undefined,
+        ibaoId: form.ibaoId.trim() || undefined,
       });
 
       setDisplayFullName(fullNameOut || '');
@@ -253,18 +259,21 @@ export default function UserBasicBlock(props: Props) {
         </div>
 
         {!edit ? (
-          <div className="grid grid-cols-1 gap-x-8 gap-y-3 rounded-[16px] bg-white p-4 text-[15px] md:grid-cols-2">
-            <Meta label="ФИО" value={displayFullName || '—'} />
-            <Meta label="ФИО латиницей" value={displayFullNameLatin || '—'} />
-            <Meta label="Email" value={email} />
-            <Meta label="N ЦСПАП" value={registrationNumber || '—'} />
-            <Meta label="Телефон" value={phone || '—'} />
-            <Meta label="Дата рождения" value={fmt(birthDate)} />
-            <Meta label="Город" value={city || '—'} />
-            <Meta label="Страна" value={country || '—'} />
-            <Meta label="Права в системе" value={systemRoleLabels[role] || role} />
-            <Meta label="Текущий уровень сертификации" value={formatCertificationLevelName(groupName)} />
-            <Meta label="Зарегистрирован" value={fmt(createdAt)} />
+          <div className="rounded-[16px] bg-white p-3 text-[15px]">
+            <div className="grid grid-cols-1 overflow-hidden rounded-[12px] border border-[rgba(141,150,181,0.22)] md:grid-cols-2">
+              <Meta label="ФИО" value={displayFullName || '—'} />
+              <Meta label="ФИО латиницей" value={displayFullNameLatin || '—'} />
+              <Meta label="Email" value={email} />
+              <Meta label="Телефон" value={phone || '—'} />
+              <Meta label="N ЦСПАП" value={registrationNumber || '—'} />
+              <Meta label="IBAO ID" value={ibaoId || '—'} />
+              <Meta label="Дата рождения" value={fmt(birthDate)} />
+              <Meta label="Зарегистрирован" value={fmt(createdAt)} />
+              <Meta label="Страна" value={country || '—'} />
+              <Meta label="Город" value={city || '—'} />
+              <Meta label="Права в системе" value={systemRoleLabels[role] || role} />
+              <Meta label="Уровень сертификации" value={formatCertificationLevelName(groupName)} />
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 rounded-[16px] bg-white p-4 md:grid-cols-2">
@@ -343,6 +352,14 @@ export default function UserBasicBlock(props: Props) {
                 setForm((prev) => ({ ...prev, countries, cities }))
               }
             />
+
+            <Field label="IBAO ID">
+              <input
+                className="input w-full"
+                value={form.ibaoId}
+                onChange={(e) => setForm({ ...form, ibaoId: e.target.value })}
+              />
+            </Field>
           </div>
         )}
       </div>
@@ -371,9 +388,9 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Meta({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-baseline gap-2">
-      <div className="dashboard-v2-caption min-w-[128px]">{label}:</div>
-      <div className="dashboard-v2-text font-semibold">{value}</div>
+    <div className="grid min-h-[44px] grid-cols-[160px_minmax(0,1fr)] items-center gap-3 border-b border-white bg-[var(--color-blue-soft)] px-4 py-2 md:odd:border-r">
+      <div className="dashboard-v2-caption">{label}</div>
+      <div className="dashboard-v2-text min-w-0 break-words font-semibold">{value}</div>
     </div>
   );
 }

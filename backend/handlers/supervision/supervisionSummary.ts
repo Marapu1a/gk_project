@@ -13,6 +13,7 @@ import {
   renewalSupervisionRequirementsByGroup,
 } from '../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
+import { getSupervisorBonusPracticeHours } from '../../utils/getSupervisorBonusPracticeHours';
 
 type SummaryTotals = {
   practice: number;
@@ -192,34 +193,8 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
   const usableAgg = aggregate(confirmed);
   const pendingAgg = aggregate(unconfirmed);
 
-  let bonusPractice = 0;
-  let bonusSourceCycleId: string | null = null;
-
-  if (!isRenewal && activeCycle.targetLevel === TargetLevel.SUPERVISOR) {
-    const lastCompletedCurator = await prisma.certificationCycle.findFirst({
-      where: {
-        userId: user.userId,
-        status: CycleStatus.COMPLETED,
-        targetLevel: TargetLevel.CURATOR,
-      },
-      orderBy: { endedAt: 'desc' },
-      select: { id: true },
-    });
-
-    if (lastCompletedCurator) {
-      const bonusAgg = await prisma.supervisionHour.aggregate({
-        where: {
-          status: 'CONFIRMED',
-          type: { in: practiceTypes },
-          record: { cycleId: lastCompletedCurator.id },
-        },
-        _sum: { value: true },
-      });
-
-      bonusPractice = bonusAgg._sum.value ?? 0;
-      bonusSourceCycleId = lastCompletedCurator.id;
-    }
-  }
+  const { value: bonusPractice, sourceCycleId: bonusSourceCycleId } =
+    await getSupervisorBonusPracticeHours(user.userId, activeCycle);
 
   const cycleTotals = await getCycleSupervisionTotals(
     activeCycle.id,

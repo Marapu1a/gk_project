@@ -10,6 +10,7 @@ import { useUsers } from '@/features/admin/hooks/useUsers';
 import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import type { CertificateIssuedReport } from './CertificateIssuedModal';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_CERTIFICATE_FILE_MB = 20;
@@ -39,7 +40,7 @@ const tokenize = (s: string) =>
 
 type Props = {
   defaultEmail?: string;
-  onSuccess?: () => void;
+  onSuccess?: (report: CertificateIssuedReport) => void;
 };
 
 type UploadedCertificateFile = {
@@ -161,38 +162,27 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
     if (!ok) return;
 
     try {
+      const certNumber = `${CERTIFICATE_NUMBER_PREFIX}${numberSuffix.trim()}`;
       const res = await mutation.mutateAsync({
         email: email.trim(),
         title: title.trim(),
-        number: `${CERTIFICATE_NUMBER_PREFIX}${numberSuffix.trim()}`,
+        number: certNumber,
         issuedAt: issuedDate,
         expiresAt: expiresDate,
         uploadedFileId,
       });
 
-      const spent = typeof res.spentCeuCount === 'number' ? res.spentCeuCount : null;
-      const resetPayments =
-        typeof res.paymentsResetCount === 'number' ? res.paymentsResetCount : null;
-      const renewalPaymentCreated =
-        typeof res.renewalPaymentId === 'string' && !!res.renewalPaymentId;
+      const report: CertificateIssuedReport = {
+        email: email.trim(),
+        title: title.trim(),
+        number: certNumber,
+        groupName: res.group?.name ?? title.trim(),
+        spentCeuCount: typeof res.spentCeuCount === 'number' ? res.spentCeuCount : null,
+        paymentsResetCount:
+          typeof res.paymentsResetCount === 'number' ? res.paymentsResetCount : null,
+      };
 
-      const detailsParts: string[] = [];
-      if (spent !== null) detailsParts.push(`CEU списано: ${spent}`);
-      if (resetPayments !== null) detailsParts.push(`оплаты сброшены: ${resetPayments}`);
-      if (renewalPaymentCreated) detailsParts.push('флаг ресертификации создан');
-
-      toast.success(
-        detailsParts.length ? `Сертификат выдан. ${detailsParts.join(', ')}.` : 'Сертификат выдан',
-      );
-
-      setTitle('');
-      setNumberSuffix('');
-      setIssuedDate('');
-      setExpiresDate('');
-      setUploadedFileId('');
-      setUploadedFile(null);
-
-      onSuccess?.();
+      onSuccess?.(report);
     } catch (err: any) {
       toast.error(mapError(err));
     }

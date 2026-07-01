@@ -9,6 +9,7 @@ export type UpdateUserInfoPayload = {
   birthDate?: string;
   country?: string;
   city?: string;
+  ibaoId?: string;
   avatarUrl?: string;
 };
 
