@@ -190,24 +190,24 @@ export async function updateUserSupervisionMatrixAdminHandler(
 
     const groupName = mapTargetLevel(activeCycle.targetLevel);
     const { value: bonusPractice } = await getSupervisorBonusPracticeHours(userId, activeCycle);
-    const practiceHoursForSupervision = round2(practiceTotal + bonusPractice);
-    if (requirements && requirements.practice > 0 && practiceHoursForSupervision > requirements.practice) {
+    const totalPracticeWithBonus = round2(practiceTotal + bonusPractice);
+    if (requirements && requirements.practice > 0 && totalPracticeWithBonus > requirements.practice) {
       return reply.code(400).send({
         error: `Нельзя указать больше ${requirements.practice} часов практики для текущего цикла`,
         maxValue: requirements.practice,
       });
     }
 
-    const expectedSupervision =
+    const expectedActiveSupervision =
       activeCycle.type === CycleType.RENEWAL
-        ? calcAutoRenewalSupervisionHours({ groupName, practiceHours: practiceHoursForSupervision })
-        : calcAutoSupervisionHours({ groupName, practiceHours: practiceHoursForSupervision });
-    const cappedExpectedSupervision =
+        ? calcAutoRenewalSupervisionHours({ groupName, practiceHours: practiceTotal })
+        : calcAutoSupervisionHours({ groupName, practiceHours: practiceTotal });
+    const cappedExpectedActiveSupervision =
       requirements && requirements.supervision > 0
-        ? Math.min(expectedSupervision, requirements.supervision)
-        : expectedSupervision;
+        ? Math.min(expectedActiveSupervision, requirements.supervision)
+        : expectedActiveSupervision;
     const distributionRuleError = getDistributionRuleError({
-      expectedSupervision: cappedExpectedSupervision,
+      expectedSupervision: cappedExpectedActiveSupervision,
       distribution: incoming.distribution,
     });
     if (distributionRuleError) return reply.code(400).send({ error: distributionRuleError });
@@ -251,7 +251,7 @@ export async function updateUserSupervisionMatrixAdminHandler(
       details:
         `Полевая практика: ${formatHours(implementing)}; ` +
         `работа с информацией: ${formatHours(programming)}; ` +
-        `супервизия: ${formatHours(cappedExpectedSupervision)}`,
+        `супервизия: ${formatHours(cappedExpectedActiveSupervision)}`,
     });
 
     if (incoming.notifyUser) {
@@ -270,7 +270,7 @@ export async function updateUserSupervisionMatrixAdminHandler(
       mode: incoming.mode,
       implementing,
       programming,
-      expectedSupervision: cappedExpectedSupervision,
+      expectedSupervision: cappedExpectedActiveSupervision,
       notified: incoming.notifyUser,
       cycleId: activeCycle.id,
     });

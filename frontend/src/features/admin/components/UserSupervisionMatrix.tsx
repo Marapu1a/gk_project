@@ -97,6 +97,20 @@ function parseHours(value: string) {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
+function calcExpectedSupervision(params: {
+  practice: number;
+  requiredPractice?: number | null;
+  requiredSupervision?: number | null;
+}) {
+  const { practice, requiredPractice, requiredSupervision } = params;
+  if (!requiredPractice || !requiredSupervision || requiredPractice <= 0 || requiredSupervision <= 0) {
+    return 0;
+  }
+
+  const ratio = requiredPractice / requiredSupervision;
+  return clampToMax(Math.floor(practice / ratio), requiredSupervision);
+}
+
 function getPracticeRuleError(implementingValue: number, programmingValue: number) {
   const total = implementingValue + programmingValue;
   if (total <= 0) return null;
@@ -168,6 +182,12 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       breakdown?.programming ?? 0,
       manualPracticeLimit,
     );
+    const activePracticeTotal = round2(practicePair.left + practicePair.right);
+    const expectedActiveSupervision = calcExpectedSupervision({
+      practice: activePracticeTotal,
+      requiredPractice: data.summary.required?.practice,
+      requiredSupervision: data.summary.required?.supervision,
+    });
     const cappedDistribution = scaleDistributionToMax(
       {
         directIndividual: distribution?.directIndividual ?? 0,
@@ -175,7 +195,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
         nonObservingIndividual: distribution?.nonObservingIndividual ?? 0,
         nonObservingGroup: distribution?.nonObservingGroup ?? 0,
       },
-      data.summary.required?.supervision ?? 0,
+      expectedActiveSupervision,
     );
 
     setImplementing(formatNumber(practicePair.left));
@@ -194,12 +214,17 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
     const practiceTotalWithoutBonus = round2(implementingValue + programmingValue);
     const bonusPractice = data?.summary.practiceBreakdown?.bonus ?? data?.summary.bonus?.practice ?? 0;
     const practiceTotal = round2(practiceTotalWithoutBonus + bonusPractice);
-    const ratio =
-      required && required.practice > 0 && required.supervision > 0
-        ? required.practice / required.supervision
-        : null;
-    const rawExpectedSupervision = ratio ? Math.floor(practiceTotal / ratio) : 0;
-    const expectedSupervision = clampToMax(rawExpectedSupervision, required?.supervision ?? null);
+    const expectedSupervision = calcExpectedSupervision({
+      practice: practiceTotal,
+      requiredPractice: required?.practice,
+      requiredSupervision: required?.supervision,
+    });
+    const expectedActiveSupervision = calcExpectedSupervision({
+      practice: practiceTotalWithoutBonus,
+      requiredPractice: required?.practice,
+      requiredSupervision: required?.supervision,
+    });
+    const bonusSupervision = round2(Math.max(0, expectedSupervision - expectedActiveSupervision));
 
     const distribution = {
       directIndividual: parseHours(directIndividual),
@@ -213,7 +238,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
     );
     const distributionTotal = round2(directTotal + nonObservingTotal);
     const groupTotal = round2(distribution.directGroup + distribution.nonObservingGroup);
-    const distributionRemaining = round2(expectedSupervision - distributionTotal);
+    const distributionRemaining = round2(expectedActiveSupervision - distributionTotal);
 
     return {
       implementingValue,
@@ -222,6 +247,8 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       practiceTotal,
       bonusPractice,
       expectedSupervision,
+      expectedActiveSupervision,
+      bonusSupervision,
       distribution,
       directTotal,
       nonObservingTotal,
@@ -250,7 +277,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       ? `Нельзя указать больше ${formatNumber(practiceLimit)} часов практики для текущего цикла.`
       : null;
   const distributionRuleError = getDistributionRuleError({
-    expectedSupervision: values.expectedSupervision,
+    expectedSupervision: values.expectedActiveSupervision,
     distributionTotal: values.distributionTotal,
     groupTotal: values.groupTotal,
     distributionRemaining: values.distributionRemaining,
@@ -414,6 +441,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
               label="Расчетная супервизия"
               value={values.expectedSupervision}
               required={required?.supervision ?? 0}
+              note={values.bonusSupervision > 0 ? `из них зачтено ${formatNumber(values.bonusSupervision)}` : undefined}
             />
           </div>
 
@@ -454,7 +482,16 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
 
         <section className={!practiceLocked ? 'pointer-events-none space-y-4 opacity-50' : 'space-y-4'}>
           <div className="rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-3 dashboard-v2-text text-[#1F305E]">
-            Распределите <strong>{formatNumber(values.expectedSupervision)}</strong> часов
+            {values.bonusPractice > 0 ? (
+              <span className="mb-1 block dashboard-v2-caption text-[#6B7894]">
+                С уровня «Куратор» зачтено {formatNumber(values.bonusPractice)} часов практики
+                {values.bonusSupervision > 0
+                  ? ` и ${formatNumber(values.bonusSupervision)} часов супервизии`
+                  : ''}
+                .
+              </span>
+            ) : null}
+            Распределите <strong>{formatNumber(values.expectedActiveSupervision)}</strong> часов
             супервизии. Осталось:{' '}
             <strong className={values.distributionRemaining === 0 ? undefined : 'text-[var(--color-danger)]'}>
               {formatNumber(values.distributionRemaining)}
@@ -472,7 +509,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
                   value={directIndividual}
                   onChange={setDirectIndividual}
                   disabled={mutation.isPending}
-                  max={values.expectedSupervision}
+                  max={values.expectedActiveSupervision}
                 />
               </Field>
               <Field label="В группе">
@@ -480,7 +517,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
                   value={directGroup}
                   onChange={setDirectGroup}
                   disabled={mutation.isPending}
-                  max={values.expectedSupervision}
+                  max={values.expectedActiveSupervision}
                 />
               </Field>
             </div>
@@ -494,7 +531,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
                   value={nonObservingIndividual}
                   onChange={setNonObservingIndividual}
                   disabled={mutation.isPending}
-                  max={values.expectedSupervision}
+                  max={values.expectedActiveSupervision}
                 />
               </Field>
               <Field label="В группе">
@@ -502,7 +539,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
                   value={nonObservingGroup}
                   onChange={setNonObservingGroup}
                   disabled={mutation.isPending}
-                  max={values.expectedSupervision}
+                  max={values.expectedActiveSupervision}
                 />
               </Field>
             </div>

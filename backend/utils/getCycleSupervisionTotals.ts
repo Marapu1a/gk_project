@@ -79,27 +79,23 @@ export async function getCycleSupervisionTotals(
   const groupName = mapTargetLevel(targetLevel);
   const isRenewal = cycle?.type === CycleType.RENEWAL;
 
-  const supervisionConfirmed =
-    correctionSupervision ??
-    (isRenewal
+  const calcSupervision = (practiceHours: number) =>
+    isRenewal
       ? calcAutoRenewalSupervisionHours({
-        groupName,
-        practiceHours: practiceConfirmed,
-      })
+          groupName,
+          practiceHours,
+        })
       : calcAutoSupervisionHours({
-        groupName,
-        practiceHours: practiceConfirmed,
-      }));
+          groupName,
+          practiceHours,
+        });
 
-  const supervisionTotalWithPending = isRenewal
-    ? calcAutoRenewalSupervisionHours({
-      groupName,
-      practiceHours: practiceTotalWithPending,
-    })
-    : calcAutoSupervisionHours({
-      groupName,
-      practiceHours: practiceTotalWithPending,
-    });
+  const supervisionConfirmed =
+    correctionSupervision == null
+      ? calcSupervision(practiceConfirmed)
+      : Math.max(correctionSupervision, calcSupervision(practiceConfirmed));
+
+  const supervisionTotalWithPending = calcSupervision(practiceTotalWithPending);
 
   const supervisionPending = Math.max(
     0,
@@ -119,4 +115,3 @@ export async function getCycleSupervisionTotals(
     adminCorrection,
   };
 }
-
