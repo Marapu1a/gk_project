@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import { AdminIdentityFilterInput } from '@/components/AdminIdentityFilterInput';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { CopyEmailLink } from '@/components/CopyEmailLink';
 import { useExamApps } from '../hooks/useExamApps';
@@ -31,11 +32,11 @@ function statusClass(status: ExamStatus) {
 }
 
 export default function ExamAppsTable() {
-  const { data, isLoading, error, isFetching } = useExamApps();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState<ExamApp | null>(null);
   const rawStatus = searchParams.get('status');
   const query = searchParams.get('search') ?? '';
+  const { data, isLoading, error, isFetching } = useExamApps(query);
   const status: ExamStatus | 'ALL' = STATUS_VALUES.has(rawStatus as ExamStatus | 'ALL')
     ? (rawStatus as ExamStatus | 'ALL')
     : 'PENDING';
@@ -55,19 +56,12 @@ export default function ExamAppsTable() {
 
   const rows = (data as ExamApp[] | undefined) ?? [];
   const filtered = useMemo(() => {
-    const search = query.trim().toLowerCase();
-
     return rows.filter((row) => {
       const statusOk = status === 'ALL' || row.status === status;
       if (!statusOk) return false;
-      if (!search) return true;
-
-      return (
-        row.user.email.toLowerCase().includes(search) ||
-        (row.user.fullName ?? '').toLowerCase().includes(search)
-      );
+      return true;
     });
-  }, [query, rows, status]);
+  }, [rows, status]);
 
   if (isLoading) {
     return <p className="dashboard-v2-text text-[#6B7894]">Загрузка заявок...</p>;
@@ -105,11 +99,12 @@ export default function ExamAppsTable() {
 
           <label className="dashboard-v2-small block text-[#1F305E] md:col-span-1 xl:col-span-2">
             Кандидат
-            <input
-              className="input-design mt-1"
+            <AdminIdentityFilterInput
               value={query}
-              onChange={(event) => updateQuery({ search: event.target.value })}
-              placeholder="ФИО или email"
+              onChange={(value) => updateQuery({ search: value })}
+              className="mt-1"
+              placeholder="ФИО, email, телефон, рег. номер"
+              ariaLabel="Поиск кандидата"
             />
           </label>
         </div>

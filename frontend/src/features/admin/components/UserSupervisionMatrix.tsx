@@ -213,6 +213,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
     const programmingValue = parseHours(programming);
     const practiceTotalWithoutBonus = round2(implementingValue + programmingValue);
     const bonusPractice = data?.summary.practiceBreakdown?.bonus ?? data?.summary.bonus?.practice ?? 0;
+    const legacyPractice = data?.summary.practiceBreakdown?.legacy ?? 0;
     const practiceTotal = round2(practiceTotalWithoutBonus + bonusPractice);
     const expectedSupervision = calcExpectedSupervision({
       practice: practiceTotal,
@@ -246,6 +247,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       practiceTotalWithoutBonus,
       practiceTotal,
       bonusPractice,
+      legacyPractice,
       expectedSupervision,
       expectedActiveSupervision,
       bonusSupervision,
@@ -260,6 +262,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
   }, [
     data?.summary.bonus?.practice,
     data?.summary.practiceBreakdown?.bonus,
+    data?.summary.practiceBreakdown?.legacy,
     directGroup,
     directIndividual,
     implementing,
@@ -435,7 +438,12 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
               label="Всего практики"
               value={values.practiceTotal}
               required={required?.practice ?? 0}
-              note={values.bonusPractice > 0 ? `с учетом бонуса ${formatNumber(values.bonusPractice)}` : undefined}
+              note={[
+                values.bonusPractice > 0 ? `с учетом бонуса ${formatNumber(values.bonusPractice)}` : null,
+                values.legacyPractice > 0 ? `из старой версии: ${formatNumber(values.legacyPractice)}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || undefined}
             />
             <MetricCard
               label="Расчетная супервизия"

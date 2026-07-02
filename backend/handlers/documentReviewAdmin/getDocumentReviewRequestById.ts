@@ -63,8 +63,18 @@ export async function getDocumentReviewRequestById(req: FastifyRequest, reply: F
     },
   });
 
+  const requestWithTransferFlags = {
+    ...request,
+    documentFiles: request.documentFiles.map((documentFile) => ({
+      ...documentFile,
+      transferredFromPreviousRequest: Boolean(
+        documentFile.file?.requestId && documentFile.file.requestId !== request.id,
+      ),
+    })),
+  };
+
   return reply.send({
-    ...withResolvedDocumentReviewRequestStatus(request),
+    ...withResolvedDocumentReviewRequestStatus(requestWithTransferFlags),
     relatedRequests: relatedRequests.map(withResolvedDocumentReviewRequestStatus),
   });
 }

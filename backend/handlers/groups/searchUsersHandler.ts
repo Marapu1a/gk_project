@@ -1,7 +1,7 @@
 // src/handlers/admin/searchUsersHandler.ts
 import { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
-import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { buildUserIdentitySearchWhere } from '../../utils/userIdentitySearch';
 
 interface SearchUsersRoute extends RouteGenericInterface {
   Querystring: { q?: string; limit?: string };
@@ -20,28 +20,12 @@ export async function searchUsersHandler(
 
   if (q.length < 2) return reply.send([]); // не шумим
 
-  const tokens = q.split(/\s+/).filter(Boolean);
-
-  const digits = q.replace(/\D/g, '');
-  const searchOr: Prisma.UserWhereInput[] = [
-    { email: { contains: q, mode: 'insensitive' } },
-    { fullName: { contains: q, mode: 'insensitive' } },
-    { fullNameLatin: { contains: q, mode: 'insensitive' } },
-    { AND: tokens.map((t) => ({ fullName: { contains: t, mode: 'insensitive' } })) },
-    { AND: tokens.map((t) => ({ fullNameLatin: { contains: t, mode: 'insensitive' } })) },
-  ];
-
-  if (digits) {
-    searchOr.push(
-      { phone: { contains: digits, mode: 'insensitive' } },
-      { registrationNumber: { contains: digits, mode: 'insensitive' } },
-    );
-  }
+  const searchWhere = buildUserIdentitySearchWhere(q);
 
   const users = await prisma.user.findMany({
     where: {
       archivedAt: null,
-      OR: searchOr,
+      ...(searchWhere ?? {}),
     },
     orderBy: { fullName: 'asc' },
     take: limit,

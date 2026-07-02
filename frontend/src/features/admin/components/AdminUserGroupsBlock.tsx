@@ -77,18 +77,6 @@ function getDisplayedLevelLabel(
   return targetLevelLabels[level] ?? level;
 }
 
-function getIssuedGroupAfterProcess(
-  level: TargetLevel,
-  mode: GoalMode,
-  activeGroupName: string | null | undefined,
-) {
-  if (level === 'SUPERVISOR' && mode === 'RENEWAL' && isExperiencedSupervisorGroup(activeGroupName)) {
-    return 'Опытный супервизор';
-  }
-
-  return targetLevelLabels[level] ?? level;
-}
-
 type ActionOption = {
   level: TargetLevel;
   mode: GoalMode;
@@ -190,11 +178,11 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
       ? `Цель выбрана: ${getDisplayedLevelLabel(userDetails.targetLevel, savedActiveGroup?.name)}`
       : 'не начат';
 
-  const afterCertificateText = activeCycle
-    ? getIssuedGroupAfterProcess(activeCycle.targetLevel, activeCycle.type, savedActiveGroup?.name)
-    : selectedAction
-      ? getIssuedGroupAfterProcess(selectedAction.level, selectedAction.mode, savedActiveGroup?.name)
-      : '—';
+  const activeCertificateText = activeCertificate
+    ? `${formatCertificationLevelName(activeCertificate.group?.name)}${
+        activeCertificate.expiresAt ? ` · до ${formatCertificateDate(activeCertificate.expiresAt)}` : ' · бессрочно'
+      }`
+    : 'нет';
 
   const saveGroup = async () => {
     if (!selectedGroup || !data) {
@@ -275,21 +263,27 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
       <section className="rounded-[16px] bg-[var(--color-blue-soft)] p-4">
         <h2 className="dashboard-v2-title mb-4">Уровень и сертификация</h2>
 
-        <div className="overflow-hidden rounded-[12px] bg-white/45">
-          <Meta label="ФИО" value={data.user.fullName || '—'} />
-          <Meta label="Email" value={data.user.email} />
-          <Meta label="Уровень сертификации" value={formatCertificationLevelName(savedActiveGroup?.name)} />
-          <Meta label="Активная сертификация" value={processText} />
-          <Meta
-            label="Последний сертификат"
-            value={
-              latestCertificate
-                ? `${latestCertificate.group.name} · ${getCertificateStatusText(latestCertificate.expiresAt)}`
-                : 'нет'
-            }
-          />
-          <Meta label="После выдачи сертификата" value={afterCertificateText} />
-        </div>
+        <InfoTable
+          rows={[
+            [
+              { label: 'ФИО', value: data.user.fullName || '—' },
+              { label: 'Email', value: data.user.email },
+            ],
+            [
+              { label: 'Уровень сертификации', value: formatCertificationLevelName(savedActiveGroup?.name) },
+              { label: 'Активная сертификация', value: processText },
+            ],
+            [
+              {
+                label: 'Последний сертификат',
+                value: latestCertificate
+                  ? `${latestCertificate.group.name} · ${getCertificateStatusText(latestCertificate.expiresAt)}`
+                  : 'нет',
+              },
+              { label: 'Активный сертификат', value: activeCertificateText },
+            ],
+          ]}
+        />
 
         {userDetails.targetLevel && !activeCycle ? (
           <div className="mt-4 rounded-[12px] bg-[rgba(255,83,100,0.08)] px-4 py-3 text-[13px] font-semibold text-[var(--color-danger)]">
@@ -298,68 +292,37 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
           </div>
         ) : null}
 
-        <div className="mt-4 border-t border-white/70 pt-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="dashboard-v2-title">Активный сертификат</h3>
-            {activeCertificate ? (
-              <span className="rounded-full bg-[var(--color-green-brand)] px-3 py-1 text-[12px] font-bold text-white">
-                Активный
-              </span>
-            ) : null}
-          </div>
-
-          {!activeCertificate ? (
-            <div className="rounded-[12px] bg-white/45 px-3 py-3 dashboard-v2-text">
-              Активного сертификата нет.
+        {activeCertificate ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] bg-white/45 px-4 py-3">
+            <div className="min-w-0">
+              <p className="dashboard-v2-label">Активный сертификат</p>
+              <p className="dashboard-v2-text mt-1 font-semibold">
+                {activeCertificate.title || 'Сертификат'}
+                {activeCertificate.number ? ` №${activeCertificate.number}` : ''}
+              </p>
             </div>
-          ) : (
-            <div className="overflow-hidden rounded-[12px] bg-white/45">
-              <Meta
-                label="Сертификат"
-                value={`${activeCertificate.title || 'Сертификат'}${
-                  activeCertificate.number ? ` №${activeCertificate.number}` : ''
-                }`}
-              />
-              <Meta label="Уровень сертификата" value={formatCertificationLevelName(activeCertificate.group?.name)} />
-              <Meta label="Выдан" value={formatCertificateDate(activeCertificate.issuedAt)} />
-              <Meta
-                label="Действует до"
-                value={activeCertificate.expiresAt ? formatCertificateDate(activeCertificate.expiresAt) : 'бессрочно'}
-              />
-              <Meta
-                label="Подтвердил"
-                value={
-                  activeCertificate.confirmedBy
-                    ? activeCertificate.confirmedBy.fullName || activeCertificate.confirmedBy.email
-                    : '—'
-                }
-              />
-              {activeCertificate.comment ? (
-                <Meta label="Комментарий" value={activeCertificate.comment} />
-              ) : null}
 
-              <div className="flex flex-wrap gap-2 px-3 py-3">
-                {activeCertificate.file ? (
-                  <a
-                    href={`/uploads/${activeCertificate.file.fileId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn dashboard-v2-action dashboard-v2-action-secondary"
-                  >
-                    Открыть файл
-                  </a>
-                ) : null}
-                <button
-                  type="button"
-                  className="btn dashboard-v2-action dashboard-v2-action-primary"
-                  onClick={() => setIsCertificateEditOpen(true)}
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {activeCertificate.file ? (
+                <a
+                  href={`/uploads/${activeCertificate.file.fileId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn dashboard-v2-action dashboard-v2-action-secondary"
                 >
-                  Редактировать
-                </button>
-              </div>
+                  Открыть файл
+                </a>
+              ) : null}
+              <button
+                type="button"
+                className="btn dashboard-v2-action dashboard-v2-action-primary"
+                onClick={() => setIsCertificateEditOpen(true)}
+              >
+                Редактировать
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        ) : null}
 
         {activeCertificate && isCertificateEditOpen ? (
           <EditCertificateModal
@@ -381,126 +344,156 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
         ) : null}
       </section>
 
-      <section className="rounded-[16px] bg-white p-4 shadow-[0_2px_12px_rgba(31,48,94,0.08)]">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <div>
-            <label className="dashboard-v2-label mb-1 block">Уровень сертификации пользователя</label>
-            <select
-              className="input-design h-[38px]"
-              value={selectedGroupId}
-              onChange={(event) => setSelectedGroupId(event.target.value)}
-              disabled={updateGroups.isPending}
-            >
-              <option value="">Выберите уровень</option>
-              {data.allGroups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {formatCertificationLevelName(group.name)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            type="button"
-            className="btn dashboard-v2-action dashboard-v2-action-primary"
-            onClick={saveGroup}
-            disabled={updateGroups.isPending || !selectedGroupId || !groupChanged}
-          >
-            {updateGroups.isPending ? 'Сохраняем...' : 'Сохранить уровень'}
-          </button>
-        </div>
-
-        {groupChanged ? (
-          <div className="mt-3 rounded-[12px] bg-[rgba(255,83,100,0.08)] px-4 py-3 text-[13px] font-semibold text-[var(--color-danger)]">
-            При смене уровня активная сертификация будет закрыта, а цель сертификации сброшена.
-          </div>
-        ) : null}
-      </section>
-
-      <section className="rounded-[16px] bg-white p-4 shadow-[0_2px_12px_rgba(31,48,94,0.08)]">
-        {activeCycle ? (
-          <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
+        <section className="rounded-[16px] bg-white p-4 shadow-[0_2px_12px_rgba(31,48,94,0.08)]">
+          <h3 className="dashboard-v2-title mb-3">Уровень сертификации</h3>
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
             <div>
-              <h3 className="dashboard-v2-title">Активная сертификация</h3>
-              <p className="dashboard-v2-text mt-2">
-                {processText}. Выдать сертификат можно именно по этой сертификации.
-              </p>
-            </div>
-
-            <div>
-              <label className="dashboard-v2-label mb-1 block">Причина отмены цикла</label>
-              <textarea
-                className="input-design min-h-[86px] resize-y py-2"
-                placeholder="Например: пользователь ошибочно выбрал уровень"
-                value={abandonReason}
-                onChange={(event) => setAbandonReason(event.target.value)}
-                maxLength={COMMENT_MAX_LENGTH}
-                disabled={abandonCycle.isPending}
-              />
-            </div>
-
-            <button
-              type="button"
-              className="btn dashboard-v2-action dashboard-v2-action-secondary border-[var(--color-danger)] text-[var(--color-danger)]"
-              onClick={handleAbandonCycle}
-              disabled={abandonCycle.isPending}
-            >
-              {abandonCycle.isPending ? 'Отменяем...' : 'Отменить активную сертификацию'}
-            </button>
-          </div>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <div>
-              <h3 className="dashboard-v2-title mb-3">Начать цикл</h3>
-              <label className="dashboard-v2-label mb-1 block">Действие</label>
+              <label className="dashboard-v2-label mb-1 block">Уровень пользователя</label>
               <select
                 className="input-design h-[38px]"
-                value={selectedProcessKey}
-                onChange={(event) => setSelectedProcessKey(event.target.value)}
-                disabled={groupChanged || updateTargetLevel.isPending || availableActions.length === 0}
+                value={selectedGroupId}
+                onChange={(event) => setSelectedGroupId(event.target.value)}
+                disabled={updateGroups.isPending}
               >
-                <option value="">Выберите действие</option>
-                {availableActions.map((item) => (
-                  <option key={actionKey(item)} value={actionKey(item)}>
-                    {item.label}
+                <option value="">Выберите уровень</option>
+                {data.allGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {formatCertificationLevelName(group.name)}
                   </option>
                 ))}
               </select>
-              {availableActions.length === 0 ? (
-                <p className="dashboard-v2-caption mt-2">
-                  Для текущего статуса нет доступных циклов сертификации.
-                </p>
-              ) : null}
-              <p className="dashboard-v2-caption mt-2">
-                Ресертификацию можно начать вручную без сертификата в системе. Сначала укажите
-                уровень сертификации пользователя; основание проверяет администратор.
-              </p>
-              {groupChanged ? (
-                <p className="dashboard-v2-caption mt-2 text-[var(--color-danger)]">
-                  Сначала сохраните новый уровень сертификации пользователя.
-                </p>
-              ) : null}
             </div>
 
             <button
               type="button"
               className="btn dashboard-v2-action dashboard-v2-action-primary"
-              onClick={saveProcess}
-              disabled={groupChanged || updateTargetLevel.isPending || !selectedAction}
+              onClick={saveGroup}
+              disabled={updateGroups.isPending || !selectedGroupId || !groupChanged}
             >
-              {updateTargetLevel.isPending ? 'Запускаем...' : 'Начать цикл'}
+              {updateGroups.isPending ? 'Сохраняем...' : 'Сохранить'}
             </button>
           </div>
-        )}
-      </section>
+
+          {groupChanged ? (
+            <div className="mt-3 rounded-[12px] bg-[rgba(255,83,100,0.08)] px-4 py-3 text-[13px] font-semibold text-[var(--color-danger)]">
+              При смене уровня активная сертификация будет закрыта, а цель сертификации сброшена.
+            </div>
+          ) : null}
+        </section>
+
+        <section className="rounded-[16px] bg-white p-4 shadow-[0_2px_12px_rgba(31,48,94,0.08)]">
+          {activeCycle ? (
+            <div className="space-y-4">
+              <div>
+                <h3 className="dashboard-v2-title">Активная сертификация</h3>
+                <p className="dashboard-v2-text mt-2">
+                  {processText}. Выдать сертификат можно именно по этой сертификации.
+                </p>
+              </div>
+
+              <div>
+                <label className="dashboard-v2-label mb-1 block">Причина отмены</label>
+                <textarea
+                  className="input-design min-h-[86px] resize-y py-2"
+                  placeholder="Например: пользователь ошибочно выбрал уровень"
+                  value={abandonReason}
+                  onChange={(event) => setAbandonReason(event.target.value)}
+                  maxLength={COMMENT_MAX_LENGTH}
+                  disabled={abandonCycle.isPending}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="btn dashboard-v2-action dashboard-v2-action-secondary border-[var(--color-danger)] text-[var(--color-danger)]"
+                onClick={handleAbandonCycle}
+                disabled={abandonCycle.isPending}
+              >
+                {abandonCycle.isPending ? 'Отменяем...' : 'Отменить сертификацию'}
+              </button>
+            </div>
+          ) : (
+            <div className="grid h-full gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
+              <div>
+                <h3 className="dashboard-v2-title mb-3">Начать сертификацию</h3>
+                <label className="dashboard-v2-label mb-1 block">Действие</label>
+                <select
+                  className="input-design h-[38px]"
+                  value={selectedProcessKey}
+                  onChange={(event) => setSelectedProcessKey(event.target.value)}
+                  disabled={groupChanged || updateTargetLevel.isPending || availableActions.length === 0}
+                >
+                  <option value="">Выберите действие</option>
+                  {availableActions.map((item) => (
+                    <option key={actionKey(item)} value={actionKey(item)}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                {availableActions.length === 0 ? (
+                  <p className="dashboard-v2-caption mt-2">
+                    Для текущего уровня нет доступных действий.
+                  </p>
+                ) : null}
+                <p className="dashboard-v2-caption mt-2">
+                  Ресертификацию можно начать вручную без сертификата в системе. Основание проверяет администратор.
+                </p>
+                {groupChanged ? (
+                  <p className="dashboard-v2-caption mt-2 text-[var(--color-danger)]">
+                    Сначала сохраните новый уровень сертификации пользователя.
+                  </p>
+                ) : null}
+              </div>
+
+              <button
+                type="button"
+                className="btn dashboard-v2-action dashboard-v2-action-primary"
+                onClick={saveProcess}
+                disabled={groupChanged || updateTargetLevel.isPending || !selectedAction}
+              >
+                {updateTargetLevel.isPending ? 'Запускаем...' : 'Начать'}
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
 
-function Meta({ label, value }: { label: string; value: string }) {
+type InfoCell = {
+  label: string;
+  value: string;
+};
+
+function InfoTable({ rows }: { rows: [InfoCell, InfoCell][] }) {
   return (
-    <div className="grid min-h-[34px] grid-cols-[180px_minmax(0,1fr)] items-center border-b border-white/70 px-3 py-2 last:border-b-0 md:grid-cols-[170px_minmax(0,1fr)]">
-      <span className="dashboard-v2-caption">{label}:</span>
+    <div className="overflow-hidden rounded-[12px] bg-white/45">
+      {rows.map(([left, right]) => (
+        <div
+          key={`${left.label}-${right.label}`}
+          className="grid border-b border-white/70 last:border-b-0 md:grid-cols-2"
+        >
+          <InfoTableCell {...left} />
+          <InfoTableCell {...right} bordered />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InfoTableCell({ label, value, bordered = false }: InfoCell & { bordered?: boolean }) {
+  return (
+    <div
+      className={[
+        'grid min-h-[42px] grid-cols-[150px_minmax(0,1fr)] items-center gap-3 px-3 py-2',
+        bordered ? 'border-t border-white/70 md:border-l md:border-t-0' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <span className="dashboard-v2-caption">{label}</span>
       <span className="dashboard-v2-text min-w-0 font-semibold">{value}</span>
     </div>
   );

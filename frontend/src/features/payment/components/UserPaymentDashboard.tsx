@@ -79,6 +79,12 @@ export function UserPaymentDashboard({
     (targetLevelName &&
       BILLING_GROUP_BY_TARGET[targetLevelName as keyof typeof BILLING_GROUP_BY_TARGET]) ||
     (activeGroupName ? activeGroupName.toLowerCase().trim() : '');
+  const hasPaidSeparatePayment = payments.some(
+    (payment) =>
+      payment.type !== 'FULL_PACKAGE' &&
+      ORDERED_TYPES.includes(payment.type) &&
+      payment.status === 'PAID',
+  );
 
   const getRelatedPayments = (payment: PaymentItem): PaymentItem[] => {
     const isSupervisorCombined =
@@ -207,6 +213,12 @@ export function UserPaymentDashboard({
                       payment={payment}
                       isAdmin={false}
                       relatedPayments={getRelatedPayments(payment)}
+                      disabled={payment.type === 'FULL_PACKAGE' && hasPaidSeparatePayment}
+                      disabledReason={
+                        payment.type === 'FULL_PACKAGE' && hasPaidSeparatePayment
+                          ? 'Пакет недоступен: уже принят отдельный платеж'
+                          : undefined
+                      }
                     />
                   </div>
                 </div>

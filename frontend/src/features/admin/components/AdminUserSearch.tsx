@@ -23,7 +23,7 @@ export function AdminUserSearch({
   autoFocus = false,
   className = '',
   size = 'compact',
-  placeholder = 'ФИО, email, телефон',
+  placeholder = 'ФИО, email, телефон, рег. номер',
 }: Props) {
   const navigate = useNavigate();
   const listId = useId();

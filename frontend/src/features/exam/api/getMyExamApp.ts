@@ -23,6 +23,9 @@ export type ExamApp = {
   user: {
     email: string;
     fullName: string;
+    fullNameLatin?: string | null;
+    phone?: string | null;
+    registrationNumber?: string | null;
   };
 };
 

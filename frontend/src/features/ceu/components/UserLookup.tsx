@@ -3,7 +3,14 @@ import { useState } from 'react';
 import { useUsers } from '@/features/admin/hooks/useUsers'; // у тебя уже есть такой хук
 import { Button } from '@/components/Button';
 
-type UserLite = { id: string; fullName: string; email: string };
+type UserLite = {
+  id: string;
+  fullName: string;
+  fullNameLatin?: string | null;
+  email: string;
+  phone?: string | null;
+  registrationNumber?: string | null;
+};
 
 export function UserLookup({ onSelect }: { onSelect: (u: UserLite) => void }) {
   const [q, setQ] = useState('');
@@ -30,7 +37,7 @@ export function UserLookup({ onSelect }: { onSelect: (u: UserLite) => void }) {
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Имя или email"
+            placeholder="ФИО, email, телефон, рег. номер"
             className="input w-72"
           />
         </div>
@@ -50,6 +57,13 @@ export function UserLookup({ onSelect }: { onSelect: (u: UserLite) => void }) {
                 <div className="truncate">
                   <div className="font-medium truncate text-blue-dark">{u.fullName || '—'}</div>
                   <div className="text-sm text-gray-500 truncate">{u.email}</div>
+                  {u.fullNameLatin || u.phone || u.registrationNumber ? (
+                    <div className="text-xs text-gray-500 truncate">
+                      {[u.fullNameLatin, u.phone, u.registrationNumber ? `N ${u.registrationNumber}` : '']
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </div>
+                  ) : null}
                 </div>
                 <Button size="sm" variant="accent" onClick={() => onSelect(u)}>
                   Выбрать

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import { AdminIdentityFilterInput } from '@/components/AdminIdentityFilterInput';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { Button } from '@/components/Button';
 import { CopyEmailLink } from '@/components/CopyEmailLink';
@@ -241,11 +242,12 @@ export default function CeuReviewPage() {
 
           <label className="dashboard-v2-small block text-[#1F305E]">
             Пользователь
-            <input
+            <AdminIdentityFilterInput
               value={search}
-              onChange={(event) => updateQuery({ search: event.target.value }, { replace: true })}
-              className="input-design mt-1"
-              placeholder="ФИО или email"
+              onChange={(value) => updateQuery({ search: value }, { replace: true })}
+              className="mt-1"
+              placeholder="ФИО, email, телефон, рег. номер"
+              ariaLabel="Поиск пользователя"
             />
           </label>
 

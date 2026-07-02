@@ -15,9 +15,17 @@ type Props = {
   payment: PaymentItem & { userEmail?: string; user?: { email?: string } };
   isAdmin: boolean;
   relatedPayments?: PaymentItem[];
+  disabled?: boolean;
+  disabledReason?: string;
 };
 
-export function PaymentStatusToggle({ payment, isAdmin, relatedPayments = [] }: Props) {
+export function PaymentStatusToggle({
+  payment,
+  isAdmin,
+  relatedPayments = [],
+  disabled = false,
+  disabledReason,
+}: Props) {
   const mutation = useUpdatePaymentStatus(payment.userId);
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
@@ -112,8 +120,9 @@ export function PaymentStatusToggle({ payment, isAdmin, relatedPayments = [] }: 
     <button
       type="button"
       onClick={handleClick}
+      title={disabledReason}
       className="btn btn-brand w-full sm:w-auto sm:min-w-[132px] min-h-[52px] px-4 py-3 text-center leading-tight whitespace-normal shrink-0"
-      disabled={mutation.isPending}
+      disabled={mutation.isPending || disabled}
     >
       {isAdmin
         ? effectiveStatus === PAYMENT_STATUS.PAID

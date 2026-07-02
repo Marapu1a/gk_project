@@ -10,7 +10,8 @@ export type AdminReviewerHourState =
   | 'REJECTED_BY_ADMIN'
   | 'CONFIRMED_BY_REVIEWER'
   | 'REJECTED_BY_REVIEWER'
-  | 'ADMIN_CORRECTION';
+  | 'ADMIN_CORRECTION'
+  | 'LEGACY_RECORD';
 export type AdminReviewerCandidateSortBy =
   | 'candidate'
   | 'candidateEmail'
@@ -34,7 +35,7 @@ export type AdminReviewerCandidatesParams = {
 };
 
 export type AdminReviewerCandidateRow = {
-  rowType: 'RELATION' | 'ADMIN_CORRECTION';
+  rowType: 'RELATION' | 'ADMIN_CORRECTION' | 'LEGACY_RECORD';
   relationId: string;
   correctionId?: string;
   kind: AdminReviewerCandidateKind;
@@ -67,6 +68,27 @@ export type AdminReviewerCandidateRow = {
       nonObservingIndividual: number;
       nonObservingGroup: number;
     };
+  } | null;
+  legacyRecord: {
+    id: string;
+    createdAt: string;
+    supervisionDate: string | null;
+    periodStartedAt: string | null;
+    periodEndedAt: string | null;
+    treatmentSetting: string | null;
+    description: string | null;
+    distribution: {
+      directIndividual: number;
+      directGroup: number;
+      nonObservingIndividual: number;
+      nonObservingGroup: number;
+    };
+    hours: Array<{
+      id: string;
+      type: string;
+      value: number;
+      status: AdminReviewerHourStatus;
+    }>;
   } | null;
   pendingRequests: Array<{
     id: string;

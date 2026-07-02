@@ -103,17 +103,11 @@ export default function UserDetails() {
         </section>
 
         <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
-          <UserSupervisionMatrix
-            userId={data.id}
-            activeGroupName={activeGroup}
-          />
+          <UserSupervisionMatrix userId={data.id} activeGroupName={activeGroup} />
         </section>
 
         <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
-          <AdminCEUMatrixBlock
-            userId={data.id}
-            required={data.examReadiness?.ceu.required}
-          />
+          <AdminCEUMatrixBlock userId={data.id} required={data.examReadiness?.ceu.required} />
         </section>
 
         <ReviewerRelationsOverviewBlock
@@ -121,7 +115,6 @@ export default function UserDetails() {
           activeGroupName={activeGroup}
           relations={data.reviewerCandidateRelations}
         />
-
       </div>
 
       {isNotesOpen ? (
@@ -162,7 +155,7 @@ export default function UserDetails() {
 
       {isStatusOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-          <div className="relative max-h-[90vh] w-full max-w-[1040px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+          <div className="relative max-h-[90vh] w-full max-w-[1120px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
             <ModalCloseButton onClick={() => setIsStatusOpen(false)} />
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>

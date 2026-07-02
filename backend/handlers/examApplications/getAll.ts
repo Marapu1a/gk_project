@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { buildUserIdentitySearchWhere } from '../../utils/userIdentitySearch';
 
 export async function getAllExamAppsHandler(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as { role?: 'ADMIN' | 'REVIEWER' | 'STUDENT' } | undefined;
@@ -7,11 +8,17 @@ export async function getAllExamAppsHandler(req: FastifyRequest, reply: FastifyR
     return reply.code(403).send({ error: 'Доступ запрещён' });
   }
 
+  const { search } = req.query as { search?: string };
+  const userSearchWhere = buildUserIdentitySearchWhere(search);
+
   const apps = await prisma.examApplication.findMany({
     where: {
       status: { not: 'NOT_SUBMITTED' },
       // не показываем заявки пользователей с ролью ADMIN
-      user: { role: { not: 'ADMIN' } },
+      user: {
+        role: { not: 'ADMIN' },
+        ...(userSearchWhere ?? {}),
+      },
     },
     orderBy: { updatedAt: 'desc' },
     select: {
@@ -34,7 +41,16 @@ export async function getAllExamAppsHandler(req: FastifyRequest, reply: FastifyR
           startedAt: true,
         },
       },
-      user: { select: { email: true, fullName: true, role: true } },
+      user: {
+        select: {
+          email: true,
+          fullName: true,
+          fullNameLatin: true,
+          phone: true,
+          registrationNumber: true,
+          role: true,
+        },
+      },
     },
   });
 

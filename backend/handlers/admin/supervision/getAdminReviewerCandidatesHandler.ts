@@ -8,6 +8,7 @@ import {
   SupervisionAdminCorrectionKind,
 } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
+import { buildUserIdentitySearchWhere } from '../../../utils/userIdentitySearch';
 
 type CandidateKind = 'supervision' | 'mentorship';
 type SortBy = 'candidate' | 'candidateEmail' | 'reviewerEmail' | 'createdAt' | 'status';
@@ -20,7 +21,8 @@ type HourState =
   | 'REJECTED_BY_ADMIN'
   | 'CONFIRMED_BY_REVIEWER'
   | 'REJECTED_BY_REVIEWER'
-  | 'ADMIN_CORRECTION';
+  | 'ADMIN_CORRECTION'
+  | 'LEGACY_RECORD';
 
 interface GetAdminReviewerCandidatesRoute extends RouteGenericInterface {
   Querystring: {
@@ -59,6 +61,12 @@ const SUPERVISION_TYPES = [
 ];
 
 const MENTORSHIP_TYPES = [PracticeLevel.SUPERVISOR, PracticeLevel.SUPERVISION];
+const LEGACY_SUPERVISION_TYPES = [
+  PracticeLevel.INSTRUCTOR,
+  PracticeLevel.CURATOR,
+  PracticeLevel.PRACTICE,
+];
+const LEGACY_MENTORSHIP_TYPES = [PracticeLevel.SUPERVISION];
 const HOUR_STATES = new Set<string>([
   'ALL',
   'NEEDS_REVIEW',
@@ -68,6 +76,7 @@ const HOUR_STATES = new Set<string>([
   'CONFIRMED_BY_REVIEWER',
   'REJECTED_BY_REVIEWER',
   'ADMIN_CORRECTION',
+  'LEGACY_RECORD',
 ]);
 const SORT_FIELDS = new Set<string>([
   'candidate',
@@ -128,6 +137,10 @@ function typesForKind(kind: CandidateKind) {
   return kind === 'mentorship' ? MENTORSHIP_TYPES : SUPERVISION_TYPES;
 }
 
+function legacyTypesForKind(kind: CandidateKind) {
+  return kind === 'mentorship' ? LEGACY_MENTORSHIP_TYPES : LEGACY_SUPERVISION_TYPES;
+}
+
 function resolveHourState(params: {
   pendingCount: number;
   latestReview: {
@@ -150,6 +163,7 @@ function hourStateRank(state: Exclude<HourState, 'ALL'>) {
     REJECTED_BY_ADMIN: 1,
     REJECTED_BY_REVIEWER: 2,
     ADMIN_CORRECTION: 3,
+    LEGACY_RECORD: 3,
     CONFIRMED_BY_ADMIN: 3,
     CONFIRMED_BY_REVIEWER: 4,
     NO_NEW_HOURS: 5,
@@ -204,6 +218,8 @@ export async function getAdminReviewerCandidatesHandler(
   const perPage = Math.min(toInt(req.query.perPage, 100), 500);
   const trimmedSearch = search.trim();
   const trimmedReviewerSearch = reviewerSearch.trim();
+  const candidateSearchWhere = buildUserIdentitySearchWhere(trimmedSearch);
+  const reviewerSearchWhere = buildUserIdentitySearchWhere(trimmedReviewerSearch);
   const attentionOnly = attention === true || attention === 'true' || attention === '1';
 
   const relations = await prisma.reviewerCandidateRelation.findMany({
@@ -212,23 +228,9 @@ export async function getAdminReviewerCandidatesHandler(
       cycle: { status: CycleStatus.ACTIVE },
       candidate: {
         archivedAt: null,
-        ...(trimmedSearch
-          ? {
-              OR: [
-                { email: { contains: trimmedSearch, mode: 'insensitive' } },
-                { fullName: { contains: trimmedSearch, mode: 'insensitive' } },
-              ],
-            }
-          : {}),
+        ...(candidateSearchWhere ?? {}),
       },
-      reviewer: trimmedReviewerSearch
-        ? {
-            OR: [
-              { email: { contains: trimmedReviewerSearch, mode: 'insensitive' } },
-              { fullName: { contains: trimmedReviewerSearch, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
+      reviewer: reviewerSearchWhere ?? undefined,
     },
     select: {
       id: true,
@@ -395,6 +397,7 @@ export async function getAdminReviewerCandidatesHandler(
         latestReview,
         hourState: resolvedHourState,
         adminCorrection: null,
+        legacyRecord: null,
         pendingRequests: pendingRecords.map((record) => ({
           id: record.id,
           createdAt: record.createdAt,
@@ -430,23 +433,9 @@ export async function getAdminReviewerCandidatesHandler(
       cycle: { status: CycleStatus.ACTIVE },
       user: {
         archivedAt: null,
-        ...(trimmedSearch
-          ? {
-              OR: [
-                { email: { contains: trimmedSearch, mode: 'insensitive' } },
-                { fullName: { contains: trimmedSearch, mode: 'insensitive' } },
-              ],
-            }
-          : {}),
+        ...(candidateSearchWhere ?? {}),
       },
-      admin: trimmedReviewerSearch
-        ? {
-            OR: [
-              { email: { contains: trimmedReviewerSearch, mode: 'insensitive' } },
-              { fullName: { contains: trimmedReviewerSearch, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
+      admin: reviewerSearchWhere ?? undefined,
     },
     select: {
       id: true,
@@ -480,6 +469,7 @@ export async function getAdminReviewerCandidatesHandler(
     latestReview: null,
     hourState: 'ADMIN_CORRECTION' as const,
     pendingRequests: [],
+    legacyRecord: null,
     adminCorrection: {
       id: correction.id,
       createdAt: correction.createdAt,
@@ -502,7 +492,94 @@ export async function getAdminReviewerCandidatesHandler(
     sortRank: hourStateRank('ADMIN_CORRECTION'),
   }));
 
-  const allRows = [...rows, ...correctionRows];
+  const shouldLoadLegacyRecords =
+    trimmedReviewerSearch.length === 0 &&
+    (trimmedSearch.length > 0 || hourState === 'LEGACY_RECORD');
+
+  const legacyRecords =
+    !shouldLoadLegacyRecords
+      ? []
+      : await prisma.supervisionRecord.findMany({
+          where: {
+            user: {
+              archivedAt: null,
+              ...(candidateSearchWhere ?? {}),
+            },
+            hours: {
+              some: {
+                type: { in: legacyTypesForKind(normalizedKind) },
+              },
+            },
+          },
+          select: {
+            id: true,
+            createdAt: true,
+            supervisionDate: true,
+            periodStartedAt: true,
+            periodEndedAt: true,
+            treatmentSetting: true,
+            description: true,
+            draftDirectIndividual: true,
+            draftDirectGroup: true,
+            draftNonObservingIndividual: true,
+            draftNonObservingGroup: true,
+            user: { select: { id: true, email: true, fullName: true } },
+            hours: {
+              where: {
+                type: { in: legacyTypesForKind(normalizedKind) },
+              },
+              select: {
+                id: true,
+                type: true,
+                value: true,
+                status: true,
+              },
+            },
+          },
+          orderBy: [{ supervisionDate: 'desc' }, { createdAt: 'desc' }],
+        });
+
+  const legacyRows = legacyRecords.map((record) => ({
+    rowType: 'LEGACY_RECORD' as const,
+    relationId: `legacy:${record.id}`,
+    kind: normalizedKind,
+    relationStatus: ReviewerCandidateStatus.ACCEPTED,
+    candidate: record.user,
+    reviewer: { id: '', email: '—', fullName: null },
+    latestRequestAt: requestTimestamp(record),
+    latestPendingRequestAt: null,
+    latestReview: null,
+    hourState: 'LEGACY_RECORD' as const,
+    pendingRequests: [],
+    adminCorrection: null,
+    legacyRecord: {
+      id: record.id,
+      createdAt: record.createdAt,
+      supervisionDate: record.supervisionDate,
+      periodStartedAt: record.periodStartedAt,
+      periodEndedAt: record.periodEndedAt,
+      treatmentSetting: record.treatmentSetting,
+      description: record.description,
+      distribution: {
+        directIndividual: record.draftDirectIndividual ?? 0,
+        directGroup: record.draftDirectGroup ?? 0,
+        nonObservingIndividual: record.draftNonObservingIndividual ?? 0,
+        nonObservingGroup: record.draftNonObservingGroup ?? 0,
+      },
+      hours: record.hours.map((hour) => ({
+        id: hour.id,
+        type: hour.type,
+        value: hour.value,
+        status: hour.status,
+      })),
+    },
+    relationCreatedAt: record.createdAt,
+    relationUpdatedAt: record.createdAt,
+    pendingCount: 0,
+    sortRank: hourStateRank('LEGACY_RECORD'),
+  }));
+
+  const allRows = [...rows, ...correctionRows, ...legacyRows];
 
   const filteredRows = allRows.filter((row) => {
     const date = rowTimestamp(row);
@@ -556,6 +633,15 @@ export async function getAdminReviewerCandidatesHandler(
             ...row.adminCorrection,
             createdAt: row.adminCorrection.createdAt.toISOString(),
             updatedAt: row.adminCorrection.updatedAt.toISOString(),
+          }
+        : null,
+      legacyRecord: row.legacyRecord
+        ? {
+            ...row.legacyRecord,
+            createdAt: row.legacyRecord.createdAt.toISOString(),
+            supervisionDate: row.legacyRecord.supervisionDate?.toISOString() ?? null,
+            periodStartedAt: row.legacyRecord.periodStartedAt?.toISOString() ?? null,
+            periodEndedAt: row.legacyRecord.periodEndedAt?.toISOString() ?? null,
           }
         : null,
       relationCreatedAt: row.relationCreatedAt.toISOString(),

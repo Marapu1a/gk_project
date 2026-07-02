@@ -117,7 +117,7 @@ export function GroupAssignmentForm() {
         <form onSubmit={handleSubmit} className="ml-auto w-80 relative">
           <input
             type="text"
-            placeholder="Email или ФИО"
+            placeholder="ФИО, email, телефон, рег. номер"
             className="input w-full"
             value={emailOrName}
             onChange={(e) => {
@@ -146,6 +146,13 @@ export function GroupAssignmentForm() {
                   <div className="min-w-0">
                     <div className="font-medium text-blue-dark truncate">{s.fullName}</div>
                     <div className="text-xs text-gray-600 truncate">{s.email}</div>
+                    {s.fullNameLatin || s.phone || s.registrationNumber ? (
+                      <div className="text-xs text-gray-500 truncate">
+                        {[s.fullNameLatin, s.phone, s.registrationNumber ? `N ${s.registrationNumber}` : '']
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </div>
+                    ) : null}
                   </div>
                   {s.groupName && (
                     <span

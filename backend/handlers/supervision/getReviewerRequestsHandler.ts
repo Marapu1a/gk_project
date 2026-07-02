@@ -221,6 +221,7 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
         ? {
             OR: [
               { fullName: { contains: candidate, mode: 'insensitive' } },
+              { fullNameLatin: { contains: candidate, mode: 'insensitive' } },
               { email: { contains: candidate, mode: 'insensitive' } },
             ],
           }

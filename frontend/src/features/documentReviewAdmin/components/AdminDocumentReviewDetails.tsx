@@ -47,6 +47,7 @@ type ReviewFile = {
   adminComment?: string | null;
   deletionRequestedAt?: string | null;
   deletionRequestComment?: string | null;
+  transferredFromPreviousRequest?: boolean;
   file: {
     id: string;
     fileId: string;
@@ -96,7 +97,7 @@ function statusConfirmOptions(status: DocumentReviewFileStatus) {
   if (status === 'CONFIRMED') {
     return {
       message: 'Принять документ?',
-      description: 'Статус заявки пересчитается автоматически.',
+      description: '',
       confirmLabel: 'Принять',
     };
   }
@@ -132,7 +133,9 @@ function documentRequestArchiveLabel(request: RelatedDocumentRequest) {
 }
 
 function documentRequestFilesCount(request: RelatedDocumentRequest) {
-  return request._count?.documentFiles || request._count?.documents || request.documentFiles?.length || 0;
+  return (
+    request._count?.documentFiles || request._count?.documents || request.documentFiles?.length || 0
+  );
 }
 
 function formatRequestsCount(count: number) {
@@ -355,9 +358,7 @@ export function AdminDocumentReviewDetails() {
                 onClick={() => setIsArchiveOpen((prev) => !prev)}
               >
                 <span>
-                  <span className="block text-[18px] font-extrabold">
-                    Другие заявки документов
-                  </span>
+                  <span className="block text-[18px] font-extrabold">Другие заявки документов</span>
                   <span className="mt-1 block text-[13px] font-semibold text-[#8D96B5]">
                     Есть {formatRequestsCount(relatedRequests.length)}. Они сохранены для истории и
                     не подменяют документы текущей сертификации.
@@ -566,6 +567,12 @@ function DocumentFileCard({
           >
             {fileStatusLabels[item.status]}
           </span>
+
+          {item.transferredFromPreviousRequest ? (
+            <span className="inline-flex min-h-[26px] items-center rounded-full bg-[var(--color-blue-soft)] px-3 text-[12px] font-extrabold text-[var(--color-blue-dark)]">
+              Перенесен из прошлой сертификации
+            </span>
+          ) : null}
         </div>
 
         <label className="block text-[13px] font-semibold">

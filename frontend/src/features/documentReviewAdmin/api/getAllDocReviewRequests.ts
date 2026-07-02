@@ -1,8 +1,8 @@
 import { api } from '@/lib/axios';
 
-export async function getAllDocReviewRequests(email?: string) {
+export async function getAllDocReviewRequests(search?: string) {
   const res = await api.get('/document-review-requests', {
-    params: email ? { email } : {},
+    params: search ? { search } : {},
   });
   return res.data;
 }

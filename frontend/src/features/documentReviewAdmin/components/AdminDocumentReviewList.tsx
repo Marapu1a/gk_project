@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
+import { AdminIdentityFilterInput } from '@/components/AdminIdentityFilterInput';
 import { useAllDocReviewRequests } from '../hooks/useAllDocReviewRequests';
 import { documentReviewStatusLabels } from '@/utils/documentReviewStatusLabels';
 
@@ -23,12 +24,6 @@ const statusWeight: Record<string, number> = {
   REJECTED: 2,
   CONFIRMED: 3,
 };
-
-const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
-const tokenize = (s: string) =>
-  norm(s)
-    .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
-    .filter(Boolean);
 
 function formatDate(value?: string | null) {
   if (!value) return '—';
@@ -69,25 +64,19 @@ export function AdminDocumentReviewList() {
   }, [urlMode]);
 
   const rows = useMemo(() => {
-    const tokens = tokenize(search);
-
     return (requests as RequestRow[])
       .filter((request) => {
         const isActive = activeStatuses.has(request.status);
         if (mode === 'active' && !isActive) return false;
         if (mode === 'history' && isActive) return false;
-
-        if (!tokens.length) return true;
-
-        const hay = norm([request.user?.email, request.user?.fullName].filter(Boolean).join(' '));
-        return tokens.every((token) => hay.includes(token));
+        return true;
       })
       .sort((a, b) => {
         const weightDiff = (statusWeight[a.status] ?? 9) - (statusWeight[b.status] ?? 9);
         if (weightDiff !== 0) return weightDiff;
         return new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime();
       });
-  }, [mode, requests, search]);
+  }, [mode, requests]);
 
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -135,12 +124,13 @@ export function AdminDocumentReviewList() {
           <form onSubmit={handleSearchSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <label className="block text-[13px] font-semibold">
               Поиск
-              <input
-                type="text"
+              <AdminIdentityFilterInput
                 value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Email или ФИО"
-                className="input-design mt-1 h-[36px] w-full sm:w-[280px]"
+                onChange={setSearchInput}
+                placeholder="ФИО, email, телефон, рег. номер"
+                className="mt-1 w-full sm:w-[320px]"
+                inputClassName="h-[36px]"
+                ariaLabel="Поиск по пользователю"
               />
             </label>
             <button

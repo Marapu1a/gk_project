@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import { AdminIdentityFilterInput } from '@/components/AdminIdentityFilterInput';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { DashboardDateInput } from '@/components/DashboardDateInput';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -40,6 +41,7 @@ const HOUR_STATE_OPTIONS: Array<{ value: AdminReviewerHourState | 'ALL'; label: 
   { value: 'REJECTED_BY_REVIEWER', label: 'Отклонены проверяющим' },
   { value: 'REJECTED_BY_ADMIN', label: 'Убраны администратором' },
   { value: 'ADMIN_CORRECTION', label: 'Корректировки администратора' },
+  { value: 'LEGACY_RECORD', label: 'Из старой версии' },
 ];
 
 type HourStateTone = 'danger' | 'muted' | 'normal' | 'success';
@@ -103,6 +105,10 @@ const HOUR_LABELS: Record<string, string> = {
 function hourState(row: AdminReviewerCandidateRow): { text: string; tone: HourStateTone } {
   if (row.rowType === 'ADMIN_CORRECTION') {
     return { text: 'Корректировка администратора', tone: 'normal' };
+  }
+
+  if (row.rowType === 'LEGACY_RECORD') {
+    return { text: 'из старой версии', tone: 'muted' };
   }
 
   if (row.pendingCount > 0) {
@@ -317,21 +323,23 @@ function AdminSupervisionCandidatesContent() {
 
           <label className="dashboard-v2-small block text-[#1F305E]">
             Кандидат
-            <input
+            <AdminIdentityFilterInput
               value={search}
-              onChange={(event) => updateQuery({ search: event.target.value }, { replace: true })}
-              className="input-design mt-1"
-              placeholder="ФИО или email"
+              onChange={(value) => updateQuery({ search: value }, { replace: true })}
+              className="mt-1"
+              placeholder="ФИО, email, телефон, рег. номер"
+              ariaLabel="Поиск кандидата"
             />
           </label>
 
           <label className="dashboard-v2-small block text-[#1F305E]">
             Назначенный проверяющий
-            <input
+            <AdminIdentityFilterInput
               value={reviewerSearch}
-              onChange={(event) => updateQuery({ reviewerSearch: event.target.value }, { replace: true })}
-              className="input-design mt-1"
-              placeholder="ФИО или email"
+              onChange={(value) => updateQuery({ reviewerSearch: value }, { replace: true })}
+              className="mt-1"
+              placeholder="ФИО, email, телефон, рег. номер"
+              ariaLabel="Поиск назначенного проверяющего"
             />
           </label>
 
@@ -443,11 +451,15 @@ function AdminSupervisionCandidatesContent() {
                         <div>
                           {row.rowType === 'ADMIN_CORRECTION'
                             ? row.adminCorrection?.admin?.email ?? row.reviewer.email
+                            : row.rowType === 'LEGACY_RECORD'
+                              ? '—'
                             : row.reviewer.email}
                         </div>
                         <div className="dashboard-v2-caption mt-1 text-[#8D96B5]">
                           {row.rowType === 'ADMIN_CORRECTION'
                             ? 'служебная корректировка'
+                            : row.rowType === 'LEGACY_RECORD'
+                              ? 'из старой версии'
                             : RELATION_STATUS_LABELS[row.relationStatus]}
                         </div>
                       </td>
@@ -485,6 +497,12 @@ function AdminSupervisionCandidatesContent() {
       {selectedRow ? (
         selectedRow.rowType === 'ADMIN_CORRECTION' ? (
           <AdminCorrectionDetailsModal
+            row={selectedRow}
+            kindLabel={KIND_LABELS[kind]}
+            onClose={() => setSelectedRow(null)}
+          />
+        ) : selectedRow.rowType === 'LEGACY_RECORD' ? (
+          <LegacyHoursDetailsModal
             row={selectedRow}
             kindLabel={KIND_LABELS[kind]}
             onClose={() => setSelectedRow(null)}
@@ -649,6 +667,65 @@ function AdminCorrectionDetailsModal({
               </div>
             </div>
           )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function LegacyHoursDetailsModal({
+  row,
+  kindLabel,
+  onClose,
+}: {
+  row: AdminReviewerCandidateRow;
+  kindLabel: string;
+  onClose: () => void;
+}) {
+  const record = row.legacyRecord;
+  const requestDateLabel = getSupervisionRequestDateLabel(row.kind);
+  const distribution = record?.distribution ?? {
+    directIndividual: 0,
+    directGroup: 0,
+    nonObservingIndividual: 0,
+    nonObservingGroup: 0,
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+      <div className="relative max-h-[90vh] w-full max-w-[900px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 text-[#1F305E] shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
+        <ModalCloseButton onClick={onClose} />
+
+        <h3 className="dashboard-v2-page-title mb-5 text-center">Часы из старой версии</h3>
+
+        <div className="mb-5 grid gap-4 md:grid-cols-3">
+          <CompactField label="Кандидат" value={candidateName(row.candidate.fullName, row.candidate.email)} />
+          <CompactField label="Email кандидата" value={row.candidate.email} />
+          <CompactField label="Тип" value={kindLabel} />
+          <CompactField label={requestDateLabel} value={formatDate(record?.supervisionDate ?? record?.createdAt)} />
+          <CompactField label="Период практики" value={`${formatDate(record?.periodStartedAt)} — ${formatDate(record?.periodEndedAt)}`} />
+          <CompactField label="Источник" value="из старой версии" />
+        </div>
+
+        <section className="rounded-[14px] bg-[var(--color-blue-soft)] px-4 py-4 dashboard-v2-text">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            <div className="space-y-4">
+              <HoursList hours={record?.hours ?? []} />
+              {row.kind === 'supervision' ? (
+                <DistributionBlock distribution={distribution} />
+              ) : null}
+            </div>
+
+            <div className="space-y-3">
+              <CompactField label="Условия практики" value={record?.treatmentSetting || '—'} />
+              <div>
+                <div className="dashboard-v2-small mb-1 text-[#8D96B5]">Описание</div>
+                <div className="dashboard-v2-caption min-h-[76px] rounded-[8px] bg-white px-3 py-2 text-[#1F305E]">
+                  {record?.description || '—'}
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     </div>

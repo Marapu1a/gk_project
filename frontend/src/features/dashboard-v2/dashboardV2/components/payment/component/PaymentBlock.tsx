@@ -91,6 +91,12 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
 
     const fullPackage = payments.find((p) => p.type === 'FULL_PACKAGE');
     const isPackageActive = fullPackage?.status === 'PENDING' || fullPackage?.status === 'PAID';
+    const hasPaidSeparatePayment = payments.some(
+      (payment) =>
+        payment.type !== 'FULL_PACKAGE' &&
+        ORDER.includes(payment.type) &&
+        payment.status === 'PAID',
+    );
 
     if (isPackageActive && fullPackage && visibleTypes.includes('FULL_PACKAGE')) {
       return [
@@ -111,7 +117,10 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
         let disabledReason: string | undefined;
 
         if (payment.type === 'FULL_PACKAGE') {
-          uiDisabled = false;
+          uiDisabled = hasPaidSeparatePayment;
+          disabledReason = hasPaidSeparatePayment
+            ? 'Пакет недоступен: уже принят отдельный платеж'
+            : undefined;
         } else if (isPackageActive) {
           uiDisabled = true;
           disabledReason = 'Платеж входит в пакет';

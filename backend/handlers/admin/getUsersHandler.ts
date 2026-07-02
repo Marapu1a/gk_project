@@ -1,6 +1,7 @@
 // src/handlers/admin/getUsersHandler.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { buildUserIdentitySearchWhere } from '../../utils/userIdentitySearch';
 
 type Q = {
   role?: string;
@@ -21,15 +22,6 @@ type Q = {
 function toInt(v: Q['page'], def: number) {
   const n = typeof v === 'string' ? parseInt(v, 10) : typeof v === 'number' ? v : def;
   return Number.isFinite(n) && n > 0 ? n : def;
-}
-
-function tokenize(q: string) {
-  return q
-    .toLowerCase()
-    .normalize('NFKC')
-    .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
-    .map((s) => s.trim())
-    .filter(Boolean);
 }
 
 function parseDateBoundary(value: string | undefined, endOfDay = false) {
@@ -124,31 +116,22 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
     });
   }
 
-  // 3) поиск (БЕЗ fullNameLatin — как просил)
+  // 3) поиск по данным пользователя
   if (search && search.trim()) {
-    const tokens = tokenize(search);
-    const AND: any[] = [];
+    const searchWhere = buildUserIdentitySearchWhere(search, {
+      extraTokenConditions: (tok) => {
+        const OR: any[] = [
+          { groups: { some: { group: { name: { contains: tok, mode: 'insensitive' } } } } },
+        ];
+        const r = detectRole(tok);
+        if (actorRole === 'ADMIN' && r) OR.push({ role: r });
+        return OR;
+      },
+    });
 
-    for (const tok of tokens) {
-      const r = detectRole(tok);
-      const digits = tok.replace(/\D/g, '');
-      const OR: any[] = [
-        { fullName: { contains: tok, mode: 'insensitive' } },
-        { email: { contains: tok, mode: 'insensitive' } },
-        { groups: { some: { group: { name: { contains: tok, mode: 'insensitive' } } } } },
-      ];
-      if (digits) {
-        OR.push(
-          { phone: { contains: digits, mode: 'insensitive' } },
-          { registrationNumber: { contains: digits, mode: 'insensitive' } },
-        );
-      }
-      // только админ может искать по тексту «админ/ревьюер/соискатель» и этим менять фильтр по роли
-      if (actorRole === 'ADMIN' && r) OR.push({ role: r });
-      AND.push({ OR });
+    if (searchWhere) {
+      where = addAnd(where, searchWhere);
     }
-
-    where = addAnd(where, { AND });
   }
 
   // 4) спец-режим для выбора рецензентов часов

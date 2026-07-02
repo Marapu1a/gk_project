@@ -15,6 +15,19 @@ type StatusSummary = {
   rejectedReason: string | null;
 };
 
+const NEW_HISTORY_TYPES = [
+  PracticeLevel.IMPLEMENTING,
+  PracticeLevel.PROGRAMMING,
+  PracticeLevel.SUPERVISOR,
+];
+
+const LEGACY_HISTORY_TYPES = [
+  PracticeLevel.INSTRUCTOR,
+  PracticeLevel.CURATOR,
+  PracticeLevel.PRACTICE,
+  PracticeLevel.SUPERVISION,
+];
+
 function round2(value: number) {
   return Math.round(value * 100) / 100;
 }
@@ -80,6 +93,10 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
       where: {
         userId,
         cycleId: activeCycle.id,
+        hours: {
+          some: { type: { in: NEW_HISTORY_TYPES } },
+          none: { type: { in: LEGACY_HISTORY_TYPES } },
+        },
       },
       select: {
         id: true,

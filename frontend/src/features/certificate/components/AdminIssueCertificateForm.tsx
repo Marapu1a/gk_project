@@ -91,7 +91,9 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
 
     return (
       allUsers.find((u: any) => {
-        const values = [u.email, u.fullName].filter(Boolean).map(norm);
+        const values = [u.email, u.fullName, u.fullNameLatin, u.phone, u.registrationNumber]
+          .filter(Boolean)
+          .map(norm);
         return values.includes(input);
       }) ?? null
     );
@@ -99,6 +101,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
 
   const hasResolvedUser = Boolean(selectedUserId || exactMatchedUser);
   const resolvedUserId = selectedUserId || exactMatchedUser?.id || null;
+  const resolvedEmail = exactMatchedUser?.email || email;
   const hasUnresolvedUserInput =
     Boolean(userSearchInput.trim()) && !isUsersLoading && !hasResolvedUser;
 
@@ -116,7 +119,10 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
     return allUsers.filter((u: any) => {
       const hayParts = [
         u.fullName,
+        u.fullNameLatin,
         u.email,
+        u.phone,
+        u.registrationNumber,
         ...((u.groups as { name: string }[] | undefined)?.map((g) => g.name) ?? []),
       ];
 
@@ -126,7 +132,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
   }, [allUsers, userSearchInput]);
 
   const canSubmit =
-    !!email.trim() &&
+    !!resolvedEmail.trim() &&
     !!title.trim() &&
     !!numberSuffix.trim() &&
     !!issuedDate &&
@@ -164,7 +170,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
     try {
       const certNumber = `${CERTIFICATE_NUMBER_PREFIX}${numberSuffix.trim()}`;
       const res = await mutation.mutateAsync({
-        email: email.trim(),
+        email: resolvedEmail.trim(),
         title: title.trim(),
         number: certNumber,
         issuedAt: issuedDate,
@@ -173,7 +179,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       });
 
       const report: CertificateIssuedReport = {
-        email: email.trim(),
+        email: resolvedEmail.trim(),
         title: title.trim(),
         number: certNumber,
         groupName: res.group?.name ?? title.trim(),
@@ -281,7 +287,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
                 ? 'border-[var(--color-danger)]'
                 : ''
           }`}
-          placeholder="Email или ФИО"
+          placeholder="ФИО, email, телефон, рег. номер"
           autoComplete="off"
           required
         />

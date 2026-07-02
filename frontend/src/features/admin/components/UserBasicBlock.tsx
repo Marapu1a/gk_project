@@ -218,7 +218,6 @@ export default function UserBasicBlock(props: Props) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="dashboard-v2-title">Основная информация</h2>
         {!edit ? (
           <button
             className="btn dashboard-v2-action dashboard-v2-action-primary"

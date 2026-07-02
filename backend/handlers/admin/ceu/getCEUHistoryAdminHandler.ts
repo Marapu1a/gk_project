@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest, RouteGenericInterface } from 'fastify';
 import { CEUCategory, RecordStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
+import { buildUserIdentitySearchWhere } from '../../../utils/userIdentitySearch';
 
 type SortBy = 'createdAt' | 'eventDate' | 'email' | 'group' | 'category' | 'status' | 'points';
 type SortDir = 'asc' | 'desc';
@@ -246,6 +247,7 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
   const sortDir: SortDir = rawSortDir === 'asc' ? 'asc' : 'desc';
   const page = toInt(query.page, 1);
   const perPage = Math.min(toInt(query.perPage, 100), 500);
+  const userSearchWhere = buildUserIdentitySearchWhere(search);
 
   const where: any = {
     ...(from || to
@@ -256,16 +258,7 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
           },
         }
       : {}),
-    ...(search.trim()
-      ? {
-          user: {
-            OR: [
-              { email: { contains: search.trim(), mode: 'insensitive' } },
-              { fullName: { contains: search.trim(), mode: 'insensitive' } },
-            ],
-          },
-        }
-      : {}),
+    ...(userSearchWhere ? { user: userSearchWhere } : {}),
     ...(category !== 'ALL' || status !== 'ALL'
       ? {
           entries: {

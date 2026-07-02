@@ -59,6 +59,7 @@ export async function getReviewerSuggestionsHandler(req: FastifyRequest, reply: 
           AND: tokens.map((tok) => ({
             OR: [
               { fullName: { contains: tok, mode: 'insensitive' as const } },
+              { fullNameLatin: { contains: tok, mode: 'insensitive' as const } },
               { email: { contains: tok, mode: 'insensitive' as const } },
               {
                 groups: {

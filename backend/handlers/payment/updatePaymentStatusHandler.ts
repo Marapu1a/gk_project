@@ -94,6 +94,29 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
     }
   }
 
+  if (
+    dbPayment.type === PaymentType.FULL_PACKAGE &&
+    (status === PaymentStatus.PENDING || status === PaymentStatus.PAID)
+  ) {
+    const paidSeparatePayment = await prisma.payment.findFirst({
+      where: {
+        userId: dbPayment.userId,
+        type: { in: bundledTypes },
+        status: PaymentStatus.PAID,
+        OR: dbPayment.targetLevel
+          ? [{ targetLevel: dbPayment.targetLevel }, { targetLevel: null }]
+          : [{ targetLevel: null }, { targetLevel: { not: null } }],
+      },
+      select: { id: true },
+    });
+
+    if (paidSeparatePayment) {
+      return reply.code(409).send({
+        error: 'Пакетная оплата недоступна: уже принят отдельный платеж.',
+      });
+    }
+  }
+
   const now = new Date();
 
   const result = await prisma.$transaction(async (tx) => {

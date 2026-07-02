@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { getAllDocReviewRequests } from '../api/getAllDocReviewRequests';
 
-export function useAllDocReviewRequests(email?: string) {
+export function useAllDocReviewRequests(search?: string) {
   return useQuery({
-    queryKey: ['admin', 'docReviewRequests', email],
-    queryFn: () => getAllDocReviewRequests(email),
+    queryKey: ['admin', 'docReviewRequests', search],
+    queryFn: () => getAllDocReviewRequests(search),
   });
 }

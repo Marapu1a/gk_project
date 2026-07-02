@@ -359,9 +359,7 @@ export function CertificationBlock({ user }: Props) {
 
       return (
         <section className="card-section flex h-full min-h-[340px] w-full flex-col px-5 py-6 shadow-soft">
-          <h2 className="dashboard-v2-title mb-5 text-center">
-            Сертификация и ресертификация
-          </h2>
+          <h2 className="dashboard-v2-title mb-5 text-center">Сертификация и ресертификация</h2>
           <div className="dashboard-v2-text flex flex-1 items-center rounded-[8px] bg-[var(--color-blue-soft)] px-5 py-6 text-center leading-6 text-blue-dark">
             {bodyText}
           </div>
@@ -374,9 +372,7 @@ export function CertificationBlock({ user }: Props) {
 
     return (
       <section className="card-section flex h-full min-h-[340px] w-full flex-col px-5 py-6 shadow-soft">
-        <h2 className="dashboard-v2-title mb-5 text-center">
-          Сертификация и ресертификация
-        </h2>
+        <h2 className="dashboard-v2-title mb-5 text-center">Сертификация и ресертификация</h2>
 
         <div className="relative mb-5">
           <select
@@ -421,7 +417,8 @@ export function CertificationBlock({ user }: Props) {
 
         <div className="dashboard-v2-caption mb-5 text-center text-[#97A0BD]">
           <p>
-            Изменить уровень сертификации можно после получения сертификата или с помощью администратора:{' '}
+            Изменить уровень сертификации можно после получения сертификата или с помощью
+            администратора:{' '}
             <CopyEmailLink
               email={UI_CERTIFICATION_MESSAGES.supportEmail}
               className="cursor-pointer text-blue-dark underline underline-offset-2"
@@ -436,7 +433,9 @@ export function CertificationBlock({ user }: Props) {
         )}
 
         {setTarget.isSuccess && !errorMessage && (
-          <p className="dashboard-v2-text text-center text-[var(--color-green-brand)]">Цель обновлена</p>
+          <p className="dashboard-v2-text text-center text-[var(--color-green-brand)]">
+            Цель обновлена
+          </p>
         )}
 
         <div className="dashboard-v2-label mt-auto flex h-[42px] items-center justify-center rounded-[8px] bg-[#B8C0D1] px-5 text-white">
@@ -448,18 +447,14 @@ export function CertificationBlock({ user }: Props) {
 
   return (
     <section className="card-section flex h-full min-h-[340px] w-full flex-col px-5 py-6 shadow-soft">
-      <h2 className="dashboard-v2-title mb-5 text-center">
-        Планируемый уровень сертификации
-      </h2>
+      <h2 className="dashboard-v2-title mb-5 text-center">Планируемый уровень сертификации</h2>
 
-      <div className="dashboard-v2-label dashboard-v2-level-pill mb-6">
-        {targetLevelName}
-      </div>
+      <div className="dashboard-v2-label dashboard-v2-level-pill mb-6">{targetLevelName}</div>
 
       <p className="dashboard-v2-caption mb-5 text-center text-[#97A0BD]">
         Выполните условия
         <br />
-        целевого уровня сертификации
+        уровня сертификации
       </p>
 
       <ul className="space-y-3">
