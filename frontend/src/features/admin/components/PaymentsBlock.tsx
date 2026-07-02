@@ -166,6 +166,9 @@ export default function PaymentsBlock({
 
   const fullPackage = visiblePayments.find((payment) => payment.type === 'FULL_PACKAGE');
   const isFullPackageActive = fullPackage?.status === 'PENDING' || fullPackage?.status === 'PAID';
+  const hasPaidSeparatePayment = visiblePayments.some(
+    (payment) => payment.type !== 'FULL_PACKAGE' && payment.status === 'PAID',
+  );
 
   const getDisplayStatus = (payment: Payment) => {
     if (isFullPackageActive && payment.type !== 'FULL_PACKAGE') {
@@ -238,6 +241,8 @@ export default function PaymentsBlock({
             const nextStatus = isPaid ? 'UNPAID' : 'PAID';
             const inheritedPending =
               Boolean(isFullPackageActive) && payment.type !== 'FULL_PACKAGE';
+            const isBlockedFullPackage =
+              payment.type === 'FULL_PACKAGE' && !isPaid && hasPaidSeparatePayment;
 
             return (
               <div
@@ -260,6 +265,11 @@ export default function PaymentsBlock({
                       {getDisplayStatus(payment)}
                     </span>
                   </div>
+                  {isBlockedFullPackage ? (
+                    <div className="dashboard-v2-caption mt-2 text-[#8D96B5]">
+                      Отдельный платеж уже принят.
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -271,6 +281,10 @@ export default function PaymentsBlock({
                   {inheritedPending ? (
                     <div className="dashboard-v2-action flex min-h-[44px] w-full max-w-[180px] items-center justify-center rounded-[999px] bg-[var(--color-blue-soft)] px-4 text-center text-[13px] font-extrabold leading-tight text-[#7F8AA3]">
                       Управляется пакетом
+                    </div>
+                  ) : isBlockedFullPackage ? (
+                    <div className="dashboard-v2-action flex min-h-[44px] w-full max-w-[180px] items-center justify-center rounded-[999px] bg-[var(--color-blue-soft)] px-4 text-center text-[13px] font-extrabold leading-tight text-[#7F8AA3]">
+                      Недоступен
                     </div>
                   ) : (
                     <button
