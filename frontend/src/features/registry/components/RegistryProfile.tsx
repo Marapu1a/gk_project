@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle, Mail, Printer, Send, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { useRegistryProfile } from '../hooks/useRegistryProfile';
 import type { RegistryCertificate } from '../api/getRegistryProfile';
+import { SpecialistContactModal } from './SpecialistContactModal';
 import { formatCertificateDate, isCertificateDateActive } from '@/features/certificate/utils/certificateDates';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 
@@ -39,6 +39,7 @@ export function RegistryProfile({ userId }: Props) {
   const { data: profile, isLoading, error } = useRegistryProfile(userId);
   const [previewCert, setPreviewCert] = useState<RegistryCertificate | null>(null);
   const [checkCert, setCheckCert] = useState<RegistryCertificate | null>(null);
+  const [contactOpen, setContactOpen] = useState(false);
 
   if (isLoading) {
     return <div className="rounded-[18px] bg-white px-5 py-8 text-center text-[#8D96B5] shadow-soft">Загрузка...</div>;
@@ -49,6 +50,7 @@ export function RegistryProfile({ userId }: Props) {
   }
 
   const cert = profile.certificate;
+  const canContact = Boolean(cert && isCertificateActive(cert));
   const avatarPlaceholder = '/avatar_placeholder.svg';
   const location = [profile.country, profile.city].filter(Boolean).join(', ');
 
@@ -84,8 +86,10 @@ export function RegistryProfile({ userId }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => toast.info('Контакт со специалистом пока не подключен')}
-                className="btn min-h-[44px] rounded-[8px] bg-[var(--color-blue-dark)] px-4 text-[15px] font-extrabold text-white hover:bg-[#16254A]"
+                onClick={() => setContactOpen(true)}
+                disabled={!canContact}
+                className="btn min-h-[44px] rounded-[8px] bg-[var(--color-blue-dark)] px-4 text-[15px] font-extrabold text-white hover:bg-[#16254A] disabled:cursor-not-allowed disabled:bg-[#D1D7E3]"
+                title={canContact ? 'Связаться со специалистом' : 'Связаться можно только со специалистом с действующим сертификатом'}
               >
                 Связаться
               </button>
@@ -171,6 +175,12 @@ export function RegistryProfile({ userId }: Props) {
           onClose={() => setCheckCert(null)}
         />
       ) : null}
+      <SpecialistContactModal
+        specialistId={profile.id}
+        specialistName={profile.fullName}
+        open={contactOpen}
+        onClose={() => setContactOpen(false)}
+      />
     </>
   );
 }

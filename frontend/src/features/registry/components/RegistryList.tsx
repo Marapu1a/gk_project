@@ -3,6 +3,7 @@ import { Grid2X2, List, Mail, Search, X } from 'lucide-react';
 import { useRegistry } from '../hooks/useRegistry';
 import type { RegistryCard as RegistryCardType } from '../api/getRegistry';
 import { RegistryCard } from '../components/RegistryCard';
+import { SpecialistContactModal } from './SpecialistContactModal';
 import { DashboardPagination } from '@/components/DashboardPagination';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { smartDefaultSort } from '@/utils/sortRegistry';
@@ -63,10 +64,12 @@ function RegistryTableView({
   items,
   variant,
   onOpenProfile,
+  onContact,
 }: {
   items: RegistryCardType[];
   variant: RegistryTab;
   onOpenProfile?: (userId: string) => void;
+  onContact?: (user: { id: string; fullName: string }) => void;
 }) {
   return (
     <div className="overflow-hidden rounded-[18px] bg-white px-4 py-3 shadow-soft">
@@ -77,6 +80,7 @@ function RegistryTableView({
             user={user}
             variant={variant}
             onOpenProfile={onOpenProfile}
+            onContact={onContact}
           />
         ))}
       </div>
@@ -88,10 +92,12 @@ function RegistryListRow({
   user,
   variant,
   onOpenProfile,
+  onContact,
 }: {
   user: RegistryCardType;
   variant: RegistryTab;
   onOpenProfile?: (userId: string) => void;
+  onContact?: (user: { id: string; fullName: string }) => void;
 }) {
   const placeholder = '/avatar_placeholder.svg';
   const clickable = Boolean(onOpenProfile);
@@ -155,9 +161,14 @@ function RegistryListRow({
       ) : (
         <button
           type="button"
-          className="flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-[6px] bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-green-brand)] hover:text-[var(--color-blue-dark)]"
+          className="flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-[6px] bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-green-brand)] hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:bg-[#D1D7E3] disabled:text-white"
           aria-label="Написать пользователю"
-          onClick={(e) => e.stopPropagation()}
+          disabled={!user.isCertified}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!user.isCertified) return;
+            onContact?.({ id: user.id, fullName: user.fullName });
+          }}
         >
           <Mail size={18} strokeWidth={2.4} />
         </button>
@@ -176,6 +187,7 @@ export function RegistryList({ onOpenProfile, pageSize = 18 }: Props) {
   const [countryFilter, setCountryFilter] = useState(persisted.countryFilter ?? '');
   const [cityFilter, setCityFilter] = useState(persisted.cityFilter ?? '');
   const [groupFilter, setGroupFilter] = useState(persisted.groupFilter ?? '');
+  const [contactTarget, setContactTarget] = useState<{ id: string; fullName: string } | null>(null);
 
   const resetPage = () => setPage(1);
   const isApplicantsTab = tab === 'applicants';
@@ -184,15 +196,6 @@ export function RegistryList({ onOpenProfile, pageSize = 18 }: Props) {
   const items = (data?.items ?? []) as RegistryCardType[];
 
   const tabItems = useMemo(() => items.filter((user) => isRegistryTabItem(user, tab)), [items, tab]);
-  const specialistsCount = useMemo(
-    () => items.filter((user) => isRegistryTabItem(user, 'specialists')).length,
-    [items],
-  );
-  const applicantsCount = useMemo(
-    () => items.filter((user) => isRegistryTabItem(user, 'applicants')).length,
-    [items],
-  );
-
   const groups = useMemo(() => {
     const known = new Set(GROUP_OPTIONS.map(norm));
     const fromData = tabItems
@@ -289,7 +292,6 @@ export function RegistryList({ onOpenProfile, pageSize = 18 }: Props) {
             onClick={() => handleTabChange('specialists')}
           >
             Специалисты
-            <span className="ml-2 text-[13px] font-bold opacity-70">{specialistsCount}</span>
           </button>
           <button
             type="button"
@@ -301,7 +303,6 @@ export function RegistryList({ onOpenProfile, pageSize = 18 }: Props) {
             onClick={() => handleTabChange('applicants')}
           >
             Соискатели
-            <span className="ml-2 text-[13px] font-bold opacity-70">{applicantsCount}</span>
           </button>
           <button
             type="button"
@@ -405,6 +406,7 @@ export function RegistryList({ onOpenProfile, pageSize = 18 }: Props) {
           items={pageItems}
           variant={tab}
           onOpenProfile={onOpenProfile}
+          onContact={setContactTarget}
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -414,12 +416,23 @@ export function RegistryList({ onOpenProfile, pageSize = 18 }: Props) {
               {...user}
               variant={isApplicantsTab ? 'applicant' : 'specialist'}
               onOpenProfile={onOpenProfile}
+              onContact={setContactTarget}
+              canContact={user.isCertified}
             />
           ))}
         </div>
       )}
 
       <DashboardPagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      {contactTarget ? (
+        <SpecialistContactModal
+          specialistId={contactTarget.id}
+          specialistName={contactTarget.fullName}
+          open={Boolean(contactTarget)}
+          onClose={() => setContactTarget(null)}
+        />
+      ) : null}
     </section>
   );
 }

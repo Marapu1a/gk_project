@@ -30,6 +30,7 @@ const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage'));
 const AdminUserBannerPage = lazy(() => import('./pages/AdminUserBannerPage'));
 const AdminSupervisionCandidatesPage = lazy(() => import('./pages/AdminSupervisionCandidatesPage'));
 const AdminExternalSupervisorClaimsPage = lazy(() => import('./pages/AdminExternalSupervisorClaimsPage'));
+const SpecialistMessagesPage = lazy(() => import('./pages/SpecialistMessagesPage'));
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const router = createBrowserRouter([
       { path: 'ceu/points', element: <CeuPointsPage /> },
       { path: 'ceu/create', element: <Navigate to="/ceu/points" replace /> },
       { path: 'supervision/hours', element: <SupervisionHoursPage /> },
+      { path: 'specialist-messages', element: <SpecialistMessagesPage /> },
       { path: 'supervision/create', element: <Navigate to="/supervision/hours" replace /> },
       { path: 'history', element: <Navigate to="/supervision/hours?panel=history" replace /> },
       { path: 'review/supervision', element: <Navigate to="/reviewer/candidates/supervision" replace /> },

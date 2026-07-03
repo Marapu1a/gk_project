@@ -7,11 +7,13 @@ import { formatCertificateDate } from '@/features/certificate/utils/certificateD
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { NotificationModal } from '@/features/notifications/components/NotificationModal';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { useSpecialistContactMessages } from '@/features/registry/hooks/useSpecialistContactMessages';
 
 import { ProfileAvatar } from '../../profile-avatar/component/ProfileAvatar';
 import { BellIcon } from '../icons/BellIcon';
 import { EditIcon } from '../icons/EditIcon';
 import { LogoutIcon } from '../icons/LogoutIcon';
+import { MailIcon } from '../icons/MailIcon';
 
 type DashboardUser = {
   id: string;
@@ -45,6 +47,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
 
   const { data: certificates = [] } = useMyCertificates();
   const { data: notifications = [] } = useNotifications();
+  const { data: contactMessages } = useSpecialistContactMessages();
 
   const { lastName, firstName, middleName } = splitFullName(user.fullName);
   const activeGroupName = user.groupName ?? '—';
@@ -56,6 +59,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
     : null;
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadContactCount = contactMessages?.unreadCount ?? 0;
 
   const copyEmail = async () => {
     try {
@@ -96,7 +100,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
               </button>
             </div>
 
-            <div className="mt-auto flex items-center justify-between pt-3">
+            <div className="mt-auto grid grid-cols-4 gap-2 pt-3">
               <button
                 type="button"
                 onClick={logout}
@@ -104,6 +108,21 @@ export function ProfileCard({ user }: ProfileCardProps) {
                 className="icon-button icon-button-danger h-[42px] w-[42px]"
               >
                 <LogoutIcon className="h-full w-full" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/specialist-messages')}
+                aria-label="Сообщения специалисту"
+                className="icon-button icon-button-primary relative h-[42px] w-[42px]"
+              >
+                <MailIcon className="h-full w-full" />
+
+                {unreadContactCount > 0 && (
+                  <span className="badge badge-danger absolute -right-[4px] -top-[4px]">
+                    {unreadContactCount > 99 ? '99+' : unreadContactCount}
+                  </span>
+                )}
               </button>
 
               <button

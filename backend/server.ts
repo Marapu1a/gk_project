@@ -25,6 +25,7 @@ import { cycleRoutes } from './routes/cycleRoutes';
 import { backupRoutes } from './routes/backup';
 import { locationRoutes } from './routes/location';
 import { userBannerRoutes } from './routes/userBanner';
+import { specialistContactMessagesRoutes } from './routes/specialistContactMessages';
 import { MAX_FILE_SIZE_MB, UPLOAD_ROOT } from './config/storage';
 
 dotenv.config()
@@ -71,6 +72,7 @@ app.register(cycleRoutes);
 app.register(backupRoutes);
 app.register(locationRoutes);
 app.register(userBannerRoutes);
+app.register(specialistContactMessagesRoutes);
 
 app.get('/', async () => ({ ok: true }))
 

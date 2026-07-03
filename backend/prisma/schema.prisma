@@ -143,6 +143,12 @@ enum NotificationType {
   USER
 }
 
+enum SpecialistContactRequestType {
+  PARENT_CONSULTATION
+  SUPERVISION
+  QUESTION
+}
+
 enum UserBannerTone {
   DANGER
   DARK
@@ -206,6 +212,7 @@ model User {
   payments         Payment[]
   notifications    Notification[]
   consents         UserConsent[]
+  specialistContactMessages SpecialistContactMessage[] @relation("SpecialistContactMessages")
 
   createdAt    DateTime  @default(now())
   lastActiveAt DateTime?
@@ -445,6 +452,23 @@ model Notification {
   createdAt DateTime         @default(now())
 
   isRead Boolean @default(false)
+}
+
+model SpecialistContactMessage {
+  id            String                       @id @default(cuid())
+  specialistId  String
+  specialist    User                         @relation("SpecialistContactMessages", fields: [specialistId], references: [id], onDelete: Cascade)
+  senderName    String
+  replyContact  String
+  requestType   SpecialistContactRequestType
+  message       String
+  isRead        Boolean                      @default(false)
+  readAt        DateTime?
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
+
+  @@index([specialistId, isRead, createdAt])
+  @@index([createdAt])
 }
 
 model UserBanner {

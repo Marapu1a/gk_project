@@ -11,6 +11,8 @@ type Props = {
   groupName?: string | null;
   variant?: 'specialist' | 'applicant';
   onOpenProfile?: (userId: string) => void;
+  onContact?: (user: { id: string; fullName: string }) => void;
+  canContact?: boolean;
 };
 
 export function RegistryCard({
@@ -22,6 +24,8 @@ export function RegistryCard({
   groupName,
   variant = 'specialist',
   onOpenProfile,
+  onContact,
+  canContact = true,
 }: Props) {
   const location = [country, city].filter(Boolean).join(', ');
   const placeholder = '/avatar_placeholder.svg';
@@ -84,15 +88,22 @@ export function RegistryCard({
         ) : (
           <button
             type="button"
-            className="flex h-[28px] w-[28px] cursor-pointer items-center justify-center rounded-[6px] bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-green-brand)] hover:text-[var(--color-blue-dark)]"
+            className="flex h-[28px] w-[28px] cursor-pointer items-center justify-center rounded-[6px] bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-green-brand)] hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:bg-[#D1D7E3] disabled:text-white"
             aria-label="Написать пользователю"
+            disabled={!canContact}
             onMouseEnter={(e) => {
               e.currentTarget.closest('article')?.classList.add('registry-card-mail-hover');
             }}
             onMouseLeave={(e) => {
               e.currentTarget.closest('article')?.classList.remove('registry-card-mail-hover');
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!canContact) return;
+              onContact?.({ id, fullName });
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <Mail size={20} strokeWidth={2.4} />
           </button>
