@@ -3,8 +3,8 @@ import { CopyEmailLink } from '@/components/CopyEmailLink';
 export default function SiteFooter() {
   return (
     <footer className="bg-[#070022] text-white">
-      <div className="container-fixed mx-auto pt-[72px] pb-[55px]">
-        <div className="grid grid-cols-[320px_155px_190px_225px] justify-between gap-x-8">
+      <div className="container-fixed mx-auto pt-10 pb-8 md:pt-[72px] md:pb-[55px]">
+        <div className="grid grid-cols-1 gap-y-10 gap-x-8 md:grid-cols-[320px_155px_190px_225px] md:justify-between md:gap-y-0">
           {/* Колонка 1 */}
           <div>
             <a href="https://reestrpap.ru" className="inline-block">

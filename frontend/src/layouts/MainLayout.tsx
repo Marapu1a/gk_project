@@ -7,7 +7,7 @@ export default function MainLayout() {
     <div className="min-h-screen flex flex-col bg-[#F0F0F0]">
       <SiteHeader />
 
-      <main className="container-fixed mx-auto w-full flex-1 py-8">
+      <main className="container-fixed mx-auto w-full flex-1 py-4">
         <Outlet />
       </main>
 

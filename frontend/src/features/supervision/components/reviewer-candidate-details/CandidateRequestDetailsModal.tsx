@@ -5,6 +5,7 @@ import { useUpdateHourStatus } from '../../hooks/useUpdateHourStatus';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { getSupervisionRequestDateLabel } from '../../utils/requestDateLabels';
 import type {
   ReviewerCandidateKind,
@@ -71,6 +72,7 @@ export function CandidateRequestDetailsModal({
 }: CandidateRequestDetailsModalProps) {
   const requestDateLabel = getSupervisionRequestDateLabel(kind);
   const mutation = useUpdateHourStatus();
+  const { confirm } = useConfirm();
   const [rejectMode, setRejectMode] = useState(false);
   const [rejectedReason, setRejectedReason] = useState('');
 
@@ -84,6 +86,13 @@ export function CandidateRequestDetailsModal({
 
   const accept = async () => {
     if (!request.actionHourId) return;
+
+    const ok = await confirm({
+      message: 'Подтвердить часы?',
+      description: 'После подтверждения статус заявки нельзя будет изменить.',
+      confirmLabel: 'Подтвердить',
+    });
+    if (!ok) return;
 
     try {
       await mutation.mutateAsync({ id: request.actionHourId, status: 'CONFIRMED' });
@@ -102,6 +111,14 @@ export function CandidateRequestDetailsModal({
       toast.error(UI_TOAST_MESSAGES.supervision.reviewReasonRequired);
       return;
     }
+
+    const ok = await confirm({
+      message: 'Отклонить часы?',
+      description: 'После отклонения статус заявки нельзя будет изменить.',
+      confirmLabel: 'Отклонить',
+      variant: 'danger',
+    });
+    if (!ok) return;
 
     try {
       await mutation.mutateAsync({

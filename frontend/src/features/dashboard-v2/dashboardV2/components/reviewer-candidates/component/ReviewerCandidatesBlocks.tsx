@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { DashboardHelpPopover } from '@/features/dashboard-guidance';
 import { CandidateRequestDetailsModal } from '@/features/supervision/components/reviewer-candidate-details/CandidateRequestDetailsModal';
 import { useReviewerCandidates } from '@/features/supervision/hooks/useReviewerCandidates';
@@ -185,6 +186,7 @@ function CandidatesTable({
 }) {
   const navigate = useNavigate();
   const mutation = useUpdateReviewerCandidateRelation();
+  const { confirm } = useConfirm();
   const hasPending = candidates.some((candidate) => candidate.status === 'PENDING');
   const firstAcceptedIndex = candidates.findIndex((candidate) => candidate.status === 'ACCEPTED');
 
@@ -192,6 +194,19 @@ function CandidatesTable({
     candidate: ReviewerCandidate,
     status: 'ACCEPTED' | 'REJECTED',
   ) => {
+    const candidateName = candidate.fullName || candidate.email;
+
+    const ok = await confirm({
+      message:
+        status === 'ACCEPTED'
+          ? `Подтвердить сотрудничество с ${candidateName}?`
+          : `Отклонить сотрудничество с ${candidateName}?`,
+      confirmLabel: status === 'ACCEPTED' ? 'Подтвердить' : 'Отклонить',
+      variant: status === 'ACCEPTED' ? 'primary' : 'danger',
+    });
+
+    if (!ok) return;
+
     try {
       await mutation.mutateAsync({ id: candidate.relationId, status });
       toast.success(
@@ -358,34 +373,64 @@ function ReviewQueue({
   return (
     <div className="divide-y divide-[#DCE8EC]">
       {items.map((request) => (
-        <div
-          key={request.id}
-          className="grid items-center gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_150px_90px_36px]"
-        >
-          <div>
-            <button
-              type="button"
+        <div key={request.id} className="py-3">
+          {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+          <div className="hidden items-center gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_150px_90px_36px]">
+            <div>
+              <button
+                type="button"
+                onClick={() => onOpen(request)}
+                className="dashboard-v2-text cursor-pointer text-left font-extrabold text-[#1F305E] transition-colors hover:text-[#526C9D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F305E]"
+                title="Открыть заявку"
+              >
+                {request.candidate.fullName || request.candidate.email}
+              </button>
+              <div className="dashboard-v2-caption text-[#6B7894]">{request.candidate.email}</div>
+            </div>
+            <div className="dashboard-v2-caption text-[#1F305E]">
+              {request.totals.total} ч.
+            </div>
+            <div className="dashboard-v2-caption text-[#6B7894]">
+              <span className="sr-only">{requestDateLabel}: </span>
+              {formatDate(request.supervisionDate ?? request.createdAt)}
+            </div>
+            <ActionArrowButton
               onClick={() => onOpen(request)}
-              className="dashboard-v2-text cursor-pointer text-left font-extrabold text-[#1F305E] transition-colors hover:text-[#526C9D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F305E]"
+              size={31}
               title="Открыть заявку"
-            >
-              {request.candidate.fullName || request.candidate.email}
-            </button>
-            <div className="dashboard-v2-caption text-[#6B7894]">{request.candidate.email}</div>
+              aria-label="Открыть заявку"
+            />
           </div>
-          <div className="dashboard-v2-caption text-[#1F305E]">
-            {request.totals.total} ч.
+
+          {/* Мобильная версия — карточка вместо разъехавшейся сетки */}
+          <div className="flex items-start justify-between gap-3 sm:hidden">
+            <div className="min-w-0">
+              <button
+                type="button"
+                onClick={() => onOpen(request)}
+                className="dashboard-v2-text cursor-pointer text-left font-extrabold text-[#1F305E] transition-colors hover:text-[#526C9D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F305E]"
+                title="Открыть заявку"
+              >
+                {request.candidate.fullName || request.candidate.email}
+              </button>
+              <div className="dashboard-v2-caption text-[#6B7894]">{request.candidate.email}</div>
+
+              <div className="dashboard-v2-caption mt-2 flex items-center gap-3">
+                <span className="font-semibold text-[#1F305E]">{request.totals.total} ч.</span>
+                <span className="text-[#6B7894]">
+                  <span className="sr-only">{requestDateLabel}: </span>
+                  {formatDate(request.supervisionDate ?? request.createdAt)}
+                </span>
+              </div>
+            </div>
+
+            <ActionArrowButton
+              onClick={() => onOpen(request)}
+              size={31}
+              title="Открыть заявку"
+              aria-label="Открыть заявку"
+            />
           </div>
-          <div className="dashboard-v2-caption text-[#6B7894]">
-            <span className="sr-only">{requestDateLabel}: </span>
-            {formatDate(request.supervisionDate ?? request.createdAt)}
-          </div>
-          <ActionArrowButton
-            onClick={() => onOpen(request)}
-            size={31}
-            title="Открыть заявку"
-            aria-label="Открыть заявку"
-          />
         </div>
       ))}
     </div>

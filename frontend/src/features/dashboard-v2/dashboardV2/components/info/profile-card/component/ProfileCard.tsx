@@ -1,19 +1,17 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useLogout } from '@/features/auth/hooks/useLogout';
 import { useMyCertificates } from '@/features/certificate/hooks/useMyCertificates';
 import { formatCertificateDate } from '@/features/certificate/utils/certificateDates';
-import { useNotifications } from '@/features/notifications/hooks/useNotifications';
-import { NotificationModal } from '@/features/notifications/components/NotificationModal';
+import { NotificationBellButton } from '@/features/notifications/components/NotificationBellButton';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useSpecialistContactMessages } from '@/features/registry/hooks/useSpecialistContactMessages';
 
 import { ProfileAvatar } from '../../profile-avatar/component/ProfileAvatar';
-import { BellIcon } from '../icons/BellIcon';
 import { EditIcon } from '../icons/EditIcon';
 import { LogoutIcon } from '../icons/LogoutIcon';
 import { MailIcon } from '../icons/MailIcon';
+import { DashboardNavRow } from '../../../DashboardNavRow';
 
 type DashboardUser = {
   id: string;
@@ -43,10 +41,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
   const navigate = useNavigate();
   const logout = useLogout();
 
-  const [openNotif, setOpenNotif] = useState(false);
-
   const { data: certificates = [] } = useMyCertificates();
-  const { data: notifications = [] } = useNotifications();
   const { data: contactMessages } = useSpecialistContactMessages();
 
   const { lastName, firstName, middleName } = splitFullName(user.fullName);
@@ -58,7 +53,6 @@ export function ProfileCard({ user }: ProfileCardProps) {
     ? formatCertificateDate(currentCertificate.expiresAt)
     : null;
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
   const unreadContactCount = contactMessages?.unreadCount ?? 0;
 
   const copyEmail = async () => {
@@ -71,8 +65,9 @@ export function ProfileCard({ user }: ProfileCardProps) {
   };
 
   return (
-    <>
-      <section className="card-section h-full min-h-[340px] w-full px-5 py-6 shadow-soft">
+    <div className="flex w-full min-w-0 flex-col gap-3">
+      {/* Десктоп/планшет */}
+      <section className="card-section hidden h-full min-h-[340px] w-full px-5 py-6 shadow-soft lg:block">
         <h2 className="dashboard-v2-title mb-4 text-center">Информация</h2>
 
         <div className="flex items-start gap-4">
@@ -134,20 +129,7 @@ export function ProfileCard({ user }: ProfileCardProps) {
                 <EditIcon className="h-full w-full" />
               </button>
 
-              <button
-                type="button"
-                onClick={() => setOpenNotif(true)}
-                aria-label="Уведомления"
-                className="icon-button icon-button-primary relative h-[42px] w-[42px]"
-              >
-                <BellIcon className="h-full w-full" />
-
-                {unreadCount > 0 && (
-                  <span className="badge badge-danger absolute -right-[4px] -top-[4px]">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </button>
+              <NotificationBellButton />
             </div>
           </div>
         </div>
@@ -187,7 +169,28 @@ export function ProfileCard({ user }: ProfileCardProps) {
         </div>
       </section>
 
-      <NotificationModal open={openNotif} onClose={() => setOpenNotif(false)} />
-    </>
+      {/* Мобильная версия — компактная карточка + строки-ссылки */}
+      <section className="card-section w-full px-4 py-4 shadow-soft lg:hidden">
+        <div className="flex flex-col items-center text-center">
+          <ProfileAvatar userId={user.id} avatarUrl={user.avatarUrl} fullName={user.fullName} />
+
+          <p className="dashboard-v2-text mt-2 font-semibold leading-snug text-blue-dark">
+            {user.fullName}
+          </p>
+        </div>
+
+        <div className="dashboard-v2-label dashboard-v2-level-pill mt-3">{activeGroupName}</div>
+
+        <div className="dashboard-v2-text mt-3 text-center" style={{ color: '#8D96B5' }}>
+          Действует до:{' '}
+          <span className="font-semibold text-[var(--color-danger)]">{expiresAt ?? '-'}</span>
+        </div>
+      </section>
+
+      <div className="space-y-2 lg:hidden">
+        <DashboardNavRow label="Мои сертификаты" onClick={() => navigate('/my-certificate')} />
+        <DashboardNavRow label="Мои документы" onClick={() => navigate('/document-review')} />
+      </div>
+    </div>
   );
 }

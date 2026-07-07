@@ -119,11 +119,20 @@ export default function DocumentReviewPage() {
   return (
     <div className="min-h-[calc(100vh-220px)] bg-[#F0F0F0] px-4 pb-10 text-[var(--color-blue-dark)]">
       <div className="mx-auto max-w-[760px]">
-        <div className="relative mb-5 flex min-h-[34px] items-center justify-center">
-          <div className="absolute left-0 top-0">
-            <PageNav />
+        <div className="mb-5">
+          {/* Мобильная версия — навигация над заголовком, без абсолютного позиционирования */}
+          <div className="sm:hidden">
+            <PageNav className="mb-3" />
+            <h1 className="text-center text-[22px] font-extrabold leading-tight">Мои документы</h1>
           </div>
-          <h1 className="text-center text-[22px] font-extrabold leading-tight">Мои документы</h1>
+
+          {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+          <div className="relative hidden min-h-[34px] items-center justify-center sm:flex">
+            <div className="absolute left-0 top-0">
+              <PageNav />
+            </div>
+            <h1 className="text-center text-[22px] font-extrabold leading-tight">Мои документы</h1>
+          </div>
         </div>
 
         <div className="mx-auto max-w-[620px]">

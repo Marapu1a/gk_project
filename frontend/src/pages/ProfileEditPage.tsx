@@ -145,7 +145,7 @@ export default function ProfileEditPage() {
 
   return (
     <div className="px-4 pb-10 pt-3 text-blue-dark">
-      <PageNav />
+      <PageNav className="mb-4" />
 
       <div className="mx-auto max-w-[980px]">
         <header className="mb-5 text-center">

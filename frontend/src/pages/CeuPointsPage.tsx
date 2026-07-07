@@ -43,15 +43,26 @@ function CeuPointsContent() {
 
   return (
     <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
-      <header className="mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
-        <PageNav />
+      <div className="mb-5">
+        {/* Мобильная версия — навигация над заголовком */}
+        <div className="sm:hidden">
+          <PageNav className="mb-3" />
+          <h1 className="text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
+            CEU-Баллы
+          </h1>
+        </div>
 
-        <h1 className="min-w-0 text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
-          CEU-Баллы
-        </h1>
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <header className="hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 sm:grid">
+          <PageNav />
 
-        <div className="hidden min-w-[207px] sm:block" aria-hidden="true" />
-      </header>
+          <h1 className="min-w-0 text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
+            CEU-Баллы
+          </h1>
+
+          <div className="hidden min-w-[207px] sm:block" aria-hidden="true" />
+        </header>
+      </div>
 
       <CeuOverviewBlock level={user.targetLevel} showActions={false} />
 

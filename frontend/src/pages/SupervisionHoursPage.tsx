@@ -40,25 +40,49 @@ function SupervisionHoursContent() {
 
   return (
     <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
-      <header className="mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
-        <PageNav />
+      <div className="mb-5">
+        {/* Мобильная версия — навигация, заголовок и кнопка контрактов друг под другом */}
+        <div className="sm:hidden">
+          <PageNav className="mb-3" />
 
-        <h1 className="min-w-0 text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
-          {isMentorshipMode ? 'Часы менторства' : 'Часы супервизии'}
-        </h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="min-w-0 text-[22px] font-extrabold leading-tight text-[#1F305E]">
+              {isMentorshipMode ? 'Часы менторства' : 'Часы супервизии'}
+            </h1>
 
-        {isMentorshipMode ? (
-          <div className="hidden min-w-[207px] sm:block" aria-hidden="true" />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setIsContractModalOpen(true)}
-            className="inline-flex min-h-[30px] min-w-[88px] items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-center text-[13px] font-medium leading-tight text-[#1F305E] transition-colors hover:bg-white active:bg-[#E7F1F4] sm:text-[14px]"
-          >
-            Контракты
-          </button>
-        )}
-      </header>
+            {!isMentorshipMode && (
+              <button
+                type="button"
+                onClick={() => setIsContractModalOpen(true)}
+                className="inline-flex min-h-[30px] shrink-0 items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-center text-[13px] font-medium leading-tight text-[#1F305E] transition-colors hover:bg-white active:bg-[#E7F1F4]"
+              >
+                Контракты
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <header className="hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 sm:grid">
+          <PageNav />
+
+          <h1 className="min-w-0 text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
+            {isMentorshipMode ? 'Часы менторства' : 'Часы супервизии'}
+          </h1>
+
+          {isMentorshipMode ? (
+            <div className="hidden min-w-[207px] sm:block" aria-hidden="true" />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsContractModalOpen(true)}
+              className="inline-flex min-h-[30px] min-w-[88px] items-center justify-center rounded-full border border-[#A7B1C7] px-3 text-center text-[13px] font-medium leading-tight text-[#1F305E] transition-colors hover:bg-white active:bg-[#E7F1F4] sm:text-[14px]"
+            >
+              Контракты
+            </button>
+          )}
+        </header>
+      </div>
 
       <HoursOverviewBlock showActions={false} />
 

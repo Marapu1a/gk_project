@@ -76,7 +76,7 @@ export async function updateSupervisionHourHandler(
       reviewerId: true,
       type: true,
       recordId: true,
-      record: { select: { userId: true, cycleId: true, user: { select: { email: true } } } },
+      record: { select: { userId: true, cycleId: true } },
     },
   });
 
@@ -105,7 +105,7 @@ export async function updateSupervisionHourHandler(
   const [actor, recordOwner] = await Promise.all([
     prisma.user.findUnique({
       where: { id: actorId },
-      select: { groups: { select: { group: { select: { name: true } } } } },
+      select: { fullName: true, groups: { select: { group: { select: { name: true } } } } },
     }),
     prisma.user.findUnique({
       where: { id: recordOwnerId },
@@ -189,7 +189,7 @@ export async function updateSupervisionHourHandler(
     const label = uniqueKinds.size === 1 ? notificationLabel(existing.type) : 'часы практики';
     const message =
       desiredStatus === 'CONFIRMED'
-        ? `Ваши ${label} подтверждены (${existing.record.user.email})`
+        ? `Ваши ${label} подтверждены (подтвердил(а) ${actor?.fullName ?? 'супервизор'})`
         : `Ваши ${label} отклонены. Откройте историю заявок, чтобы посмотреть детали.`;
 
     await createNotification({

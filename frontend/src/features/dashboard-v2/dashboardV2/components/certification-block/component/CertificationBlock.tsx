@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 
 type Props = {
   user: CurrentUser;
+  onOpenPayment?: () => void;
 };
 
 const LEVELS = ['INSTRUCTOR', 'CURATOR', 'SUPERVISOR'] as const;
@@ -142,7 +143,7 @@ function capToRequired(value: number, required: number) {
   return Math.min(Math.max(0, value), required);
 }
 
-export function CertificationBlock({ user }: Props) {
+export function CertificationBlock({ user, onOpenPayment }: Props) {
   const setTarget = useSetTargetLevel(user.id);
   const { data: certificates = [], isLoading: certificatesLoading } = useMyCertificates();
   const { confirm } = useConfirm();
@@ -445,6 +446,27 @@ export function CertificationBlock({ user }: Props) {
     );
   }
 
+  const examButton = (
+    <button
+      type="button"
+      className={`btn dashboard-v2-label h-[42px] w-full rounded-[8px] ${
+        canSubmitExam ? 'btn-dark' : ''
+      }`}
+      style={
+        canSubmitExam
+          ? undefined
+          : {
+              backgroundColor: '#B8C0D1',
+              color: '#FFFFFF',
+            }
+      }
+      disabled={!canSubmitExam}
+      onClick={submitExamApplication}
+    >
+      {examButtonLabel}
+    </button>
+  );
+
   return (
     <section className="card-section flex h-full min-h-[340px] w-full flex-col px-5 py-6 shadow-soft">
       <h2 className="dashboard-v2-title mb-5 text-center">Планируемый уровень сертификации</h2>
@@ -485,24 +507,23 @@ export function CertificationBlock({ user }: Props) {
         </p>
       ) : null}
 
-      <button
-        type="button"
-        className={`btn dashboard-v2-label mt-auto h-[42px] w-full rounded-[8px] ${
-          canSubmitExam ? 'btn-dark' : ''
-        }`}
-        style={
-          canSubmitExam
-            ? undefined
-            : {
-                backgroundColor: '#B8C0D1',
-                color: '#FFFFFF',
-              }
-        }
-        disabled={!canSubmitExam}
-        onClick={submitExamApplication}
-      >
-        {examButtonLabel}
-      </button>
+      {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+      <div className="mt-auto hidden lg:block">{examButton}</div>
+
+      {/* Мобильная версия — фиксированный отступ вместо mt-auto, чтобы не прилипало к контенту выше */}
+      <div className={`mt-6 grid gap-2 lg:hidden ${onOpenPayment ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {examButton}
+
+        {onOpenPayment && (
+          <button
+            type="button"
+            onClick={onOpenPayment}
+            className="btn btn-dark dashboard-v2-label h-[42px] w-full rounded-[8px]"
+          >
+            Оплата →
+          </button>
+        )}
+      </div>
 
       {examApp?.status === 'REJECTED' && examApp.comment ? (
         <p className="dashboard-v2-small mt-2 text-center text-[var(--color-danger)]">

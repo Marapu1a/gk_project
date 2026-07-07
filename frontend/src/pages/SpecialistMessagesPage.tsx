@@ -83,11 +83,22 @@ export default function SpecialistMessagesPage() {
 
   return (
     <main className="container-fixed mx-auto w-full px-4 py-8 text-blue-dark md:px-6">
-      <div className="mb-6 grid grid-cols-[auto_1fr] items-center gap-4">
-        <PageNav />
-        <h1 className="text-center text-[24px] font-extrabold leading-tight text-blue-dark">
-          Сообщения специалисту
-        </h1>
+      <div className="mb-6">
+        {/* Мобильная версия — навигация над заголовком */}
+        <div className="sm:hidden">
+          <PageNav className="mb-3" />
+          <h1 className="text-center text-[24px] font-extrabold leading-tight text-blue-dark">
+            Сообщения специалисту
+          </h1>
+        </div>
+
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <div className="hidden grid-cols-[auto_1fr] items-center gap-4 sm:grid">
+          <PageNav />
+          <h1 className="text-center text-[24px] font-extrabold leading-tight text-blue-dark">
+            Сообщения специалисту
+          </h1>
+        </div>
       </div>
 
       <section className="card-section shadow-soft">
@@ -116,60 +127,111 @@ export default function SpecialistMessagesPage() {
               Сообщений пока нет.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-[12px] border border-[var(--color-blue-soft)]">
-              <div className="grid grid-cols-[minmax(150px,1.2fr)_minmax(170px,1.1fr)_minmax(150px,1fr)_150px_150px] bg-[#E5EFF1] px-4 py-3 text-[15px] font-medium">
-                <span>Отправитель</span>
-                <span>Контакт для ответа</span>
-                <span>Тип запроса</span>
-                <span>Дата</span>
-                <span className="text-center">Действие</span>
+            <>
+              {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+              <div className="hidden overflow-hidden rounded-[12px] border border-[var(--color-blue-soft)] lg:block">
+                <div className="grid grid-cols-[minmax(150px,1.2fr)_minmax(170px,1.1fr)_minmax(150px,1fr)_150px_150px] bg-[#E5EFF1] px-4 py-3 text-[15px] font-medium">
+                  <span>Отправитель</span>
+                  <span>Контакт для ответа</span>
+                  <span>Тип запроса</span>
+                  <span>Дата</span>
+                  <span className="text-center">Действие</span>
+                </div>
+
+                {sortedMessages.map((message) => (
+                  <article
+                    key={message.id}
+                    className={`grid grid-cols-[minmax(150px,1.2fr)_minmax(170px,1.1fr)_minmax(150px,1fr)_150px_150px] items-center gap-0 border-t border-[var(--color-blue-soft)] px-4 py-3 text-[15px] ${
+                      message.isRead ? 'bg-white' : 'bg-[#F4FAFB]'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        {!message.isRead && (
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--color-danger)]" />
+                        )}
+                        <span className="truncate font-semibold">{message.senderName}</span>
+                      </div>
+                    </div>
+
+                    <span className="min-w-0 truncate text-[#1F305E]" title={message.replyContact}>
+                      {message.replyContact}
+                    </span>
+                    <span>{REQUEST_TYPE_LABELS[message.requestType]}</span>
+                    <span className="text-[#8D96B5]">{formatDateTime(message.createdAt)}</span>
+
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openMessage(message)}
+                        className="btn h-[34px] rounded-full border border-[var(--color-blue-dark)] px-4 text-[14px] font-medium text-[var(--color-blue-dark)] hover:bg-[var(--color-blue-soft)]"
+                      >
+                        Открыть
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(message)}
+                        disabled={deleteMessage.isPending}
+                        className="btn h-[34px] w-[34px] rounded-full border border-[var(--color-danger)] text-[var(--color-danger)] transition hover:bg-[rgba(255,83,100,0.1)] disabled:cursor-not-allowed disabled:opacity-50"
+                        title="Удалить сообщение"
+                        aria-label="Удалить сообщение"
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={2.3} />
+                      </button>
+                    </div>
+                  </article>
+                ))}
               </div>
 
-              {sortedMessages.map((message) => (
-                <article
-                  key={message.id}
-                  className={`grid grid-cols-[minmax(150px,1.2fr)_minmax(170px,1.1fr)_minmax(150px,1fr)_150px_150px] items-center gap-0 border-t border-[var(--color-blue-soft)] px-4 py-3 text-[15px] ${
-                    message.isRead ? 'bg-white' : 'bg-[#F4FAFB]'
-                  }`}
-                >
-                  <div className="min-w-0">
+              {/* Мобильная версия — карточки вместо таблицы */}
+              <div className="space-y-3 lg:hidden">
+                {sortedMessages.map((message) => (
+                  <article
+                    key={message.id}
+                    className={`rounded-[12px] border border-[var(--color-blue-soft)] px-4 py-3 text-[15px] ${
+                      message.isRead ? 'bg-white' : 'bg-[#F4FAFB]'
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
                       {!message.isRead && (
                         <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--color-danger)]" />
                       )}
-                      <span className="truncate font-semibold">{message.senderName}</span>
+                      <span className="min-w-0 truncate font-semibold">{message.senderName}</span>
                     </div>
-                  </div>
 
-                  <span className="min-w-0 truncate text-[#1F305E]" title={message.replyContact}>
-                    {message.replyContact}
-                  </span>
-                  <span>{REQUEST_TYPE_LABELS[message.requestType]}</span>
-                  <span className="text-[#8D96B5]">{formatDateTime(message.createdAt)}</span>
+                    <div className="mt-1 min-w-0 truncate text-[#1F305E]" title={message.replyContact}>
+                      {message.replyContact}
+                    </div>
 
-                  <div className="flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openMessage(message)}
-                      className="btn h-[34px] rounded-full border border-[var(--color-blue-dark)] px-4 text-[14px] font-medium text-[var(--color-blue-dark)] hover:bg-[var(--color-blue-soft)]"
-                    >
-                      Открыть
-                    </button>
+                    <div className="mt-1 text-[#8D96B5]">
+                      {REQUEST_TYPE_LABELS[message.requestType]} · {formatDateTime(message.createdAt)}
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(message)}
-                      disabled={deleteMessage.isPending}
-                      className="btn h-[34px] w-[34px] rounded-full border border-[var(--color-danger)] text-[var(--color-danger)] transition hover:bg-[rgba(255,83,100,0.1)] disabled:cursor-not-allowed disabled:opacity-50"
-                      title="Удалить сообщение"
-                      aria-label="Удалить сообщение"
-                    >
-                      <Trash2 className="h-4 w-4" strokeWidth={2.3} />
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openMessage(message)}
+                        className="btn h-[34px] flex-1 rounded-full border border-[var(--color-blue-dark)] px-4 text-[14px] font-medium text-[var(--color-blue-dark)] hover:bg-[var(--color-blue-soft)]"
+                      >
+                        Открыть
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(message)}
+                        disabled={deleteMessage.isPending}
+                        className="btn h-[34px] w-[34px] shrink-0 rounded-full border border-[var(--color-danger)] text-[var(--color-danger)] transition hover:bg-[rgba(255,83,100,0.1)] disabled:cursor-not-allowed disabled:opacity-50"
+                        title="Удалить сообщение"
+                        aria-label="Удалить сообщение"
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={2.3} />
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </section>
@@ -197,7 +259,7 @@ function MessageDetailsModal({
         aria-label="Закрыть сообщение"
       />
 
-      <section className="relative z-10 w-full max-w-[760px] rounded-[22px] bg-white px-6 py-7 shadow-soft md:px-8">
+      <section className="relative z-10 max-h-[90vh] w-full max-w-[760px] overflow-y-auto rounded-[22px] bg-white px-6 py-7 shadow-soft md:px-8">
         <ModalCloseButton onClick={onClose} label="Закрыть сообщение" iconClassName="h-7 w-7" />
 
         <h2 className="mb-6 text-center text-[26px] font-extrabold leading-tight text-[var(--color-blue-dark)]">

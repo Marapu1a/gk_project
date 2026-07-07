@@ -102,13 +102,26 @@ function ReviewerCandidatesContent() {
 
   return (
     <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
-      <header className="mb-5 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
-        <DashboardButton />
-        <h1 className="min-w-0 text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
-          История заявок на подтверждение часов
-        </h1>
-        <div className="hidden min-w-[104px] sm:block" aria-hidden="true" />
-      </header>
+      <div className="mb-5">
+        {/* Мобильная версия — навигация над заголовком */}
+        <div className="sm:hidden">
+          <div className="mb-3">
+            <DashboardButton />
+          </div>
+          <h1 className="text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
+            История заявок на подтверждение часов
+          </h1>
+        </div>
+
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <header className="hidden grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 sm:grid">
+          <DashboardButton />
+          <h1 className="min-w-0 text-center text-[22px] font-extrabold leading-tight text-[#1F305E]">
+            История заявок на подтверждение часов
+          </h1>
+          <div className="hidden min-w-[104px] sm:block" aria-hidden="true" />
+        </header>
+      </div>
 
       <section className="mb-5 rounded-[16px] bg-white px-5 py-5 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
