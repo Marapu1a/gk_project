@@ -103,77 +103,115 @@ function RegistryListRow({
   const clickable = Boolean(onOpenProfile);
   const isApplicant = variant === 'applicants';
 
-  return (
-    <div
-      className={[
-        isApplicant
-          ? 'grid min-h-[52px] grid-cols-[38px_minmax(170px,1.25fr)_minmax(110px,0.8fr)_minmax(120px,0.9fr)_32px] items-center gap-4 px-2 py-2 text-[13px] text-[var(--color-blue-dark)] transition'
-          : 'grid min-h-[52px] grid-cols-[38px_minmax(170px,1.25fr)_minmax(90px,0.7fr)_minmax(110px,0.8fr)_minmax(150px,0.9fr)_30px] items-center gap-4 px-2 py-2 text-[13px] text-[var(--color-blue-dark)] transition',
-        clickable ? 'cursor-pointer hover:bg-[var(--color-blue-soft)]' : '',
-      ].join(' ')}
-      onClick={() => onOpenProfile?.(user.id)}
-      role={clickable ? 'button' : undefined}
-      tabIndex={clickable ? 0 : -1}
-      onKeyDown={(e) => {
-        if (!clickable) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onOpenProfile?.(user.id);
-        }
+  const avatar = (
+    <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#B8C1D6] bg-[#E7EAF0]">
+      <img
+        src={user.avatarUrl || placeholder}
+        alt={user.fullName}
+        loading="lazy"
+        className="h-full w-full object-cover"
+        onError={(e) => {
+          const el = e.currentTarget;
+          if (el.src.endsWith('avatar_placeholder.svg')) return;
+          el.src = placeholder;
+        }}
+      />
+    </div>
+  );
+
+  const actionButton = isApplicant ? (
+    <ActionArrowButton
+      size={28}
+      aria-label="Открыть профиль"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenProfile?.(user.id);
+      }}
+    />
+  ) : (
+    <button
+      type="button"
+      className="flex h-[26px] w-[26px] shrink-0 cursor-pointer items-center justify-center rounded-[6px] bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-green-brand)] hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:bg-[#D1D7E3] disabled:text-white"
+      aria-label="Написать пользователю"
+      disabled={!user.isCertified}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!user.isCertified) return;
+        onContact?.({ id: user.id, fullName: user.fullName });
       }}
     >
-      <div className="flex h-[30px] w-[30px] items-center justify-center overflow-hidden rounded-full border border-[#B8C1D6] bg-[#E7EAF0]">
-        <img
-          src={user.avatarUrl || placeholder}
-          alt={user.fullName}
-          loading="lazy"
-          className="h-full w-full object-cover"
-          onError={(e) => {
-            const el = e.currentTarget;
-            if (el.src.endsWith('avatar_placeholder.svg')) return;
-            el.src = placeholder;
-          }}
-        />
+      <Mail size={18} strokeWidth={2.4} />
+    </button>
+  );
+
+  const rowProps = {
+    onClick: () => onOpenProfile?.(user.id),
+    role: clickable ? ('button' as const) : undefined,
+    tabIndex: clickable ? 0 : -1,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (!clickable) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onOpenProfile?.(user.id);
+      }
+    },
+  };
+
+  return (
+    <>
+      {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+      <div
+        className={[
+          'hidden sm:grid',
+          isApplicant
+            ? 'min-h-[52px] grid-cols-[38px_minmax(170px,1.25fr)_minmax(110px,0.8fr)_minmax(120px,0.9fr)_32px] items-center gap-4 px-2 py-2 text-[13px] text-[var(--color-blue-dark)] transition'
+            : 'min-h-[52px] grid-cols-[38px_minmax(170px,1.25fr)_minmax(90px,0.7fr)_minmax(110px,0.8fr)_minmax(150px,0.9fr)_30px] items-center gap-4 px-2 py-2 text-[13px] text-[var(--color-blue-dark)] transition',
+          clickable ? 'cursor-pointer hover:bg-[var(--color-blue-soft)]' : '',
+        ].join(' ')}
+        {...rowProps}
+      >
+        {avatar}
+
+        <div className="min-w-0">
+          <p className="line-clamp-2 text-[14px] font-extrabold leading-[1.1] text-[#222]">{user.fullName}</p>
+        </div>
+
+        <p className="truncate font-semibold text-[#8D96B5]">{user.country || '—'}</p>
+        <p className="truncate font-semibold text-[#8D96B5]">{user.city || '—'}</p>
+
+        {!isApplicant && (
+          <span className="inline-flex min-h-[24px] max-w-full items-center justify-center rounded-full bg-[var(--color-blue-soft)] px-3 text-[12px] font-extrabold leading-[1.1]">
+            <span className="truncate">{user.groupName || '—'}</span>
+          </span>
+        )}
+
+        {actionButton}
       </div>
 
-      <div className="min-w-0">
-        <p className="line-clamp-2 text-[14px] font-extrabold leading-[1.1] text-[#222]">{user.fullName}</p>
+      {/* Мобильная версия — карточка вместо фиксированной сетки */}
+      <div
+        className={`flex items-center gap-3 px-2 py-2 text-[13px] text-[var(--color-blue-dark)] transition sm:hidden ${
+          clickable ? 'cursor-pointer hover:bg-[var(--color-blue-soft)]' : ''
+        }`}
+        {...rowProps}
+      >
+        {avatar}
+
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-[14px] font-extrabold leading-[1.1] text-[#222]">{user.fullName}</p>
+          <p className="truncate text-[12px] font-semibold text-[#8D96B5]">
+            {[user.country, user.city].filter(Boolean).join(', ') || '—'}
+          </p>
+          {!isApplicant && (
+            <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-[var(--color-blue-soft)] px-2 py-0.5 text-[11px] font-extrabold leading-[1.1]">
+              <span className="truncate">{user.groupName || '—'}</span>
+            </span>
+          )}
+        </div>
+
+        {actionButton}
       </div>
-
-      <p className="truncate font-semibold text-[#8D96B5]">{user.country || '—'}</p>
-      <p className="truncate font-semibold text-[#8D96B5]">{user.city || '—'}</p>
-
-      {!isApplicant && (
-        <span className="inline-flex min-h-[24px] max-w-full items-center justify-center rounded-full bg-[var(--color-blue-soft)] px-3 text-[12px] font-extrabold leading-[1.1]">
-          <span className="truncate">{user.groupName || '—'}</span>
-        </span>
-      )}
-
-      {isApplicant ? (
-        <ActionArrowButton
-          size={28}
-          aria-label="Открыть профиль"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenProfile?.(user.id);
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          className="flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-[6px] bg-[var(--color-blue-dark)] text-white transition hover:bg-[var(--color-green-brand)] hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:bg-[#D1D7E3] disabled:text-white"
-          aria-label="Написать пользователю"
-          disabled={!user.isCertified}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!user.isCertified) return;
-            onContact?.({ id: user.id, fullName: user.fullName });
-          }}
-        >
-          <Mail size={18} strokeWidth={2.4} />
-        </button>
-      )}
-    </div>
+    </>
   );
 }
 

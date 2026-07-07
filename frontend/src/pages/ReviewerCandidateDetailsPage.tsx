@@ -84,17 +84,26 @@ function ReviewerCandidateDetailsContent() {
 
   return (
     <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
-      <header className="mb-5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4">
-        <div className="flex min-w-0 items-center gap-3 justify-self-start">
-          <PageNav />
+      <div className="mb-5">
+        {/* Мобильная версия — навигация над заголовком */}
+        <div className="sm:hidden">
+          <PageNav className="mb-3" />
+          <h1 className="dashboard-v2-page-title text-center">Детали кандидата</h1>
         </div>
 
-        <h1 className="dashboard-v2-page-title min-w-0 text-center">
-          Детали кандидата
-        </h1>
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <header className="hidden grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 sm:grid">
+          <div className="flex min-w-0 items-center gap-3 justify-self-start">
+            <PageNav />
+          </div>
 
-        <div className="hidden min-w-[188px] sm:block" aria-hidden="true" />
-      </header>
+          <h1 className="dashboard-v2-page-title min-w-0 text-center">
+            Детали кандидата
+          </h1>
+
+          <div className="hidden min-w-[188px] sm:block" aria-hidden="true" />
+        </header>
+      </div>
 
       <div className="grid gap-5 xl:grid-cols-3">
         <CandidateInfoCard

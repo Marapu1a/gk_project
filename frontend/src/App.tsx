@@ -39,6 +39,7 @@ const router = createBrowserRouter([
     path: '/',
     element: <MainLayout />,
     children: [
+      { index: true, element: <Navigate to="/login" replace /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'forgot-password', element: <ForgotPasswordPage /> },

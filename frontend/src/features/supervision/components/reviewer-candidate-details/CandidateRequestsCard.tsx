@@ -44,7 +44,7 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
   });
 
   return (
-    <section className="rounded-[22px] bg-white px-6 py-6 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
+    <section className="min-w-0 rounded-[22px] bg-white px-6 py-6 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
       <h2 className="dashboard-v2-title mb-7">{title}</h2>
 
       {requests.length === 0 ? (
