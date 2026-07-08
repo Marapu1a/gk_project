@@ -61,7 +61,7 @@ export function AdminUserNotesModal({ userId, notes, isLoading, onClose }: Props
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-      <div className="relative w-full max-w-[720px] rounded-[22px] bg-white p-5 pr-14 text-[var(--color-blue-dark)] shadow-soft">
+      <div className="relative max-h-[90vh] w-full max-w-[720px] overflow-y-auto rounded-[22px] bg-white p-5 pr-14 text-[var(--color-blue-dark)] shadow-soft">
         <ModalCloseButton onClick={onClose} />
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>

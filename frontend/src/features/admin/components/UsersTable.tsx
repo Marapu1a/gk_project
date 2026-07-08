@@ -175,7 +175,7 @@ export function UsersTable() {
         />
       </div>
 
-      <p className="dashboard-v2-caption text-center text-[#8D96B5]">
+      <p className="dashboard-v2-caption hidden text-center text-[#8D96B5] sm:block">
         Быстрый переход к поиску: <span className="font-extrabold text-blue-dark">/</span> или{' '}
         <span className="font-extrabold text-blue-dark">Ctrl+K</span>.
       </p>
@@ -243,11 +243,13 @@ export function UsersTable() {
         ) : users.length === 0 ? (
           <p className="dashboard-v2-text p-6 text-[#6B7894]">Пользователей не найдено.</p>
         ) : (
-          <div className="p-5">
-            <p className="dashboard-v2-caption mb-3 text-[#8D96B5]">
+          <div className="px-0 py-4 sm:p-5">
+            <p className="dashboard-v2-caption mb-3 px-3 text-[#8D96B5] sm:px-0">
               Клик по ФИО открывает детальную карточку пользователя.
             </p>
-            <table className="dashboard-v2-text w-full table-fixed text-[var(--color-blue-dark)]">
+
+            {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+            <table className="dashboard-v2-text hidden w-full table-fixed text-[var(--color-blue-dark)] sm:table">
               <colgroup>
                 <col className="w-[7%]" />
                 <col className="w-[31%]" />
@@ -318,6 +320,69 @@ export function UsersTable() {
                 })}
               </tbody>
             </table>
+
+            {/* Мобильная версия — карточки вместо таблицы */}
+            <div className="space-y-3 px-3 sm:hidden">
+              {users.map((user) => {
+                const avatarSrc = user.avatarUrl || '/avatar_placeholder.svg';
+                const groupName = currentGroup(user);
+                const name = splitFullName(user.fullName);
+
+                return (
+                  <div
+                    key={user.id}
+                    className="rounded-[12px] border border-[#DCE8EC] p-3"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="h-[38px] w-[38px] shrink-0 overflow-hidden rounded-full border border-[#B8C4D8] bg-[#E7E9EF]">
+                        <img
+                          src={avatarSrc}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.src = '/avatar_placeholder.svg';
+                          }}
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <AdminUserNameLink
+                          userId={user.id}
+                          fullName={user.fullName}
+                          email={user.email}
+                          className="block cursor-pointer overflow-hidden font-extrabold leading-[1.15]"
+                        >
+                          <span className="block">{name.lastName}</span>
+                          {name.restName ? <span className="block">{name.restName}</span> : null}
+                        </AdminUserNameLink>
+                        <div className="truncate text-[13px] text-[#6B7894]" title={user.email}>
+                          {user.email}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex min-h-[26px] max-w-full items-center justify-center rounded-full bg-[var(--color-blue-soft)] px-3 text-center text-[12px] font-extrabold leading-[1.15]">
+                        {groupName}
+                      </span>
+                      <span className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#EDF1F5] px-2 py-1 text-center text-[11px] font-extrabold leading-[1.15] text-[#6B7894]">
+                        №{user.registrationNumber || '—'}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[12px] text-[#8D96B5]">
+                      <div>
+                        <div>Регистрация:</div>
+                        <div>{formatDate(user.createdAt)}</div>
+                      </div>
+                      <div>
+                        <div>Активность:</div>
+                        <div>{formatDate(user.lastActiveAt)}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </section>

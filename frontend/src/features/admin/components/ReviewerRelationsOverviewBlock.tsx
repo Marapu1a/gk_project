@@ -92,7 +92,8 @@ function RelationsCard({
         </p>
       ) : (
         <div className="overflow-hidden">
-          <div className="grid grid-cols-[42px_minmax(0,1.2fr)_minmax(0,1.15fr)_120px_150px] items-center rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-3 text-[12px] font-semibold text-[var(--color-blue-dark)]">
+          {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+          <div className="hidden grid-cols-[42px_minmax(0,1.2fr)_minmax(0,1.15fr)_120px_150px] items-center rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-3 text-[12px] font-semibold text-[var(--color-blue-dark)] sm:grid">
             <span />
             <span>ФИО</span>
             <span>Email</span>
@@ -103,39 +104,78 @@ function RelationsCard({
           <div>
             {relations.map((relation) => {
               const [surname, restName] = candidateName(relation.candidate.fullName);
+              const dimmed = relation.status === 'REJECTED';
 
               return (
-                <div
-                  key={relation.id}
-                  className={`grid grid-cols-[42px_minmax(0,1.2fr)_minmax(0,1.15fr)_120px_150px] items-center border-b border-[var(--color-blue-soft)] px-4 py-3 text-[13px] last:border-b-0 ${
-                    relation.status === 'REJECTED' ? 'text-[#8D96B5]' : 'text-[var(--color-blue-dark)]'
-                  }`}
-                >
-                  <ActionArrowButton
-                    onClick={() => navigate(to)}
-                    aria-label={`Открыть проверку часов: ${relation.candidate.email}`}
-                  />
-                  <div className="min-w-0">
-                    <AdminUserNameLink
-                      userId={relation.candidate.id}
-                      fullName={relation.candidate.fullName}
-                      email={relation.candidate.email}
-                      className="block min-w-0"
-                    >
-                      <span className="block font-extrabold leading-tight">{surname}</span>
-                      {restName ? <span className="block leading-tight">{restName}</span> : null}
-                    </AdminUserNameLink>
+                <div key={relation.id}>
+                  {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+                  <div
+                    className={`hidden grid-cols-[42px_minmax(0,1.2fr)_minmax(0,1.15fr)_120px_150px] items-center border-b border-[var(--color-blue-soft)] px-4 py-3 text-[13px] last:border-b-0 sm:grid ${
+                      dimmed ? 'text-[#8D96B5]' : 'text-[var(--color-blue-dark)]'
+                    }`}
+                  >
+                    <ActionArrowButton
+                      onClick={() => navigate(to)}
+                      aria-label={`Открыть проверку часов: ${relation.candidate.email}`}
+                    />
+                    <div className="min-w-0">
+                      <AdminUserNameLink
+                        userId={relation.candidate.id}
+                        fullName={relation.candidate.fullName}
+                        email={relation.candidate.email}
+                        className="block min-w-0"
+                      >
+                        <span className="block font-extrabold leading-tight">{surname}</span>
+                        {restName ? <span className="block leading-tight">{restName}</span> : null}
+                      </AdminUserNameLink>
+                    </div>
+                    <div className="min-w-0 truncate" title={relation.candidate.email}>
+                      {relation.candidate.email}
+                    </div>
+                    <div>{formatDate(relation.createdAt)}</div>
+                    <div>
+                      <span
+                        className={`inline-flex min-h-[26px] items-center rounded-full px-3 text-[12px] font-extrabold ${statusClass(relation.status)}`}
+                      >
+                        {STATUS_LABELS[relation.status]}
+                      </span>
+                    </div>
                   </div>
-                  <div className="min-w-0 truncate" title={relation.candidate.email}>
-                    {relation.candidate.email}
-                  </div>
-                  <div>{formatDate(relation.createdAt)}</div>
-                  <div>
-                    <span
-                      className={`inline-flex min-h-[26px] items-center rounded-full px-3 text-[12px] font-extrabold ${statusClass(relation.status)}`}
-                    >
-                      {STATUS_LABELS[relation.status]}
-                    </span>
+
+                  {/* Мобильная версия — карточка вместо жёсткой сетки */}
+                  <div
+                    className={`flex items-start justify-between gap-3 border-b border-[var(--color-blue-soft)] px-2 py-3 text-[13px] last:border-b-0 sm:hidden ${
+                      dimmed ? 'text-[#8D96B5]' : 'text-[var(--color-blue-dark)]'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <AdminUserNameLink
+                        userId={relation.candidate.id}
+                        fullName={relation.candidate.fullName}
+                        email={relation.candidate.email}
+                        className="block min-w-0"
+                      >
+                        <span className="block font-extrabold leading-tight">{surname}</span>
+                        {restName ? <span className="block leading-tight">{restName}</span> : null}
+                      </AdminUserNameLink>
+                      <div className="truncate text-[#8D96B5]" title={relation.candidate.email}>
+                        {relation.candidate.email}
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="text-[12px] text-[#8D96B5]">{formatDate(relation.createdAt)}</span>
+                        <span
+                          className={`inline-flex min-h-[24px] items-center rounded-full px-2.5 text-[11px] font-extrabold ${statusClass(relation.status)}`}
+                        >
+                          {STATUS_LABELS[relation.status]}
+                        </span>
+                      </div>
+                    </div>
+
+                    <ActionArrowButton
+                      onClick={() => navigate(to)}
+                      aria-label={`Открыть проверку часов: ${relation.candidate.email}`}
+                    />
                   </div>
                 </div>
               );

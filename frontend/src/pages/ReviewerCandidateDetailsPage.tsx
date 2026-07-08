@@ -50,7 +50,7 @@ function ReviewerCandidateDetailsContent() {
 
   if (isLoading) {
     return (
-      <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
+      <div className="container-fixed mx-auto px-2 py-4 sm:px-6">
         <p className="dashboard-v2-text text-blue-dark">Загрузка кандидата...</p>
       </div>
     );
@@ -58,7 +58,7 @@ function ReviewerCandidateDetailsContent() {
 
   if (isError || !data) {
     return (
-      <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
+      <div className="container-fixed mx-auto px-2 py-4 sm:px-6">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <PageNav />
         </div>
@@ -83,7 +83,7 @@ function ReviewerCandidateDetailsContent() {
       : (data.supervisionSummary.required?.supervision ?? 0);
 
   return (
-    <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
+    <div className="container-fixed mx-auto px-2 py-4 sm:px-6">
       <div className="mb-5">
         {/* Мобильная версия — навигация над заголовком */}
         <div className="sm:hidden">

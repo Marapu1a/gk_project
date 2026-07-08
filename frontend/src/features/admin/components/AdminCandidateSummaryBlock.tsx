@@ -517,7 +517,7 @@ export function AdminCandidateSummaryBlock({
     reviewerLines.some((line) => line.tone === 'warn');
 
   return (
-    <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
+    <section className="rounded-[14px] bg-white px-3 py-4 shadow-soft sm:rounded-[22px] sm:px-6 sm:py-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="dashboard-v2-title">Сводка по специалисту</h2>
@@ -532,7 +532,7 @@ export function AdminCandidateSummaryBlock({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-        <div className="min-w-0 rounded-[16px] bg-[var(--color-blue-soft)] p-4">
+        <div className="min-w-0 rounded-[12px] bg-[var(--color-blue-soft)] p-3 sm:rounded-[16px] sm:p-4">
           <div className="grid min-w-0 gap-3 md:grid-cols-2">
             <Meta
               label="ФИО"
@@ -583,7 +583,7 @@ export function AdminCandidateSummaryBlock({
           </div>
         </div>
 
-        <div className="min-w-0 rounded-[16px] bg-[var(--color-blue-soft)] p-4">
+        <div className="min-w-0 rounded-[12px] bg-[var(--color-blue-soft)] p-3 sm:rounded-[16px] sm:p-4">
           {summaryLines.length || reviewerLines.length ? (
             <>
               {summaryLines.map((line) => (

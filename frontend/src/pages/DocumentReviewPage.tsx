@@ -117,7 +117,7 @@ export default function DocumentReviewPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-220px)] bg-[#F0F0F0] px-4 pb-10 text-[var(--color-blue-dark)]">
+    <div className="min-h-[calc(100vh-220px)] bg-[#F0F0F0] px-2 pb-10 text-[var(--color-blue-dark)] sm:px-4">
       <div className="mx-auto max-w-[760px]">
         <div className="mb-5">
           {/* Мобильная версия — навигация над заголовком, без абсолютного позиционирования */}

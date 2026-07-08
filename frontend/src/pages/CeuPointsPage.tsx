@@ -27,7 +27,7 @@ function CeuPointsContent() {
 
   if (isLoading) {
     return (
-      <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
+      <div className="container-fixed mx-auto px-2 py-4 sm:px-6">
         <p className="text-sm text-blue-dark">Загрузка...</p>
       </div>
     );
@@ -35,14 +35,14 @@ function CeuPointsContent() {
 
   if (isError || !user) {
     return (
-      <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
+      <div className="container-fixed mx-auto px-2 py-4 sm:px-6">
         <p className="text-sm text-error">Не удалось загрузить CEU-баллы</p>
       </div>
     );
   }
 
   return (
-    <div className="container-fixed mx-auto px-5 py-4 sm:px-6">
+    <div className="container-fixed mx-auto px-2 py-4 sm:px-6">
       <div className="mb-5">
         {/* Мобильная версия — навигация над заголовком */}
         <div className="sm:hidden">

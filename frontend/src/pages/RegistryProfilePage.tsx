@@ -9,7 +9,7 @@ export default function RegistryProfilePage() {
   if (!userId) return null;
 
   return (
-    <div className="mx-auto max-w-[1220px] px-4 py-5 space-y-5">
+    <div className="mx-auto max-w-[1220px] space-y-5 px-2 py-5 sm:px-4">
       <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4">
         <button
           type="button"

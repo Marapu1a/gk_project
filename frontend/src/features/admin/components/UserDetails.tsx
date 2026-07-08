@@ -37,20 +37,39 @@ export default function UserDetails() {
     data.groups.length > 0 ? [...data.groups].sort((a, b) => b.rank - a.rank)[0].name : null;
 
   return (
-    <div className="mx-auto max-w-[1180px] space-y-5 px-4 py-5 text-[var(--color-blue-dark)]">
-      <header className="grid grid-cols-[auto_1fr_auto] items-center gap-4">
-        <PageNav />
-        <h1 className="dashboard-v2-page-title text-center">Детали специалиста</h1>
-        <button
-          type="button"
-          className="inline-flex min-h-[38px] cursor-pointer items-center gap-2 justify-self-end rounded-full border border-[#8D96B5] bg-white px-3 text-[16px] font-extrabold text-[#6B7894] transition hover:bg-[var(--color-blue-soft)]"
-          onClick={() => setIsNotesOpen(true)}
-        >
-          <span>Заметки</span>
-          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-[#8D96B5] px-2 text-white">
-            {notes.length}
-          </span>
-        </button>
+    <div className="mx-auto max-w-[1180px] space-y-5 px-2 py-5 text-[var(--color-blue-dark)] sm:px-4">
+      <header>
+        {/* Мобильная версия — навигация, заголовок и кнопка заметок друг под другом */}
+        <div className="flex flex-col items-center gap-3 sm:hidden">
+          <PageNav />
+          <h1 className="dashboard-v2-page-title text-center">Детали специалиста</h1>
+          <button
+            type="button"
+            className="inline-flex min-h-[38px] cursor-pointer items-center gap-2 rounded-full border border-[#8D96B5] bg-white px-3 text-[16px] font-extrabold text-[#6B7894] transition hover:bg-[var(--color-blue-soft)]"
+            onClick={() => setIsNotesOpen(true)}
+          >
+            <span>Заметки</span>
+            <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-[#8D96B5] px-2 text-white">
+              {notes.length}
+            </span>
+          </button>
+        </div>
+
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <div className="hidden grid-cols-[auto_1fr_auto] items-center gap-4 sm:grid">
+          <PageNav />
+          <h1 className="dashboard-v2-page-title text-center">Детали специалиста</h1>
+          <button
+            type="button"
+            className="inline-flex min-h-[38px] cursor-pointer items-center gap-2 justify-self-end rounded-full border border-[#8D96B5] bg-white px-3 text-[16px] font-extrabold text-[#6B7894] transition hover:bg-[var(--color-blue-soft)]"
+            onClick={() => setIsNotesOpen(true)}
+          >
+            <span>Заметки</span>
+            <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-[#8D96B5] px-2 text-white">
+              {notes.length}
+            </span>
+          </button>
+        </div>
       </header>
 
       {data.externalSupervisorClaimStatus === 'PENDING' ? (

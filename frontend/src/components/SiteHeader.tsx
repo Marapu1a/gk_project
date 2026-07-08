@@ -18,7 +18,7 @@ export default function SiteHeader() {
 
   return (
     <header className="bg-white header-shadow relative">
-      <div className="container-fixed mx-auto py-[9px] flex items-center justify-between">
+      <div className="container-fixed mx-auto flex items-center justify-between px-2 py-[9px] md:px-0">
         {/* Телефон — только мобильная версия */}
         <Link to={'https://reestrpap.ru/chat'} className="md:hidden">
           <img src="/icons/phone.svg" alt="Телефон" className="h-[22px]" />

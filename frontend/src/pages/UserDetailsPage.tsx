@@ -8,7 +8,7 @@ export default function UserDetailsPage() {
   if (!id) return <p>Не указан ID пользователя</p>;
 
   return (
-    <div className="p-6">
+    <div className="p-0 sm:p-6">
       <UserDetails />
     </div>
   );

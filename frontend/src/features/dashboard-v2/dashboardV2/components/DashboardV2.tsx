@@ -61,7 +61,7 @@ export function DashboardV2() {
 
   if (isLoading) {
     return (
-      <div className="container-fixed p-6">
+      <div className="container-fixed px-2 py-6 sm:px-6">
         <p className="dashboard-v2-text text-blue-dark">Загрузка...</p>
       </div>
     );
@@ -69,7 +69,7 @@ export function DashboardV2() {
 
   if (isError || !user) {
     return (
-      <div className="container-fixed p-6">
+      <div className="container-fixed px-2 py-6 sm:px-6">
         <section className="card-section max-w-3xl px-5 py-5 shadow-soft">
           <button
             type="button"
@@ -131,7 +131,7 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
 
   if (paymentsLoading) {
     return (
-      <div className="container-fixed p-6">
+      <div className="container-fixed px-2 py-6 sm:px-6">
         <p className="dashboard-v2-text text-blue-dark">Загрузка...</p>
       </div>
     );
@@ -176,7 +176,7 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
   }
 
   return (
-    <div className="container-fixed p-6">
+    <div className="container-fixed px-2 py-6 sm:px-6">
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-2 lg:hidden">
           <h1 className="dashboard-v2-title">Личный кабинет</h1>

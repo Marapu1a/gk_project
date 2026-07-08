@@ -20,7 +20,7 @@ export default function MyCertificatesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F0F0F0] px-5 pb-12 pt-4 text-blue-dark">
+    <div className="min-h-screen bg-[#F0F0F0] px-2 pb-12 pt-4 text-blue-dark sm:px-5">
       <PageNav className="mb-4" />
 
       <header className="mb-7 text-center">

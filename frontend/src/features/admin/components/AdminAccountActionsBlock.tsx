@@ -219,7 +219,7 @@ export function AdminAccountActionsBlock({
 
       {isHistoryOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4">
-          <div className="relative w-full max-w-3xl rounded-[18px] bg-white p-5 pr-14 shadow-soft">
+          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[18px] bg-white p-5 pr-14 shadow-soft">
             <ModalCloseButton onClick={() => setIsHistoryOpen(false)} />
             <div className="mb-4 flex items-center justify-between gap-4">
               <h3 className="dashboard-v2-title">История действий администратора</h3>

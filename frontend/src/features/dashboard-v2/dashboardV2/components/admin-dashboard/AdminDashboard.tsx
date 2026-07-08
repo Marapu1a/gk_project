@@ -97,32 +97,60 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
   };
 
   return (
-    <div className="container-fixed px-4 pb-10 pt-3 text-blue-dark md:px-6">
-      <header className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <div />
-        <h1 className="dashboard-v2-page-title text-center">
-          Панель администратора
-        </h1>
-        <div className="dashboard-v2-small flex min-w-0 items-center justify-end gap-3 text-[#8D96B5]">
-          <span className="hidden max-w-[260px] truncate sm:block">{user.email}</span>
-          <button
-            type="button"
-            onClick={() => navigate('/profile')}
-            className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--color-blue-dark)] transition-colors hover:bg-[var(--color-blue-soft)]"
-            aria-label="Редактировать профиль"
-            title="Редактировать профиль"
-          >
-            <Settings size={22} />
-          </button>
-          <button
-            type="button"
-            onClick={logout}
-            className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)] hover:text-white"
-            aria-label="Выйти"
-            title="Выйти"
-          >
-            <LogOut size={22} />
-          </button>
+    <div className="container-fixed px-2 pb-10 pt-3 text-blue-dark md:px-6">
+      <header className="mb-5">
+        {/* Мобильная версия — заголовок над кнопками */}
+        <div className="flex flex-col items-center gap-2 sm:hidden">
+          <h1 className="dashboard-v2-page-title text-center">Панель администратора</h1>
+          <div className="dashboard-v2-small flex items-center gap-3 text-[#8D96B5]">
+            <button
+              type="button"
+              onClick={() => navigate('/profile')}
+              className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--color-blue-dark)] transition-colors hover:bg-[var(--color-blue-soft)]"
+              aria-label="Редактировать профиль"
+              title="Редактировать профиль"
+            >
+              <Settings size={22} />
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)] hover:text-white"
+              aria-label="Выйти"
+              title="Выйти"
+            >
+              <LogOut size={22} />
+            </button>
+          </div>
+        </div>
+
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <div className="hidden grid-cols-[1fr_auto_1fr] items-center gap-4 sm:grid">
+          <div />
+          <h1 className="dashboard-v2-page-title text-center">
+            Панель администратора
+          </h1>
+          <div className="dashboard-v2-small flex min-w-0 items-center justify-end gap-3 text-[#8D96B5]">
+            <span className="hidden max-w-[260px] truncate sm:block">{user.email}</span>
+            <button
+              type="button"
+              onClick={() => navigate('/profile')}
+              className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--color-blue-dark)] transition-colors hover:bg-[var(--color-blue-soft)]"
+              aria-label="Редактировать профиль"
+              title="Редактировать профиль"
+            >
+              <Settings size={22} />
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)] hover:text-white"
+              aria-label="Выйти"
+              title="Выйти"
+            >
+              <LogOut size={22} />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -365,51 +393,91 @@ function NotificationRow({ notification }: { notification: Notification }) {
     }
   };
 
-  return (
-    <article
-      className={`grid min-h-[72px] grid-cols-[minmax(0,1fr)_104px_38px_32px] items-center gap-3 px-5 py-3 transition ${
-        notification.isRead ? 'bg-white' : 'bg-[var(--color-blue-soft)]'
-      }`}
+  const unreadDot = !notification.isRead ? (
+    <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--color-danger)]" aria-label="Не прочитано" />
+  ) : null;
+
+  const deleteButton = (
+    <button
+      type="button"
+      onClick={onDelete}
+      disabled={deleteNotification.isPending}
+      className="flex h-[32px] w-[32px] shrink-0 items-center justify-center text-[#C0C5D2] transition hover:text-[var(--color-danger)] disabled:opacity-40"
+      aria-label="Удалить уведомление"
     >
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <NotificationBadge tone={tone}>{label}</NotificationBadge>
-          {!notification.isRead ? (
-            <span
-              className="h-2 w-2 shrink-0 rounded-full bg-[var(--color-danger)]"
-              aria-label="Не прочитано"
-            />
-          ) : null}
-        </div>
-        <NotificationMessage
-          message={notification.message}
-          className="dashboard-v2-text mt-1 text-[#222]"
-          truncate
-        />
-      </div>
+      {notification.type === 'USER' ? <X size={19} /> : <Trash2 size={16} />}
+    </button>
+  );
 
-      <div className="dashboard-v2-caption text-right text-[#8D96B5]">
-        <div>{date}</div>
-        <div>{time}</div>
-      </div>
-
-      <ActionArrowButton
-        onClick={onOpen}
-        size={32}
-        disabled={!normalizedLink && notification.isRead}
-        aria-label={normalizedLink ? 'Открыть уведомление' : 'Отметить прочитанным'}
-      />
-
-      <button
-        type="button"
-        onClick={onDelete}
-        disabled={deleteNotification.isPending}
-        className="flex h-[32px] w-[32px] items-center justify-center text-[#C0C5D2] transition hover:text-[var(--color-danger)] disabled:opacity-40"
-        aria-label="Удалить уведомление"
+  return (
+    <>
+      {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+      <article
+        className={`hidden min-h-[72px] grid-cols-[minmax(0,1fr)_104px_38px_32px] items-center gap-3 px-5 py-3 transition sm:grid ${
+          notification.isRead ? 'bg-white' : 'bg-[var(--color-blue-soft)]'
+        }`}
       >
-        {notification.type === 'USER' ? <X size={19} /> : <Trash2 size={16} />}
-      </button>
-    </article>
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <NotificationBadge tone={tone}>{label}</NotificationBadge>
+            {unreadDot}
+          </div>
+          <NotificationMessage
+            message={notification.message}
+            className="dashboard-v2-text mt-1 text-[#222]"
+            truncate
+          />
+        </div>
+
+        <div className="dashboard-v2-caption text-right text-[#8D96B5]">
+          <div>{date}</div>
+          <div>{time}</div>
+        </div>
+
+        <ActionArrowButton
+          onClick={onOpen}
+          size={32}
+          disabled={!normalizedLink && notification.isRead}
+          aria-label={normalizedLink ? 'Открыть уведомление' : 'Отметить прочитанным'}
+        />
+
+        {deleteButton}
+      </article>
+
+      {/* Мобильная версия — карточка вместо разъезжающейся сетки */}
+      <article
+        className={`flex flex-col gap-2 px-4 py-3 transition sm:hidden ${
+          notification.isRead ? 'bg-white' : 'bg-[var(--color-blue-soft)]'
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <NotificationBadge tone={tone}>{label}</NotificationBadge>
+              {unreadDot}
+            </div>
+            <NotificationMessage
+              message={notification.message}
+              className="dashboard-v2-text mt-1 text-[#222]"
+            />
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <ActionArrowButton
+              onClick={onOpen}
+              size={30}
+              disabled={!normalizedLink && notification.isRead}
+              aria-label={normalizedLink ? 'Открыть уведомление' : 'Отметить прочитанным'}
+            />
+            {deleteButton}
+          </div>
+        </div>
+
+        <div className="dashboard-v2-caption text-[#8D96B5]">
+          {date} · {time}
+        </div>
+      </article>
+    </>
   );
 }
 

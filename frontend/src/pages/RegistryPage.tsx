@@ -7,7 +7,7 @@ export default function RegistryPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="mx-auto max-w-[1220px] px-4 py-6 space-y-6">
+    <div className="mx-auto max-w-[1220px] space-y-6 px-2 py-6 sm:px-4">
       <h1 className="text-center text-[24px] font-extrabold text-[var(--color-blue-dark)]">Реестр</h1>
 
       <div className="rounded-[20px] bg-[#1F305E] px-6 py-5 text-white shadow-[0_2px_12px_rgba(0,0,0,0.10)]">

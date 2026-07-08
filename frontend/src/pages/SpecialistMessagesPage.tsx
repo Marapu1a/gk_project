@@ -82,7 +82,7 @@ export default function SpecialistMessagesPage() {
   };
 
   return (
-    <main className="container-fixed mx-auto w-full px-4 py-8 text-blue-dark md:px-6">
+    <main className="container-fixed mx-auto w-full px-2 py-8 text-blue-dark md:px-6">
       <div className="mb-6">
         {/* Мобильная версия — навигация над заголовком */}
         <div className="sm:hidden">
