@@ -43,10 +43,10 @@ export function AvatarUploadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
-        className="relative w-full max-w-md rounded-2xl bg-white p-6 header-shadow"
+        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 header-shadow"
         style={{ border: '1px solid var(--color-green-light)' }}
       >
         <ModalCloseButton onClick={onClose} disabled={setAvatar.isPending} />

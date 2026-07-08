@@ -86,7 +86,7 @@ export function SpecialistContactModal({ specialistId, specialistName, open, onC
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-5">
       <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Закрыть форму" />
 
-      <div className="relative z-10 w-full max-w-[680px] rounded-[22px] bg-white px-6 py-7 shadow-soft md:px-8">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-[22px] bg-white px-6 py-7 shadow-soft md:px-8">
         <ModalCloseButton onClick={onClose} disabled={mutation.isPending} iconClassName="h-7 w-7" />
 
         <h2 className="mb-7 text-center text-[28px] font-extrabold leading-tight text-[var(--color-blue-dark)]">

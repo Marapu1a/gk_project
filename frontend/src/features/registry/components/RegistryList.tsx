@@ -319,7 +319,48 @@ export function RegistryList({ onOpenProfile, pageSize = 18 }: Props) {
   return (
     <section className="space-y-5">
       <div>
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px] items-end gap-2 px-8 md:px-14">
+        {/* Мобильная версия — вкладки стопкой, активная спереди, вторая выглядывает сзади */}
+        <div className="flex items-end justify-between gap-3 px-4 sm:hidden">
+          <div className="relative h-[42px] flex-1">
+            <button
+              type="button"
+              onClick={() => handleTabChange(tab === 'specialists' ? 'applicants' : 'specialists')}
+              aria-label={`Показать: ${tab === 'specialists' ? 'Соискатели' : 'Специалисты'}`}
+              className={`absolute right-0 top-1 z-0 h-[38px] w-[calc(100%-40px)] cursor-pointer rounded-t-[14px] px-4 text-left text-[15px] font-bold transition ${
+                tab === 'specialists'
+                  ? 'bg-[#D3DAF0] text-[var(--color-blue-dark)] hover:bg-[#C3CCE8]'
+                  : 'bg-[var(--color-green-light)] text-[var(--color-green-darker)] hover:bg-[#CCE87A]'
+              }`}
+            >
+              {tab === 'specialists' ? 'Соискатели' : 'Специалисты'}
+            </button>
+
+            <button
+              key={tab}
+              type="button"
+              className={`animate-tab-pop-in absolute left-0 top-0 z-10 h-[42px] w-[calc(100%-40px)] cursor-default rounded-t-[16px] px-4 text-left text-[16px] font-black shadow-[0_-2px_8px_rgba(0,0,0,0.08)] ${
+                tab === 'specialists'
+                  ? 'bg-[var(--color-green-brand)] text-[var(--color-blue-dark)]'
+                  : 'bg-[var(--color-blue-dark)] text-white'
+              }`}
+            >
+              {tab === 'specialists' ? 'Специалисты' : 'Соискатели'}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className="mb-1.5 flex h-[30px] w-[30px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#8D96B5] bg-white text-[var(--color-blue-dark)] transition hover:bg-[var(--color-blue-soft)]"
+            onClick={() => setView((current) => (current === 'cards' ? 'table' : 'cards'))}
+            aria-label={view === 'cards' ? 'Показать списком' : 'Показать карточками'}
+            title={view === 'cards' ? 'Показать списком' : 'Показать карточками'}
+          >
+            {view === 'cards' ? <List size={20} /> : <Grid2X2 size={18} />}
+          </button>
+        </div>
+
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px] items-end gap-2 px-8 sm:grid md:px-14">
           <button
             type="button"
             className={`min-h-[42px] cursor-pointer rounded-t-[16px] px-5 text-[17px] font-black transition ${

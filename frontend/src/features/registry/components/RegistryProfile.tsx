@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { toast } from 'sonner';
 import { CheckCircle, Mail, Printer, Send, XCircle } from 'lucide-react';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { useRegistryProfile } from '../hooks/useRegistryProfile';
@@ -290,7 +291,7 @@ function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertifica
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-5">
       <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Закрыть просмотр сертификата" />
 
-      <div className="relative z-10 flex max-h-[96vh] w-full max-w-[760px] flex-col items-center">
+      <div className="relative z-10 flex max-h-[96vh] w-full max-w-[760px] flex-col items-center overflow-y-auto">
         <ModalCloseButton
           onClick={onClose}
           variant="light"
@@ -355,7 +356,7 @@ function CertificateCheckModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-5">
       <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Закрыть проверку сертификата" />
 
-      <div className="relative z-10 w-full max-w-[750px] rounded-[22px] bg-white px-7 py-7 shadow-soft">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-[750px] overflow-y-auto rounded-[22px] bg-white px-7 py-7 shadow-soft">
         <ModalCloseButton onClick={onClose} iconClassName="h-7 w-7" />
 
         <h2 className="mb-6 flex items-center justify-center gap-2 text-[30px] font-extrabold leading-none text-[var(--color-blue-dark)]">

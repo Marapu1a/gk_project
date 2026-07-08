@@ -91,7 +91,7 @@ export function PaymentModal({
         aria-label="Закрыть модальное окно"
       />
 
-      <div className="relative z-10 w-full max-w-[520px] rounded-[28px] bg-white p-6 shadow-strong">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-[520px] overflow-y-auto rounded-[28px] bg-white p-6 shadow-strong">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <h3 className="dashboard-v2-page-title text-[#1F305E]">{title}</h3>

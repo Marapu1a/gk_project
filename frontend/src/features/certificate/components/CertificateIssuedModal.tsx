@@ -31,7 +31,7 @@ export function CertificateIssuedModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
-      <div className="relative w-full max-w-[480px] rounded-[16px] bg-white px-6 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
+      <div className="relative max-h-[90vh] w-full max-w-[480px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
         <ModalCloseButton onClick={onClose} />
 
         <h3 className="mb-5 text-center text-[20px] font-extrabold text-[#1F305E]">

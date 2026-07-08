@@ -117,7 +117,7 @@ function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
-        className="relative w-full max-w-[430px] rounded-[16px] bg-white px-5 pb-5 pt-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]"
+        className="relative max-h-[90vh] w-full max-w-[430px] overflow-y-auto rounded-[16px] bg-white px-5 pb-5 pt-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]"
       >
         <ModalCloseButton onClick={() => onClose(false)} iconClassName="h-6 w-6" />
 
