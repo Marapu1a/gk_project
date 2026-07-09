@@ -300,7 +300,7 @@ function PaymentLine({
   confirmedAt?: string | null;
 }) {
   return (
-    <div className="dashboard-v2-caption grid grid-cols-[minmax(180px,1fr)_minmax(210px,auto)] items-start gap-4 py-2 text-[#1F305E] first:pt-0 last:pb-0">
+    <div className="dashboard-v2-caption grid grid-cols-1 items-start gap-2 py-2 text-[#1F305E] first:pt-0 last:pb-0 sm:grid-cols-[minmax(180px,1fr)_minmax(210px,auto)] sm:gap-4">
       <div className="flex min-w-0 items-start gap-2">
         {ok ? (
           <CheckCircle size={16} className="mt-[2px] shrink-0 text-[var(--color-green-brand)]" />
@@ -310,7 +310,7 @@ function PaymentLine({
         <span className="min-w-0 font-extrabold">{label}:</span>
       </div>
 
-      <div className="grid min-w-[210px] grid-cols-[105px_minmax(0,1fr)] gap-x-2 text-left">
+      <div className="grid grid-cols-[105px_minmax(0,1fr)] gap-x-2 text-left sm:min-w-[210px]">
         <span className="text-[#8D96B5]">Заявлено:</span>
         <span>{requestedAt ? formatDate(requestedAt) : 'нет'}</span>
         <span className="text-[#8D96B5]">Подтверждено:</span>

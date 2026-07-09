@@ -226,7 +226,12 @@ export function AdminAccountActionsBlock({
             </div>
 
             <div className="max-h-[420px] overflow-auto rounded-[14px] border border-[var(--color-blue-soft)]">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[560px] table-fixed text-sm">
+                <colgroup>
+                  <col className="w-[150px]" />
+                  <col className="w-[220px]" />
+                  <col className="w-[190px]" />
+                </colgroup>
                 <thead>
                   <tr className="text-[#1F305E]" style={{ background: 'var(--color-blue-soft)' }}>
                     <th className="px-3 py-2 text-left">Дата</th>
@@ -244,12 +249,12 @@ export function AdminAccountActionsBlock({
                       <tr key={log.id} className="border-t border-[var(--color-blue-soft)]">
                         <td className="px-3 py-2 align-top">{formatDate(log.createdAt)}</td>
                         <td className="px-3 py-2 align-top">
-                          <div className="font-semibold">{log.action}</div>
+                          <div className="break-words font-semibold">{log.action}</div>
                           {log.details ? (
-                            <div className="mt-1 text-xs text-[#8D96B5]">{log.details}</div>
+                            <div className="mt-1 break-words text-xs text-[#8D96B5]">{log.details}</div>
                           ) : null}
                         </td>
-                        <td className="px-3 py-2 align-top">{log.adminEmail}</td>
+                        <td className="break-words px-3 py-2 align-top">{log.adminEmail}</td>
                       </tr>
                     ))
                   ) : (

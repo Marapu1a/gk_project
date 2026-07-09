@@ -330,41 +330,41 @@ export default function CeuReviewPage() {
           <p className="dashboard-v2-text p-6 text-[#6B7894]">Записей не найдено.</p>
         ) : (
           <div className="overflow-x-auto p-5">
-            <table className="dashboard-v2-text w-full min-w-[1150px] table-fixed text-[#1F305E]">
+            <table className="dashboard-v2-text w-full min-w-[1080px] table-fixed text-[#1F305E]">
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
-                  <th className="w-[56px] rounded-l-[8px] px-4 py-3 font-medium" />
-                  <th className="w-[132px] px-4 py-3 font-medium">
+                  <th className="w-[132px] rounded-l-[8px] px-4 py-3 font-medium">
                     <button type="button" onClick={() => setSort('createdAt')} className="font-medium">
                       Добавлено {sortBy === 'createdAt' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[220px] px-4 py-3 font-medium">
+                  <th className="w-[240px] px-4 py-3 font-medium">
                     <button type="button" onClick={() => setSort('email')} className="font-medium">
                       Пользователь {sortBy === 'email' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[190px] px-4 py-3 font-medium">
+                  <th className="w-[210px] px-4 py-3 font-medium">
                     <button type="button" onClick={() => setSort('group')} className="font-medium">
                       Цикл {sortBy === 'group' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[185px] px-4 py-3 font-medium">
+                  <th className="w-[130px] px-4 py-3 font-medium">
                     <button type="button" onClick={() => setSort('category')} className="font-medium">
                       Категория {sortBy === 'category' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[84px] px-4 py-3 text-center font-medium">
+                  <th className="w-[60px] px-2 py-3 text-center font-medium">
                     <button type="button" onClick={() => setSort('points')} className="font-medium">
                       Баллы {sortBy === 'points' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[174px] px-4 py-3 text-center font-medium">
+                  <th className="w-[140px] px-2 py-3 text-center font-medium">
                     <button type="button" onClick={() => setSort('status')} className="font-medium">
                       Статус {sortBy === 'status' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="w-[94px] rounded-r-[8px] px-4 py-3 text-center font-medium">Файл</th>
+                  <th className="w-[78px] px-2 py-3 text-center font-medium">Файл</th>
+                  <th className="w-[50px] rounded-r-[8px] px-2 py-3 font-medium" />
                 </tr>
               </thead>
 
@@ -374,13 +374,6 @@ export default function CeuReviewPage() {
                     key={row.entryId}
                     className="group border-b border-[#DCE8EC] align-top transition-colors hover:bg-white/70 last:border-b-0"
                   >
-                    <td className="px-4 py-3">
-                      <ActionArrowButton
-                        onClick={() => setSelectedRow(row)}
-                        title="Открыть детали CEU"
-                        aria-label="Открыть детали CEU"
-                      />
-                    </td>
                     <td className="px-4 py-3">
                       <div>{formatDateTime(row.recordCreatedAt)}</div>
                       <div className="dashboard-v2-caption mt-1 text-[#8D96B5]">
@@ -403,15 +396,15 @@ export default function CeuReviewPage() {
                     </td>
                     <td className="px-4 py-3">{row.cycleLabel || '-'}</td>
                     <td className="px-4 py-3">{categoryLabel(row.category)}</td>
-                    <td className="px-4 py-3 text-center font-extrabold">{row.points}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-2 py-3 text-center font-extrabold">{row.points}</td>
+                    <td className="px-2 py-3 text-center">
                       <span
                         className={`dashboard-v2-caption inline-flex max-w-full justify-center rounded-full px-3 py-1 text-center leading-tight ${statusClass(row.status)}`}
                       >
                         {recordStatusLabels[row.status] ?? row.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-2 py-3 text-center">
                       {row.file ? (
                         <a
                           href={`/uploads/${row.file.fileId}`}
@@ -424,6 +417,14 @@ export default function CeuReviewPage() {
                       ) : (
                         '-'
                       )}
+                    </td>
+                    <td className="px-2 py-3 text-center">
+                      <ActionArrowButton
+                        onClick={() => setSelectedRow(row)}
+                        size={31}
+                        title="Открыть детали CEU"
+                        aria-label="Открыть детали CEU"
+                      />
                     </td>
                   </tr>
                 ))}

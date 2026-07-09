@@ -195,7 +195,7 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="relative w-full max-w-[680px] rounded-[18px] bg-white p-6 shadow-xl">
+      <div className="relative max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-[18px] bg-white p-6 shadow-xl">
         <ModalCloseButton onClick={onClose} disabled={isBusy} />
 
         <h3 className="mb-5 text-center text-[22px] font-bold text-[var(--color-blue-dark)]">

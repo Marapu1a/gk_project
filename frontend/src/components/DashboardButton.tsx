@@ -5,7 +5,7 @@ import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 export function DashboardButton() {
   const navigate = useNavigate();
   const { data: user } = useCurrentUser();
-  const label = user?.role === 'ADMIN' ? 'Панель администратора' : 'В профиль';
+  const label = user?.role === 'ADMIN' ? 'Панель администратора' : 'В личный кабинет';
 
   return (
     <button
