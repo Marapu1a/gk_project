@@ -268,11 +268,20 @@ function AdminSupervisionCandidatesContent() {
   };
 
   return (
-    <div className="container-fixed mx-auto px-5 py-4 text-blue-dark sm:px-6">
-      <header className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <PageNav />
-        <h1 className="dashboard-v2-page-title text-center">Проверка часов</h1>
-        <div />
+    <div className="container-fixed mx-auto px-2 py-4 text-blue-dark sm:px-6">
+      <header className="mb-5">
+        {/* Мобильная версия — навигация над заголовком */}
+        <div className="sm:hidden">
+          <PageNav className="mb-3" />
+          <h1 className="dashboard-v2-page-title text-center">Проверка часов</h1>
+        </div>
+
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <div className="hidden grid-cols-[1fr_auto_1fr] items-center gap-4 sm:grid">
+          <PageNav />
+          <h1 className="dashboard-v2-page-title text-center">Проверка часов</h1>
+          <div />
+        </div>
       </header>
 
       <section className="card-section space-y-5">
@@ -384,8 +393,8 @@ function AdminSupervisionCandidatesContent() {
         ) : rows.length === 0 ? (
           <p className="dashboard-v2-text p-6 text-[#6B7894]">Отправок не найдено.</p>
         ) : (
-          <div className="p-5">
-            <table className="dashboard-v2-text w-full table-fixed text-[#1F305E]">
+          <div className="overflow-x-auto p-5">
+            <table className="dashboard-v2-text w-full min-w-[860px] table-fixed text-[#1F305E]">
               <colgroup>
                 <col className="w-[20%]" />
                 <col className="w-[21%]" />

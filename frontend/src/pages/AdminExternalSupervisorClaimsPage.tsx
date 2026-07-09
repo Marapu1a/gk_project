@@ -214,11 +214,20 @@ function AdminExternalSupervisorClaimsPageInner() {
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / perPage));
 
   return (
-    <div className="container-fixed px-4 pb-10 pt-3 text-blue-dark md:px-6">
-      <header className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <PageNav />
-        <h1 className="dashboard-v2-page-title text-center">Подтверждение квалификации</h1>
-        <div />
+    <div className="container-fixed px-2 pb-10 pt-3 text-blue-dark md:px-6">
+      <header className="mb-5">
+        {/* Мобильная версия — навигация над заголовком */}
+        <div className="sm:hidden">
+          <PageNav className="mb-3" />
+          <h1 className="dashboard-v2-page-title text-center">Подтверждение квалификации</h1>
+        </div>
+
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <div className="hidden grid-cols-[1fr_auto_1fr] items-center gap-4 sm:grid">
+          <PageNav />
+          <h1 className="dashboard-v2-page-title text-center">Подтверждение квалификации</h1>
+          <div />
+        </div>
       </header>
 
       <section className="card-section px-5 py-5 shadow-soft md:px-6">
@@ -272,7 +281,7 @@ function AdminExternalSupervisorClaimsPageInner() {
 
         {data?.users.length ? (
           <div className="w-full overflow-x-auto">
-            <table className="w-full table-fixed border-collapse">
+            <table className="w-full min-w-[640px] table-fixed border-collapse">
               {mode === 'active' ? (
                 <colgroup>
                   <col className="w-[24%]" />

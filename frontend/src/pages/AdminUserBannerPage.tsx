@@ -71,7 +71,7 @@ function AdminUserBannerPageInner() {
   }
 
   return (
-    <div className="container-fixed px-4 pb-10 pt-3 text-blue-dark md:px-6">
+    <div className="container-fixed px-2 pb-10 pt-3 text-blue-dark md:px-6">
       <PageNav />
 
       <div className="mx-auto mt-2 max-w-[960px]">

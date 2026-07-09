@@ -201,11 +201,20 @@ export default function CeuReviewPage() {
   };
 
   return (
-    <div className="container-fixed mx-auto px-5 py-4 text-blue-dark sm:px-6">
-      <header className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <PageNav />
-        <h1 className="dashboard-v2-page-title text-center">Проверка CEU</h1>
-        <div />
+    <div className="container-fixed mx-auto px-2 py-4 text-blue-dark sm:px-6">
+      <header className="mb-5">
+        {/* Мобильная версия — навигация над заголовком */}
+        <div className="sm:hidden">
+          <PageNav className="mb-3" />
+          <h1 className="dashboard-v2-page-title text-center">Проверка CEU</h1>
+        </div>
+
+        {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+        <div className="hidden grid-cols-[1fr_auto_1fr] items-center gap-4 sm:grid">
+          <PageNav />
+          <h1 className="dashboard-v2-page-title text-center">Проверка CEU</h1>
+          <div />
+        </div>
       </header>
 
       <section className="card-section space-y-5">
@@ -320,8 +329,8 @@ export default function CeuReviewPage() {
         ) : rows.length === 0 ? (
           <p className="dashboard-v2-text p-6 text-[#6B7894]">Записей не найдено.</p>
         ) : (
-          <div className="p-5">
-            <table className="dashboard-v2-text w-full table-fixed text-[#1F305E]">
+          <div className="overflow-x-auto p-5">
+            <table className="dashboard-v2-text w-full min-w-[1150px] table-fixed text-[#1F305E]">
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
                   <th className="w-[56px] rounded-l-[8px] px-4 py-3 font-medium" />
@@ -330,7 +339,7 @@ export default function CeuReviewPage() {
                       Добавлено {sortBy === 'createdAt' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>
                   </th>
-                  <th className="px-4 py-3 font-medium">
+                  <th className="w-[220px] px-4 py-3 font-medium">
                     <button type="button" onClick={() => setSort('email')} className="font-medium">
                       Пользователь {sortBy === 'email' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                     </button>

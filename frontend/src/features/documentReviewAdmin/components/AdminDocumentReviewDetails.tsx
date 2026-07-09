@@ -291,10 +291,12 @@ export function AdminDocumentReviewDetails() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F0F0] px-4 py-6 text-[var(--color-blue-dark)]">
+    <div className="min-h-screen bg-[#F0F0F0] px-2 py-6 text-[var(--color-blue-dark)] sm:px-4">
       <section className="mx-auto max-w-[1040px] overflow-hidden rounded-[18px] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
-        <header className="flex items-center justify-between gap-4 border-b border-[var(--color-blue-soft)] px-6 py-5">
-          <div>
+        <header className="border-b border-[var(--color-blue-soft)] px-6 py-5">
+          {/* Мобильная версия — навигация над заголовком */}
+          <div className="sm:hidden">
+            <PageNav className="mb-3" />
             <h1 className="text-[24px] font-extrabold leading-tight">
               {request.user?.id ? (
                 <AdminUserNameLink
@@ -312,7 +314,29 @@ export function AdminDocumentReviewDetails() {
               Подана: {formatDate(request.submittedAt)}
             </p>
           </div>
-          <PageNav className="shrink-0" />
+
+          {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+          <div className="hidden items-center justify-between gap-4 sm:flex">
+            <div>
+              <h1 className="text-[24px] font-extrabold leading-tight">
+                {request.user?.id ? (
+                  <AdminUserNameLink
+                    userId={request.user.id}
+                    fullName={request.user.fullName}
+                    email={request.user.email}
+                  >
+                    {requestTitleName}
+                  </AdminUserNameLink>
+                ) : (
+                  requestTitleName
+                )}
+              </h1>
+              <p className="mt-1 text-[13px] text-[#8D96B5]">
+                Подана: {formatDate(request.submittedAt)}
+              </p>
+            </div>
+            <PageNav className="shrink-0" />
+          </div>
         </header>
 
         <div className="space-y-7 px-6 py-6">

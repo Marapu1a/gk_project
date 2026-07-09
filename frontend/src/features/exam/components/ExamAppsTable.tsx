@@ -114,12 +114,12 @@ export default function ExamAppsTable() {
         {filtered.length === 0 ? (
           <p className="dashboard-v2-text p-6 text-[#6B7894]">Заявок не найдено.</p>
         ) : (
-          <div className="p-5">
-            <table className="dashboard-v2-text w-full table-fixed text-[#1F305E]">
+          <div className="overflow-x-auto p-5">
+            <table className="dashboard-v2-text w-full min-w-[940px] table-fixed text-[#1F305E]">
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
-                  <th className="rounded-l-[8px] px-4 py-3 font-medium">ФИО</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="w-[190px] rounded-l-[8px] px-4 py-3 font-medium">ФИО</th>
+                  <th className="w-[190px] px-4 py-3 font-medium">Email</th>
                   <th className="w-[170px] px-4 py-3 text-center font-medium">Цель</th>
                   <th className="w-[150px] px-4 py-3 text-center font-medium">Дата подачи</th>
                   <th className="w-[170px] px-4 py-3 text-center font-medium">
@@ -139,6 +139,7 @@ export default function ExamAppsTable() {
                         userId={row.userId}
                         fullName={row.user.fullName}
                         email={row.user.email}
+                        className="block truncate"
                       >
                         {row.user.fullName || row.user.email || '-'}
                       </AdminUserNameLink>
