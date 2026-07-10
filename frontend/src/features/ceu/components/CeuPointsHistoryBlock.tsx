@@ -155,9 +155,9 @@ function CeuDetailsModal({
           </div>
         ) : null}
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <ReadOnlyField label="Длительность" value={formatNumber(record.totalValue)} />
               <ReadOnlyField label="Дата" value={formatDate(record.eventDate)} />
             </div>
@@ -168,7 +168,7 @@ function CeuDetailsModal({
                 {record.entries.map((entry) => (
                   <div
                     key={entry.id}
-                    className="grid gap-3 border-b border-[#DCE8EC] px-3 py-3 last:border-b-0 sm:grid-cols-[minmax(0,190px)_48px_minmax(0,1fr)]"
+                    className="grid grid-cols-1 gap-3 border-b border-[#DCE8EC] px-3 py-3 last:border-b-0 sm:grid-cols-[minmax(0,190px)_48px_minmax(0,1fr)]"
                   >
                     <span className="min-w-0 break-words pr-2 text-[13px] font-semibold leading-[1.25] text-[#1F305E]">
                       {categoryLabels[entry.category] ?? entry.category}
@@ -202,7 +202,7 @@ function CeuDetailsModal({
               value={displayCeuEventName(record.eventName)}
             />
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <ReadOnlyPlain label="Кандидат" value={record.user.fullName || '—'} mutedLabel />
               <ReadOnlyPlain label="Email" value={record.user.email || '—'} mutedLabel />
             </div>

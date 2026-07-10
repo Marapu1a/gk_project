@@ -441,7 +441,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
       >
         <div className="min-h-0">
           <section className="rounded-[16px] bg-white px-5 py-5 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
-            <div className="mb-5 grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+            <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
               <div className="hidden sm:block" aria-hidden="true" />
 
               <button
@@ -470,9 +470,9 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
               )}
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               <div className={practiceLocked ? 'opacity-70' : undefined}>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="Дата проведения супервизии">
                     <input
                       className="input-design h-[32px]"
@@ -514,7 +514,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                   </Field>
                 </div>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="Полевая практика">
                     <NumberInput
                       value={implementing}
@@ -574,7 +574,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                   .
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-4 sm:border-r sm:border-[#DCE3EF] sm:pr-4">
                     <Field label="С наблюдением">
                       <input className="input-design h-[32px]" value={directTotal} disabled />

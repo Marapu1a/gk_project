@@ -531,9 +531,9 @@ export function AdminCandidateSummaryBlock({
         </StatusPill>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         <div className="min-w-0 rounded-[12px] bg-[var(--color-blue-soft)] p-3 sm:rounded-[16px] sm:p-4">
-          <div className="grid min-w-0 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 min-w-0 gap-3 md:grid-cols-2">
             <Meta
               label="ФИО"
               value={user.fullName || '—'}

@@ -35,7 +35,7 @@ export function DashboardNextStepCard({ step, onHide }: Props) {
 
   return (
     <section
-      className={`grid min-h-[92px] items-center gap-4 rounded-[16px] px-5 py-4 shadow-soft sm:grid-cols-[auto_minmax(0,1fr)_auto] ${toneClass[step.tone]}`}
+      className={`grid grid-cols-1 min-h-[92px] items-center gap-4 rounded-[16px] px-5 py-4 shadow-soft sm:grid-cols-[auto_minmax(0,1fr)_auto] ${toneClass[step.tone]}`}
       aria-labelledby="dashboard-next-step-title"
     >
       <div className="flex size-10 items-center justify-center rounded-full bg-white text-[var(--color-blue-dark)]">

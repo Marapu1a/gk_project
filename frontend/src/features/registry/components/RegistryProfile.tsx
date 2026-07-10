@@ -68,7 +68,7 @@ export function RegistryProfile({ userId }: Props) {
   return (
     <>
       <section className="rounded-[22px] bg-white px-5 py-5 shadow-soft md:px-6">
-        <div className="grid gap-6 lg:grid-cols-[276px_minmax(0,1fr)_300px]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[276px_minmax(0,1fr)_300px]">
           <div className="space-y-4">
             <div className="flex h-[276px] w-full items-center justify-center overflow-hidden rounded-[10px] border border-[#B8C1D6] bg-[#E7EAF0]">
               <img
@@ -368,7 +368,7 @@ function CertificateCheckModal({
           О сертификате
         </h2>
 
-        <div className="grid gap-7 md:grid-cols-[330px_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-7 md:grid-cols-[330px_minmax(0,1fr)]">
           <div className="flex justify-center">
             <CertificatePreview cert={cert} className="max-h-[462px] w-full max-w-[330px]" />
           </div>

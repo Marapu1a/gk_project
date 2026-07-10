@@ -226,6 +226,8 @@ function SupervisionRecordDetailsModal({
   mode: HistoryMode;
   onClose: () => void;
 }) {
+  const requestDateLabel = getSupervisionRequestDateLabel(mode);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
       <div className="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[12px] bg-white px-6 py-5 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
@@ -235,9 +237,9 @@ function SupervisionRecordDetailsModal({
           {isAdminCorrection(record) ? 'Детали корректировки' : 'Детали заявки'}
         </h3>
 
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <ReadOnlyField
                 label={requestDateLabel}
                 value={formatDate(recordSupervisionDate(record))}
@@ -275,7 +277,7 @@ function SupervisionRecordDetailsModal({
             ) : (
               <div>
                 <h4 className="mb-3 text-[14px] font-extrabold text-[#1F305E]">Практика</h4>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <ReadOnlyField
                     label="Полевая практика"
                     value={formatNumber(record.hours.implementing)}
@@ -291,7 +293,7 @@ function SupervisionRecordDetailsModal({
             {mode === 'supervision' ? (
               <div>
               <h4 className="mb-3 text-[14px] font-extrabold text-[#1F305E]">Супервизия</h4>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-4 sm:border-r sm:border-[#DCE3EF] sm:pr-4">
                   <ReadOnlyField
                     label="С наблюдением"
@@ -336,7 +338,7 @@ function SupervisionRecordDetailsModal({
               }
             />
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <ReadOnlyField label="Кандидат" value={record.user.fullName || '—'} />
               <ReadOnlyField label="Email" value={record.user.email || '—'} />
             </div>

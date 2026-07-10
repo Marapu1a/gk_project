@@ -172,7 +172,7 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
           Контракт с супервизором
         </h2>
 
-        <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
             <div>
               <h3 className="mb-4 text-[16px] font-extrabold">Загрузить контракт</h3>
 

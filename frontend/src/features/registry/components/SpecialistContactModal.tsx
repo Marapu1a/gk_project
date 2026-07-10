@@ -93,7 +93,7 @@ export function SpecialistContactModal({ specialistId, specialistName, open, onC
           Связаться со специалистом
         </h2>
 
-        <div className="grid gap-7 md:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="grid grid-cols-1 gap-7 md:grid-cols-[minmax(0,1fr)_300px]">
           <div className="space-y-5">
             <label className="block">
               <span className="dashboard-v2-label text-[var(--color-blue-dark)]">Имя</span>
@@ -146,7 +146,7 @@ export function SpecialistContactModal({ specialistId, specialistName, open, onC
           />
         </label>
 
-        <div className="mt-7 grid gap-4 md:grid-cols-2 md:px-20">
+        <div className="mt-7 grid grid-cols-1 gap-4 md:grid-cols-2 md:px-20">
           <button
             type="button"
             onClick={onClose}

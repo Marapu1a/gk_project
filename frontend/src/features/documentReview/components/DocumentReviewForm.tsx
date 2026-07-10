@@ -263,7 +263,7 @@ function DocumentUploadRow({
   onDelete: () => void;
 }) {
   return (
-    <div className="grid gap-3 rounded-[10px] bg-white p-3 shadow-[0_2px_10px_rgba(31,48,94,0.10)] sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:items-center">
+    <div className="grid grid-cols-1 gap-3 rounded-[10px] bg-white p-3 shadow-[0_2px_10px_rgba(31,48,94,0.10)] sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:items-center">
       <FilePreview file={file} />
 
       <div className="min-w-0">

@@ -220,7 +220,7 @@ export function HoursOverviewBlock({
           ) : null}
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[136px_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[136px_minmax(0,1fr)]">
           <TotalCircle
             label="Набрано"
             value={formatNumber(mentorDisplayTotal)}
@@ -229,7 +229,7 @@ export function HoursOverviewBlock({
             compact
           />
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <MetricCard
               label="На рассмотрении"
               value={formatNumber(mentor.pending)}
@@ -279,7 +279,7 @@ export function HoursOverviewBlock({
 
   return (
     <section className="card-section overflow-hidden px-5 py-5">
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.45fr)]">
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.45fr)]">
         <div className="min-w-0">
           <div
             className={`mb-3 flex gap-2 ${
@@ -290,7 +290,7 @@ export function HoursOverviewBlock({
             <DashboardHelpTooltip content="Подтвержденные часы практики для текущего уровня сертификации." />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[150px_minmax(0,1fr)]">
             <div>
               <TotalCircle
                 label="Набрано"
@@ -349,7 +349,7 @@ export function HoursOverviewBlock({
             ) : null}
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-[146px_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[146px_minmax(0,1fr)]">
             <div>
               <TotalCircle
                 label="Набрано"
@@ -360,7 +360,7 @@ export function HoursOverviewBlock({
             </div>
 
             <div className="grid h-full grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <MetricCard
                   label="С наблюдением"
                   value={formatNumber(hasDistribution ? summary.supervisionBreakdown.direct : null)}
@@ -378,7 +378,7 @@ export function HoursOverviewBlock({
                 />
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <MetricSegmentPair
                   leftValue={formatNumber(
                     hasDistribution ? summary.supervisionBreakdown.directIndividual : null,

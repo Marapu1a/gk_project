@@ -382,7 +382,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <MetricCard label="Требуется" value={mentor?.required ?? 0} />
           <label className="flex min-h-[86px] items-center justify-between gap-5 rounded-[10px] bg-[var(--color-blue-soft)] px-5 py-4">
             <span className="min-w-0 text-[16px] font-extrabold leading-[1.2] text-[#1F305E]">
@@ -431,9 +431,9 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
         </p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <section className={practiceLocked ? 'space-y-4 opacity-70' : 'space-y-4'}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <MetricCard
               label="Всего практики"
               value={values.practiceTotal}
@@ -453,7 +453,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Полевая практика">
               <NumberInput
                 value={implementing}
@@ -507,7 +507,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
             .
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-4 sm:border-r sm:border-[#DCE3EF] sm:pr-4">
               <Field label="С наблюдением">
                 <input className="input-design h-[32px]" value={formatNumber(values.directTotal)} disabled />

@@ -362,6 +362,7 @@ function ReviewQueue({
   isError: boolean;
   onOpen: (request: ReviewerRequestListItem) => void;
 }) {
+  const navigate = useNavigate();
   const requestDateLabel = getSupervisionRequestDateLabel(kind);
 
   if (isLoading) return <p className="py-6 text-center text-[#6B7894]">Загрузка заявок...</p>;
@@ -379,9 +380,9 @@ function ReviewQueue({
             <div>
               <button
                 type="button"
-                onClick={() => onOpen(request)}
+                onClick={() => navigate(`/reviewer/candidates/${kind}/${request.candidate.id}`)}
                 className="dashboard-v2-text cursor-pointer text-left font-extrabold text-[#1F305E] transition-colors hover:text-[#526C9D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F305E]"
-                title="Открыть заявку"
+                title="Открыть детали кандидата"
               >
                 {request.candidate.fullName || request.candidate.email}
               </button>
@@ -407,9 +408,9 @@ function ReviewQueue({
             <div className="min-w-0">
               <button
                 type="button"
-                onClick={() => onOpen(request)}
+                onClick={() => navigate(`/reviewer/candidates/${kind}/${request.candidate.id}`)}
                 className="dashboard-v2-text cursor-pointer text-left font-extrabold text-[#1F305E] transition-colors hover:text-[#526C9D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F305E]"
-                title="Открыть заявку"
+                title="Открыть детали кандидата"
               >
                 {request.candidate.fullName || request.candidate.email}
               </button>

@@ -547,9 +547,9 @@ function AdminCeuDetailsModal({
 
         <h3 className="dashboard-v2-page-title mb-5 text-center">Детали CEU</h3>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <div className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <ReadOnlyField label="Всего баллов" value={formatNumber(row.points)} />
               <ReadOnlyField label="Дата мероприятия" value={formatDate(row.eventDate)} />
             </div>
@@ -563,7 +563,7 @@ function AdminCeuDetailsModal({
                   row.entries.map((entry) => (
                   <div
                     key={entry.id}
-                    className="grid gap-3 border-b border-[#DCE8EC] px-3 py-3 last:border-b-0 sm:grid-cols-[minmax(0,190px)_48px_minmax(0,1fr)]"
+                    className="grid grid-cols-1 gap-3 border-b border-[#DCE8EC] px-3 py-3 last:border-b-0 sm:grid-cols-[minmax(0,190px)_48px_minmax(0,1fr)]"
                   >
                     <span className="dashboard-v2-small min-w-0 break-words pr-2 font-semibold leading-[1.25] text-[#1F305E]">
                       {ceuCategoryLabels[entry.category] ?? entry.category}
@@ -594,7 +594,7 @@ function AdminCeuDetailsModal({
               value={displayCeuEventName(row.eventName)}
             />
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <ReadOnlyPlain label="Специалист" value={row.fullName || '-'} mutedLabel />
               <ReadOnlyPlain label="Email" value={row.email || '-'} mutedLabel />
             </div>

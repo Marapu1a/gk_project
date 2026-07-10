@@ -103,7 +103,7 @@ export function AdminUserNotesModal({ userId, notes, isLoading, onClose }: Props
               {notes.map((note, index) => (
                 <li
                   key={note.id}
-                  className="grid gap-3 rounded-[14px] bg-[#F7F8FA] px-4 py-3 text-[14px] sm:grid-cols-[minmax(0,1fr)_auto]"
+                  className="grid grid-cols-1 gap-3 rounded-[14px] bg-[#F7F8FA] px-4 py-3 text-[14px] sm:grid-cols-[minmax(0,1fr)_auto]"
                 >
                   <div className="min-w-0">
                     <div className="font-semibold">

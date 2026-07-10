@@ -245,7 +245,7 @@ export default function UserBasicBlock(props: Props) {
         )}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[168px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[168px_minmax(0,1fr)]">
         <div className="flex items-center justify-center rounded-[16px] bg-[var(--color-blue-soft)] p-4">
           <AvatarDisplay
             src={avatarUrl}

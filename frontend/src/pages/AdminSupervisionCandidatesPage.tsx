@@ -659,7 +659,7 @@ function AdminCorrectionDetailsModal({
               <MiniRow label="Итоговые часы менторства" value={correction?.mentor ?? 0} strong />
             </div>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
               <div className="space-y-4">
                 <div className="rounded-[10px] bg-white px-3 py-2">
                   <MiniRow label="Полевая практика" value={correction?.implementing ?? 0} />
@@ -717,7 +717,7 @@ function LegacyHoursDetailsModal({
         </div>
 
         <section className="rounded-[14px] bg-[var(--color-blue-soft)] px-4 py-4 dashboard-v2-text">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
             <div className="space-y-4">
               <HoursList hours={record?.hours ?? []} />
               {row.kind === 'supervision' ? (
@@ -790,7 +790,7 @@ function AdminPendingHoursDetailsModal({
                   </span>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                   <div className="space-y-4">
                     <HoursList hours={request.hours} />
                     {row.kind === 'supervision' ? (

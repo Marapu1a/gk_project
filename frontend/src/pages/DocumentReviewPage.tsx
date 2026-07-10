@@ -246,7 +246,7 @@ function HistoryRow({
   const hasDeletionRequest = Boolean(item.deletionRequestedAt);
 
   return (
-    <article className="grid gap-3 rounded-[10px] bg-white p-3 shadow-[0_2px_10px_rgba(31,48,94,0.12)] sm:grid-cols-[74px_minmax(0,1fr)_auto] sm:items-center">
+    <article className="grid grid-cols-1 gap-3 rounded-[10px] bg-white p-3 shadow-[0_2px_10px_rgba(31,48,94,0.12)] sm:grid-cols-[74px_minmax(0,1fr)_auto] sm:items-center">
       <FilePreview file={item.file} deleted={isDeleted} />
 
       <div className="min-w-0">

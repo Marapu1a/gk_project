@@ -247,7 +247,7 @@ export default function PaymentsBlock({
             return (
               <div
                 key={payment.id}
-                className={`grid gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_280px_180px] lg:items-center ${
+                className={`grid grid-cols-1 gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_280px_180px] lg:items-center ${
                   index > 0 ? 'border-t border-[var(--color-blue-soft)]' : ''
                 }`}
               >

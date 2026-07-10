@@ -11,7 +11,7 @@ export default function RegistryPage() {
       <h1 className="text-center text-[24px] font-extrabold text-[var(--color-blue-dark)]">Реестр</h1>
 
       <div className="rounded-[20px] bg-[#1F305E] px-6 py-5 text-white shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,0.85fr)_auto] lg:items-center">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,0.85fr)_auto] lg:items-center">
           <p className="text-[15px] leading-[1.35]">
             Здесь представлены специалисты по прикладному анализу поведения, подтвердившие свою
             квалификацию в системе добровольной сертификации «ЦС ПАП», зарегистрированной в
