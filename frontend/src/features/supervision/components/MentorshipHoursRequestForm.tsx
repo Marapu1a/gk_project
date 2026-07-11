@@ -9,6 +9,7 @@ import { useSupervisionSummary } from '../hooks/useSupervisionSummary';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { CopyEmailLink } from '@/components/CopyEmailLink';
+import { SubmissionSuccessModal } from '@/components/SubmissionSuccessModal';
 import { MENTORSHIP_REQUEST_DATE_LABEL } from '../utils/requestDateLabels';
 import {
   formatDecimalInput,
@@ -75,6 +76,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
   const [search, setSearch] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [ethicsAccepted, setEthicsAccepted] = useState(false);
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const hasStoredEthicsAcceptance = Boolean(user?.supervisionEthicsAcceptedAt);
   const effectiveEthicsAccepted = hasStoredEthicsAcceptance || ethicsAccepted;
 
@@ -207,9 +209,9 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
         entries: [{ type: 'SUPERVISOR', value: hoursValue }],
       });
 
-      toast.success(UI_TOAST_MESSAGES.supervision.mentorshipRequestSent);
       resetForm();
       setIsOpen(false);
+      setIsSuccessOpen(true);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.supervision.requestSendFailed);
     }
@@ -428,6 +430,13 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
           </section>
         </div>
       </div>
+
+      <SubmissionSuccessModal
+        open={isSuccessOpen}
+        onClose={() => setIsSuccessOpen(false)}
+        title="Заявка на подтверждение часов менторства отправлена"
+        description="Заявка добавлена в историю. После проверки здесь появится её статус."
+      />
     </>
   );
 }

@@ -43,6 +43,7 @@ type Params = {
   // mentor   — менторство → опытные, админы
   supervision?: 'practice' | 'mentor';
   archived?: 'active' | 'only' | 'with';
+  nameSort?: 'asc' | 'desc';
 };
 
 export function useUsers(params: Params) {
@@ -57,6 +58,7 @@ export function useUsers(params: Params) {
     status,
     supervision,
     archived = 'active',
+    nameSort,
   } = params;
 
   return useQuery<UsersResponse, Error>({
@@ -72,6 +74,7 @@ export function useUsers(params: Params) {
       status ?? '',
       supervision ?? '',
       archived,
+      nameSort ?? '',
     ],
     queryFn: async () => {
       const { data } = await api.get('/admin/users', {
@@ -86,6 +89,7 @@ export function useUsers(params: Params) {
           status,
           supervision,
           archived,
+          nameSort,
         },
       });
       return data as UsersResponse;

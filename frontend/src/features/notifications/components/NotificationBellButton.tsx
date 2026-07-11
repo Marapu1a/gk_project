@@ -18,6 +18,7 @@ export function NotificationBellButton({ className = 'icon-button icon-button-pr
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Уведомления"
+        title="Уведомления"
         className={className}
       >
         <BellIcon className="h-full w-full" />

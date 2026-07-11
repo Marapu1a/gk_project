@@ -32,10 +32,11 @@ export async function getExternalSupervisorClaims(
   mode: 'active' | 'history',
   page = 1,
   perPage = 20,
+  nameSort?: 'asc' | 'desc',
 ) {
   const { data } = await api.get<ExternalSupervisorClaimsResponse>(
     '/admin/external-supervisor-claims',
-    { params: { mode, page, perPage } },
+    { params: { mode, page, perPage, nameSort } },
   );
   return data;
 }

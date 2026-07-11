@@ -14,22 +14,13 @@ type CandidateRequestsCardProps = {
   requests: ReviewerCandidateRequest[];
 };
 
-const STATUS_LABELS: Record<ReviewerCandidateRequest['status'], string> = {
-  UNCONFIRMED: 'На рассмотрении',
-  CONFIRMED: 'Часы подтверждены',
-  REJECTED: 'Часы отклонены',
-  SPENT: 'Использовано',
-};
-
 function formatDate(value: string | null | undefined) {
   if (!value) return '—';
   return format(new Date(value), 'dd.MM.yyyy');
 }
 
-function statusClass(status: ReviewerCandidateRequest['status']) {
-  if (status === 'REJECTED') return 'text-[#A7B1C7]';
-  if (status === 'CONFIRMED') return 'text-[#1F305E]';
-  return 'text-[#7F8AA3]';
+function formatNumber(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 export function CandidateRequestsCard({ kind, title, requests }: CandidateRequestsCardProps) {
@@ -51,7 +42,7 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
         <p className="dashboard-v2-text text-[#6B7894]">Заявок пока нет.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="dashboard-v2-text w-full min-w-[460px] text-[#1F305E]">
+          <table className="dashboard-v2-text w-full min-w-[780px] text-[#1F305E]">
             <thead>
               <tr className="bg-[var(--color-blue-soft)] text-left">
                 <th className="rounded-l-[8px] px-3 py-3 text-center font-medium">
@@ -72,7 +63,20 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                     />
                   </button>
                 </th>
-                <th className="px-3 py-3 text-center font-medium">Статус</th>
+                {kind === 'supervision' ? (
+                  <>
+                    <th className="px-3 py-3 text-center font-medium">Полевая практика</th>
+                    <th className="px-3 py-3 text-center font-medium">Работа с информацией</th>
+                    <th className="border-l border-[#C9D9DE] px-3 py-3 text-center font-medium">
+                      Супервизия с наблюдением
+                    </th>
+                    <th className="px-3 py-3 text-center font-medium">
+                      Супервизия без наблюдения
+                    </th>
+                  </>
+                ) : (
+                  <th className="px-3 py-3 text-center font-medium">Часы менторства</th>
+                )}
                 <th className="w-[54px] rounded-r-[8px] px-3 py-3" />
               </tr>
             </thead>
@@ -92,19 +96,24 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                       {formatDate(request.supervisionDate ?? request.createdAt)}
                     </td>
 
-                    <td className="px-3 py-4">
-                      {request.status === 'CONFIRMED' ? (
-                        <div className="flex justify-center">
-                          <span className="dashboard-v2-caption rounded-full bg-[var(--color-blue-soft)] px-3 py-1 text-[#1F305E]">
-                            {STATUS_LABELS[request.status]}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className={`dashboard-v2-caption text-center ${statusClass(request.status)}`}>
-                          {STATUS_LABELS[request.status]}
-                        </div>
-                      )}
-                    </td>
+                    {kind === 'supervision' ? (
+                      <>
+                        <td className="px-3 py-4 text-center">
+                          {formatNumber(request.totals.implementing + request.totals.legacyPractice)}
+                        </td>
+                        <td className="px-3 py-4 text-center">
+                          {formatNumber(request.totals.programming)}
+                        </td>
+                        <td className="border-l border-[#DCE8EC] px-3 py-4 text-center">
+                          {formatNumber(request.distribution.direct)}
+                        </td>
+                        <td className="px-3 py-4 text-center">
+                          {formatNumber(request.distribution.nonObserving)}
+                        </td>
+                      </>
+                    ) : (
+                      <td className="px-3 py-4 text-center">{formatNumber(request.totals.mentor)}</td>
+                    )}
                     <td className="px-3 py-4 text-center">
                       <ActionArrowButton
                         onClick={() => setSelectedRequest(request)}

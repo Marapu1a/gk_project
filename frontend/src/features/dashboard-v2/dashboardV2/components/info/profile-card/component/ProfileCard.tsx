@@ -96,19 +96,23 @@ export function ProfileCard({ user }: ProfileCardProps) {
             </div>
 
             <div className="mt-auto grid grid-cols-4 gap-2 pt-3">
+              <NotificationBellButton />
+
               <button
                 type="button"
-                onClick={logout}
-                aria-label="Выйти"
-                className="icon-button icon-button-danger h-[42px] w-[42px]"
+                onClick={() => navigate('/profile')}
+                aria-label="Редактировать личную информацию"
+                title="Редактировать личную информацию"
+                className="icon-button icon-button-primary h-[42px] w-[42px]"
               >
-                <LogoutIcon className="h-full w-full" />
+                <EditIcon className="h-full w-full" />
               </button>
 
               <button
                 type="button"
                 onClick={() => navigate('/specialist-messages')}
-                aria-label="Сообщения специалисту"
+                aria-label="Обращения с сайта реестра"
+                title="Обращения с сайта реестра"
                 className="icon-button icon-button-primary relative h-[42px] w-[42px]"
               >
                 <MailIcon className="h-full w-full" />
@@ -122,14 +126,13 @@ export function ProfileCard({ user }: ProfileCardProps) {
 
               <button
                 type="button"
-                onClick={() => navigate('/profile')}
-                aria-label="Редактировать профиль"
-                className="icon-button icon-button-primary h-[42px] w-[42px]"
+                onClick={logout}
+                aria-label="Выйти"
+                title="Выход"
+                className="icon-button icon-button-danger h-[42px] w-[42px]"
               >
-                <EditIcon className="h-full w-full" />
+                <LogoutIcon className="h-full w-full" />
               </button>
-
-              <NotificationBellButton />
             </div>
           </div>
         </div>

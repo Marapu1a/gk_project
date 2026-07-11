@@ -17,6 +17,7 @@ export type ReviewerRequestsParams = {
   dateFrom?: string;
   dateTo?: string;
   sortOrder?: 'asc' | 'desc';
+  nameSort?: 'asc' | 'desc';
   page?: number;
   limit?: number;
 };

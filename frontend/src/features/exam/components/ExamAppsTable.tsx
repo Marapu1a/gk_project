@@ -8,6 +8,7 @@ import { useExamApps } from '../hooks/useExamApps';
 import ExamAppModal from './ExamAppModal';
 import type { ExamApp, ExamStatus } from '../api/getMyExamApp';
 import { examStatusLabels, targetLevelLabels } from '@/utils/labels';
+import { NameSortButton, nextNameSortDirection, sortByFullName, type NameSortDirection } from '@/components/NameSortButton';
 
 const STATUS_OPTIONS: Array<ExamStatus | 'ALL'> = [
   'PENDING',
@@ -34,6 +35,7 @@ function statusClass(status: ExamStatus) {
 export default function ExamAppsTable() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState<ExamApp | null>(null);
+  const [nameSort, setNameSort] = useState<NameSortDirection>(null);
   const rawStatus = searchParams.get('status');
   const query = searchParams.get('search') ?? '';
   const { data, isLoading, error, isFetching } = useExamApps(query);
@@ -56,12 +58,13 @@ export default function ExamAppsTable() {
 
   const rows = (data as ExamApp[] | undefined) ?? [];
   const filtered = useMemo(() => {
-    return rows.filter((row) => {
+    const filteredRows = rows.filter((row) => {
       const statusOk = status === 'ALL' || row.status === status;
       if (!statusOk) return false;
       return true;
     });
-  }, [rows, status]);
+    return sortByFullName(filteredRows, (row) => row.user.fullName || row.user.email, nameSort);
+  }, [nameSort, rows, status]);
 
   if (isLoading) {
     return <p className="dashboard-v2-text text-[#6B7894]">Загрузка заявок...</p>;
@@ -118,7 +121,12 @@ export default function ExamAppsTable() {
             <table className="dashboard-v2-text w-full min-w-[940px] table-fixed text-[#1F305E]">
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
-                  <th className="w-[190px] rounded-l-[8px] px-4 py-3 font-medium">ФИО</th>
+                  <th className="w-[190px] rounded-l-[8px] px-4 py-3 font-medium">
+                    <NameSortButton
+                      direction={nameSort}
+                      onClick={() => setNameSort((current) => nextNameSortDirection(current))}
+                    />
+                  </th>
                   <th className="w-[190px] px-4 py-3 font-medium">Email</th>
                   <th className="w-[170px] px-4 py-3 text-center font-medium">Цель</th>
                   <th className="w-[150px] px-4 py-3 text-center font-medium">Дата подачи</th>

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { submitCeuRequest } from '../api/submitCeuRequest';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { SubmissionSuccessModal } from '@/components/SubmissionSuccessModal';
 import {
   formatDecimalInput,
   getDecimalInputBlurValue,
@@ -99,6 +100,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
   >({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const selectedEntries = CATEGORIES.filter((item) => categoryEntries[item.value].selected).map(
     (item) => ({
       category: item.value,
@@ -202,8 +204,9 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
         queryClient.invalidateQueries({ queryKey: ['ceu', 'unconfirmed'] }),
       ]);
 
-      toast.success(UI_TOAST_MESSAGES.ceu.requestSent);
       resetForm();
+      setIsOpen(false);
+      setIsSuccessOpen(true);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.ceu.requestFailed);
     } finally {
@@ -430,6 +433,13 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
           </section>
         </div>
       </div>
+
+      <SubmissionSuccessModal
+        open={isSuccessOpen}
+        onClose={() => setIsSuccessOpen(false)}
+        title="Заявка с CEU-баллами отправлена"
+        description="Заявка добавлена в историю. После проверки здесь появится её статус."
+      />
     </>
   );
 }

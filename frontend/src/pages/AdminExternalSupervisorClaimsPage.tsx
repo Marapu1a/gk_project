@@ -14,6 +14,7 @@ import {
   useAssignExternalSupervisorClaim,
 } from '@/features/admin/hooks/useExternalSupervisorClaims';
 import type { ExternalSupervisorClaimRow } from '@/features/admin/api/externalSupervisorClaims';
+import { NameSortButton, nextNameSortDirection, type NameSortDirection } from '@/components/NameSortButton';
 
 const statusLabels = {
   PENDING: 'Ожидает проверки',
@@ -148,7 +149,8 @@ function AdminExternalSupervisorClaimsPageInner() {
   const [mode, setMode] = useState<'active' | 'history'>('active');
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
-  const { data, isLoading, error } = useExternalSupervisorClaims(mode, page, perPage);
+  const [nameSort, setNameSort] = useState<NameSortDirection>(null);
+  const { data, isLoading, error } = useExternalSupervisorClaims(mode, page, perPage, nameSort ?? undefined);
   const updateClaim = useUpdateExternalSupervisorClaim();
   const assignClaim = useAssignExternalSupervisorClaim();
   const { data: currentUser } = useCurrentUser();
@@ -299,7 +301,15 @@ function AdminExternalSupervisorClaimsPageInner() {
               )}
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
-                  <th className="rounded-l-[8px] px-4 py-3 dashboard-v2-label">ФИО</th>
+                  <th className="rounded-l-[8px] px-4 py-3 dashboard-v2-label">
+                    <NameSortButton
+                      direction={nameSort}
+                      onClick={() => {
+                        setNameSort((current) => nextNameSortDirection(current));
+                        setPage(1);
+                      }}
+                    />
+                  </th>
                   <th className="px-4 py-3 dashboard-v2-label">Email</th>
                   {mode === 'active' ? (
                     <>

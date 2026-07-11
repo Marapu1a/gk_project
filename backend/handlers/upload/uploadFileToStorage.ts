@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 
 import { UPLOAD_ROOT, MAX_FILE_SIZE_MB, MAX_FILE_SIZE_BYTES } from '../../config/storage';
+import { isPdfBuffer } from '../../utils/pdfValidation';
 
 const MAX_FILES = 10;
 
@@ -69,6 +70,11 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
       return reply.code(400).send({ error: `Можно загрузить максимум ${MAX_FILES} документов` });
   }
 
+  const buffer = await data.toBuffer();
+  if (category === 'certificate' && !isPdfBuffer(buffer)) {
+    return reply.code(415).send({ error: 'Файл сертификата поврежден или не является PDF' });
+  }
+
   const ext = path.extname(data.filename).replace(/[^a-zA-Z0-9.]/g, '');
   const fileName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`;
 
@@ -88,7 +94,7 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
   }
 
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, fileName), await data.toBuffer());
+  await fs.writeFile(path.join(dir, fileName), buffer);
 
   const fileId = `${ownerUserId}/${category}/${fileName}`;
 

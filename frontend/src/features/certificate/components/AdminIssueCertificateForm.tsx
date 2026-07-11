@@ -153,6 +153,9 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
     if (code === 'CERTIFICATE_FILE_MUST_BE_PDF') {
       return UI_TOAST_MESSAGES.files.pdfOnly;
     }
+    if (code === 'CERTIFICATE_FILE_INVALID') {
+      return 'Файл сертификата поврежден или не является PDF. Загрузите корректный файл.';
+    }
     if (code === 'TARGET_GROUP_NOT_CONFIGURED') return 'Целевая группа не настроена в системе.';
     return err?.response?.data?.error || err?.message || UI_TOAST_MESSAGES.certificate.issueFailed;
   };

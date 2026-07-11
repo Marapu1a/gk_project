@@ -17,6 +17,7 @@ type Query = {
   dateFrom?: string;
   dateTo?: string;
   sortOrder?: 'asc' | 'desc';
+  nameSort?: 'asc' | 'desc';
   page?: string;
   limit?: string;
 };
@@ -146,6 +147,7 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
   const page = Math.max(1, Number.parseInt(query.page ?? '1', 10) || 1);
   const limit = Math.min(500, Math.max(1, Number.parseInt(query.limit ?? '20', 10) || 20));
   const sortOrder = query.sortOrder === 'asc' ? 'asc' : 'desc';
+  const nameSort = query.nameSort === 'asc' || query.nameSort === 'desc' ? query.nameSort : null;
   const types = kind === 'mentorship' ? MENTORSHIP_TYPES : SUPERVISION_TYPES;
   const relationKind =
     kind === 'mentorship' ? ReviewerCandidateKind.MENTORSHIP : ReviewerCandidateKind.SUPERVISION;
@@ -269,7 +271,9 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
           },
         },
       },
-      orderBy: [{ supervisionDate: sortOrder }, { createdAt: sortOrder }],
+      orderBy: nameSort
+        ? [{ user: { fullName: nameSort } }, { supervisionDate: sortOrder }, { createdAt: sortOrder }]
+        : [{ supervisionDate: sortOrder }, { createdAt: sortOrder }],
       skip: (page - 1) * limit,
       take: limit,
     }),

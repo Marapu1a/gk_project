@@ -182,10 +182,13 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
           <h1 className="dashboard-v2-title">Личный кабинет</h1>
 
           <div className="flex items-center gap-2">
+            <NotificationBellButton className="icon-button icon-button-primary relative h-9 w-9" />
+
             <button
               type="button"
               onClick={() => navigate('/profile')}
-              aria-label="Редактировать профиль"
+              aria-label="Редактировать личную информацию"
+              title="Редактировать личную информацию"
               className="icon-button icon-button-primary h-9 w-9"
             >
               <EditIcon className="h-full w-full" />
@@ -194,7 +197,8 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
             <button
               type="button"
               onClick={() => navigate('/specialist-messages')}
-              aria-label="Сообщения специалисту"
+              aria-label="Обращения с сайта реестра"
+              title="Обращения с сайта реестра"
               className="icon-button icon-button-primary relative h-9 w-9"
             >
               <MailIcon className="h-full w-full" />
@@ -206,12 +210,11 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
               )}
             </button>
 
-            <NotificationBellButton className="icon-button icon-button-primary relative h-9 w-9" />
-
             <button
               type="button"
               onClick={logout}
               aria-label="Выйти"
+              title="Выход"
               className="icon-button icon-button-danger h-9 w-9"
             >
               <LogoutIcon className="h-full w-full" />

@@ -122,7 +122,7 @@ export const UI_TOAST_MESSAGES = {
     rejectFailed: 'Не удалось отклонить CEU-баллы. Попробуйте ещё раз или обратитесь к техническому специалисту.',
     deleteRecordFailed: 'Не удалось удалить CEU-запись. Попробуйте ещё раз или обратитесь к техническому специалисту.',
     adminSaveFailed: 'Не удалось сохранить CEU-баллы.',
-    adminSavedQuiet: 'CEU-баллы сохранены тихо.',
+    adminSavedQuiet: 'CEU-баллы сохранены без уведомления.',
     adminSavedNotify: 'CEU-баллы сохранены, уведомление отправлено.',
   },
   documents: {
@@ -169,7 +169,7 @@ export const UI_TOAST_MESSAGES = {
     rejected: 'Часы отклонены.',
     rejectedFor: (email: string) => `Отклонено: ${email}`,
     rejectFailed: 'Не удалось отклонить часы.',
-    adminSavedQuiet: 'Часы сохранены тихо.',
+    adminSavedQuiet: 'Часы сохранены без уведомления.',
     adminSavedNotify: 'Часы сохранены, уведомление отправлено.',
   },
   payment: {

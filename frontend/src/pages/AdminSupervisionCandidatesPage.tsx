@@ -22,6 +22,7 @@ import type {
   AdminReviewerHourState,
 } from '@/features/admin/api/supervision/getAdminReviewerCandidates';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { NameSortButton, nextNameSortDirection, type NameSortDirection } from '@/components/NameSortButton';
 
 const KIND_LABELS: Record<AdminReviewerCandidateKind, string> = {
   supervision: 'Супервизия',
@@ -241,6 +242,16 @@ function AdminSupervisionCandidatesContent() {
     updateQuery({ sortBy: nextSortBy, sortDir: nextSortBy === 'createdAt' ? 'desc' : 'asc' });
   };
 
+  const candidateNameSort: NameSortDirection = sortBy === 'candidate' ? sortDir : null;
+  const toggleCandidateNameSort = () => {
+    const next = nextNameSortDirection(candidateNameSort);
+    if (!next) {
+      updateQuery({ sortBy: 'createdAt', sortDir: 'desc' });
+      return;
+    }
+    updateQuery({ sortBy: 'candidate', sortDir: next });
+  };
+
   const resetFilters = () => {
     const next = new URLSearchParams();
     if (kind !== 'supervision') next.set('kind', kind);
@@ -406,9 +417,7 @@ function AdminSupervisionCandidatesContent() {
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
                   <th className="rounded-l-[8px] px-3 py-3 font-medium">
-                    <button type="button" onClick={() => setSort('candidate')} className="font-medium">
-                      ФИО {sortBy === 'candidate' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
-                    </button>
+                    <NameSortButton direction={candidateNameSort} onClick={toggleCandidateNameSort} />
                   </th>
                   <th className="px-3 py-3 font-medium">
                     <button type="button" onClick={() => setSort('candidateEmail')} className="font-medium">

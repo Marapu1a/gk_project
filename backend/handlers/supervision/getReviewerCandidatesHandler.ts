@@ -37,6 +37,7 @@ type CandidateAggregate = {
   latestRequestAt: Date | null;
   latestPendingRequestAt: Date | null;
   pendingCount: number;
+  submittedHours: number;
   status: ReviewerCandidateStatus;
   sortRank: number;
 };
@@ -116,7 +117,7 @@ async function buildCandidates(params: {
           createdAt: true,
           hours: {
             where: { reviewerId, type: { in: typesForKind(kind) } },
-            select: { status: true },
+            select: { status: true, value: true },
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -129,6 +130,10 @@ async function buildCandidates(params: {
       const latestRequestAt = records[0]?.createdAt ?? relation.createdAt;
       const latestPendingRequestAt = pendingRecords[0]?.createdAt ?? null;
       const pendingCount = pendingRecords.length;
+      const submittedHours = records.reduce(
+        (total, record) => total + record.hours.reduce((sum, hour) => sum + hour.value, 0),
+        0,
+      );
 
       return {
         relationId: relation.id,
@@ -138,6 +143,7 @@ async function buildCandidates(params: {
         latestRequestAt,
         latestPendingRequestAt,
         pendingCount,
+        submittedHours,
         status: relation.status,
         sortRank: statusRank(relation.status, pendingCount),
       };
@@ -146,13 +152,16 @@ async function buildCandidates(params: {
 
   return candidates.sort((a, b) => {
     if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank;
-    return candidateTimestamp(b) - candidateTimestamp(a);
+    const timestampDiff = candidateTimestamp(b) - candidateTimestamp(a);
+    if (timestampDiff !== 0) return timestampDiff;
+    return b.submittedHours - a.submittedHours;
   });
 }
 
 function serializeCandidate(candidate: CandidateAggregate) {
+  const { submittedHours, ...serializedCandidate } = candidate;
   return {
-    ...candidate,
+    ...serializedCandidate,
     latestRequestAt: candidate.latestRequestAt?.toISOString() ?? null,
     latestPendingRequestAt: candidate.latestPendingRequestAt?.toISOString() ?? null,
   };

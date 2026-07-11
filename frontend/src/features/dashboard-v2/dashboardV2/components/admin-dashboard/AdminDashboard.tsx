@@ -26,6 +26,7 @@ import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useExternalSupervisorClaims } from '@/features/admin/hooks/useExternalSupervisorClaims';
 import { AdminUserSearch } from '@/features/admin/components/AdminUserSearch';
+import { useExamApps } from '@/features/exam/hooks/useExamApps';
 
 type AdminDashboardProps = {
   user: {
@@ -53,6 +54,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
   const { data: notifications = [] } = useNotifications();
   const { data: documentRequests = [] } = useAllDocReviewRequests();
   const { data: qualificationClaims } = useExternalSupervisorClaims('active', 1, 20);
+  const { data: examApplications = [] } = useExamApps();
   const exportUsers = useDownloadUsersExport();
   const backupDb = useCreateDbBackup();
 
@@ -63,6 +65,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
     );
     return hasActiveStatus || hasDeletionRequest;
   }).length;
+  const pendingExamCount = examApplications.filter((application) => application.status === 'PENDING').length;
 
   const tasks: TaskItem[] = [
     { label: 'Управление пользователями', to: '/users' },
@@ -75,7 +78,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
     { label: 'Проверка документов', to: '/admin/document-review', count: documentCount },
     { label: 'Проверка CEU', to: '/review/ceu' },
     { label: 'Проверка часов', to: '/admin/supervision-candidates' },
-    { label: 'Заявки на экзамен', to: '/exam-applications' },
+    { label: 'Заявки на экзамен', to: '/exam-applications', count: pendingExamCount },
   ];
 
   const onExportUsers = async () => {

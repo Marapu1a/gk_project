@@ -14,6 +14,7 @@ import type {
 import { CandidateRequestDetailsModal } from '@/features/supervision/components/reviewer-candidate-details/CandidateRequestDetailsModal';
 import { useReviewerRequests } from '@/features/supervision/hooks/useReviewerRequests';
 import { getSupervisionRequestDateLabel } from '@/features/supervision/utils/requestDateLabels';
+import { NameSortButton, nextNameSortDirection, type NameSortDirection } from '@/components/NameSortButton';
 
 const STATUS_LABELS: Record<ReviewerRequestStatus, string> = {
   ALL: 'Все состояния',
@@ -52,6 +53,12 @@ function ReviewerCandidatesContent() {
   const dateFrom = searchParams.get('dateFrom') ?? '';
   const dateTo = searchParams.get('dateTo') ?? '';
   const sortOrder = searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
+  const nameSort: NameSortDirection =
+    searchParams.get('nameSort') === 'asc'
+      ? 'asc'
+      : searchParams.get('nameSort') === 'desc'
+        ? 'desc'
+        : null;
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const limit = [20, 50, 100, 250, 500].includes(Number(searchParams.get('limit')))
     ? Number(searchParams.get('limit'))
@@ -65,6 +72,7 @@ function ReviewerCandidatesContent() {
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
     sortOrder,
+    nameSort: nameSort ?? undefined,
     page,
     limit,
   });
@@ -231,7 +239,13 @@ function ReviewerCandidatesContent() {
             <table className="dashboard-v2-text w-full min-w-[760px] text-[#1F305E]">
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
-                  <th className="rounded-l-[8px] px-4 py-3 font-medium">Кандидат</th>
+                  <th className="rounded-l-[8px] px-4 py-3 font-medium">
+                    <NameSortButton
+                      label="Кандидат"
+                      direction={nameSort}
+                      onClick={() => updateFilters({ nameSort: nextNameSortDirection(nameSort) ?? undefined })}
+                    />
+                  </th>
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 text-center font-medium">Часы</th>
                   <th className="px-4 py-3 text-center font-medium">Состояние</th>

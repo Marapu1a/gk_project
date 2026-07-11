@@ -17,6 +17,7 @@ type Q = {
   // 'mentor'    — получатели менторских часов
   supervision?: string;
   archived?: 'active' | 'only' | 'with';
+  nameSort?: 'asc' | 'desc';
 };
 
 function toInt(v: Q['page'], def: number) {
@@ -57,6 +58,7 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
     perPage,
     supervision,
     archived = 'active',
+    nameSort,
   } = req.query as Q;
   const actorRole = req.user?.role;
 
@@ -183,7 +185,9 @@ export async function getUsersHandler(req: FastifyRequest, reply: FastifyReply) 
       where,
       skip,
       take,
-      orderBy: { createdAt: 'desc' },
+      orderBy: nameSort === 'asc' || nameSort === 'desc'
+        ? { fullName: nameSort }
+        : { createdAt: 'desc' },
       select: {
         id: true,
         email: true,

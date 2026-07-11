@@ -10,6 +10,7 @@ import { LONG_TEXT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { CopyEmailLink } from '@/components/CopyEmailLink';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { SubmissionSuccessModal } from '@/components/SubmissionSuccessModal';
 import {
   formatDecimalInput,
   getDecimalInputBlurValue,
@@ -127,6 +128,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   const [ethicsAccepted, setEthicsAccepted] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isGuideHidden, setIsGuideHidden] = useState(false);
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
 
   const hasStoredEthicsAcceptance = Boolean(user?.supervisionEthicsAcceptedAt);
   const effectiveEthicsAccepted = hasStoredEthicsAcceptance || ethicsAccepted;
@@ -403,9 +405,9 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
         entries,
       });
 
-      toast.success(UI_TOAST_MESSAGES.supervision.requestSent);
       resetForm();
       setIsOpen(false);
+      setIsSuccessOpen(true);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.supervision.requestSendFailed);
     }
@@ -736,6 +738,13 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
           onHidePermanently={hideGuidePermanently}
         />
       ) : null}
+
+      <SubmissionSuccessModal
+        open={isSuccessOpen}
+        onClose={() => setIsSuccessOpen(false)}
+        title="Заявка на подтверждение часов практики отправлена"
+        description="Заявка добавлена в историю. После проверки здесь появится её статус."
+      />
     </>
   );
 }

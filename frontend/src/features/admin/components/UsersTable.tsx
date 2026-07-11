@@ -6,6 +6,7 @@ import { DashboardDateInput } from '@/components/DashboardDateInput';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 import { AdminUserSearch } from './AdminUserSearch';
 import { formatCertificationLevelName, systemRoleLabels } from '@/utils/labels';
+import { NameSortButton, nextNameSortDirection, type NameSortDirection } from '@/components/NameSortButton';
 
 type Role = 'ADMIN' | 'STUDENT' | 'REVIEWER';
 type UserStatus = 'ACTIVE' | 'ARCHIVE_REQUESTED' | 'ARCHIVED' | 'ALL';
@@ -103,6 +104,8 @@ export function UsersTable() {
   const [registeredTo, setRegisteredTo] = useState('');
   const [group, setGroup] = useState('');
   const [status, setStatus] = useState<UserStatus>('ACTIVE');
+  const [adminsOnly, setAdminsOnly] = useState(false);
+  const [nameSort, setNameSort] = useState<NameSortDirection>(null);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(100);
   const requestPerPage = perPage === 0 ? 10000 : perPage;
@@ -121,12 +124,14 @@ export function UsersTable() {
       page,
       perPage: requestPerPage,
       group,
+      role: adminsOnly ? 'ADMIN' : undefined,
       registeredFrom,
       registeredTo,
       status,
       archived: status === 'ALL' ? 'with' as const : 'active' as const,
+      nameSort: nameSort ?? undefined,
     }),
-    [group, page, registeredFrom, registeredTo, requestPerPage, search, status],
+    [adminsOnly, group, nameSort, page, registeredFrom, registeredTo, requestPerPage, search, status],
   );
 
   const { data, isLoading, error, isFetching } = useUsers(params);
@@ -150,14 +155,30 @@ export function UsersTable() {
           {isFetching && !isLoading ? <span className="ml-2">обновляю...</span> : null}
         </div>
 
-        <AdminUserSearch
-          value={searchInput}
-          onChange={setSearchInput}
-          autoFocus
-          size="large"
-          placeholder="ФИО, email, телефон, рег. номер"
-          className="mx-auto max-w-[560px]"
-        />
+        <div className="mx-auto flex w-full max-w-[620px] items-center gap-2">
+          <AdminUserSearch
+            value={searchInput}
+            onChange={setSearchInput}
+            autoFocus
+            size="large"
+            placeholder="ФИО, email, телефон, рег. номер"
+            className="min-w-0 flex-1"
+          />
+          <button
+            type="button"
+            onClick={() => resetPage(() => setAdminsOnly((value) => !value))}
+            className={`flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-[8px] border text-[18px] font-extrabold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-dark)] ${
+              adminsOnly
+                ? 'border-[var(--color-blue-dark)] bg-[var(--color-blue-dark)] text-white'
+                : 'border-[var(--color-blue-dark)] bg-white text-[var(--color-blue-dark)] hover:bg-[var(--color-blue-soft)]'
+            }`}
+            aria-pressed={adminsOnly}
+            aria-label={adminsOnly ? 'Показать всех пользователей' : 'Показать только администраторов'}
+            title={adminsOnly ? 'Показать всех пользователей' : 'Показать только администраторов'}
+          >
+            А
+          </button>
+        </div>
 
         <button
           type="button"
@@ -261,7 +282,12 @@ export function UsersTable() {
               <thead>
                 <tr className="bg-[var(--color-blue-soft)] text-left">
                   <th className="rounded-l-[8px] px-3 py-3 font-medium">№</th>
-                  <th className="px-3 py-3 font-medium">ФИО</th>
+                  <th className="px-3 py-3 font-medium">
+                    <NameSortButton
+                      direction={nameSort}
+                      onClick={() => resetPage(() => setNameSort((current) => nextNameSortDirection(current)))}
+                    />
+                  </th>
                   <th className="px-3 py-3 font-medium">Email</th>
                   <th className="px-3 py-3 text-center font-medium">Уровень</th>
                   <th className="px-3 py-3 text-center font-medium">Регистрация</th>

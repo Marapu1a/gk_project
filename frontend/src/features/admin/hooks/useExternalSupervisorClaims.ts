@@ -9,10 +9,11 @@ export function useExternalSupervisorClaims(
   mode: 'active' | 'history',
   page = 1,
   perPage = 20,
+  nameSort?: 'asc' | 'desc',
 ) {
   return useQuery({
-    queryKey: ['admin', 'external-supervisor-claims', mode, page, perPage],
-    queryFn: () => getExternalSupervisorClaims(mode, page, perPage),
+    queryKey: ['admin', 'external-supervisor-claims', mode, page, perPage, nameSort ?? ''],
+    queryFn: () => getExternalSupervisorClaims(mode, page, perPage, nameSort),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
   });

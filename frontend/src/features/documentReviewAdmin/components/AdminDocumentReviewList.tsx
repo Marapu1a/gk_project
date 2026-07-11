@@ -4,6 +4,7 @@ import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { AdminIdentityFilterInput } from '@/components/AdminIdentityFilterInput';
 import { useAllDocReviewRequests } from '../hooks/useAllDocReviewRequests';
 import { documentReviewStatusLabels } from '@/utils/documentReviewStatusLabels';
+import { NameSortButton, nextNameSortDirection, sortByFullName, type NameSortDirection } from '@/components/NameSortButton';
 
 type RequestRow = {
   id: string;
@@ -51,6 +52,7 @@ export function AdminDocumentReviewList() {
   const [searchInput, setSearchInput] = useState(urlSearch);
   const [search, setSearch] = useState(urlSearch.trim());
   const [mode, setMode] = useState<'active' | 'history'>(urlMode);
+  const [nameSort, setNameSort] = useState<NameSortDirection>(null);
 
   const { data: requests = [], isLoading, error } = useAllDocReviewRequests(search);
 
@@ -64,7 +66,7 @@ export function AdminDocumentReviewList() {
   }, [urlMode]);
 
   const rows = useMemo(() => {
-    return (requests as RequestRow[])
+    const filteredRows = (requests as RequestRow[])
       .filter((request) => {
         const isActive = activeStatuses.has(request.status);
         if (mode === 'active' && !isActive) return false;
@@ -76,7 +78,8 @@ export function AdminDocumentReviewList() {
         if (weightDiff !== 0) return weightDiff;
         return new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime();
       });
-  }, [mode, requests]);
+    return sortByFullName(filteredRows, (request) => request.user?.fullName || request.user?.email, nameSort);
+  }, [mode, nameSort, requests]);
 
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -157,7 +160,12 @@ export function AdminDocumentReviewList() {
                 <thead>
                   <tr className="bg-[var(--color-blue-soft)] text-left">
                     <th className="rounded-l-[10px] px-4 py-3">Email</th>
-                    <th className="px-4 py-3">ФИО</th>
+                    <th className="px-4 py-3">
+                      <NameSortButton
+                        direction={nameSort}
+                        onClick={() => setNameSort((current) => nextNameSortDirection(current))}
+                      />
+                    </th>
                     <th className="px-4 py-3">Статус</th>
                     <th className="px-4 py-3">Файлы</th>
                     <th className="px-4 py-3">Дата</th>

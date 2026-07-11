@@ -10,6 +10,7 @@ import {
   CycleType,
 } from '@prisma/client';
 import { parseCertificateExpiresAt, parseCertificateIssuedAt } from '../../utils/certificateDates';
+import { isStoredPdfFile } from '../../utils/pdfValidation';
 
 interface IssueCertificateRoute extends RouteGenericInterface {
   Body: {
@@ -109,6 +110,9 @@ export async function issueCertificateHandler(
   if (!file) return reply.code(404).send({ error: 'Файл не найден' });
   if (file.mimeType !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
     return reply.code(422).send({ error: 'CERTIFICATE_FILE_MUST_BE_PDF' });
+  }
+  if (!(await isStoredPdfFile(file.fileId))) {
+    return reply.code(422).send({ error: 'CERTIFICATE_FILE_INVALID' });
   }
 
   const existingByFile = await prisma.certificate.findUnique({ where: { fileId: file.id } });

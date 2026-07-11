@@ -7,6 +7,7 @@ type ListQuery = {
   mode?: 'active' | 'history';
   page?: string;
   perPage?: string;
+  nameSort?: 'asc' | 'desc';
 };
 
 // Active = claim still needs admin work (PENDING or APPROVED-but-not-setup)
@@ -28,6 +29,7 @@ export async function getExternalSupervisorClaimsHandler(
   const mode = query.mode === 'history' ? 'history' : 'active';
   const page = Math.max(1, Number(query.page) || 1);
   const perPage = Math.min(100, Math.max(20, Number(query.perPage) || 20));
+  const nameSort = query.nameSort === 'asc' || query.nameSort === 'desc' ? query.nameSort : null;
 
   const statusFilter = mode === 'active'
     ? { in: [ExternalSupervisorClaimStatus.PENDING, ExternalSupervisorClaimStatus.APPROVED] }
@@ -39,9 +41,13 @@ export async function getExternalSupervisorClaimsHandler(
     prisma.user.count({ where }),
     prisma.user.findMany({
       where,
-      orderBy: mode === 'active'
-        ? { externalSupervisorClaimedAt: 'asc' }
-        : { externalSupervisorClaimReviewedAt: 'desc' },
+      orderBy: nameSort
+        ? [{ fullName: nameSort }, mode === 'active'
+          ? { externalSupervisorClaimedAt: 'asc' }
+          : { externalSupervisorClaimReviewedAt: 'desc' }]
+        : mode === 'active'
+          ? { externalSupervisorClaimedAt: 'asc' }
+          : { externalSupervisorClaimReviewedAt: 'desc' },
       skip: (page - 1) * perPage,
       take: perPage,
       select: {

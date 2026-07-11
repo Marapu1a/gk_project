@@ -126,7 +126,7 @@ function ReviewerCandidateDetailsContent() {
 
       <CandidateHoursOverviewCard summary={data.supervisionSummary} mode={kind} />
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      <div className="mt-5 space-y-5">
         <CandidateRequestsCard kind={kind} title={KIND_LABELS[kind]} requests={activeRequests} />
         {otherRequests.length > 0 ? (
           <CandidateRequestsCard

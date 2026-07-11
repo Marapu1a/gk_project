@@ -10,6 +10,7 @@ import { useReviewerCandidates } from '@/features/supervision/hooks/useReviewerC
 import { useReviewerRequests } from '@/features/supervision/hooks/useReviewerRequests';
 import { useUpdateReviewerCandidateRelation } from '@/features/supervision/hooks/useUpdateReviewerCandidateRelation';
 import { getSupervisionRequestDateLabel } from '@/features/supervision/utils/requestDateLabels';
+import { NameSortButton, nextNameSortDirection, sortByFullName, type NameSortDirection } from '@/components/NameSortButton';
 import type { ReviewerCandidate } from '@/features/supervision/api/getReviewerCandidates';
 import type { ReviewerRequestListItem } from '@/features/supervision/api/getReviewerRequests';
 
@@ -80,6 +81,7 @@ export function ReviewerCandidatesBlocks() {
   const [kind, setKind] = useState<CandidateKind>('supervision');
   const [mode, setMode] = useState<DashboardMode>('candidates');
   const [selectedRequest, setSelectedRequest] = useState<ReviewerRequestListItem | null>(null);
+  const [candidateNameSort, setCandidateNameSort] = useState<NameSortDirection>(null);
   const pendingRequests = useReviewerRequests(
     {
       kind,
@@ -93,8 +95,21 @@ export function ReviewerCandidatesBlocks() {
 
   const candidates = useMemo(() => {
     const source = kind === 'mentorship' ? data?.mentorship : data?.supervision;
-    return (source ?? []).filter((candidate) => candidate.status !== 'REJECTED');
-  }, [data, kind]);
+    const visible = (source ?? []).filter((candidate) => candidate.status !== 'REJECTED');
+    if (!candidateNameSort) return visible;
+
+    const pending = sortByFullName(
+      visible.filter((candidate) => candidate.status === 'PENDING'),
+      (candidate) => candidate.fullName || candidate.email,
+      candidateNameSort,
+    );
+    const accepted = sortByFullName(
+      visible.filter((candidate) => candidate.status === 'ACCEPTED'),
+      (candidate) => candidate.fullName || candidate.email,
+      candidateNameSort,
+    );
+    return [...pending, ...accepted];
+  }, [candidateNameSort, data, kind]);
 
   if (isLoading) {
     return (
@@ -155,7 +170,12 @@ export function ReviewerCandidatesBlocks() {
       </div>
 
       {mode === 'candidates' ? (
-        <CandidatesTable kind={kind} candidates={candidates} />
+        <CandidatesTable
+          kind={kind}
+          candidates={candidates}
+          nameSort={candidateNameSort}
+          onToggleNameSort={() => setCandidateNameSort((current) => nextNameSortDirection(current))}
+        />
       ) : (
         <ReviewQueue
           kind={kind}
@@ -180,9 +200,13 @@ export function ReviewerCandidatesBlocks() {
 function CandidatesTable({
   kind,
   candidates,
+  nameSort,
+  onToggleNameSort,
 }: {
   kind: CandidateKind;
   candidates: ReviewerCandidate[];
+  nameSort: NameSortDirection;
+  onToggleNameSort: () => void;
 }) {
   const navigate = useNavigate();
   const mutation = useUpdateReviewerCandidateRelation();
@@ -229,7 +253,9 @@ function CandidatesTable({
         <table className="dashboard-v2-text w-full min-w-[820px] text-[#1F305E]">
           <thead>
             <tr className="bg-[var(--color-blue-soft)] text-left">
-              <th className="rounded-l-[8px] px-4 py-3 font-medium">ФИО</th>
+              <th className="rounded-l-[8px] px-4 py-3 font-medium">
+                <NameSortButton direction={nameSort} onClick={onToggleNameSort} />
+              </th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 text-center font-medium">Дата заявки</th>
               <th className="px-4 py-3 text-center font-medium">Состояние</th>
