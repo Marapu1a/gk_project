@@ -5,13 +5,14 @@ import {
   updateDocumentReviewFile,
   type UpdateDocumentReviewFilePayload,
 } from '../api/updateDocumentReviewFile';
+import { adminUserDetailsQueryKeyPrefix } from '@/features/admin/hooks/useUserDetails';
 
 function invalidateDocumentReviewQueries(queryClient: ReturnType<typeof useQueryClient>, requestId?: string) {
   if (requestId) {
     queryClient.invalidateQueries({ queryKey: ['admin', 'docReviewRequest', requestId] });
   }
   queryClient.invalidateQueries({ queryKey: ['admin', 'docReviewRequests'] });
-  queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'details'] });
+  queryClient.invalidateQueries({ queryKey: adminUserDetailsQueryKeyPrefix });
   queryClient.invalidateQueries({ queryKey: ['docReviewReq'] });
   queryClient.invalidateQueries({ queryKey: ['exam'] });
 }

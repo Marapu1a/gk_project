@@ -41,6 +41,8 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
   const { confirm } = useConfirm();
 
   const saveType = async (fileId: string, type: DocumentType) => {
+    const previousType = files.find((file) => file.id === fileId)?.type;
+
     setFiles((current) =>
       current.map((file) => (file.id === fileId ? { ...file, type } : file)),
     );
@@ -48,6 +50,13 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
     try {
       await updateFileType.mutateAsync({ fileId, type });
     } catch {
+      setFiles((current) =>
+        current.map((file) =>
+          file.id === fileId && file.type === type
+            ? { ...file, type: previousType }
+            : file,
+        ),
+      );
       toast.error(UI_TOAST_MESSAGES.documents.updateFailed);
     }
   };
@@ -220,7 +229,7 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
             <DocumentUploadRow
               key={file.id}
               file={file}
-              disabled={uploading || createRequest.isPending}
+              disabled={uploading || createRequest.isPending || updateFileType.isPending}
               onTypeChange={(type) => saveType(file.id, type)}
               onDelete={() => removeFile(file.id)}
             />

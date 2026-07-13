@@ -51,7 +51,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
 
   useEffect(() => {
     const namesRu = splitFullName(user.fullName);
-    const namesLat = splitFullName((user as any).fullNameLatin);
+    const namesLat = splitFullName(user.fullNameLatin);
 
     setForm({
       lastName: namesRu.lastName,
@@ -66,7 +66,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
     });
   }, [
     user.fullName,
-    (user as any).fullNameLatin,
+    user.fullNameLatin,
     user.phone,
     user.birthDate,
     user.country,

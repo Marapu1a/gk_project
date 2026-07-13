@@ -2,11 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 
 import { PageNav } from '@/components/PageNav';
 import { fetchCurrentUser } from '@/features/auth/api/me';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
 import { MyCertificatesBlock } from '@/features/certificate/components/MyCertificatesBlock';
 
 export default function MyCertificatesPage() {
   const { data: me, isLoading } = useQuery({
-    queryKey: ['me'],
+    queryKey: currentUserQueryKey,
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000,
   });

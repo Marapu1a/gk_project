@@ -4,6 +4,7 @@ import {
   type AcceptTransborderConsentPayload,
   type AcceptTransborderConsentResponse,
 } from '../api/consent';
+import { currentUserQueryKey } from './useCurrentUser';
 
 export function useAcceptTransborderConsent() {
   const queryClient = useQueryClient();
@@ -11,7 +12,7 @@ export function useAcceptTransborderConsent() {
   return useMutation<AcceptTransborderConsentResponse, Error, AcceptTransborderConsentPayload>({
     mutationFn: acceptTransborderConsent,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['me'] });
+      await queryClient.invalidateQueries({ queryKey: currentUserQueryKey });
     },
   });
 }

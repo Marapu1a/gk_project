@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PageNav } from '@/components/PageNav';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import { CeuPointsHistoryBlock } from '@/features/ceu/components/CeuPointsHistoryBlock';
 import { CeuPointsRequestForm } from '@/features/ceu/components/CeuPointsRequestForm';
@@ -73,9 +72,5 @@ function CeuPointsContent() {
 }
 
 export default function CeuPointsPage() {
-  return (
-    <ProtectedRoute>
-      <CeuPointsContent />
-    </ProtectedRoute>
-  );
+  return <CeuPointsContent />;
 }

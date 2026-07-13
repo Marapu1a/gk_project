@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { fetchCurrentUser } from '@/features/auth/api/me';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
 import { useSubmitSupervisionRequest } from '@/features/supervision/hooks/useSubmitSupervisionRequest';
 import { useReviewerSuggestions } from '@/features/supervision/hooks/useReviewerSuggestions';
@@ -102,7 +103,7 @@ type ReviewerSuggestion = {
 export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpen?: boolean }) {
   const mutation = useSubmitSupervisionRequest();
   const { data: user } = useQuery({
-    queryKey: ['me'],
+    queryKey: currentUserQueryKey,
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000,
   });
@@ -159,7 +160,10 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     limit: 20,
   });
 
-  const suggestions = (usersData?.users ?? []) as ReviewerSuggestion[];
+  const suggestions = useMemo(
+    () => (usersData?.users ?? []) as ReviewerSuggestion[],
+    [usersData?.users],
+  );
   const matchedUsers = useMemo(() => {
     const tokens = tokenize(supervisorEmail);
     if (tokens.length === 0) return [];

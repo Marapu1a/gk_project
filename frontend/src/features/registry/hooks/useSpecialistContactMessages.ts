@@ -18,6 +18,8 @@ export function useSpecialistContactMessages() {
   return useQuery({
     queryKey: ['specialist-contact-messages'],
     queryFn: getSpecialistContactMessages,
+    refetchInterval: 20_000,
+    refetchIntervalInBackground: false,
   });
 }
 

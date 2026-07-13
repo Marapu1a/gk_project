@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { abandonActiveCycle } from '../api/abandonActiveCycle';
 import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { adminUserDetailsQueryKey } from './useUserDetails';
+import { adminUsersQueryKey } from './useUsers';
 
 export function useAbandonActiveCycle(userId: string) {
   const qc = useQueryClient();
@@ -13,10 +15,11 @@ export function useAbandonActiveCycle(userId: string) {
       toast.success(UI_TOAST_MESSAGES.admin.currentCycleAbandoned);
 
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+        qc.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) }),
         qc.invalidateQueries({ queryKey: ['admin-ceu-matrix', userId] }),
         qc.invalidateQueries({ queryKey: ['admin', 'supervision-matrix', userId] }),
         qc.invalidateQueries({ queryKey: ['groups', 'user', userId] }),
+        qc.invalidateQueries({ queryKey: adminUsersQueryKey }),
         qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
         qc.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
         qc.invalidateQueries({ queryKey: ['admin', 'ceu-history'] }),

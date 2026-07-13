@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserGroupsByEmail } from '../hooks/useUserGroupsByEmail';
 import { useUpdateUserGroups } from '../hooks/useUpdateUserGroups';
 import { fetchCurrentUser } from '@/features/auth/api/me';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
 import { toast } from 'sonner';
 import { BackButton } from '@/components/BackButton';
 import { Link } from 'react-router-dom';
@@ -28,7 +29,7 @@ export function GroupAssignmentForm() {
   const mutation = useUpdateUserGroups(data?.user.id ?? '');
 
   const { data: currentUser } = useQuery({
-    queryKey: ['me'],
+    queryKey: currentUserQueryKey,
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000,
   });

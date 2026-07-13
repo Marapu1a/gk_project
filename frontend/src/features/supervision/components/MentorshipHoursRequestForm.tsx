@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { fetchCurrentUser } from '@/features/auth/api/me';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
 import { useReviewerSuggestions } from '../hooks/useReviewerSuggestions';
 import { useSubmitSupervisionRequest } from '../hooks/useSubmitSupervisionRequest';
 import { useSupervisionSummary } from '../hooks/useSupervisionSummary';
@@ -60,7 +61,7 @@ type ReviewerSuggestion = {
 export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen?: boolean }) {
   const mutation = useSubmitSupervisionRequest();
   const { data: user } = useQuery({
-    queryKey: ['me'],
+    queryKey: currentUserQueryKey,
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000,
   });
@@ -97,7 +98,10 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
     limit: 20,
   });
 
-  const suggestions = (usersData?.users ?? []) as ReviewerSuggestion[];
+  const suggestions = useMemo(
+    () => (usersData?.users ?? []) as ReviewerSuggestion[],
+    [usersData?.users],
+  );
   const matchedUsers = useMemo(() => {
     const tokens = tokenize(mentorEmail);
     if (tokens.length === 0) return [];

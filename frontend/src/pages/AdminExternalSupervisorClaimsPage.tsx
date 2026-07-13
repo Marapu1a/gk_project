@@ -5,7 +5,6 @@ import { Check, X, UserCheck, Unlock } from 'lucide-react';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 import { PageNav } from '@/components/PageNav';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import {
@@ -411,9 +410,5 @@ function AdminExternalSupervisorClaimsPageInner() {
 }
 
 export default function AdminExternalSupervisorClaimsPage() {
-  return (
-    <ProtectedRoute>
-      <AdminExternalSupervisorClaimsPageInner />
-    </ProtectedRoute>
-  );
+  return <AdminExternalSupervisorClaimsPageInner />;
 }

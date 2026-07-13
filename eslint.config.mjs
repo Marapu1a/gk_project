@@ -2,37 +2,54 @@ import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
-import eslintPluginPrettier from 'eslint-plugin-prettier';
+import reactHooks from 'eslint-plugin-react-hooks';
 import { defineConfig } from 'eslint/config';
+
+const sourceFiles = ['**/*.{js,cjs,mjs,ts,cts,mts,tsx}'];
+const typescriptFiles = ['**/*.{ts,cts,mts,tsx}'];
 
 export default defineConfig([
   {
-    files: ['**/*.{js,cjs,mjs,ts,cts,mts}'],
+    ignores: ['**/dist/**', '**/node_modules/**'],
+  },
+  {
+    ...js.configs.recommended,
+    files: ['**/*.{js,cjs,mjs}'],
+  },
+  ...tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files: typescriptFiles,
+  })),
+  {
+    files: typescriptFiles,
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
+    files: ['frontend/src/**/*.{ts,tsx}'],
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
+  {
+    files: sourceFiles,
     languageOptions: {
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-      },
       globals: {
         ...globals.browser,
         ...globals.node,
       },
     },
-    plugins: {
-      js,
-      prettier: eslintPluginPrettier,
-    },
     rules: {
-      ...js.configs.recommended.rules,
       'eol-last': ['error', 'always'],
-      'prettier/prettier': 'error',
     },
   },
   {
-    files: ['**/*.{ts,tsx}'],
-    ...tseslint.configs.recommended,
-  },
-  {
+    files: sourceFiles,
     rules: {
       ...prettier.rules,
     },

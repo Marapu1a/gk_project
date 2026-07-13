@@ -4,24 +4,28 @@ import {
   getExternalSupervisorClaims,
   updateExternalSupervisorClaim,
 } from '../api/externalSupervisorClaims';
+import { adminUserDetailsQueryKey } from './useUserDetails';
 
 export function useExternalSupervisorClaims(
   mode: 'active' | 'history',
   page = 1,
   perPage = 20,
   nameSort?: 'asc' | 'desc',
+  refetchInterval?: number,
 ) {
   return useQuery({
     queryKey: ['admin', 'external-supervisor-claims', mode, page, perPage, nameSort ?? ''],
     queryFn: () => getExternalSupervisorClaims(mode, page, perPage, nameSort),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
+    refetchInterval,
+    refetchIntervalInBackground: false,
   });
 }
 
 function invalidateClaims(queryClient: ReturnType<typeof useQueryClient>, userId: string) {
   queryClient.invalidateQueries({ queryKey: ['admin', 'external-supervisor-claims'] });
-  queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+  queryClient.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) });
 }
 
 export function useAssignExternalSupervisorClaim() {

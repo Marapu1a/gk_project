@@ -11,16 +11,10 @@ import type { LoginDto } from '../validation/loginSchema';
 import { loginUser } from '../api/login';
 import { fetchCurrentUser } from '@/features/auth/api/me';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { normalizePostLoginRedirect } from '../utils/authRedirect';
 
 const ARCHIVED_ACCOUNT_MESSAGE = 'Аккаунт удалён, для восстановления свяжитесь с нами';
 const CONTACTS_URL = 'https://reestrpap.ru/contacts';
-
-function normalizeRedirect(to: string | null) {
-  if (!to || to === '/dashboard') return '/dashboard-v2';
-  if (to === '/history') return '/supervision/hours?panel=history';
-  if (to === '/review/supervision') return '/reviewer/candidates/supervision';
-  return to;
-}
 
 function ArchivedAccountError() {
   return (
@@ -78,7 +72,7 @@ export function LoginForm() {
     onSuccess: (data) => {
       localStorage.setItem('token', data.token);
       toast.success(UI_TOAST_MESSAGES.auth.loginSuccess);
-      navigate(normalizeRedirect(params.get('to')), { replace: true });
+      navigate(normalizePostLoginRedirect(params.get('to')), { replace: true });
     },
     onError: (error: any) => {
       const message = error?.response?.data?.error || UI_TOAST_MESSAGES.auth.loginFailed;
@@ -93,6 +87,11 @@ export function LoginForm() {
   return (
     <>
       <AuthCard className="px-5 py-6 md:px-5">
+        {params.get('reason') === 'session-expired' ? (
+          <div className="mb-5 rounded-[10px] bg-[var(--color-blue-soft)] p-3 text-sm text-blue-dark">
+            Сессия завершилась. Войдите снова — после входа вы вернётесь на нужную страницу.
+          </div>
+        ) : null}
         <form onSubmit={onSubmit} className="space-y-7">
         {form.formState.errors.root?.serverError && (
           <div

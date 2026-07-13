@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 
 import { PageNav } from '@/components/PageNav';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { UserBannerView } from '@/features/userBanner/components/UserBannerView';
 import { useAdminUserBanner, useUpdateAdminUserBanner } from '@/features/userBanner/hooks/useUserBanner';
 import type { UserBannerTone } from '@/features/userBanner/api/userBanner';
@@ -179,9 +178,5 @@ function AdminUserBannerPageInner() {
 }
 
 export default function AdminUserBannerPage() {
-  return (
-    <ProtectedRoute>
-      <AdminUserBannerPageInner />
-    </ProtectedRoute>
-  );
+  return <AdminUserBannerPageInner />;
 }

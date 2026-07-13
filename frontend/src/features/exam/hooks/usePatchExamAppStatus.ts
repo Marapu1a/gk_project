@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { patchExamAppStatus } from '../api/patchExamAppStatus';
 import type { ExamApp, ExamStatus } from '../api/getMyExamApp';
+import { adminUserDetailsQueryKey } from '@/features/admin/hooks/useUserDetails';
 
 export function usePatchExamAppStatus() {
   const qc = useQueryClient();
@@ -36,7 +37,7 @@ export function usePatchExamAppStatus() {
       qc.refetchQueries({ queryKey: ['exam', 'all'], type: 'active' });
       qc.invalidateQueries({ queryKey: ['exam', 'details', updated.userId] });
       qc.invalidateQueries({ queryKey: ['exam', 'details', updated.userId, updated.id] });
-      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', updated.userId] });
+      qc.invalidateQueries({ queryKey: adminUserDetailsQueryKey(updated.userId) });
     },
   });
 }

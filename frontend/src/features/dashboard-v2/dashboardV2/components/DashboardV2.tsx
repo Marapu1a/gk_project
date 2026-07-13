@@ -27,6 +27,7 @@ import { AdminDashboard } from './admin-dashboard/AdminDashboard';
 import { UserDashboardBanner } from '@/features/userBanner/components/UserDashboardBanner';
 import { DashboardGuidance } from '@/features/dashboard-guidance';
 import { useDashboardGuidanceVisible } from '@/features/dashboard-guidance/hooks/useDashboardGuidanceVisible';
+import { hasCertificationAccessPayment } from '@/features/payment/model/paymentPolicy';
 
 const TARGET_LEVEL_LABELS = {
   INSTRUCTOR: 'Инструктор',
@@ -139,22 +140,12 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
 
   const targetLevelName = user.targetLevel ? TARGET_LEVEL_LABELS[user.targetLevel] : undefined;
   const isRenewalCycle = user.activeCycle?.type === 'RENEWAL';
-  const fullPackagePaid = payments.some(
-    (payment) => payment.type === 'FULL_PACKAGE' && payment.status === 'PAID',
+  // Для ресертификации текущая продуктовая логика не блокирует формы до оплаты.
+  const canUseCertificationContent = hasCertificationAccessPayment(
+    payments,
+    isRenewalCycle ? 'RENEWAL' : 'CERTIFICATION',
+    user.targetLevel,
   );
-  const directRegistrationPaid = payments.some(
-    (payment) => payment.type === 'REGISTRATION' && payment.status === 'PAID',
-  );
-  const supervisorRegistrationPaid = Boolean(
-    user.targetLevel === 'SUPERVISOR' &&
-      payments.some((payment) => payment.type === 'DOCUMENT_REVIEW' && payment.status === 'PAID'),
-  );
-  const hasCertificationEntryPayment =
-    directRegistrationPaid || supervisorRegistrationPaid || fullPackagePaid;
-
-  // Повторяет текущую продовую логику: для ресертификации проверка оплаты временно отключена.
-  const hasRequiredPayment = isRenewalCycle ? true : hasCertificationEntryPayment;
-  const canUseCertificationContent = hasRequiredPayment;
 
   // Claim активен пока не SETUP_COMPLETE/REJECTED — оплата и доступ к функциям не актуальны.
   const claimStatus = user.externalSupervisorClaimStatus;

@@ -11,6 +11,8 @@ export function useActiveUserBanner() {
     queryKey: ['user-banner', 'active'],
     queryFn: getActiveUserBanner,
     staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   });
 }
 

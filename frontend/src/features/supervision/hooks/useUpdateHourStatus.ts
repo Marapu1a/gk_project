@@ -5,6 +5,8 @@ import {
   type UpdateHourStatusInput,
   type UpdateSupervisionHourResponse,
 } from '../api/updateSupervisionHour';
+import { ceuSummaryQueryKey } from '@/features/ceu/hooks/useCeuSummary';
+import { supervisionSummaryQueryKey } from './useSupervisionSummary';
 
 export function useUpdateHourStatus() {
   const qc = useQueryClient();
@@ -26,8 +28,8 @@ export function useUpdateHourStatus() {
       await qc.invalidateQueries({ queryKey: ['supervision', 'list'] });
 
       // прогресс и CEU
-      await qc.invalidateQueries({ queryKey: ['supervision', 'summary'] });
-      await qc.invalidateQueries({ queryKey: ['ceu', 'summary'] });
+      await qc.invalidateQueries({ queryKey: supervisionSummaryQueryKey });
+      await qc.invalidateQueries({ queryKey: ceuSummaryQueryKey });
     },
   });
 }

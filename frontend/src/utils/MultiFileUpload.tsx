@@ -47,7 +47,7 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
     } catch {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     }
-  }, []);
+  }, [onChange]);
 
   const saveState = (newFiles: UploadedFile[]) => {
     setFiles(newFiles);
@@ -105,11 +105,18 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
   };
 
   const handleTypeChange = async (id: string, type: DocumentType) => {
+    const previousType = files.find((file) => file.id === id)?.type;
     const updated = files.map((f) => (f.id === id ? { ...f, type } : f));
     saveState(updated);
     try {
       await updateFileType.mutateAsync({ fileId: id, type });
     } catch {
+      const rolledBack = updated.map((file) =>
+        file.id === id && file.type === type
+          ? { ...file, type: previousType }
+          : file,
+      );
+      saveState(rolledBack);
       toast.error(UI_TOAST_MESSAGES.documents.updateFailed);
     }
   };
@@ -179,7 +186,7 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
               value={file.type || ''}
               onChange={(e) => handleTypeChange(file.id, e.target.value as DocumentType)}
               className="input w-full"
-              disabled={disabled}
+              disabled={disabled || updateFileType.isPending}
             >
               <option value="">Выберите тип</option>
               {Object.entries(documentTypeLabels).map(([value, label]) => (

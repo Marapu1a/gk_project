@@ -6,6 +6,7 @@ import { uploadFile } from '@/features/files/api/uploadFile';
 import { submitCeuRequest } from '../api/submitCeuRequest';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { SubmissionSuccessModal } from '@/components/SubmissionSuccessModal';
+import { ceuSummaryQueryKey } from '../hooks/useCeuSummary';
 import {
   formatDecimalInput,
   getDecimalInputBlurValue,
@@ -199,7 +200,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
       });
 
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['ceuSummary'] }),
+        queryClient.invalidateQueries({ queryKey: ceuSummaryQueryKey }),
         queryClient.invalidateQueries({ queryKey: ['ceu', 'history'] }),
         queryClient.invalidateQueries({ queryKey: ['ceu', 'unconfirmed'] }),
       ]);

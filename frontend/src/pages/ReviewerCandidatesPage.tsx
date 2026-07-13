@@ -5,7 +5,6 @@ import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { DashboardDateInput } from '@/components/DashboardDateInput';
 import { DashboardButton } from '@/components/DashboardButton';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import type { ReviewerCandidateKind } from '@/features/supervision/api/getReviewerCandidateDetails';
 import type {
   ReviewerRequestListItem,
@@ -319,9 +318,5 @@ function ReviewerCandidatesContent() {
 }
 
 export default function ReviewerCandidatesPage() {
-  return (
-    <ProtectedRoute>
-      <ReviewerCandidatesContent />
-    </ProtectedRoute>
-  );
+  return <ReviewerCandidatesContent />;
 }

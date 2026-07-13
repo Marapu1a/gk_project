@@ -1,4 +1,8 @@
 import { api } from '@/lib/axios';
+import type {
+  PaymentStatus,
+  PaymentType,
+} from '@/features/payment/api/getUserPayments';
 
 export async function getUserDetails(id: string) {
   const response = await api.get(`/admin/users/${id}/details`);
@@ -143,9 +147,9 @@ export async function getUserDetails(id: string) {
 
     payments: {
       id: string;
-      type: string;
+      type: PaymentType;
       targetLevel: 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
-      status: string;
+      status: PaymentStatus;
       comment: string | null;
       createdAt: string;
       requestedAt: string | null;

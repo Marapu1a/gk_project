@@ -6,13 +6,15 @@ import { PaymentCard } from './PaymentCard';
 import { PaymentModal } from './PaymentModal';
 import { PaymentStatusIcon } from './PaymentStatusIcon';
 import { formatCertificationLevelName, getShortPaymentTypeLabel } from '@/utils/labels';
-
-const ORDER: PaymentItem['type'][] = [
-  'FULL_PACKAGE',
-  'REGISTRATION',
-  'DOCUMENT_REVIEW',
-  'EXAM_ACCESS',
-];
+import {
+  areRequiredPaymentsPaid,
+  findPaymentForTarget,
+  getVisiblePaymentTypes,
+  hasPaidSeparatePayment,
+  hasPaymentStatus,
+  isFullPackageActive,
+  resolveBillingGroup,
+} from '@/features/payment/model/paymentPolicy';
 
 type Props = {
   activeGroupName: string;
@@ -21,18 +23,6 @@ type Props = {
   cycleType?: 'CERTIFICATION' | 'RENEWAL' | null;
   externalClaimActive?: boolean;
 };
-
-function resolveBillingGroup(targetLevelName?: string, activeGroupName?: string): string {
-  if (targetLevelName === 'Инструктор') return 'соискатель';
-  if (targetLevelName === 'Куратор') return 'инструктор';
-  if (targetLevelName === 'Супервизор') return 'куратор';
-
-  if (activeGroupName === 'Соискатель') return 'соискатель';
-  if (activeGroupName === 'Инструктор') return 'инструктор';
-  if (activeGroupName === 'Куратор') return 'куратор';
-
-  return '';
-}
 
 function PaymentSummary({ subtitle }: { subtitle: string }) {
   return (
@@ -64,7 +54,6 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
 
   const billingGroup = resolveBillingGroup(targetLevelName, activeGroupName);
   const isRenewalCycle = cycleType === 'RENEWAL';
-  const isSupervisorTarget = targetLevel === 'SUPERVISOR';
   const displayTargetLevelName =
     isRenewalCycle &&
     targetLevelName === 'Супервизор' &&
@@ -77,7 +66,11 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
 
     if (isRenewalCycle) {
       return payments
-        .filter((payment) => payment.type === 'RENEWAL' && payment.targetLevel === targetLevel)
+        .filter(
+          (payment) =>
+            payment.type === 'RENEWAL' &&
+            (payment.targetLevel == null || payment.targetLevel === targetLevel),
+        )
         .map((payment) => ({
           ...payment,
           uiDisabled: false,
@@ -85,18 +78,11 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
         }));
     }
 
-    const visibleTypes = isSupervisorTarget
-      ? ORDER.filter((type) => type !== 'REGISTRATION')
-      : ORDER;
+    const visibleTypes = getVisiblePaymentTypes('CERTIFICATION', targetLevel);
 
-    const fullPackage = payments.find((p) => p.type === 'FULL_PACKAGE');
-    const isPackageActive = fullPackage?.status === 'PENDING' || fullPackage?.status === 'PAID';
-    const hasPaidSeparatePayment = payments.some(
-      (payment) =>
-        payment.type !== 'FULL_PACKAGE' &&
-        ORDER.includes(payment.type) &&
-        payment.status === 'PAID',
-    );
+    const fullPackage = findPaymentForTarget(payments, 'FULL_PACKAGE', targetLevel);
+    const isPackageActive = isFullPackageActive(payments, targetLevel);
+    const hasPaidSeparate = hasPaidSeparatePayment(payments, targetLevel);
 
     if (isPackageActive && fullPackage && visibleTypes.includes('FULL_PACKAGE')) {
       return [
@@ -110,15 +96,15 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
 
     return visibleTypes
       .map((type) => {
-        const payment = payments.find((item) => item.type === type);
+        const payment = findPaymentForTarget(payments, type, targetLevel);
         if (!payment) return null;
 
         let uiDisabled = false;
         let disabledReason: string | undefined;
 
         if (payment.type === 'FULL_PACKAGE') {
-          uiDisabled = hasPaidSeparatePayment;
-          disabledReason = hasPaidSeparatePayment
+          uiDisabled = hasPaidSeparate;
+          disabledReason = hasPaidSeparate
             ? 'Пакет недоступен: уже принят отдельный платеж'
             : undefined;
         } else if (isPackageActive) {
@@ -136,7 +122,7 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
       uiDisabled: boolean;
       disabledReason?: string;
     })[];
-  }, [payments, isRenewalCycle, isSupervisorTarget, targetLevel]);
+  }, [payments, isRenewalCycle, targetLevel]);
 
   if (isLoading || !payments?.length) {
     return null;
@@ -146,30 +132,17 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
     return <PaymentEmptyState externalClaimActive={externalClaimActive} />;
   }
 
-  const fullPackagePayment = preparedPayments.find((p) => p.type === 'FULL_PACKAGE');
-  const isFullPackagePaid = fullPackagePayment?.status === 'PAID';
-
-  const visibleNonPackagePayments = preparedPayments.filter((p) => p.type !== 'FULL_PACKAGE');
-
-  const areAllSeparatePaid = isRenewalCycle
-    ? preparedPayments.length > 0 && preparedPayments.every((payment) => payment.status === 'PAID')
-    : isSupervisorTarget
-      ? (() => {
-          const documentReview = payments.find((p) => p.type === 'DOCUMENT_REVIEW');
-          const registration = payments.find((p) => p.type === 'REGISTRATION');
-          const exam = payments.find((p) => p.type === 'EXAM_ACCESS');
-
-          return Boolean(
-            documentReview &&
-              registration &&
-              exam &&
-              documentReview.status === 'PAID' &&
-              registration.status === 'PAID' &&
-              exam.status === 'PAID',
-          );
-        })()
-      : visibleNonPackagePayments.length > 0 &&
-        visibleNonPackagePayments.every((payment) => payment.status === 'PAID');
+  const isFullPackagePaid = hasPaymentStatus(
+    payments,
+    'FULL_PACKAGE',
+    'PAID',
+    targetLevel,
+  );
+  const areAllRequiredPaid = areRequiredPaymentsPaid(
+    payments,
+    isRenewalCycle ? 'RENEWAL' : 'CERTIFICATION',
+    targetLevel,
+  );
 
   if (isFullPackagePaid) {
     return (
@@ -179,7 +152,7 @@ export function PaymentBlock({ activeGroupName, targetLevel, targetLevelName, cy
     );
   }
 
-  if (areAllSeparatePaid) {
+  if (areAllRequiredPaid) {
     return (
       <PaymentSummary subtitle={isRenewalCycle ? 'Ресертификация оплачена' : 'Все услуги оплачены'} />
     );

@@ -6,6 +6,9 @@ import {
   type SetTargetLevelResponse,
 } from '../api/setTargetLevel';
 import { type CurrentUser } from '@/features/auth/api/me';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
+import { ceuSummaryQueryKey } from '@/features/ceu/hooks/useCeuSummary';
+import { supervisionSummaryQueryKey } from '@/features/supervision/hooks/useSupervisionSummary';
 
 type Ctx = { prev?: CurrentUser };
 
@@ -16,12 +19,12 @@ export function useSetTargetLevel(userId: string) {
     mutationFn: (payload) => setTargetLevel(userId, payload),
 
     onMutate: async (payload) => {
-      await qc.cancelQueries({ queryKey: ['me'] });
+      await qc.cancelQueries({ queryKey: currentUserQueryKey });
 
-      const prev = qc.getQueryData<CurrentUser>(['me']);
+      const prev = qc.getQueryData<CurrentUser>(currentUserQueryKey);
 
       if (prev) {
-        qc.setQueryData<CurrentUser>(['me'], {
+        qc.setQueryData<CurrentUser>(currentUserQueryKey, {
           ...prev,
           targetLevel: payload.targetLevel ?? null,
         });
@@ -32,20 +35,19 @@ export function useSetTargetLevel(userId: string) {
 
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) {
-        qc.setQueryData<CurrentUser>(['me'], ctx.prev);
+        qc.setQueryData<CurrentUser>(currentUserQueryKey, ctx.prev);
       }
     },
 
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ['me'] });
+      qc.invalidateQueries({ queryKey: currentUserQueryKey });
       qc.invalidateQueries({ queryKey: ['payments'] });
 
       // CEU summary
-      qc.invalidateQueries({ queryKey: ['ceuSummary'] });
+      qc.invalidateQueries({ queryKey: ceuSummaryQueryKey });
 
       // supervision summary
-      qc.invalidateQueries({ queryKey: ['supervisionSummary'] });
-      qc.invalidateQueries({ queryKey: ['supervision-summary'] });
+      qc.invalidateQueries({ queryKey: supervisionSummaryQueryKey });
     },
   });
 }

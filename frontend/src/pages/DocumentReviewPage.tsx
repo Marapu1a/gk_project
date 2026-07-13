@@ -13,6 +13,10 @@ import { documentTypeLabels } from '@/utils/documentTypeLabels';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { getDocumentRequirementHint } from '@/features/documentReview/utils/documentRequirementHints';
+import {
+  findPaymentForTarget,
+  isDocumentReviewPaymentCovered,
+} from '@/features/payment/model/paymentPolicy';
 
 type FileStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'DELETED';
 
@@ -88,15 +92,20 @@ export default function DocumentReviewPage() {
   const { data: payments, isLoading: paymentsLoading } = useUserPayments();
   const deletionRequest = useRequestDocumentDeletion();
 
-  const documentPayment = payments?.find((payment) => payment.type === 'DOCUMENT_REVIEW');
-  const paymentStatus = documentPayment?.status ?? 'UNPAID';
   const isRenewalCycle = currentUser?.activeCycle?.type === 'RENEWAL';
-  const isDocumentReviewPaid =
-    isRenewalCycle ||
-    paymentStatus === 'PAID' ||
-    Boolean(
-      payments?.some((payment) => payment.type === 'FULL_PACKAGE' && payment.status === 'PAID'),
-    );
+  const paymentTargetLevel =
+    currentUser?.activeCycle?.targetLevel ?? currentUser?.targetLevel;
+  const documentPayment = findPaymentForTarget(
+    payments ?? [],
+    'DOCUMENT_REVIEW',
+    paymentTargetLevel,
+  );
+  const paymentStatus = documentPayment?.status ?? 'UNPAID';
+  const isDocumentReviewPaid = isDocumentReviewPaymentCovered(
+    payments ?? [],
+    isRenewalCycle ? 'RENEWAL' : 'CERTIFICATION',
+    paymentTargetLevel,
+  );
   const paymentStatusLabel = isRenewalCycle
     ? 'Не требуется'
     : isDocumentReviewPaid

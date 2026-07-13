@@ -5,6 +5,8 @@ import {
   type SubmitSupervisionRequestResponse,
 } from '../api/submitSupervisionRequest';
 import type { SupervisionRequestFormData } from '../validation/supervisionRequestSchema';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
+import { supervisionSummaryQueryKey } from './useSupervisionSummary';
 
 export function useSubmitSupervisionRequest() {
   const qc = useQueryClient();
@@ -13,9 +15,8 @@ export function useSubmitSupervisionRequest() {
     mutationFn: submitSupervisionRequest,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['supervision', 'history'] });
-      await qc.invalidateQueries({ queryKey: ['supervision', 'summary'] });
-      await qc.invalidateQueries({ queryKey: ['supervisionSummary'] });
-      await qc.invalidateQueries({ queryKey: ['me'] });
+      await qc.invalidateQueries({ queryKey: supervisionSummaryQueryKey });
+      await qc.invalidateQueries({ queryKey: currentUserQueryKey });
     },
   });
 }

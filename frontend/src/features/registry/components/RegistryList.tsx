@@ -231,7 +231,7 @@ export function RegistryList({ onOpenProfile, pageSize = 18 }: Props) {
   const isApplicantsTab = tab === 'applicants';
 
   const { data, isLoading } = useRegistry({ page: 1, limit: 1000 });
-  const items = (data?.items ?? []) as RegistryCardType[];
+  const items = useMemo(() => (data?.items ?? []) as RegistryCardType[], [data?.items]);
 
   const tabItems = useMemo(() => items.filter((user) => isRegistryTabItem(user, tab)), [items, tab]);
   const groups = useMemo(() => {

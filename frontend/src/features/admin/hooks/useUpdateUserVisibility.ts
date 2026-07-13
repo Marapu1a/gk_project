@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateUserVisibility } from '../api/updateUserVisibility';
+import { adminUserDetailsQueryKey } from './useUserDetails';
+import { adminUsersQueryKey } from './useUsers';
 
 export function useUpdateUserVisibility(userId: string) {
   const qc = useQueryClient();
@@ -7,7 +9,8 @@ export function useUpdateUserVisibility(userId: string) {
   return useMutation({
     mutationFn: (isProfileVisible: boolean) => updateUserVisibility(userId, isProfileVisible),
     onSuccess: (_, isProfileVisible) => {
-      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+      qc.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) });
+      qc.invalidateQueries({ queryKey: adminUsersQueryKey });
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
       qc.invalidateQueries({ queryKey: ['registry'] });
 

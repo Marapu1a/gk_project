@@ -17,6 +17,10 @@ import {
   useUpdateDocumentReviewFile,
 } from '../hooks/useUpdateDocumentReviewFile';
 import type { DocumentReviewFileStatus } from '../api/updateDocumentReviewFile';
+import {
+  findPaymentForTarget,
+  isDocumentReviewPaymentCovered,
+} from '@/features/payment/model/paymentPolicy';
 
 const DELETED_ICON = '/dashboard-v2/deleted.svg';
 
@@ -159,7 +163,6 @@ export function AdminDocumentReviewDetails() {
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
 
   const { data: payments } = useUserPaymentsById(request?.user?.id);
-  const documentPayment = payments?.find((p) => p.type === 'DOCUMENT_REVIEW');
 
   const reviewFiles = useMemo(() => normalizeReviewFiles(request), [request]);
   const relatedRequests: RelatedDocumentRequest[] = request?.relatedRequests ?? [];
@@ -188,16 +191,21 @@ export function AdminDocumentReviewDetails() {
   const isLegacyFallback = reviewFiles.some((item) => item.id.startsWith('legacy-'));
   const isArchiveRequest = !request.cycleId || request.cycle?.status !== 'ACTIVE';
   const activeCycle = request.user?.cycles?.[0] ?? null;
-  const activeGroup =
-    request.user?.groups
-      ?.map((item: any) => item.group)
-      ?.sort((a: any, b: any) => b.rank - a.rank)?.[0] ?? null;
   const requestTitleName =
     request.user?.fullName?.trim() || request.user?.email?.trim() || request.id.slice(0, 6);
 
-  const canConfirmWithoutPayment =
-    activeCycle?.type === 'RENEWAL' &&
-    (activeGroup?.name === 'Супервизор' || activeGroup?.name === 'Опытный Супервизор');
+  const requestCycleType = request.cycle?.type === 'RENEWAL' ? 'RENEWAL' : 'CERTIFICATION';
+  const paymentTargetLevel = request.cycle?.targetLevel ?? activeCycle?.targetLevel;
+  const documentPayment = findPaymentForTarget(
+    payments ?? [],
+    'DOCUMENT_REVIEW',
+    paymentTargetLevel,
+  );
+  const documentReviewPaymentCovered = isDocumentReviewPaymentCovered(
+    payments ?? [],
+    requestCycleType,
+    paymentTargetLevel,
+  );
 
   const handleTypeChange = async (item: ReviewFile, type: string) => {
     setTypes((prev) => ({ ...prev, [item.id]: type }));
@@ -349,15 +357,19 @@ export function AdminDocumentReviewDetails() {
             <InfoLine
               label="Оплата"
               value={
-                documentPayment
+                requestCycleType === 'RENEWAL'
+                  ? 'Не требуется'
+                  : documentReviewPaymentCovered
+                    ? 'Оплачено'
+                    : documentPayment
                   ? paymentStatusText[documentPayment.status] || documentPayment.status
                   : 'Нет информации'
               }
             />
             <InfoLine label="Комментарий заявки" value={request.comment || '—'} />
-            {canConfirmWithoutPayment ? (
+            {requestCycleType === 'RENEWAL' ? (
               <div className="md:col-span-2 rounded-[10px] bg-[var(--color-blue-soft)] px-4 py-3 text-[13px]">
-                Подтверждение без оплаты разрешено для ресертификации супервизора.
+                Отдельная оплата проверки документов при ресертификации не требуется.
               </div>
             ) : null}
             {isArchiveRequest ? (

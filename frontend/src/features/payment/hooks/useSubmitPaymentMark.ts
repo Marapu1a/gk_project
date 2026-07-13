@@ -4,6 +4,8 @@ import type { PaymentItem } from '../api/getUserPayments';
 import { updatePaymentStatus } from '../api/updatePaymentStatus';
 import { userPaymentsQueryKey } from './useUserPayments';
 import { userPaymentsByIdQueryKey } from './useUserPaymentsById';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
+import { adminUserDetailsQueryKey } from '@/features/admin/hooks/useUserDetails';
 
 type SubmitPaymentMarkInput = {
   payments: PaymentItem[];
@@ -36,9 +38,8 @@ export function useSubmitPaymentMark() {
       await Promise.all([
         qc.invalidateQueries({ queryKey: userPaymentsQueryKey }),
         qc.invalidateQueries({ queryKey: userPaymentsByIdQueryKey(userId) }),
-        qc.invalidateQueries({ queryKey: ['me'] }),
-        qc.invalidateQueries({ queryKey: ['admin', 'user', userId] }),
-        qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+        qc.invalidateQueries({ queryKey: currentUserQueryKey }),
+        qc.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) }),
       ]);
     },
   });

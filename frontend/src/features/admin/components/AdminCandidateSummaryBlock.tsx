@@ -18,6 +18,7 @@ import {
 } from '@/utils/labels';
 import { formatCertificateDate } from '@/features/certificate/utils/certificateDates';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { findPaymentForTarget } from '@/features/payment/model/paymentPolicy';
 
 type Props = {
   user: any;
@@ -138,11 +139,7 @@ function getRenewalPayment(user: any) {
   const cycle = user.activeCycle;
   if (!cycle || cycle.type !== 'RENEWAL') return null;
 
-  return (
-    (user.payments ?? []).find(
-      (payment: any) => payment.type === 'RENEWAL' && payment.targetLevel === cycle.targetLevel,
-    ) ?? null
-  );
+  return findPaymentForTarget(user.payments ?? [], 'RENEWAL', cycle.targetLevel) ?? null;
 }
 
 function documentStatus(user: any) {
@@ -436,7 +433,6 @@ export function AdminCandidateSummaryBlock({
     ceuReviewUrl,
     documentReviewUrl,
     docs.label,
-    docs.mode,
     docs.tone,
     examApplication,
     examApplicationsUrl,

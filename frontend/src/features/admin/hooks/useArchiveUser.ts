@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { archiveUser, restoreUser } from '../api/archiveUser';
+import { adminUserDetailsQueryKey } from './useUserDetails';
+import { adminUsersQueryKey } from './useUsers';
 
 export function useArchiveUser() {
   const qc = useQueryClient();
@@ -8,9 +10,9 @@ export function useArchiveUser() {
     mutationFn: ({ userId, reason }: { userId: string; reason?: string }) =>
       archiveUser(userId, reason),
     onSuccess: (_, { userId }) => {
-      qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: adminUsersQueryKey });
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+      qc.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) });
       qc.invalidateQueries({ queryKey: ['registry'] });
     },
   });
@@ -22,9 +24,9 @@ export function useRestoreUser() {
   return useMutation({
     mutationFn: (userId: string) => restoreUser(userId),
     onSuccess: (_, userId) => {
-      qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: adminUsersQueryKey });
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] });
+      qc.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) });
       qc.invalidateQueries({ queryKey: ['registry'] });
     },
   });

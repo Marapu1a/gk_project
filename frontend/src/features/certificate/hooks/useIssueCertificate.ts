@@ -5,6 +5,9 @@ import {
   type IssueCertificatePayload,
   type CertificateDTO,
 } from '../api/issueCertificate';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
+import { ceuSummaryQueryKey } from '@/features/ceu/hooks/useCeuSummary';
+import { supervisionSummaryQueryKey } from '@/features/supervision/hooks/useSupervisionSummary';
 
 export function useIssueCertificate() {
   const qc = useQueryClient();
@@ -15,10 +18,10 @@ export function useIssueCertificate() {
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['certificates'] }),
-        qc.invalidateQueries({ queryKey: ['me'] }),
+        qc.invalidateQueries({ queryKey: currentUserQueryKey }),
 
-        qc.invalidateQueries({ queryKey: ['ceuSummary'] }),
-        qc.invalidateQueries({ queryKey: ['supervisionSummary'] }),
+        qc.invalidateQueries({ queryKey: ceuSummaryQueryKey }),
+        qc.invalidateQueries({ queryKey: supervisionSummaryQueryKey }),
 
         qc.invalidateQueries({ queryKey: ['payments'] }),
         qc.invalidateQueries({ queryKey: ['payments', 'me'] }),

@@ -4,12 +4,25 @@ import { toast } from 'sonner';
 import { getShortPaymentTypeLabel, paymentStatusLabels } from '@/utils/labels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useUpdatePaymentStatus } from '@/features/payment/hooks/useUpdatePaymentStatus';
+import { userPaymentsQueryKey } from '@/features/payment/hooks/useUserPayments';
+import { userPaymentsByIdQueryKey } from '@/features/payment/hooks/useUserPaymentsById';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
+import { adminUserDetailsQueryKey } from '@/features/admin/hooks/useUserDetails';
 import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
+import type {
+  PaymentStatus,
+  PaymentType,
+} from '@/features/payment/api/getUserPayments';
+import {
+  getVisiblePaymentTypes,
+  hasPaidSeparatePayment,
+  isFullPackageActive,
+} from '@/features/payment/model/paymentPolicy';
 
 type Payment = {
   id: string;
-  type: string;
-  status: string;
+  type: PaymentType;
+  status: PaymentStatus;
   comment: string | null;
   createdAt: string;
   requestedAt: string | null;
@@ -35,7 +48,7 @@ type PaymentAction = {
   nextStatus: 'PAID' | 'UNPAID';
 } | null;
 
-const TYPE_ORDER: Record<string, number> = {
+const TYPE_ORDER: Record<PaymentType, number> = {
   FULL_PACKAGE: 0,
   REGISTRATION: 1,
   RENEWAL: 2,
@@ -48,19 +61,6 @@ const TARGET_LEVEL_ORDER: Record<NonNullable<Payment['targetLevel']>, number> = 
   CURATOR: 1,
   SUPERVISOR: 2,
 };
-
-const CERTIFICATION_PAYMENT_TYPES = [
-  'FULL_PACKAGE',
-  'REGISTRATION',
-  'DOCUMENT_REVIEW',
-  'EXAM_ACCESS',
-];
-
-const SUPERVISOR_CERTIFICATION_PAYMENT_TYPES = [
-  'FULL_PACKAGE',
-  'DOCUMENT_REVIEW',
-  'EXAM_ACCESS',
-];
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—';
@@ -96,12 +96,11 @@ export default function PaymentsBlock({
   const invalidate = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['payments'] }),
-      queryClient.invalidateQueries({ queryKey: ['payments', 'me'] }),
-      queryClient.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', userId] }),
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+      queryClient.invalidateQueries({ queryKey: userPaymentsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: userPaymentsByIdQueryKey(userId) }),
+      queryClient.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) }),
       queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] }),
-      queryClient.invalidateQueries({ queryKey: ['me'] }),
+      queryClient.invalidateQueries({ queryKey: currentUserQueryKey }),
     ]);
   };
 
@@ -114,14 +113,12 @@ export default function PaymentsBlock({
     if (activeCycle.type === 'RENEWAL') {
       return payments.filter(
         (payment) =>
-          payment.type === 'RENEWAL' && payment.targetLevel === activeCycle.targetLevel,
+          payment.type === 'RENEWAL' &&
+          (payment.targetLevel == null || payment.targetLevel === activeCycle.targetLevel),
       );
     }
 
-    const visibleTypes =
-      activeCycle.targetLevel === 'SUPERVISOR'
-        ? SUPERVISOR_CERTIFICATION_PAYMENT_TYPES
-        : CERTIFICATION_PAYMENT_TYPES;
+    const visibleTypes = getVisiblePaymentTypes(activeCycle.type, activeCycle.targetLevel);
 
     const matchingPayments = payments.filter(
       (payment) => visibleTypes.includes(payment.type) && belongsToActiveLevel(payment),
@@ -164,14 +161,11 @@ export default function PaymentsBlock({
     });
   }, [visiblePayments]);
 
-  const fullPackage = visiblePayments.find((payment) => payment.type === 'FULL_PACKAGE');
-  const isFullPackageActive = fullPackage?.status === 'PENDING' || fullPackage?.status === 'PAID';
-  const hasPaidSeparatePayment = visiblePayments.some(
-    (payment) => payment.type !== 'FULL_PACKAGE' && payment.status === 'PAID',
-  );
+  const packageActive = isFullPackageActive(visiblePayments, activeCycle?.targetLevel);
+  const hasPaidSeparate = hasPaidSeparatePayment(visiblePayments, activeCycle?.targetLevel);
 
   const getDisplayStatus = (payment: Payment) => {
-    if (isFullPackageActive && payment.type !== 'FULL_PACKAGE') {
+    if (packageActive && payment.type !== 'FULL_PACKAGE') {
       return 'В составе пакета';
     }
 
@@ -240,9 +234,9 @@ export default function PaymentsBlock({
             const isPaid = payment.status === 'PAID';
             const nextStatus = isPaid ? 'UNPAID' : 'PAID';
             const inheritedPending =
-              Boolean(isFullPackageActive) && payment.type !== 'FULL_PACKAGE';
+              packageActive && payment.type !== 'FULL_PACKAGE';
             const isBlockedFullPackage =
-              payment.type === 'FULL_PACKAGE' && !isPaid && hasPaidSeparatePayment;
+              payment.type === 'FULL_PACKAGE' && !isPaid && hasPaidSeparate;
 
             return (
               <div

@@ -7,6 +7,7 @@ import type { PaymentItem } from '@/features/payment/api/getUserPayments';
 import { useSubmitPaymentMark } from '@/features/payment/hooks/useSubmitPaymentMark';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { getShortPaymentTypeLabel } from '@/utils/labels';
+import { findPaymentForTarget } from '@/features/payment/model/paymentPolicy';
 
 type PaymentModalProps = {
   payment: PaymentItem | null;
@@ -28,7 +29,11 @@ function getLinkedPayments(
     return [payment];
   }
 
-  const registration = payments.find((p) => p.type === 'REGISTRATION');
+  const registration = findPaymentForTarget(
+    payments,
+    'REGISTRATION',
+    payment.targetLevel,
+  );
   return registration ? [payment, registration] : [payment];
 }
 

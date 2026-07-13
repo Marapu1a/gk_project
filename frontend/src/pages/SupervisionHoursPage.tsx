@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { PageNav } from '@/components/PageNav';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { fetchCurrentUser } from '@/features/auth/api/me';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
 import { HoursOverviewBlock } from '@/features/dashboard-v2/dashboardV2/components/hours-overview/component/HoursOverviewBlock';
 import { MentorshipHoursRequestForm } from '@/features/supervision/components/MentorshipHoursRequestForm';
 import { SupervisionHoursRequestForm } from '@/features/supervision/components/SupervisionHoursRequestForm';
@@ -16,7 +16,7 @@ function SupervisionHoursContent() {
   const panel = searchParams.get('panel');
   const isHistoryEntry = panel === 'history';
   const { data: user } = useQuery({
-    queryKey: ['me'],
+    queryKey: currentUserQueryKey,
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000,
   });
@@ -115,9 +115,5 @@ function SupervisionHoursContent() {
 }
 
 export default function SupervisionHoursPage() {
-  return (
-    <ProtectedRoute>
-      <SupervisionHoursContent />
-    </ProtectedRoute>
-  );
+  return <SupervisionHoursContent />;
 }

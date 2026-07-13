@@ -5,6 +5,7 @@ import {
   type UpdateCertificatePayload,
   type AdminCertificate,
 } from '@/features/admin/api/updateCertificate';
+import { adminUserDetailsQueryKey } from './useUserDetails';
 
 type UpdateCertificateArgs = {
   certificateId: string;
@@ -26,7 +27,7 @@ export function useUpdateCertificate(userId: string) {
         queryKey: ['admin', 'user-certificates', userId],
       });
       queryClient.invalidateQueries({
-        queryKey: ['admin', 'user', 'details', userId],
+        queryKey: adminUserDetailsQueryKey(userId),
       });
       queryClient.invalidateQueries({
         queryKey: ['certificates', 'user', userId],

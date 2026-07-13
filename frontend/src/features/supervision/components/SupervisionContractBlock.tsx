@@ -57,7 +57,10 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
     limit: 20,
   });
 
-  const suggestions = (usersData?.users ?? []) as ReviewerSuggestion[];
+  const suggestions = useMemo(
+    () => (usersData?.users ?? []) as ReviewerSuggestion[],
+    [usersData?.users],
+  );
   const matchedUsers = useMemo(() => {
     const tokens = tokenize(supervisorInput);
     if (!tokens.length) return [];

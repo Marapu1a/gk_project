@@ -1,6 +1,5 @@
 import { useParams } from 'react-router-dom';
 import { PageNav } from '@/components/PageNav';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { CandidateCeuCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateCeuCard';
 import { CandidateHoursOverviewCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateHoursOverviewCard';
 import { CandidateInfoCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateInfoCard';
@@ -141,9 +140,5 @@ function ReviewerCandidateDetailsContent() {
 }
 
 export default function ReviewerCandidateDetailsPage() {
-  return (
-    <ProtectedRoute>
-      <ReviewerCandidateDetailsContent />
-    </ProtectedRoute>
-  );
+  return <ReviewerCandidateDetailsContent />;
 }

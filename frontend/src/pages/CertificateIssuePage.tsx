@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchCurrentUser } from '@/features/auth/api/me';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
 import { AdminIssueCertificateForm } from '@/features/certificate/components/AdminIssueCertificateForm';
 import { PageNav } from '@/components/PageNav';
 
@@ -9,7 +10,7 @@ export default function CertificateIssuePage() {
   const [searchParams] = useSearchParams();
   const defaultEmail = searchParams.get('email') ?? '';
   const { data: me, isLoading } = useQuery({
-    queryKey: ['me'],
+    queryKey: currentUserQueryKey,
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000,
   });

@@ -56,7 +56,7 @@ export default function ExamAppsTable() {
     setSearchParams(next, { replace: true });
   };
 
-  const rows = (data as ExamApp[] | undefined) ?? [];
+  const rows = useMemo(() => (data as ExamApp[] | undefined) ?? [], [data]);
   const filtered = useMemo(() => {
     const filteredRows = rows.filter((row) => {
       const statusOk = status === 'ALL' || row.status === status;

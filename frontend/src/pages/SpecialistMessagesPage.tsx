@@ -41,7 +41,7 @@ export default function SpecialistMessagesPage() {
   const { confirm } = useConfirm();
   const [selected, setSelected] = useState<SpecialistContactMessage | null>(null);
 
-  const messages = data?.items ?? [];
+  const messages = useMemo(() => data?.items ?? [], [data?.items]);
   const unreadCount = data?.unreadCount ?? 0;
 
   const sortedMessages = useMemo(

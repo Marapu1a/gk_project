@@ -7,6 +7,11 @@ import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import { useMyCertificates } from '@/features/certificate/hooks/useMyCertificates';
 import type { CeuSummaryResponse } from '@/features/ceu/api/getCeuSummary';
 import type { SupervisionSummaryResponse } from '@/features/supervision/api/getSupervisionSummary';
+import {
+  areRequiredPaymentsPaid,
+  hasPaymentStatus,
+  isDocumentReviewPaymentCovered,
+} from '@/features/payment/model/paymentPolicy';
 
 // режим сертификации
 type QualificationMode = 'EXAM' | 'RENEWAL';
@@ -88,17 +93,29 @@ export function useQualificationProgress(
   }
 
   // === Документы + платежи ===
-  const isPaid = (
-    type: 'DOCUMENT_REVIEW' | 'EXAM_ACCESS' | 'REGISTRATION' | 'FULL_PACKAGE' | 'RENEWAL',
-  ) =>
-    (payments ?? []).some((p) => p.type === type && p.status === 'PAID');
-
-  const fullPackagePaid = isPaid('FULL_PACKAGE');
-  const supervisorRegistrationPaid = targetLevel === 'SUPERVISOR' && isPaid('DOCUMENT_REVIEW');
-  const registrationPaid = fullPackagePaid || isPaid('REGISTRATION') || supervisorRegistrationPaid;
-  const documentReviewPaid = mode === 'RENEWAL' || fullPackagePaid || isPaid('DOCUMENT_REVIEW');
-  const examPaid = fullPackagePaid || isPaid('EXAM_ACCESS');
-  const renewalPaid = isPaid('RENEWAL');
+  const currentPayments = payments ?? [];
+  const cycleType = mode === 'RENEWAL' ? 'RENEWAL' : 'CERTIFICATION';
+  const fullPackagePaid = hasPaymentStatus(
+    currentPayments,
+    'FULL_PACKAGE',
+    'PAID',
+    targetLevel,
+  );
+  const supervisorRegistrationPaid =
+    targetLevel === 'SUPERVISOR' &&
+    hasPaymentStatus(currentPayments, 'DOCUMENT_REVIEW', 'PAID', targetLevel);
+  const registrationPaid =
+    fullPackagePaid ||
+    hasPaymentStatus(currentPayments, 'REGISTRATION', 'PAID', targetLevel) ||
+    supervisorRegistrationPaid;
+  const documentReviewPaid = isDocumentReviewPaymentCovered(
+    currentPayments,
+    cycleType,
+    targetLevel,
+  );
+  const examPaid =
+    fullPackagePaid ||
+    hasPaymentStatus(currentPayments, 'EXAM_ACCESS', 'PAID', targetLevel);
 
   const activeCycleId = currentUser?.activeCycle?.id ?? null;
   const documentsBelongToActiveCycle = activeCycleId
@@ -108,10 +125,11 @@ export function useQualificationProgress(
     (docReview?.status === 'CONFIRMED' && documentsBelongToActiveCycle) ||
     (mode === 'RENEWAL' && Boolean(certificates?.length));
 
-  const requiredPaymentsPaid =
-    mode === 'EXAM'
-      ? registrationPaid && documentReviewPaid && examPaid
-      : renewalPaid;
+  const requiredPaymentsPaid = areRequiredPaymentsPaid(
+    currentPayments,
+    cycleType,
+    targetLevel ?? null,
+  );
 
   // Причины (только EXAM — супервизорам причины не показываем)
   const reasons: string[] = [];

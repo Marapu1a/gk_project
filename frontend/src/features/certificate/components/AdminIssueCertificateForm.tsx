@@ -83,7 +83,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
     perPage: 20,
   });
 
-  const allUsers = usersData?.users ?? [];
+  const allUsers = useMemo(() => usersData?.users ?? [], [usersData?.users]);
 
   const exactMatchedUser = useMemo(() => {
     const input = norm(userSearchInput);

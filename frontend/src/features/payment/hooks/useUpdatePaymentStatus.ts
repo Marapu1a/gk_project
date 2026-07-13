@@ -3,6 +3,8 @@ import { updatePaymentStatus } from '../api/updatePaymentStatus';
 import type { PaymentStatus } from '../api/getUserPayments';
 import { userPaymentsQueryKey } from './useUserPayments';
 import { userPaymentsByIdQueryKey } from './useUserPaymentsById';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
+import { adminUserDetailsQueryKey } from '@/features/admin/hooks/useUserDetails';
 
 type UpdatePaymentStatusInput = {
   id: string;
@@ -21,9 +23,8 @@ export function useUpdatePaymentStatus(userId: string) {
       await Promise.all([
         qc.invalidateQueries({ queryKey: userPaymentsQueryKey }),
         qc.invalidateQueries({ queryKey: userPaymentsByIdQueryKey(userId) }),
-        qc.invalidateQueries({ queryKey: ['me'] }),
-        qc.invalidateQueries({ queryKey: ['admin', 'user', userId] }),
-        qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+        qc.invalidateQueries({ queryKey: currentUserQueryKey }),
+        qc.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) }),
       ]);
     },
   });

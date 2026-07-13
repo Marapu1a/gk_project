@@ -46,15 +46,25 @@ type DocumentReviewRequestRow = {
 };
 
 const activeDocumentStatuses = new Set(['UNCONFIRMED', 'PARTIALLY_CONFIRMED']);
+const ADMIN_TASKS_REFRESH_INTERVAL = 30_000;
 
 export function AdminDashboard({ user }: AdminDashboardProps) {
   const logout = useLogout();
   const navigate = useNavigate();
 
   const { data: notifications = [] } = useNotifications();
-  const { data: documentRequests = [] } = useAllDocReviewRequests();
-  const { data: qualificationClaims } = useExternalSupervisorClaims('active', 1, 20);
-  const { data: examApplications = [] } = useExamApps();
+  const { data: documentRequests = [] } = useAllDocReviewRequests(
+    undefined,
+    ADMIN_TASKS_REFRESH_INTERVAL,
+  );
+  const { data: qualificationClaims } = useExternalSupervisorClaims(
+    'active',
+    1,
+    20,
+    undefined,
+    ADMIN_TASKS_REFRESH_INTERVAL,
+  );
+  const { data: examApplications = [] } = useExamApps('', ADMIN_TASKS_REFRESH_INTERVAL);
   const exportUsers = useDownloadUsersExport();
   const backupDb = useCreateDbBackup();
 

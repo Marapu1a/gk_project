@@ -46,6 +46,8 @@ type Params = {
   nameSort?: 'asc' | 'desc';
 };
 
+export const adminUsersQueryKey = ['users'] as const;
+
 export function useUsers(params: Params) {
   const {
     search = '',
@@ -63,7 +65,7 @@ export function useUsers(params: Params) {
 
   return useQuery<UsersResponse, Error>({
     queryKey: [
-      'users',
+      ...adminUsersQueryKey,
       search,
       page,
       perPage,

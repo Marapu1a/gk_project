@@ -5,6 +5,8 @@ import {
   type UpdateUserSupervisionMatrixBody,
   type UpdateUserSupervisionMatrixResponse,
 } from '../../api/supervision/updateUserSupervisionMatrix';
+import { adminUserDetailsQueryKey } from '../useUserDetails';
+import { supervisionSummaryQueryKey } from '@/features/supervision/hooks/useSupervisionSummary';
 
 export function useUpdateUserSupervisionMatrix(userId: string) {
   const qc = useQueryClient();
@@ -14,17 +16,17 @@ export function useUpdateUserSupervisionMatrix(userId: string) {
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['admin', 'supervision-matrix', userId] }),
-        qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+        qc.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) }),
         qc.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] }),
         qc.invalidateQueries({ queryKey: ['admin', 'hours-review'] }),
         qc.invalidateQueries({ queryKey: ['supervision', 'history'] }),
         qc.invalidateQueries({ queryKey: ['supervision', 'history', 'records'] }),
-        qc.invalidateQueries({ queryKey: ['supervisionSummary'] }),
+        qc.invalidateQueries({ queryKey: supervisionSummaryQueryKey }),
       ]);
 
       await Promise.all([
         qc.refetchQueries({ queryKey: ['admin', 'supervision-matrix', userId], type: 'active' }),
-        qc.refetchQueries({ queryKey: ['admin', 'user', 'details', userId], type: 'active' }),
+        qc.refetchQueries({ queryKey: adminUserDetailsQueryKey(userId), type: 'active' }),
       ]);
     },
   });

@@ -163,7 +163,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     }
 
     setSelectedProcessKey(actionKey({ mode: activeCycle.type, level: activeCycle.targetLevel, label: '' }));
-  }, [activeCycle?.type, activeCycle?.targetLevel]);
+  }, [activeCycle]);
 
   const selectedAction =
     availableActions.find((item) => actionKey(item) === selectedProcessKey) ?? null;

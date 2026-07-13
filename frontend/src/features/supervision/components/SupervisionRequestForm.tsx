@@ -4,13 +4,17 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchCurrentUser } from '@/features/auth/api/me';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
 import { supervisionRequestSchema } from '../validation/supervisionRequestSchema';
 import type { SupervisionRequestFormData } from '../validation/supervisionRequestSchema';
 import { useSubmitSupervisionRequest } from '../hooks/useSubmitSupervisionRequest';
 import { BackButton } from '@/components/BackButton';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
+import {
+  supervisionSummaryQueryKey,
+  useSupervisionSummary,
+} from '@/features/supervision/hooks/useSupervisionSummary';
 import { useReviewerSuggestions } from '../hooks/useReviewerSuggestions';
 
 // нормализация/токенизация как в AdminIssueCertificateForm / UsersTable
@@ -51,7 +55,7 @@ export function SupervisionRequestForm() {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['me'],
+    queryKey: currentUserQueryKey,
     queryFn: fetchCurrentUser,
     staleTime: 5 * 60 * 1000,
   });
@@ -139,7 +143,7 @@ export function SupervisionRequestForm() {
     limit: 20,
   });
 
-  const reviewerSuggestions = usersData?.users ?? [];
+  const reviewerSuggestions = useMemo(() => usersData?.users ?? [], [usersData?.users]);
 
   // фильтр по строке поиска
   const matchedUsers = useMemo(() => {
@@ -201,7 +205,7 @@ export function SupervisionRequestForm() {
     try {
       await mutation.mutateAsync(data);
 
-      queryClient.invalidateQueries({ queryKey: ['supervision', 'summary'] });
+      queryClient.invalidateQueries({ queryKey: supervisionSummaryQueryKey });
       queryClient.invalidateQueries({ queryKey: ['supervision', 'unconfirmed'] });
 
       toast.success('Заявка отправлена');

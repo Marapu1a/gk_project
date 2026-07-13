@@ -4,6 +4,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { PaymentItem } from '../api/getUserPayments';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import { userPaymentsByIdQueryKey } from '../hooks/useUserPaymentsById';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
+import { adminUserDetailsQueryKey } from '@/features/admin/hooks/useUserDetails';
 
 const PAYMENT_STATUS = {
   UNPAID: 'UNPAID',
@@ -37,12 +40,9 @@ export function PaymentStatusToggle({
   const invalidateAllPayments = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['payments'] }),
-      queryClient.invalidateQueries({ queryKey: ['payments', 'user', payment.userId] }),
-      queryClient.invalidateQueries({ queryKey: ['payments', payment.userId] }),
-      queryClient.invalidateQueries({ queryKey: ['userPayments', payment.userId] }),
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', payment.userId] }),
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'details', payment.userId] }),
-      queryClient.invalidateQueries({ queryKey: ['me'] }),
+      queryClient.invalidateQueries({ queryKey: userPaymentsByIdQueryKey(payment.userId) }),
+      queryClient.invalidateQueries({ queryKey: adminUserDetailsQueryKey(payment.userId) }),
+      queryClient.invalidateQueries({ queryKey: currentUserQueryKey }),
     ]);
   };
 

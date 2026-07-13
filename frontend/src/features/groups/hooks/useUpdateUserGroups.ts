@@ -4,6 +4,12 @@ import { updateUserGroups, type UpdateUserGroupsResponse } from '../api/updateUs
 import { toast } from 'sonner';
 import { examStatusLabels, paymentStatusLabels } from '@/utils/labels';
 import { getUiErrorMessage } from '@/utils/uiMessages';
+import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
+import { ceuSummaryQueryKey } from '@/features/ceu/hooks/useCeuSummary';
+import { supervisionSummaryQueryKey } from '@/features/supervision/hooks/useSupervisionSummary';
+import { adminUserDetailsQueryKey } from '@/features/admin/hooks/useUserDetails';
+import { adminUsersQueryKey } from '@/features/admin/hooks/useUsers';
+import { userGroupsQueryKeyPrefix } from './userGroupQueryKeys';
 
 const label = (map: Record<string, string>, code?: string | null) =>
   code ? (map[code] ?? code) : '';
@@ -16,9 +22,10 @@ export function useUpdateUserGroups(userId: string, isSelf = false) {
 
     onSuccess: async (data) => {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ['groups', 'user', userId] }),
+        qc.invalidateQueries({ queryKey: userGroupsQueryKeyPrefix }),
+        qc.invalidateQueries({ queryKey: adminUsersQueryKey }),
         qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
-        qc.invalidateQueries({ queryKey: ['admin', 'user', 'details', userId] }),
+        qc.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) }),
         qc.invalidateQueries({ queryKey: ['admin-ceu-matrix', userId] }),
         qc.invalidateQueries({ queryKey: ['admin', 'supervision-matrix', userId] }),
         qc.invalidateQueries({ queryKey: ['payments', 'user', userId] }),
@@ -29,12 +36,10 @@ export function useUpdateUserGroups(userId: string, isSelf = false) {
 
       if (isSelf) {
         await Promise.all([
-          qc.invalidateQueries({ queryKey: ['current-user'] }),
-          qc.invalidateQueries({ queryKey: ['ceuSummary'] }),
-          qc.invalidateQueries({ queryKey: ['ceu', 'summary'] }),
+          qc.invalidateQueries({ queryKey: currentUserQueryKey }),
+          qc.invalidateQueries({ queryKey: ceuSummaryQueryKey }),
           qc.invalidateQueries({ queryKey: ['ceu', 'history'] }),
-          qc.invalidateQueries({ queryKey: ['supervisionSummary'] }),
-          qc.invalidateQueries({ queryKey: ['supervision', 'summary'] }),
+          qc.invalidateQueries({ queryKey: supervisionSummaryQueryKey }),
           qc.invalidateQueries({ queryKey: ['exam', 'me'] }),
         ]);
       }

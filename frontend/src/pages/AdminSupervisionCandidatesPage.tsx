@@ -5,7 +5,6 @@ import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { AdminIdentityFilterInput } from '@/components/AdminIdentityFilterInput';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { DashboardDateInput } from '@/components/DashboardDateInput';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { PageNav } from '@/components/PageNav';
 import { Button } from '@/components/Button';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
@@ -854,9 +853,5 @@ function AdminPendingHoursDetailsModal({
 }
 
 export default function AdminSupervisionCandidatesPage() {
-  return (
-    <ProtectedRoute>
-      <AdminSupervisionCandidatesContent />
-    </ProtectedRoute>
-  );
+  return <AdminSupervisionCandidatesContent />;
 }
