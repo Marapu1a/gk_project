@@ -5,8 +5,9 @@ import { LONG_TEXT_MAX_LENGTH } from '@/utils/formLimits';
 import { useCreateUserNote } from '../hooks/useCreateUserNote';
 import { useDeleteUserNote } from '../hooks/useDeleteUserNote';
 import type { AdminUserActionLogItem } from '../api/getUserActionLog';
-import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 import { formatDateTimeRu as formatDate } from '@/utils/dateFormat';
 
 type Props = {
@@ -33,8 +34,8 @@ export function AdminUserNotesModal({ userId, notes, isLoading, onClose }: Props
       await createNote.mutateAsync(text);
       setNoteText('');
       toast.success(UI_TOAST_MESSAGES.admin.noteSaved);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.noteSaveFailed);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.admin.noteSaveFailed));
     }
   };
 
@@ -49,23 +50,28 @@ export function AdminUserNotesModal({ userId, notes, isLoading, onClose }: Props
     try {
       await deleteNote.mutateAsync(noteId);
       toast.success(UI_TOAST_MESSAGES.admin.noteDeleted);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.noteDeleteFailed);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.admin.noteDeleteFailed));
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-      <div className="relative max-h-[90vh] w-full max-w-[720px] overflow-y-auto rounded-[22px] bg-white p-5 pr-14 text-[var(--color-blue-dark)] shadow-soft">
-        <ModalCloseButton onClick={onClose} />
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <div>
-            <h3 className="dashboard-v2-title">Заметки администратора</h3>
-            <p className="mt-1 text-[13px] font-semibold text-[#8D96B5]">
-              Служебные заметки видны только администраторам.
-            </p>
-          </div>
+    <ModalShell
+      onClose={onClose}
+      closeOnBackdrop={false}
+      ariaLabelledBy="admin-user-notes-title"
+      overlayClassName="z-50 bg-black/45 px-4 py-6"
+      dialogClassName="relative max-h-[90vh] w-full max-w-[720px] overflow-y-auto rounded-[22px] bg-white p-5 pr-14 text-[var(--color-blue-dark)] shadow-soft"
+    >
+      <ModalCloseButton onClick={onClose} />
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <h3 id="admin-user-notes-title" className="dashboard-v2-title">Заметки администратора</h3>
+          <p className="mt-1 text-[13px] font-semibold text-[#8D96B5]">
+            Служебные заметки видны только администраторам.
+          </p>
         </div>
+      </div>
 
         <div className="rounded-[16px] bg-[var(--color-blue-soft)] p-4">
           <textarea
@@ -125,7 +131,6 @@ export function AdminUserNotesModal({ userId, notes, isLoading, onClose }: Props
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { ModalShell } from '@/components/ModalShell';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useUpdateUserPassword } from '../hooks/useUpdateUserPassword';
 
 type Props = {
@@ -24,33 +25,39 @@ export function UpdateUserPasswordModal({ userId, onClose }: Props) {
       await mutation.mutateAsync({ password });
       toast.success(UI_TOAST_MESSAGES.admin.passwordChanged);
       onClose();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.admin.passwordChangeFailed);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.admin.passwordChangeFailed));
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-      <div className="relative w-full max-w-sm rounded-2xl bg-white p-4 pt-5 header-shadow">
-        <ModalCloseButton onClick={onClose} disabled={mutation.isPending} />
+    <ModalShell
+      onClose={onClose}
+      closeOnBackdrop={false}
+      ariaLabelledBy="update-user-password-title"
+      overlayClassName="z-50 bg-black/30 px-4"
+      dialogClassName="relative w-full max-w-sm rounded-2xl bg-white p-4 pt-5 header-shadow"
+    >
+      <ModalCloseButton onClick={onClose} disabled={mutation.isPending} />
 
-        <h3 className="mb-3 text-lg font-semibold text-blue-dark">Смена пароля</h3>
+      <h3 id="update-user-password-title" className="mb-3 text-lg font-semibold text-blue-dark">
+        Смена пароля
+      </h3>
 
-        <input
-          type="password"
-          className="input w-full"
-          placeholder="Новый пароль"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={mutation.isPending}
-        />
+      <input
+        type="password"
+        className="input w-full"
+        placeholder="Новый пароль"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        disabled={mutation.isPending}
+      />
 
-        <div className="mt-4 flex justify-end gap-2">
-          <button className="btn btn-brand" onClick={onSave} disabled={mutation.isPending}>
-            Сохранить
-          </button>
-        </div>
+      <div className="mt-4 flex justify-end gap-2">
+        <button className="btn btn-brand" onClick={onSave} disabled={mutation.isPending}>
+          Сохранить
+        </button>
       </div>
-    </div>
+    </ModalShell>
   );
 }

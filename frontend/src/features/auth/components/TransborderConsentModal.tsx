@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { useTransborderConsentDocument } from '../hooks/useTransborderConsentDocument';
 import { useAcceptTransborderConsent } from '../hooks/useAcceptTransborderConsent';
 import type { ConsentItemCode, ConsentSource, ConsentDocumentItem } from '../api/consent';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { ModalShell } from '@/components/ModalShell';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type Props = {
   open: boolean;
@@ -64,65 +65,73 @@ export function TransborderConsentModal({ open, source, onAccepted, onLogout }: 
 
       toast.success(UI_TOAST_MESSAGES.auth.transborderConsentsSaved);
       onAccepted();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.auth.transborderConsentsSaveFailed);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.auth.transborderConsentsSaveFailed));
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 py-6">
-      <div className="card-section shadow-strong flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden p-0">
-        <div className="border-b px-6 py-5" style={{ borderColor: 'var(--color-border-soft)' }}>
-          <h2 className="text-xl font-bold text-blue-darker">Подтверждение условий и согласий</h2>
-          <p className="mt-2 text-sm text-blue-dark">
-            Для продолжения работы с личным кабинетом подтвердите обязательные пункты.
+    <ModalShell
+      onClose={() => undefined}
+      closeOnBackdrop={false}
+      closeOnEscape={false}
+      ariaLabelledBy="transborder-consent-title"
+      overlayClassName="z-[100] bg-black/50 px-4 py-6"
+      dialogClassName="card-section shadow-strong flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden p-0"
+    >
+      <div className="border-b px-6 py-5" style={{ borderColor: 'var(--color-border-soft)' }}>
+        <h2 id="transborder-consent-title" className="text-xl font-bold text-blue-darker">
+          Подтверждение условий и согласий
+        </h2>
+        <p className="mt-2 text-sm text-blue-dark">
+          Для продолжения работы с личным кабинетом подтвердите обязательные пункты.
+        </p>
+      </div>
+
+      <div className="overflow-y-auto px-6 py-5">
+        {isLoading ? <p className="text-sm text-blue-dark">Загрузка...</p> : null}
+
+        {isError ? (
+          <p className="text-error">
+            Не удалось загрузить условия. Обновите страницу и попробуйте снова.
           </p>
-        </div>
+        ) : null}
 
-        <div className="overflow-y-auto px-6 py-5">
-          {isLoading ? <p className="text-sm text-blue-dark">Загрузка...</p> : null}
+        {data ? (
+          <div className="space-y-3">
+            {data.items.map((item) => (
+              <label
+                key={item.code}
+                className="flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition hover:bg-[rgba(214,239,139,0.12)]"
+                style={{ borderColor: 'var(--color-border-soft)' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={acceptedItems[item.code]}
+                  onChange={() => handleToggle(item.code)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-green-brand)]"
+                />
 
-          {isError ? (
-            <p className="text-error">
-              Не удалось загрузить условия. Обновите страницу и попробуйте снова.
-            </p>
-          ) : null}
+                <span className="text-sm leading-6 text-blue-dark">
+                  {renderConsentItemText(item)}
+                  {item.required ? <span className="ml-1 text-[var(--color-danger)]">*</span> : null}
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
-          {data ? (
-            <div className="space-y-3">
-              {data.items.map((item) => (
-                <label
-                  key={item.code}
-                  className="flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition hover:bg-[rgba(214,239,139,0.12)]"
-                  style={{ borderColor: 'var(--color-border-soft)' }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={acceptedItems[item.code]}
-                    onChange={() => handleToggle(item.code)}
-                    className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-green-brand)]"
-                  />
+      <div
+        className="flex flex-col gap-3 border-t px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
+        style={{ borderColor: 'var(--color-border-soft)' }}
+      >
+        <p className="text-xs leading-5 text-blue-dark">
+          Обязательные пункты отмечены звездочкой. Подтверждение фиксируется в системе вместе со
+          временем действия и техническими данными.
+        </p>
 
-                  <span className="text-sm leading-6 text-blue-dark">
-                    {renderConsentItemText(item)}
-                    {item.required ? <span className="ml-1 text-[var(--color-danger)]">*</span> : null}
-                  </span>
-                </label>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <div
-          className="flex flex-col gap-3 border-t px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
-          style={{ borderColor: 'var(--color-border-soft)' }}
-        >
-          <p className="text-xs leading-5 text-blue-dark">
-            Обязательные пункты отмечены звездочкой. Подтверждение фиксируется в системе вместе со
-            временем действия и техническими данными.
-          </p>
-
-          <div className="flex gap-3">
+        <div className="flex gap-3">
             {onLogout ? (
               <button
                 type="button"
@@ -141,10 +150,9 @@ export function TransborderConsentModal({ open, source, onAccepted, onLogout }: 
             >
               {acceptMutation.isPending ? 'Сохраняем...' : 'Подтверждаю'}
             </button>
-          </div>
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
