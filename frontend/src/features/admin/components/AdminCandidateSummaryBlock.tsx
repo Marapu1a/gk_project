@@ -99,22 +99,6 @@ function resolveProcessLabel(user: any, activeGroupName: string | null) {
   return `${cycleTypeLabels[cycle.type] ?? cycle.type} — ${baseLevel} · с ${formatDate(cycle.startedAt)}`;
 }
 
-function resolveAfterCertificateLabel(user: any, activeGroupName: string | null) {
-  const cycle = user.activeCycle;
-  const targetLevel = cycle?.targetLevel ?? user.targetLevel;
-
-  if (!targetLevel) return '—';
-  if (
-    cycle?.type === 'RENEWAL' &&
-    targetLevel === 'SUPERVISOR' &&
-    activeGroupName === 'Опытный Супервизор'
-  ) {
-    return 'Опытный супервизор';
-  }
-
-  return targetLevelLabels[targetLevel] ?? targetLevel;
-}
-
 function latestCertificateText(certificate: any) {
   if (!certificate) return 'нет';
 

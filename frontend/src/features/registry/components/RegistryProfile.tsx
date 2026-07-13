@@ -193,10 +193,10 @@ function CertificatePreview({ cert, className = '' }: { cert: RegistryCertificat
 
   useEffect(() => {
     let cancelled = false;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvasElement = canvasRef.current;
+    if (!canvasElement) return;
 
-    async function renderPdf() {
+    async function renderPdf(canvas: HTMLCanvasElement) {
       try {
         setFailed(false);
         const pdfjs = await import('pdfjs-dist');
@@ -223,13 +223,13 @@ function CertificatePreview({ cert, className = '' }: { cert: RegistryCertificat
         canvas.height = Math.floor(viewport.height);
         context.clearRect(0, 0, canvas.width, canvas.height);
 
-        await page.render({ canvasContext: context, viewport }).promise;
+        await page.render({ canvas, canvasContext: context, viewport }).promise;
       } catch {
         if (!cancelled) setFailed(true);
       }
     }
 
-    renderPdf();
+    renderPdf(canvasElement);
 
     return () => {
       cancelled = true;

@@ -48,7 +48,8 @@ function ReviewerCandidatesContent() {
   const kind = isKind(params.kind) ? params.kind : 'supervision';
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRequest, setSelectedRequest] = useState<ReviewerRequestListItem | null>(null);
-  const status = isStatus(searchParams.get('status')) ? searchParams.get('status')! : 'ALL';
+  const statusParam = searchParams.get('status');
+  const status: ReviewerRequestStatus = isStatus(statusParam) ? statusParam : 'ALL';
   const candidate = searchParams.get('candidate') ?? '';
   const dateFrom = searchParams.get('dateFrom') ?? '';
   const dateTo = searchParams.get('dateTo') ?? '';

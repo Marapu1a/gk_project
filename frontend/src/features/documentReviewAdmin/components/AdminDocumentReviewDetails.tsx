@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { PageNav } from '@/components/PageNav';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
-import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
+import { documentTypeLabels } from '@/utils/documentTypeLabels';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { documentReviewStatusLabels } from '@/utils/documentReviewStatusLabels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';

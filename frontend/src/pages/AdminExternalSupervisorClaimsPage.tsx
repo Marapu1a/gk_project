@@ -184,7 +184,7 @@ function AdminExternalSupervisorClaimsPageInner() {
         ? 'Квалификация будет отмечена как подтверждённая. Настройте профиль пользователя в его карточке, затем нажмите «Настройка завершена».'
         : 'После этого пользователь снова сможет самостоятельно выбрать обычную цель сертификации.',
       confirmLabel: approved ? 'Подтвердить квалификацию' : 'Отклонить',
-      variant: approved ? 'default' : 'danger',
+      variant: approved ? 'primary' : 'danger',
     });
     if (!ok) return;
 

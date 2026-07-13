@@ -128,7 +128,7 @@ export default function ProfileEditPage() {
     if (!ok) return;
 
     try {
-      await archiveRequest.mutateAsync();
+      await archiveRequest.mutateAsync(undefined);
       toast.success(UI_TOAST_MESSAGES.profile.deleteRequestSent);
     } catch (e: any) {
       toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.profile.deleteRequestFailed);
