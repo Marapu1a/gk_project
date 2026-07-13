@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { Check } from 'lucide-react';
 import { ModalCloseButton } from './ModalCloseButton';
+import { ModalShell } from './ModalShell';
 
 type SubmissionSuccessModalProps = {
   open: boolean;
@@ -16,27 +15,14 @@ export function SubmissionSuccessModal({
   description,
   onClose,
 }: SubmissionSuccessModalProps) {
-  useEffect(() => {
-    if (!open) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 px-4 py-6">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="submission-success-title"
-        className="relative w-full max-w-[460px] rounded-[16px] bg-white px-6 py-7 text-center text-[#1F305E] shadow-[0_16px_40px_rgba(0,0,0,0.24)]"
-      >
+  return (
+    <ModalShell
+      open={open}
+      onClose={onClose}
+      ariaLabelledBy="submission-success-title"
+      closeOnBackdrop={false}
+      dialogClassName="relative w-full max-w-[460px] rounded-[16px] bg-white px-6 py-7 text-center text-[#1F305E] shadow-[0_16px_40px_rgba(0,0,0,0.24)]"
+    >
         <ModalCloseButton onClick={onClose} iconClassName="h-6 w-6" />
 
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#A5CB37] bg-[rgba(165,203,55,0.12)] text-[#75AD14]">
@@ -57,8 +43,6 @@ export function SubmissionSuccessModal({
         >
           Понятно
         </button>
-      </div>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }

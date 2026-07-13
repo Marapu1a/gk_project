@@ -13,13 +13,21 @@ import { CopyEmailLink } from '@/components/CopyEmailLink';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { SubmissionSuccessModal } from '@/components/SubmissionSuccessModal';
 import {
-  formatDecimalInput,
   getDecimalInputBlurValue,
   getDecimalInputFocusValue,
-  normalizeDecimalInput,
-  parseDecimalInput,
-  sanitizeDecimalInput,
 } from '@/utils/decimalInput';
+import {
+  calculateIncrementalSupervision,
+  calculateRemainingHours,
+  formatHours as formatNumber,
+  getDistributionRuleError,
+  getPracticeRuleError,
+  normalizeHoursInput,
+  parseHours,
+  roundHours as round2,
+  sanitizeHoursInput,
+  summarizeSupervisionDistribution,
+} from '@/features/supervision/model/hourCalculations';
 
 const GUIDE_STORAGE_PREFIX = 'supervision-hours-guide-hidden:v1';
 const norm = (s: string) => s.toLowerCase().normalize('NFKC').trim();
@@ -28,69 +36,8 @@ const tokenize = (s: string) =>
     .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
     .filter(Boolean);
 
-function parseHours(value: string) {
-  const parsed = parseDecimalInput(value);
-  if (parsed == null) return 0;
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
-}
-
-function round2(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
-function formatNumber(value: number | null | undefined) {
-  if (value == null) return '0';
-  return formatDecimalInput(value, 2);
-}
-
-function sanitizeHoursInput(rawValue: string) {
-  return sanitizeDecimalInput(rawValue, { maxDecimals: 2 });
-}
-
-function normalizeHoursInput(value: string, max?: number | null) {
-  return normalizeDecimalInput(value, { max, maxDecimals: 2 });
-}
-
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function getPracticeRuleError(implementingValue: number, programmingValue: number) {
-  const total = implementingValue + programmingValue;
-  if (total <= 0) return null;
-
-  const minEachType = total * 0.4;
-  if (implementingValue < minEachType || programmingValue < minEachType) {
-    return 'Часы полевой практики и работы с информацией должны быть распределены сбалансированно: не менее 40% часов — полевая практика и не менее 40% — работа с информацией. Оставшиеся 20% можно добавить к любому из этих двух типов.';
-  }
-
-  return null;
-}
-
-function getDistributionRuleError(params: {
-  expectedSupervision: number;
-  distributionTotal: number;
-  groupTotal: number;
-  distributionRemaining: number;
-}) {
-  const { expectedSupervision, distributionTotal, groupTotal, distributionRemaining } = params;
-
-  if (expectedSupervision <= 0) {
-    if (distributionTotal > 0) {
-      return 'Пока расчетная супервизия равна 0, распределять часы супервизии нельзя.';
-    }
-    return null;
-  }
-
-  if (Math.abs(distributionRemaining) >= 0.01) {
-    return 'Сумма распределенных часов должна совпадать с расчетной супервизией.';
-  }
-
-  if (groupTotal > expectedSupervision * 0.5) {
-    return 'Часов в группе может быть не более 50% от всех часов супервизии.';
-  }
-
-  return null;
 }
 
 type ReviewerSuggestion = {
@@ -211,33 +158,21 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
       ? 'Необходимое количество часов уже отправлено на проверку'
       : 'Добавить часы';
   const practiceLimit =
-    summary?.required?.practice != null
-      ? Math.max(0, round2(summary.required.practice - practiceBase))
-      : null;
+    calculateRemainingHours(summary?.required?.practice, practiceBase);
 
   useEffect(() => {
     if (isRequirementCovered) setIsOpen(false);
   }, [isRequirementCovered]);
   const supervisionBase = (summary?.usable.supervision ?? 0) + (summary?.pending.supervision ?? 0);
   const supervisionLimit =
-    summary?.required?.supervision != null
-      ? Math.max(0, round2(summary.required.supervision - supervisionBase))
-      : null;
-  const ratio =
-    summary?.required && summary.required.supervision > 0
-      ? summary.required.practice / summary.required.supervision
-      : null;
-
-  const rawExpectedSupervision = ratio
-    ? Math.max(
-        0,
-        Math.floor((practiceBase + practiceTotal) / ratio) - Math.floor(practiceBase / ratio),
-      )
-    : 0;
-  const expectedSupervision =
-    supervisionLimit != null
-      ? Math.min(rawExpectedSupervision, supervisionLimit)
-      : rawExpectedSupervision;
+    calculateRemainingHours(summary?.required?.supervision, supervisionBase);
+  const expectedSupervision = calculateIncrementalSupervision({
+    basePractice: practiceBase,
+    addedPractice: practiceTotal,
+    requiredPractice: summary?.required?.practice,
+    requiredSupervision: summary?.required?.supervision,
+    remainingSupervision: supervisionLimit,
+  });
 
   const distribution = {
     directIndividual: parseHours(directIndividual),
@@ -246,13 +181,13 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     nonObservingGroup: parseHours(nonObservingGroup),
   };
 
-  const directTotal = round2(distribution.directIndividual + distribution.directGroup);
-  const nonObservingTotal = round2(
-    distribution.nonObservingIndividual + distribution.nonObservingGroup,
-  );
-  const distributionTotal = round2(directTotal + nonObservingTotal);
-  const groupTotal = round2(distribution.directGroup + distribution.nonObservingGroup);
-  const distributionRemaining = round2(expectedSupervision - distributionTotal);
+  const {
+    directTotal,
+    nonObservingTotal,
+    distributionTotal,
+    groupTotal,
+    distributionRemaining,
+  } = summarizeSupervisionDistribution(distribution, expectedSupervision);
   const today = todayInputValue();
   const practiceRuleError = getPracticeRuleError(implementingValue, programmingValue);
   const practiceLimitError =

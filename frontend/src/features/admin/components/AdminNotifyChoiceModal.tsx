@@ -1,4 +1,5 @@
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 
 type Props = {
   title: string;
@@ -18,10 +19,16 @@ export function AdminNotifyChoiceModal({
   onClose,
 }: Props) {
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4">
-      <div className="relative w-full max-w-[520px] rounded-[20px] bg-white p-5 pr-14 text-[var(--color-blue-dark)] shadow-soft">
+    <ModalShell
+      onClose={onClose}
+      ariaLabelledBy="admin-notify-choice-title"
+      closeOnBackdrop={false}
+      closeOnEscape={!isPending}
+      overlayClassName="z-[60] bg-black/45 px-4 py-4"
+      dialogClassName="relative w-full max-w-[520px] rounded-[20px] bg-white p-5 pr-14 text-[var(--color-blue-dark)] shadow-soft"
+    >
         <ModalCloseButton onClick={onClose} disabled={isPending} />
-        <h3 className="dashboard-v2-title">{title}</h3>
+        <h3 id="admin-notify-choice-title" className="dashboard-v2-title">{title}</h3>
         <p className="mt-3 dashboard-v2-text">{message}</p>
 
         <div className="mt-5 flex flex-wrap justify-end gap-3">
@@ -46,7 +53,6 @@ export function AdminNotifyChoiceModal({
             С уведомлением
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

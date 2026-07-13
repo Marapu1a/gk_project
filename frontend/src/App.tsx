@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ConfirmProvider } from '@/components/confirm/ConfirmProvider';
+import { AppRouteError } from '@/components/AppRouteError';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { queryClient } from '@/lib/queryClient';
 import MainLayout from './layouts/MainLayout';
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <MainLayout />,
+    errorElement: <AppRouteError />,
     children: [
       { index: true, element: <RootRedirect /> },
       { path: 'register', element: <RegisterPage /> },

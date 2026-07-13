@@ -2,14 +2,13 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 
 type ConfirmVariant = 'primary' | 'danger';
 
@@ -68,17 +67,6 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  useEffect(() => {
-    if (!pending) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close(false);
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [close, pending]);
-
   const value = useMemo(() => ({ confirm }), [confirm]);
 
   return (
@@ -111,14 +99,14 @@ function ConfirmDialog({
       ? 'confirm-action-danger'
       : 'confirm-action-primary';
 
-  const dialog = (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 px-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        className="relative max-h-[90vh] w-full max-w-[430px] overflow-y-auto rounded-[16px] bg-white px-5 pb-5 pt-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]"
-      >
+  return (
+    <ModalShell
+      onClose={() => onClose(false)}
+      ariaLabelledBy="confirm-dialog-title"
+      closeOnBackdrop={false}
+      overlayClassName="z-[1000] bg-black/75 px-4 py-4"
+      dialogClassName="relative max-h-[90vh] w-full max-w-[430px] overflow-y-auto rounded-[16px] bg-white px-5 pb-5 pt-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]"
+    >
         <ModalCloseButton onClick={() => onClose(false)} iconClassName="h-6 w-6" />
 
         <h2
@@ -152,9 +140,6 @@ function ConfirmDialog({
             {pending.confirmLabel}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
-
-  return createPortal(dialog, document.body);
 }

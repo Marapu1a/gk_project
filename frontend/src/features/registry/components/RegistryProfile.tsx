@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { CheckCircle, Mail, Printer, Send, XCircle } from 'lucide-react';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { useRegistryProfile } from '../hooks/useRegistryProfile';
 import type { RegistryCertificate } from '../api/getRegistryProfile';
 import { SpecialistContactModal } from './SpecialistContactModal';
 import { formatCertificateDate, isCertificateDateActive } from '@/features/certificate/utils/certificateDates';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { usePdfPreview } from '@/hooks/usePdfPreview';
 
 const COPY_ICON = '/dashboard-v2/icon_copy.svg';
 
@@ -187,54 +187,8 @@ export function RegistryProfile({ userId }: Props) {
 }
 
 function CertificatePreview({ cert, className = '' }: { cert: RegistryCertificate; className?: string }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [failed, setFailed] = useState(false);
   const url = certificateUrl(cert);
-
-  useEffect(() => {
-    let cancelled = false;
-    const canvasElement = canvasRef.current;
-    if (!canvasElement) return;
-
-    async function renderPdf(canvas: HTMLCanvasElement) {
-      try {
-        setFailed(false);
-        const pdfjs = await import('pdfjs-dist');
-        pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-        const loadingTask = pdfjs.getDocument(url);
-        const pdf = await loadingTask.promise;
-        if (cancelled) return;
-
-        const page = await pdf.getPage(1);
-        if (cancelled) return;
-
-        const baseViewport = page.getViewport({ scale: 1 });
-        const targetWidth = 760;
-        const scale = targetWidth / baseViewport.width;
-        const viewport = page.getViewport({ scale });
-        const context = canvas.getContext('2d');
-
-        if (!context) {
-          setFailed(true);
-          return;
-        }
-
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-        context.clearRect(0, 0, canvas.width, canvas.height);
-
-        await page.render({ canvas, canvasContext: context, viewport }).promise;
-      } catch {
-        if (!cancelled) setFailed(true);
-      }
-    }
-
-    renderPdf(canvasElement);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
+  const { canvasRef, failed } = usePdfPreview(url);
 
   if (failed) {
     return (

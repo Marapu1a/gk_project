@@ -13,13 +13,16 @@ import { CopyEmailLink } from '@/components/CopyEmailLink';
 import { SubmissionSuccessModal } from '@/components/SubmissionSuccessModal';
 import { MENTORSHIP_REQUEST_DATE_LABEL } from '../utils/requestDateLabels';
 import {
-  formatDecimalInput,
   getDecimalInputBlurValue,
   getDecimalInputFocusValue,
-  normalizeDecimalInput,
-  parseDecimalInput,
-  sanitizeDecimalInput,
 } from '@/utils/decimalInput';
+import {
+  calculateRemainingHours,
+  formatHours,
+  normalizeHoursInput,
+  parseHours,
+  sanitizeHoursInput,
+} from '@/features/supervision/model/hourCalculations';
 
 const MENTORSHIP_FORMATS = ['Очно', 'По телефону', 'Дистанционно / онлайн'] as const;
 
@@ -31,24 +34,6 @@ const tokenize = (s: string) =>
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function round2(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
-function sanitizeHoursInput(rawValue: string) {
-  return sanitizeDecimalInput(rawValue, { maxDecimals: 2 });
-}
-
-function normalizeHoursInput(value: string, max?: number | null) {
-  return normalizeDecimalInput(value, { max, maxDecimals: 2 });
-}
-
-function parseHours(value: string) {
-  const parsed = parseDecimalInput(value);
-  if (parsed == null) return 0;
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
 type ReviewerSuggestion = {
@@ -146,7 +131,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
       : 'Добавить часы менторства';
   const remaining =
     mentor && mentor.required > 0
-      ? Math.max(0, round2(mentor.required - mentor.total - mentor.pending))
+      ? calculateRemainingHours(mentor.required, mentor.total, mentor.pending)
       : null;
 
   useEffect(() => {
@@ -493,7 +478,7 @@ function NumberInput({
         if (nextValue !== null) {
           const parsed = parseHours(nextValue);
           onChange(
-            max != null && parsed > max ? formatDecimalInput(Math.max(0, max), 2) : nextValue,
+            max != null && parsed > max ? formatHours(Math.max(0, max)) : nextValue,
           );
         }
       }}

@@ -5,22 +5,25 @@ import { useUpdateUserSupervisionMatrix } from '../hooks/supervision/useUpdateUs
 import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
 import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
 import {
-  formatDecimalInput,
   getDecimalInputBlurValue,
   getDecimalInputFocusValue,
-  normalizeDecimalInput,
-  parseDecimalInput,
-  sanitizeDecimalInput,
 } from '@/utils/decimalInput';
+import {
+  calculateExpectedSupervision as calcExpectedSupervision,
+  formatHours as formatNumber,
+  getDistributionRuleError,
+  getPracticeRuleError,
+  normalizeHoursInput,
+  parseHours,
+  roundHours as round2,
+  sanitizeHoursInput,
+  summarizeSupervisionDistribution,
+} from '@/features/supervision/model/hourCalculations';
 
 type Props = {
   userId: string;
   activeGroupName: string | null;
 };
-
-function round2(value: number) {
-  return Math.round(value * 100) / 100;
-}
 
 function clampToMax(value: number, max?: number | null) {
   const normalized = Math.max(0, value);
@@ -78,76 +81,6 @@ function scaleDistributionToMax(
   };
 }
 
-function formatNumber(value: number | null | undefined) {
-  if (value == null) return '0';
-  return formatDecimalInput(value, 2);
-}
-
-function sanitizeHoursInput(rawValue: string) {
-  return sanitizeDecimalInput(rawValue, { maxDecimals: 2 });
-}
-
-function normalizeHoursInput(value: string, max?: number | null) {
-  return normalizeDecimalInput(value, { max, maxDecimals: 2 });
-}
-
-function parseHours(value: string) {
-  const parsed = parseDecimalInput(value);
-  if (parsed == null) return 0;
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
-}
-
-function calcExpectedSupervision(params: {
-  practice: number;
-  requiredPractice?: number | null;
-  requiredSupervision?: number | null;
-}) {
-  const { practice, requiredPractice, requiredSupervision } = params;
-  if (!requiredPractice || !requiredSupervision || requiredPractice <= 0 || requiredSupervision <= 0) {
-    return 0;
-  }
-
-  const ratio = requiredPractice / requiredSupervision;
-  return clampToMax(Math.floor(practice / ratio), requiredSupervision);
-}
-
-function getPracticeRuleError(implementingValue: number, programmingValue: number) {
-  const total = implementingValue + programmingValue;
-  if (total <= 0) return null;
-
-  const minEachType = total * 0.4;
-  if (implementingValue < minEachType || programmingValue < minEachType) {
-    return 'Часы полевой практики и работы с информацией должны быть распределены сбалансированно: не менее 40% часов — полевая практика и не менее 40% — работа с информацией. Оставшиеся 20% можно добавить к любому из этих двух типов.';
-  }
-
-  return null;
-}
-
-function getDistributionRuleError(params: {
-  expectedSupervision: number;
-  distributionTotal: number;
-  groupTotal: number;
-  distributionRemaining: number;
-}) {
-  const { expectedSupervision, distributionTotal, groupTotal, distributionRemaining } = params;
-
-  if (expectedSupervision <= 0) {
-    if (distributionTotal > 0) {
-      return 'Пока расчетная супервизия равна 0, распределять часы супервизии нельзя.';
-    }
-    return null;
-  }
-
-  if (Math.abs(distributionRemaining) >= 0.01) {
-    return 'Сумма распределенных часов должна совпадать с расчетной супервизией.';
-  }
-
-  if (groupTotal > expectedSupervision * 0.5) {
-    return 'Часов в группе может быть не более 50% от всех часов супервизии.';
-  }
-
-  return null;
-}
 
 export default function UserSupervisionMatrix({ userId, activeGroupName }: Props) {
   const { data, isLoading, error } = useUserSupervisionMatrix(userId);
@@ -233,13 +166,10 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       nonObservingIndividual: parseHours(nonObservingIndividual),
       nonObservingGroup: parseHours(nonObservingGroup),
     };
-    const directTotal = round2(distribution.directIndividual + distribution.directGroup);
-    const nonObservingTotal = round2(
-      distribution.nonObservingIndividual + distribution.nonObservingGroup,
+    const distributionSummary = summarizeSupervisionDistribution(
+      distribution,
+      expectedActiveSupervision,
     );
-    const distributionTotal = round2(directTotal + nonObservingTotal);
-    const groupTotal = round2(distribution.directGroup + distribution.nonObservingGroup);
-    const distributionRemaining = round2(expectedActiveSupervision - distributionTotal);
 
     return {
       implementingValue,
@@ -252,11 +182,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       expectedActiveSupervision,
       bonusSupervision,
       distribution,
-      directTotal,
-      nonObservingTotal,
-      distributionTotal,
-      groupTotal,
-      distributionRemaining,
+      ...distributionSummary,
       mentorshipValue: parseHours(mentorshipHours),
     };
   }, [
