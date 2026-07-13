@@ -1,6 +1,8 @@
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { Link, useNavigate } from 'react-router-dom';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
+import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
 
 type RelationKind = 'SUPERVISION' | 'MENTORSHIP';
 type RelationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
@@ -29,12 +31,6 @@ const STATUS_LABELS: Record<RelationStatus, string> = {
   REJECTED: 'Сотрудничество отклонено',
 };
 
-function formatDate(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru-RU');
-}
-
 function candidateName(name?: string | null) {
   const value = name?.trim();
   if (!value) return ['—', ''];
@@ -45,10 +41,10 @@ function candidateName(name?: string | null) {
   return [parts[0], parts.slice(1).join(' ')];
 }
 
-function statusClass(status: RelationStatus) {
-  if (status === 'ACCEPTED') return 'bg-[rgba(165,203,55,0.25)] text-[var(--color-blue-dark)]';
-  if (status === 'REJECTED') return 'bg-[rgba(255,83,100,0.14)] text-[var(--color-danger)]';
-  return 'bg-[#FFF0C2] text-[#8A6200]';
+function statusTone(status: RelationStatus): StatusPillTone {
+  if (status === 'ACCEPTED') return 'success';
+  if (status === 'REJECTED') return 'danger';
+  return 'warning';
 }
 
 function reviewUrl(kind: 'supervision' | 'mentorship', reviewerEmail: string) {
@@ -128,11 +124,13 @@ function RelationsCard({
                     </div>
                     <div>{formatDate(relation.createdAt)}</div>
                     <div className="pr-3">
-                      <span
-                        className={`inline-flex min-h-[30px] items-center rounded-full px-4 py-1 text-[12px] font-extrabold leading-[1.15] ${statusClass(relation.status)}`}
+                      <StatusPill
+                        tone={statusTone(relation.status)}
+                        size="custom"
+                        className="min-h-[30px] px-4 py-1 text-[12px] font-extrabold leading-[1.15]"
                       >
                         {STATUS_LABELS[relation.status]}
-                      </span>
+                      </StatusPill>
                     </div>
                     <ActionArrowButton
                       onClick={() => navigate(to)}
@@ -162,11 +160,13 @@ function RelationsCard({
 
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className="text-[12px] text-[#8D96B5]">{formatDate(relation.createdAt)}</span>
-                        <span
-                          className={`inline-flex min-h-[24px] items-center rounded-full px-2.5 text-[11px] font-extrabold ${statusClass(relation.status)}`}
+                        <StatusPill
+                          tone={statusTone(relation.status)}
+                          size="custom"
+                          className="min-h-[24px] px-2.5 text-[11px] font-extrabold"
                         >
                           {STATUS_LABELS[relation.status]}
-                        </span>
+                        </StatusPill>
                       </div>
                     </div>
 

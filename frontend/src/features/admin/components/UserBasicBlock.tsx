@@ -11,6 +11,7 @@ import { useUpdateUserInfo } from '@/features/admin/hooks/useUpdateUserInfo';
 import { UserLocationFields } from '@/features/user/components/UserLocationFields';
 import { formatCertificationLevelName, systemRoleLabels } from '@/utils/labels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { formatDateRu } from '@/utils/dateFormat';
 
 type Props = {
   userId: string;
@@ -213,8 +214,6 @@ export default function UserBasicBlock(props: Props) {
     }
   };
 
-  const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -266,8 +265,8 @@ export default function UserBasicBlock(props: Props) {
               <Meta label="Телефон" value={phone || '—'} />
               <Meta label="N ЦСПАП" value={registrationNumber || '—'} />
               <Meta label="IBAO ID" value={ibaoId || '—'} />
-              <Meta label="Дата рождения" value={fmt(birthDate)} />
-              <Meta label="Зарегистрирован" value={fmt(createdAt)} />
+              <Meta label="Дата рождения" value={formatDateRu(birthDate)} />
+              <Meta label="Зарегистрирован" value={formatDateRu(createdAt)} />
               <Meta label="Страна" value={country || '—'} />
               <Meta label="Город" value={city || '—'} />
               <Meta label="Права в системе" value={systemRoleLabels[role] || role} />

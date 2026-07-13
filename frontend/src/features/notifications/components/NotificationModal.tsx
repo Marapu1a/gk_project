@@ -22,6 +22,7 @@ import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { NotificationMessage } from './NotificationMessage';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { formatDateRu, formatTimeRu } from '@/utils/dateFormat';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const EMPTY_ICON = '/dashboard-v2/icon_notification_bell.svg';
@@ -178,11 +179,8 @@ function NotificationRow({
   onDelete: () => void;
   deleting: boolean;
 }) {
-  const createdAt = new Date(notification.createdAt);
-  const date = Number.isNaN(createdAt.getTime()) ? '—' : createdAt.toLocaleDateString('ru-RU');
-  const time = Number.isNaN(createdAt.getTime())
-    ? '—'
-    : createdAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const date = formatDateRu(notification.createdAt);
+  const time = formatTimeRu(notification.createdAt);
   const tone = NOTIFICATION_TYPE_TONES[notification.type] ?? 'soft';
   const label = NOTIFICATION_TYPE_LABELS[notification.type] ?? 'Уведомление';
   const normalizedLink = normalizeNotificationLink(

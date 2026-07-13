@@ -7,6 +7,7 @@ import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagin
 import { AdminUserSearch } from './AdminUserSearch';
 import { formatCertificationLevelName, systemRoleLabels } from '@/utils/labels';
 import { NameSortButton, nextNameSortDirection, type NameSortDirection } from '@/components/NameSortButton';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 type Role = 'ADMIN' | 'STUDENT' | 'REVIEWER';
 type UserStatus = 'ACTIVE' | 'ARCHIVE_REQUESTED' | 'ARCHIVED' | 'ALL';
@@ -39,12 +40,6 @@ const STATUS_OPTIONS: Array<{ value: UserStatus; label: string }> = [
   { value: 'ARCHIVED', label: 'Архив' },
   { value: 'ALL', label: 'Все статусы' },
 ];
-
-function formatDate(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru-RU');
-}
 
 function currentGroup(user: UserRow) {
   const group = [...(user.groups ?? [])].sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0))[0];

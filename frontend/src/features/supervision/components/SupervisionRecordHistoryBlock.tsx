@@ -1,16 +1,11 @@
 import { useMemo, useState } from 'react';
-import { format } from 'date-fns';
 import { useSupervisionRecordHistory } from '../hooks/useSupervisionRecordHistory';
 import type { SupervisionRecordHistoryItem } from '../api/getSupervisionRecordHistory';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { getSupervisionRequestDateLabel } from '../utils/requestDateLabels';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 type HistoryMode = 'supervision' | 'mentorship';
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return '—';
-  return format(new Date(value), 'dd.MM.yyyy');
-}
 
 function formatNumber(value: number | null | undefined) {
   if (value == null) return '—';

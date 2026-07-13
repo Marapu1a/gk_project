@@ -27,6 +27,7 @@ import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useExternalSupervisorClaims } from '@/features/admin/hooks/useExternalSupervisorClaims';
 import { AdminUserSearch } from '@/features/admin/components/AdminUserSearch';
 import { useExamApps } from '@/features/exam/hooks/useExamApps';
+import { formatDateRu, formatTimeRu } from '@/utils/dateFormat';
 
 type AdminDashboardProps = {
   user: {
@@ -370,11 +371,8 @@ function NotificationRow({ notification }: { notification: Notification }) {
   const markRead = useMarkNotificationRead();
   const { confirm } = useConfirm();
 
-  const createdAt = new Date(notification.createdAt);
-  const date = Number.isNaN(createdAt.getTime()) ? '—' : createdAt.toLocaleDateString('ru-RU');
-  const time = Number.isNaN(createdAt.getTime())
-    ? '—'
-    : createdAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const date = formatDateRu(notification.createdAt);
+  const time = formatTimeRu(notification.createdAt);
   const label = NOTIFICATION_TYPE_LABELS[notification.type] ?? 'Уведомление';
   const tone = NOTIFICATION_TYPE_TONES[notification.type] ?? 'soft';
   const normalizedLink = normalizeNotificationLink(

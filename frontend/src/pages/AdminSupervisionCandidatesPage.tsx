@@ -13,6 +13,10 @@ import { AdminNotifyChoiceModal } from '@/features/admin/components/AdminNotifyC
 import { useAdminReviewerCandidates } from '@/features/admin/hooks/supervision/useAdminReviewerCandidates';
 import { useRemovePendingReviewerHours } from '@/features/admin/hooks/supervision/useRemovePendingReviewerHours';
 import { getSupervisionRequestDateLabel } from '@/features/supervision/utils/requestDateLabels';
+import {
+  formatDateRu as formatDate,
+  formatDateTimeRu as formatDateTime,
+} from '@/utils/dateFormat';
 import type {
   AdminReviewerCandidateKind,
   AdminReviewerCandidateRow,
@@ -58,26 +62,6 @@ const SORT_VALUES = new Set<AdminReviewerCandidateSortBy>([
   'createdAt',
   'status',
 ]);
-
-function formatDate(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('ru-RU');
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 function formatNumber(value?: number | null) {
   if (value == null) return '—';

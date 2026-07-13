@@ -11,6 +11,7 @@ import { splitFullName, buildFullNameRu, buildFullNameLatin } from '@/features/u
 import { normalizePhone } from '@/features/user/utils/phone';
 import { formatCertificationLevelName, systemRoleLabels } from '@/utils/labels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { formatDateRu } from '@/utils/dateFormat';
 
 // --- helpers ---
 function toDateInput(iso: string) {
@@ -139,8 +140,6 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
     }
   };
 
-  const fmt = (d: string | null) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
-
   return (
     <div className="bg-white space-y-4" style={{ borderColor: 'var(--color-green-light)' }}>
       <div className="flex items-center justify-between">
@@ -154,7 +153,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
           <Meta label="Email" value={user.email} />
           <Meta label="Регистрационный номер ЦСПАП" value={user.registrationNumber || '—'} />
           <Meta label="Телефон" value={user.phone || '—'} />
-          <Meta label="Дата рождения" value={fmt(user.birthDate)} />
+          <Meta label="Дата рождения" value={formatDateRu(user.birthDate)} />
           <Meta label="Город" value={arrToStr(strToArr(user.city)) || '—'} />
           <Meta label="Страна" value={arrToStr(strToArr(user.country)) || '—'} />
           <Meta label="Права в системе" value={systemRoleLabels[user.role] || user.role} />

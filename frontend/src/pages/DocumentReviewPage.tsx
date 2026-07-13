@@ -12,6 +12,7 @@ import { useUserPayments } from '@/features/payment/hooks/useUserPayments';
 import { documentTypeLabels } from '@/utils/documentTypeLabels';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { formatOptionalDateRu as formatDate } from '@/utils/dateFormat';
 import { getDocumentRequirementHint } from '@/features/documentReview/utils/documentRequirementHints';
 import {
   findPaymentForTarget,
@@ -72,12 +73,6 @@ function normalizeReviewFiles(request: any): ReviewFile[] {
     createdAt: request.submittedAt,
     file,
   }));
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString('ru-RU');
 }
 
 function getStatusDate(item: ReviewFile, requestSubmittedAt?: string | null) {

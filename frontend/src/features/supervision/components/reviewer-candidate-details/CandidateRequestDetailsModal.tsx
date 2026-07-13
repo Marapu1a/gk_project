@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useUpdateHourStatus } from '../../hooks/useUpdateHourStatus';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
@@ -11,6 +10,7 @@ import type {
   ReviewerCandidateKind,
   ReviewerCandidateRequest,
 } from '../../api/getReviewerCandidateDetails';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 type CandidateRequestDetailsModalProps = {
   kind: ReviewerCandidateKind;
@@ -34,11 +34,6 @@ const HOUR_LABELS: Record<string, string> = {
   SUPERVISOR: 'Менторские часы',
   SUPERVISION: 'Менторские часы',
 };
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return '—';
-  return format(new Date(value), 'dd.MM.yyyy');
-}
 
 function formatNumber(value: number | null | undefined) {
   if (value == null) return '—';

@@ -7,6 +7,7 @@ import { useDeleteUserNote } from '../hooks/useDeleteUserNote';
 import type { AdminUserActionLogItem } from '../api/getUserActionLog';
 import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { formatDateTimeRu as formatDate } from '@/utils/dateFormat';
 
 type Props = {
   userId: string;
@@ -14,12 +15,6 @@ type Props = {
   isLoading?: boolean;
   onClose: () => void;
 };
-
-function formatDate(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('ru-RU');
-}
 
 export function AdminUserNotesModal({ userId, notes, isLoading, onClose }: Props) {
   const createNote = useCreateUserNote(userId);

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { format } from 'date-fns';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { DashboardDateInput } from '@/components/DashboardDateInput';
@@ -14,6 +13,7 @@ import { CandidateRequestDetailsModal } from '@/features/supervision/components/
 import { useReviewerRequests } from '@/features/supervision/hooks/useReviewerRequests';
 import { getSupervisionRequestDateLabel } from '@/features/supervision/utils/requestDateLabels';
 import { NameSortButton, nextNameSortDirection, type NameSortDirection } from '@/components/NameSortButton';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 const STATUS_LABELS: Record<ReviewerRequestStatus, string> = {
   ALL: 'Все состояния',
@@ -35,10 +35,6 @@ function isKind(value: string | undefined): value is ReviewerCandidateKind {
 
 function isStatus(value: string | null): value is ReviewerRequestStatus {
   return value === 'ALL' || value === 'UNCONFIRMED' || value === 'CONFIRMED' || value === 'REJECTED';
-}
-
-function formatDate(value: string) {
-  return format(new Date(value), 'dd.MM.yyyy');
 }
 
 function ReviewerCandidatesContent() {

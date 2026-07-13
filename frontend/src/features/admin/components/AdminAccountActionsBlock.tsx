@@ -9,6 +9,7 @@ import { useUpdateUserVisibility } from '../hooks/useUpdateUserVisibility';
 import { useUserActionLog } from '../hooks/useUserActionLog';
 import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { formatDateTimeRu as formatDate } from '@/utils/dateFormat';
 
 type ActionKey = 'registryVisible' | 'archived' | 'adminRole';
 
@@ -25,12 +26,6 @@ const ACTION_LABELS: Record<ActionKey, string> = {
   archived: 'Профиль в архиве',
   adminRole: 'Администратор',
 };
-
-function formatDate(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('ru-RU');
-}
 
 export function AdminAccountActionsBlock({
   userId,

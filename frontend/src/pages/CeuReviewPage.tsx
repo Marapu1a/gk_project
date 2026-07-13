@@ -10,7 +10,12 @@ import { DashboardDateInput } from '@/components/DashboardDateInput';
 import { PageNav } from '@/components/PageNav';
 import { DashboardPagination, PageSizeSelect } from '@/components/DashboardPagination';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
+import {
+  formatDateRu as formatDate,
+  formatDateTimeRu as formatDateTime,
+} from '@/utils/dateFormat';
 import { AdminNotifyChoiceModal } from '@/features/admin/components/AdminNotifyChoiceModal';
 import { useAdminCeuHistory } from '@/features/admin/hooks/ceu/useAdminCeuHistory';
 import {
@@ -59,31 +64,11 @@ const SORT_VALUES = new Set<AdminCeuSortBy>([
   'points',
 ]);
 
-function formatDate(value?: string | null) {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleDateString('ru-RU');
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function statusClass(status: AdminCeuStatus) {
-  if (status === 'CONFIRMED') return 'bg-[var(--color-green-brand)] text-white';
-  if (status === 'REJECTED') return 'bg-[var(--color-danger)] text-white';
-  if (status === 'SPENT') return 'bg-[#EEF0F4] text-[#6B7894]';
-  return 'bg-[var(--color-blue-soft)] text-[#1F305E]';
+function statusTone(status: AdminCeuStatus): StatusPillTone {
+  if (status === 'CONFIRMED') return 'green';
+  if (status === 'REJECTED') return 'red';
+  if (status === 'SPENT') return 'neutral';
+  return 'info';
 }
 
 function categoryLabel(category: AdminCeuHistoryRow['category']) {
@@ -398,11 +383,13 @@ export default function CeuReviewPage() {
                     <td className="px-4 py-3">{categoryLabel(row.category)}</td>
                     <td className="px-2 py-3 text-center font-extrabold">{row.points}</td>
                     <td className="px-2 py-3 text-center">
-                      <span
-                        className={`dashboard-v2-caption inline-flex max-w-full justify-center rounded-full px-3 py-1 text-center leading-tight ${statusClass(row.status)}`}
+                      <StatusPill
+                        tone={statusTone(row.status)}
+                        size="custom"
+                        className="dashboard-v2-caption max-w-full px-3 py-1 text-center leading-tight"
                       >
                         {recordStatusLabels[row.status] ?? row.status}
-                      </span>
+                      </StatusPill>
                     </td>
                     <td className="px-2 py-3 text-center">
                       {row.file ? (

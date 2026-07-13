@@ -1,4 +1,4 @@
-const MOSCOW_TIME_ZONE = 'Europe/Moscow';
+import { APP_TIME_ZONE, parseCalendarDate } from '@/utils/dateFormat';
 
 function getDate(value: string | null | undefined) {
   if (!value) return null;
@@ -11,7 +11,7 @@ function getMoscowParts(value: string | null | undefined) {
   if (!date) return null;
 
   const parts = new Intl.DateTimeFormat('ru-RU', {
-    timeZone: MOSCOW_TIME_ZONE,
+    timeZone: APP_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -25,17 +25,40 @@ function getMoscowParts(value: string | null | undefined) {
   return { day, month, year };
 }
 
+function getCertificateDateParts(value: string | null | undefined) {
+  const calendarDate = parseCalendarDate(value);
+  if (calendarDate) {
+    return {
+      day: String(calendarDate.day).padStart(2, '0'),
+      month: String(calendarDate.month).padStart(2, '0'),
+      year: String(calendarDate.year).padStart(4, '0'),
+    };
+  }
+
+  return getMoscowParts(value);
+}
+
 export function formatCertificateDate(value: string | null | undefined) {
-  const parts = getMoscowParts(value);
+  const parts = getCertificateDateParts(value);
   return parts ? `${parts.day}.${parts.month}.${parts.year}` : '—';
 }
 
 export function toCertificateDateInputValue(value: string | null | undefined) {
-  const parts = getMoscowParts(value);
+  const parts = getCertificateDateParts(value);
   return parts ? `${parts.year}-${parts.month}-${parts.day}` : '';
 }
 
 export function isCertificateDateActive(value: string | null | undefined) {
+  const calendarDate = parseCalendarDate(value);
+  if (calendarDate) {
+    const today = getMoscowParts(new Date().toISOString());
+    if (!today) return false;
+
+    const expiryKey = `${String(calendarDate.year).padStart(4, '0')}-${String(calendarDate.month).padStart(2, '0')}-${String(calendarDate.day).padStart(2, '0')}`;
+    const todayKey = `${today.year}-${today.month}-${today.day}`;
+    return expiryKey >= todayKey;
+  }
+
   const date = getDate(value);
   if (!date) return false;
   return date.getTime() >= Date.now();

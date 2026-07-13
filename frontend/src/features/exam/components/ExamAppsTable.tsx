@@ -9,6 +9,8 @@ import ExamAppModal from './ExamAppModal';
 import type { ExamApp, ExamStatus } from '../api/getMyExamApp';
 import { examStatusLabels, targetLevelLabels } from '@/utils/labels';
 import { NameSortButton, nextNameSortDirection, sortByFullName, type NameSortDirection } from '@/components/NameSortButton';
+import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 const STATUS_OPTIONS: Array<ExamStatus | 'ALL'> = [
   'PENDING',
@@ -18,18 +20,11 @@ const STATUS_OPTIONS: Array<ExamStatus | 'ALL'> = [
 ];
 const STATUS_VALUES = new Set<ExamStatus | 'ALL'>(STATUS_OPTIONS);
 
-function formatDate(value?: string | null) {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleDateString('ru-RU');
-}
-
-function statusClass(status: ExamStatus) {
-  if (status === 'APPROVED') return 'bg-[var(--color-green-brand)] text-white';
-  if (status === 'REJECTED') return 'bg-[var(--color-danger)] text-white';
-  if (status === 'PENDING') return 'bg-[var(--color-blue-soft)] text-[#1F305E]';
-  return 'bg-[#EEF0F4] text-[#6B7894]';
+function statusTone(status: ExamStatus): StatusPillTone {
+  if (status === 'APPROVED') return 'green';
+  if (status === 'REJECTED') return 'red';
+  if (status === 'PENDING') return 'info';
+  return 'neutral';
 }
 
 export default function ExamAppsTable() {
@@ -167,11 +162,13 @@ export default function ExamAppsTable() {
                       {formatDate(row.submittedAt ?? row.updatedAt)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span
-                        className={`dashboard-v2-caption inline-flex rounded-full px-3 py-1 ${statusClass(row.status)}`}
+                      <StatusPill
+                        tone={statusTone(row.status)}
+                        size="custom"
+                        className="dashboard-v2-caption px-3 py-1"
                       >
                         {examStatusLabels[row.status] ?? row.status}
-                      </span>
+                      </StatusPill>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <ActionArrowButton

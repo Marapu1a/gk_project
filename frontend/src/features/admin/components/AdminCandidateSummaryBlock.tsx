@@ -16,9 +16,11 @@ import {
   formatCertificationLevelName,
   targetLevelLabels,
 } from '@/utils/labels';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 import { formatCertificateDate } from '@/features/certificate/utils/certificateDates';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { findPaymentForTarget } from '@/features/payment/model/paymentPolicy';
+import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
 
 type Props = {
   user: any;
@@ -30,12 +32,6 @@ const cycleTypeLabels: Record<string, string> = {
   CERTIFICATION: 'сертификация',
   RENEWAL: 'ресертификация',
 };
-
-function formatDate(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru-RU');
-}
 
 function formatNumber(value?: number | null) {
   if (value == null) return '0';
@@ -185,30 +181,14 @@ function documentStatus(user: any) {
   return { label: 'Нет заявки', tone: 'bad' as const, to: null, mode: 'active' as const };
 }
 
-function StatusPill({
-  tone,
-  children,
-}: {
-  tone: 'good' | 'warn' | 'bad' | 'soft';
-  children: ReactNode;
-}) {
-  const className =
-    tone === 'good'
-      ? 'bg-[rgba(165,203,55,0.25)] text-[var(--color-blue-dark)]'
-      : tone === 'bad'
-        ? 'bg-[rgba(255,83,100,0.14)] text-[var(--color-danger)]'
-        : tone === 'warn'
-          ? 'bg-[#FFF0C2] text-[#8A6200]'
-          : 'bg-[var(--color-blue-soft)] text-[var(--color-blue-dark)]';
+type SummaryTone = 'good' | 'warn' | 'bad' | 'soft';
 
-  return (
-    <span
-      className={`inline-flex min-h-[26px] items-center rounded-full px-3 text-[12px] font-extrabold ${className}`}
-    >
-      {children}
-    </span>
-  );
-}
+const summaryStatusTone: Record<SummaryTone, StatusPillTone> = {
+  good: 'success',
+  warn: 'warning',
+  bad: 'danger',
+  soft: 'info',
+};
 
 function SummaryLine({
   label,
@@ -218,7 +198,7 @@ function SummaryLine({
 }: {
   label: string;
   value: ReactNode;
-  tone?: 'good' | 'warn' | 'bad' | 'soft';
+  tone?: SummaryTone;
   to?: string | null;
 }) {
   const rowClass = to
@@ -244,7 +224,7 @@ function SummaryLine({
       ) : (
         <span className="text-[14px] font-semibold text-[#1F305E]">{label}</span>
       )}
-      <StatusPill tone={tone}>{value}</StatusPill>
+      <StatusPill tone={summaryStatusTone[tone]} size="md">{value}</StatusPill>
     </div>
   );
 }
@@ -506,7 +486,7 @@ export function AdminCandidateSummaryBlock({
           </p>
         </div>
 
-        <StatusPill tone={requiresAttention ? 'bad' : 'good'}>
+        <StatusPill tone={requiresAttention ? 'danger' : 'success'} size="md">
           {requiresAttention ? 'Требует внимания' : 'Готов к экзамену'}
         </StatusPill>
       </div>

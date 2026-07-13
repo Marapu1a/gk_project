@@ -1,7 +1,7 @@
-import { format } from 'date-fns';
 import { useSupervisionHistory } from '../hooks/useSupervisionHistory';
 import type { SupervisionHistoryItem } from '../api/getSupervisionHistory';
 import { recordStatusLabels } from '@/utils/labels';
+import { formatDateRu } from '@/utils/dateFormat';
 
 // Поддерживаем новые и legacy типы
 function typeLabel(t: string): string {
@@ -75,7 +75,7 @@ export function SupervisionHistoryTable() {
                   style={{ borderColor: 'var(--color-green-light)' }}
                 >
                   <td className="p-2 text-center">
-                    {format(new Date(hour.createdAt), 'dd.MM.yyyy')}
+                    {formatDateRu(hour.createdAt)}
                   </td>
                   <td className="p-2 text-center">{typeLabel(hour.type)}</td>
                   <td className="p-2 text-center">{hour.value}</td>
@@ -95,7 +95,7 @@ export function SupervisionHistoryTable() {
                     </span>
                   </td>
                   <td className="p-2 text-center">
-                    {hour.reviewedAt ? format(new Date(hour.reviewedAt), 'dd.MM.yyyy') : '—'}
+                    {formatDateRu(hour.reviewedAt)}
                   </td>
                   <td className="p-2 text-center text-[#FF5364]">
                     {hour.status === 'REJECTED' ? hour.rejectedReason || '—' : '—'}

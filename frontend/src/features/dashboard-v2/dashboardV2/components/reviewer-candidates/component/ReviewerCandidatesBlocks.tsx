@@ -1,5 +1,4 @@
 import { Fragment, useMemo, useState } from 'react';
-import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
@@ -13,6 +12,7 @@ import { getSupervisionRequestDateLabel } from '@/features/supervision/utils/req
 import { NameSortButton, nextNameSortDirection, sortByFullName, type NameSortDirection } from '@/components/NameSortButton';
 import type { ReviewerCandidate } from '@/features/supervision/api/getReviewerCandidates';
 import type { ReviewerRequestListItem } from '@/features/supervision/api/getReviewerRequests';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 type CandidateKind = 'supervision' | 'mentorship';
 type DashboardMode = 'candidates' | 'review';
@@ -22,11 +22,6 @@ const COOPERATION_HELP = `Кандидат указал вас как супер
 Подтвердите сотрудничество, если вы действительно договорились работать вместе.
 
 После подтверждения кандидат появится в вашем списке кандидатов. Подтверждение сотрудничества не означает автоматическое принятие часов — все заявки на часы будут рассматриваться отдельно.`;
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return '—';
-  return format(new Date(value), 'dd.MM.yyyy');
-}
 
 function splitName(fullName: string | null, email: string) {
   const value = fullName?.trim() || email;

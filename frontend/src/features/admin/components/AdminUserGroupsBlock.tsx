@@ -11,6 +11,7 @@ import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { formatCertificationLevelName, targetLevelLabels } from '@/utils/labels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { formatCertificateDate, isCertificateDateActive } from '@/features/certificate/utils/certificateDates';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 type TargetLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR';
 type GoalMode = 'CERTIFICATION' | 'RENEWAL';
@@ -49,11 +50,6 @@ function resolveCurrentLevelByGroup(group: GroupLike): TargetLevel | null {
   if (group?.rank === 3) return 'CURATOR';
   if ((group?.rank ?? 0) >= 4) return 'SUPERVISOR';
   return null;
-}
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('ru-RU');
 }
 
 function getCertificateStatusText(expiresAt: string | null) {

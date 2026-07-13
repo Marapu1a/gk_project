@@ -9,6 +9,8 @@ import { documentTypeLabels } from '@/utils/documentTypeLabels';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { documentReviewStatusLabels } from '@/utils/documentReviewStatusLabels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
+import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
 import { useUserPaymentsById } from '@/features/payment/hooks/useUserPaymentsById';
 import { useGetDocReviewRequestById } from '../hooks/useGetDocReviewRequestById';
 import {
@@ -31,11 +33,11 @@ const fileStatusLabels: Record<DocumentReviewFileStatus, string> = {
   DELETED: 'Удалено',
 };
 
-const fileStatusClass: Record<DocumentReviewFileStatus, string> = {
-  UNCONFIRMED: 'bg-[#C9D8FF] text-[var(--color-blue-dark)]',
-  CONFIRMED: 'bg-[rgba(165,203,55,0.25)] text-[var(--color-blue-dark)]',
-  REJECTED: 'bg-[rgba(255,83,100,0.18)] text-[var(--color-danger)]',
-  DELETED: 'bg-[#E7E9EF] text-[#6B7894]',
+const fileStatusTone: Record<DocumentReviewFileStatus, StatusPillTone> = {
+  UNCONFIRMED: 'partial',
+  CONFIRMED: 'success',
+  REJECTED: 'danger',
+  DELETED: 'neutral',
 };
 
 const paymentStatusText: Record<string, string> = {
@@ -71,12 +73,6 @@ type RelatedDocumentRequest = {
   documentFiles?: { id: string; status: string }[];
   _count?: { documents?: number; documentFiles?: number };
 };
-
-function formatDate(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru-RU');
-}
 
 function normalizeReviewFiles(request: any): ReviewFile[] {
   if (Array.isArray(request?.documentFiles) && request.documentFiles.length > 0) {
@@ -598,16 +594,18 @@ function DocumentFileCard({
             </span>
           )}
 
-          <span
-            className={`inline-flex h-[26px] items-center rounded-full px-3 text-[12px] font-extrabold ${fileStatusClass[item.status]}`}
+          <StatusPill
+            tone={fileStatusTone[item.status]}
+            size="md"
+            className="h-[26px]"
           >
             {fileStatusLabels[item.status]}
-          </span>
+          </StatusPill>
 
           {item.transferredFromPreviousRequest ? (
-            <span className="inline-flex min-h-[26px] items-center rounded-full bg-[var(--color-blue-soft)] px-3 text-[12px] font-extrabold text-[var(--color-blue-dark)]">
+            <StatusPill tone="info" size="md">
               Перенесен из прошлой сертификации
-            </span>
+            </StatusPill>
           ) : null}
         </div>
 

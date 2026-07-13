@@ -9,18 +9,12 @@ import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { examStatusLabels, targetLevelLabels } from '@/utils/labels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 export type ExamAppModalProps = {
   app: ExamApp;
   onClose: () => void;
 };
-
-function formatDate(value?: string | null) {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleDateString('ru-RU');
-}
 
 function formatNumber(value?: number | null) {
   if (value == null) return '-';

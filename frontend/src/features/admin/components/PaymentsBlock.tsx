@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getShortPaymentTypeLabel, paymentStatusLabels } from '@/utils/labels';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { formatDateTimeRu as formatDateTime } from '@/utils/dateFormat';
+import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
 import { useUpdatePaymentStatus } from '@/features/payment/hooks/useUpdatePaymentStatus';
 import { userPaymentsQueryKey } from '@/features/payment/hooks/useUserPayments';
 import { userPaymentsByIdQueryKey } from '@/features/payment/hooks/useUserPaymentsById';
@@ -62,25 +64,10 @@ const TARGET_LEVEL_ORDER: Record<NonNullable<Payment['targetLevel']>, number> = 
   SUPERVISOR: 2,
 };
 
-function formatDateTime(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-
-  return date.toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function statusToneClass(status: string, inheritedPending: boolean) {
-  if (inheritedPending) return 'bg-[#FFF0C2] text-[#8A6200]';
-  if (status === 'PAID') return 'bg-[rgba(165,203,55,0.25)] text-[var(--color-blue-dark)]';
-  if (status === 'PENDING') return 'bg-[#FFF0C2] text-[#8A6200]';
-  return 'bg-[rgba(255,83,100,0.14)] text-[var(--color-danger)]';
+function statusTone(status: string, inheritedPending: boolean): StatusPillTone {
+  if (inheritedPending || status === 'PENDING') return 'warning';
+  if (status === 'PAID') return 'success';
+  return 'danger';
 }
 
 export default function PaymentsBlock({
@@ -249,16 +236,13 @@ export default function PaymentsBlock({
                   <div className="text-[15px] font-extrabold leading-[1.25] text-[#1F305E]">
                     {getPaymentLabel(payment)}
                   </div>
-                  <div className="mt-2 inline-flex min-h-[26px] items-center rounded-full px-3 text-[12px] font-extrabold">
-                    <span
-                      className={`inline-flex min-h-[26px] items-center rounded-full px-3 ${statusToneClass(
-                        payment.status,
-                        inheritedPending,
-                      )}`}
-                    >
-                      {getDisplayStatus(payment)}
-                    </span>
-                  </div>
+                  <StatusPill
+                    tone={statusTone(payment.status, inheritedPending)}
+                    size="md"
+                    className="mt-2"
+                  >
+                    {getDisplayStatus(payment)}
+                  </StatusPill>
                   {isBlockedFullPackage ? (
                     <div className="dashboard-v2-caption mt-2 text-[#8D96B5]">
                       Отдельный платеж уже принят.

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
 import { useCeuHistory } from '../hooks/useCeuHistory';
 import type { CeuHistoryItem } from '../api/getCeuHistory';
 import { displayCeuEventName } from '../utils/displayCeuEventName';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 const categoryLabels: Record<string, string> = {
   ETHICS: 'Этика',
@@ -29,10 +29,6 @@ const activityTypeLabels: Record<string, string> = {
   TEACHING:
     'Преподавание курсов, соответствующих содержательным требованиям и компетенциям уровней Инструктор/Супервизор',
 };
-
-function formatDate(value: string) {
-  return format(new Date(value), 'dd.MM.yyyy');
-}
 
 function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);

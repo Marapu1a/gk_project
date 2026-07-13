@@ -4,6 +4,7 @@ import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import type { CEUReviewResponse } from '../hooks/useCeuRecordsByEmail';
 import { toast } from 'sonner';
 import { displayCeuEventName } from '../utils/displayCeuEventName';
+import { formatDateRu } from '@/utils/dateFormat';
 
 export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
   const updateMutation = useUpdateCEUEntry(data.user.id, data.user.email);
@@ -93,7 +94,7 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                   {displayCeuEventName(record.eventName)}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  Дата мероприятия: {new Date(record.eventDate).toLocaleDateString()}
+                  Дата мероприятия: {formatDateRu(record.eventDate)}
                 </p>
                 <p className="text-sm">
                   <a

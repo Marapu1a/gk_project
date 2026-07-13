@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
 import type {
   ReviewerCandidateKind,
   ReviewerCandidateRequest,
@@ -7,17 +6,13 @@ import type {
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { CandidateRequestDetailsModal } from './CandidateRequestDetailsModal';
 import { getSupervisionRequestDateLabel } from '../../utils/requestDateLabels';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 type CandidateRequestsCardProps = {
   kind: ReviewerCandidateKind;
   title: string;
   requests: ReviewerCandidateRequest[];
 };
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return '—';
-  return format(new Date(value), 'dd.MM.yyyy');
-}
 
 function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);

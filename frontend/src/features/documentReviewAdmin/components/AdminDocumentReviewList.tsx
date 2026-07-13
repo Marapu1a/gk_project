@@ -5,6 +5,8 @@ import { AdminIdentityFilterInput } from '@/components/AdminIdentityFilterInput'
 import { useAllDocReviewRequests } from '../hooks/useAllDocReviewRequests';
 import { documentReviewStatusLabels } from '@/utils/documentReviewStatusLabels';
 import { NameSortButton, nextNameSortDirection, sortByFullName, type NameSortDirection } from '@/components/NameSortButton';
+import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
+import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 type RequestRow = {
   id: string;
@@ -26,17 +28,11 @@ const statusWeight: Record<string, number> = {
   CONFIRMED: 3,
 };
 
-function formatDate(value?: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru-RU');
-}
-
-function statusClass(status: string) {
-  if (status === 'CONFIRMED') return 'bg-[rgba(165,203,55,0.25)] text-[var(--color-blue-dark)]';
-  if (status === 'REJECTED') return 'bg-[rgba(255,83,100,0.18)] text-[var(--color-danger)]';
-  if (status === 'PARTIALLY_CONFIRMED') return 'bg-[#C9D8FF] text-[var(--color-blue-dark)]';
-  return 'bg-[#E7E9EF] text-[#6B7894]';
+function statusTone(status: string): StatusPillTone {
+  if (status === 'CONFIRMED') return 'success';
+  if (status === 'REJECTED') return 'danger';
+  if (status === 'PARTIALLY_CONFIRMED') return 'partial';
+  return 'neutral';
 }
 
 function archiveLabel(request: RequestRow) {
@@ -205,11 +201,13 @@ export function AdminDocumentReviewList() {
                         </td>
                         <td className="border-b border-[var(--color-blue-soft)] px-4 py-4">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`inline-flex h-[26px] items-center rounded-full px-3 text-[12px] font-extrabold ${statusClass(request.status)}`}
+                            <StatusPill
+                              tone={statusTone(request.status)}
+                              size="md"
+                              className="h-[26px]"
                             >
                               {documentReviewStatusLabels[request.status] || request.status}
-                            </span>
+                            </StatusPill>
                             {archive ? (
                               <span className="inline-flex h-[24px] items-center rounded-full bg-[#EEF0F4] px-2.5 text-[11px] font-bold text-[#8D96B5]">
                                 {archive}

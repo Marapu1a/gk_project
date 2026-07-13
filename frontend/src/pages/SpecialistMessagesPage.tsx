@@ -14,25 +14,13 @@ import type {
   SpecialistContactMessage,
   SpecialistContactRequestType,
 } from '@/features/registry/api/contactMessages';
+import { formatDateTimeRu as formatDateTime } from '@/utils/dateFormat';
 
 const REQUEST_TYPE_LABELS: Record<SpecialistContactRequestType, string> = {
   PARENT_CONSULTATION: 'Консультация родителя',
   SUPERVISION: 'Супервизия',
   QUESTION: 'Вопрос',
 };
-
-function formatDateTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-
-  return date.toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 export default function SpecialistMessagesPage() {
   const { data, isLoading } = useSpecialistContactMessages();

@@ -11,6 +11,7 @@ import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabel
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { StatusPill } from '@/components/StatusPill';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_FILES = 10;
@@ -192,15 +193,13 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
         </button>
         <div className="mt-3 flex items-center justify-center gap-2 text-[13px] text-[#8D96B5]">
           <span>Оплата:</span>
-          <span
-            className={`inline-flex h-[24px] items-center rounded-full px-3 text-[12px] font-extrabold ${
-              isDocumentReviewPaid
-                ? 'bg-[#E5EFF1] text-[var(--color-blue-dark)]'
-                : 'bg-[rgba(255,83,100,0.16)] text-[var(--color-danger)]'
-            }`}
+          <StatusPill
+            tone={isDocumentReviewPaid ? 'info' : 'danger'}
+            size="custom"
+            className="h-[24px] px-3 text-[12px] font-extrabold"
           >
             {paymentStatusLabel}
-          </span>
+          </StatusPill>
         </div>
         {!isDocumentReviewPaid ? (
           <p className="mt-2 text-[12px] font-semibold text-[var(--color-danger)]">

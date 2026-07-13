@@ -14,6 +14,8 @@ import {
 } from '@/features/admin/hooks/useExternalSupervisorClaims';
 import type { ExternalSupervisorClaimRow } from '@/features/admin/api/externalSupervisorClaims';
 import { NameSortButton, nextNameSortDirection, type NameSortDirection } from '@/components/NameSortButton';
+import { formatDateTimeRu as formatDateTime } from '@/utils/dateFormat';
+import { StatusPill } from '@/components/StatusPill';
 
 const statusLabels = {
   PENDING: 'Ожидает проверки',
@@ -21,13 +23,6 @@ const statusLabels = {
   SETUP_COMPLETE: 'Настройка завершена',
   REJECTED: 'Не подтверждено',
 } as const;
-
-function formatDateTime(value: string | null) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
-}
 
 type ActiveRowActionsProps = {
   user: ExternalSupervisorClaimRow;
@@ -341,17 +336,15 @@ function AdminExternalSupervisorClaimsPageInner() {
                           {formatDateTime(user.externalSupervisorClaimedAt)}
                         </td>
                         <td className="px-4 py-4 text-center align-middle">
-                          <span
-                            className={`inline-flex min-h-[24px] items-center rounded-full px-2.5 text-[11px] font-extrabold ${
-                              user.externalSupervisorClaimStatus === 'APPROVED'
-                                ? 'bg-[rgba(165,203,55,0.25)] text-blue-dark'
-                                : 'bg-[var(--color-blue-soft)] text-[#8D96B5]'
-                            }`}
+                          <StatusPill
+                            tone={user.externalSupervisorClaimStatus === 'APPROVED' ? 'success' : 'muted'}
+                            size="custom"
+                            className="min-h-[24px] px-2.5 text-[11px] font-extrabold"
                           >
                             {user.externalSupervisorClaimStatus === 'APPROVED'
                               ? 'Настройка'
                               : 'Проверка'}
-                          </span>
+                          </StatusPill>
                         </td>
                         <td className="px-4 py-3 align-middle">
                           <div className="flex items-center justify-center">
@@ -371,15 +364,13 @@ function AdminExternalSupervisorClaimsPageInner() {
                     ) : (
                       <td className="px-4 py-4 align-middle dashboard-v2-text">
                         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                          <span
-                            className={`inline-flex min-h-[26px] shrink-0 items-center rounded-full px-3 text-[12px] font-extrabold ${
-                              user.externalSupervisorClaimStatus === 'SETUP_COMPLETE'
-                                ? 'bg-[rgba(165,203,55,0.25)] text-blue-dark'
-                                : 'bg-[rgba(255,83,100,0.14)] text-[var(--color-danger)]'
-                            }`}
+                          <StatusPill
+                            tone={user.externalSupervisorClaimStatus === 'SETUP_COMPLETE' ? 'success' : 'danger'}
+                            size="md"
+                            className="shrink-0"
                           >
                             {statusLabels[user.externalSupervisorClaimStatus]}
-                          </span>
+                          </StatusPill>
                           <span className="shrink-0 text-[#8D96B5]">
                             {formatDateTime(user.externalSupervisorClaimReviewedAt)}
                           </span>
