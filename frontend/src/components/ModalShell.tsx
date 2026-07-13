@@ -25,6 +25,7 @@ const FOCUSABLE_SELECTOR = [
 
 let bodyScrollLockCount = 0;
 let bodyPreviousOverflow = '';
+const openModalStack: symbol[] = [];
 
 function lockBodyScroll() {
   if (bodyScrollLockCount === 0) {
@@ -63,14 +64,18 @@ export function ModalShell({
   useEffect(() => {
     if (!open) return;
 
+    const modalId = Symbol('modal');
     const previousFocus = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
     const unlockBodyScroll = lockBodyScroll();
+    openModalStack.push(modalId);
 
     dialogRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (openModalStack.at(-1) !== modalId) return;
+
       const dialog = dialogRef.current;
       if (!dialog) return;
 
@@ -109,6 +114,8 @@ export function ModalShell({
 
     return () => {
       document.removeEventListener('keydown', onKeyDown);
+      const stackIndex = openModalStack.lastIndexOf(modalId);
+      if (stackIndex >= 0) openModalStack.splice(stackIndex, 1);
       unlockBodyScroll();
       if (previousFocus?.isConnected) previousFocus.focus();
     };
