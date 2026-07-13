@@ -165,39 +165,43 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
         />
       </section>
 
-      <div className="grid w-full grid-cols-1 items-stretch gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <div className="grid min-w-0 gap-4 lg:grid-rows-[1fr_auto]">
-          <AdminPanel title="Рабочие задачи" className="h-full px-0 py-4">
-            <nav className="mt-1">
-              {tasks.map((task) => (
-                <TaskLink key={task.to} task={task} />
-              ))}
-            </nav>
-          </AdminPanel>
-
-          <AdminPanel title="Отчёты и выгрузки" className="px-0 py-4">
-            <div className="mt-1 space-y-1">
-              <ActionButton
-                icon={<Download size={16} />}
-                label="Выгрузка XLSX"
-                onClick={onExportUsers}
-                disabled={exportUsers.isPending}
-              />
-              <ActionButton
-                icon={<DatabaseBackup size={16} />}
-                label="Резервная копия БД"
-                onClick={onBackupDb}
-                disabled={backupDb.isPending}
-              />
-            </div>
-          </AdminPanel>
-        </div>
-
+      <div className="grid w-full grid-cols-1 items-stretch gap-5 lg:grid-cols-[320px_minmax(0,1fr)] lg:grid-rows-[1fr_auto]">
         <AdminPanel
           title={<NotificationsTitle notifications={notifications} />}
-          className="min-w-0 px-0 py-4"
+          className="min-w-0 px-0 py-4 lg:col-start-2 lg:row-span-2 lg:row-start-1"
         >
           <AdminNotifications notifications={notifications} />
+        </AdminPanel>
+
+        <AdminPanel
+          title="Рабочие задачи"
+          className="px-0 py-4 lg:col-start-1 lg:row-start-1"
+        >
+          <nav className="mt-1">
+            {tasks.map((task) => (
+              <TaskLink key={task.to} task={task} />
+            ))}
+          </nav>
+        </AdminPanel>
+
+        <AdminPanel
+          title="Отчёты и выгрузки"
+          className="px-0 py-4 lg:col-start-1 lg:row-start-2"
+        >
+          <div className="mt-1 space-y-1">
+            <ActionButton
+              icon={<Download size={16} />}
+              label="Выгрузка XLSX"
+              onClick={onExportUsers}
+              disabled={exportUsers.isPending}
+            />
+            <ActionButton
+              icon={<DatabaseBackup size={16} />}
+              label="Резервная копия БД"
+              onClick={onBackupDb}
+              disabled={backupDb.isPending}
+            />
+          </div>
         </AdminPanel>
       </div>
     </div>

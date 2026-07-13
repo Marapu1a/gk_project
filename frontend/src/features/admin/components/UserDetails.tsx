@@ -35,6 +35,7 @@ export default function UserDetails() {
 
   const activeGroup =
     data.groups.length > 0 ? [...data.groups].sort((a, b) => b.rank - a.rank)[0].name : null;
+  const isExperiencedSupervisor = activeGroup?.trim().toLowerCase() === 'опытный супервизор';
 
   return (
     <div className="mx-auto max-w-[1180px] space-y-5 px-2 py-5 text-[var(--color-blue-dark)] sm:px-4">
@@ -121,9 +122,11 @@ export default function UserDetails() {
           />
         </section>
 
-        <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
-          <UserSupervisionMatrix userId={data.id} activeGroupName={activeGroup} />
-        </section>
+        {!isExperiencedSupervisor ? (
+          <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
+            <UserSupervisionMatrix userId={data.id} activeGroupName={activeGroup} />
+          </section>
+        ) : null}
 
         <section className="rounded-[22px] bg-white px-6 py-5 shadow-soft">
           <AdminCEUMatrixBlock userId={data.id} required={data.examReadiness?.ceu.required} />
