@@ -1,5 +1,4 @@
 // src/features/notifications/components/NotificationModal.tsx
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -20,8 +19,9 @@ import {
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 import { NotificationMessage } from './NotificationMessage';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { formatDateRu, formatTimeRu } from '@/utils/dateFormat';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
@@ -69,8 +69,8 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
     try {
       await deleteNotif.mutateAsync(id);
       toast.success(UI_TOAST_MESSAGES.admin.notificationDeleted);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.notificationDeleteFailed);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.admin.notificationDeleteFailed));
     }
   };
 
@@ -101,71 +101,76 @@ export function NotificationModal({ open, onClose }: { open: boolean; onClose: (
     try {
       await deleteAllNotif.mutateAsync();
       toast.success(UI_TOAST_MESSAGES.admin.notificationsDeleted);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.notificationsDeleteFailed);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.admin.notificationsDeleteFailed));
     }
   };
 
-  const modal = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-6">
-      <section className="relative flex h-[min(92vh,760px)] w-full max-w-[1060px] flex-col overflow-hidden rounded-[30px] bg-white shadow-[0_18px_45px_rgba(0,0,0,0.22)]">
-        <ModalCloseButton
-          onClick={onClose}
-          label="Закрыть уведомления"
-          iconClassName="h-[30px] w-[30px]"
-          className="z-10"
-        />
+  return (
+    <ModalShell
+      onClose={onClose}
+      closeOnBackdrop={false}
+      ariaLabelledBy="notifications-modal-title"
+      overlayClassName="z-50 bg-black/75 px-4 py-6"
+      dialogClassName="relative flex h-[min(92vh,760px)] w-full max-w-[1060px] flex-col overflow-hidden rounded-[30px] bg-white shadow-[0_18px_45px_rgba(0,0,0,0.22)]"
+    >
+      <ModalCloseButton
+        onClick={onClose}
+        label="Закрыть уведомления"
+        iconClassName="h-[30px] w-[30px]"
+        className="z-10"
+      />
 
-        <header className="px-8 pb-5 pt-9 text-center">
-          <h2 className="text-[28px] font-extrabold leading-tight text-[var(--color-blue-dark)]">
-            Уведомления
-          </h2>
-        </header>
+      <header className="px-8 pb-5 pt-9 text-center">
+        <h2
+          id="notifications-modal-title"
+          className="text-[28px] font-extrabold leading-tight text-[var(--color-blue-dark)]"
+        >
+          Уведомления
+        </h2>
+      </header>
 
-        {data.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <>
-            <div className="mx-8 h-[3px] shrink-0 bg-[var(--color-blue-soft)]" />
+      {data.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <>
+          <div className="mx-8 h-[3px] shrink-0 bg-[var(--color-blue-soft)]" />
 
-            <div className="notification-scroll min-h-0 flex-1 overflow-y-auto px-8">
-              {data.map((notification) => (
-                <NotificationRow
-                  key={notification.id}
-                  notification={notification}
-                  onOpen={() => handleOpen(notification)}
-                  onDelete={() => handleDelete(notification.id)}
-                  deleting={deleteNotif.isPending}
-                />
-              ))}
-            </div>
+          <div className="notification-scroll min-h-0 flex-1 overflow-y-auto px-8">
+            {data.map((notification) => (
+              <NotificationRow
+                key={notification.id}
+                notification={notification}
+                onOpen={() => handleOpen(notification)}
+                onDelete={() => handleDelete(notification.id)}
+                deleting={deleteNotif.isPending}
+              />
+            ))}
+          </div>
 
-            <footer className="flex shrink-0 items-center justify-between gap-4 bg-white/95 px-8 py-5 shadow-[0_-8px_20px_rgba(31,48,94,0.08)]">
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                disabled={!unread.length || markRead.isPending}
-                className="btn flex h-[30px] cursor-pointer text-[15px] font-medium text-[#8D96B5] transition hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                Отметить все прочитанным
-              </button>
+          <footer className="flex shrink-0 items-center justify-between gap-4 bg-white/95 px-8 py-5 shadow-[0_-8px_20px_rgba(31,48,94,0.08)]">
+            <button
+              type="button"
+              onClick={handleMarkAllRead}
+              disabled={!unread.length || markRead.isPending}
+              className="btn flex h-[30px] cursor-pointer text-[15px] font-medium text-[#8D96B5] transition hover:text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Отметить все прочитанным
+            </button>
 
-              <button
-                type="button"
-                onClick={handleDeleteAll}
-                disabled={!data.length || deleteAllNotif.isPending}
-                className="btn flex h-[30px] cursor-pointer text-[15px] font-medium text-[var(--color-danger)] transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                Удалить все уведомления
-              </button>
-            </footer>
-          </>
-        )}
-      </section>
-    </div>
+            <button
+              type="button"
+              onClick={handleDeleteAll}
+              disabled={!data.length || deleteAllNotif.isPending}
+              className="btn flex h-[30px] cursor-pointer text-[15px] font-medium text-[var(--color-danger)] transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Удалить все уведомления
+            </button>
+          </footer>
+        </>
+      )}
+    </ModalShell>
   );
-
-  return createPortal(modal, document.body);
 }
 
 function NotificationRow({
