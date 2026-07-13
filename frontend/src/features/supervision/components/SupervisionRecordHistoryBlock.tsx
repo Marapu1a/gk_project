@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSupervisionRecordHistory } from '../hooks/useSupervisionRecordHistory';
 import type { SupervisionRecordHistoryItem } from '../api/getSupervisionRecordHistory';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 import { getSupervisionRequestDateLabel } from '../utils/requestDateLabels';
 import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
@@ -224,11 +225,17 @@ function SupervisionRecordDetailsModal({
   const requestDateLabel = getSupervisionRequestDateLabel(mode);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
-      <div className="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[12px] bg-white px-6 py-5 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
+    <ModalShell
+      onClose={onClose}
+      closeOnBackdrop={false}
+      closeOnEscape={false}
+      ariaLabelledBy="supervision-record-details-title"
+      overlayClassName="z-50 bg-black/70 px-4 py-6"
+      dialogClassName="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[12px] bg-white px-6 py-5 shadow-[0_12px_32px_rgba(0,0,0,0.24)]"
+    >
         <ModalCloseButton onClick={onClose} />
 
-        <h3 className="mb-5 text-center text-[18px] font-extrabold text-[#1F305E]">
+        <h3 id="supervision-record-details-title" className="mb-5 text-center text-[18px] font-extrabold text-[#1F305E]">
           {isAdminCorrection(record) ? 'Детали корректировки' : 'Детали заявки'}
         </h3>
 
@@ -364,8 +371,7 @@ function SupervisionRecordDetailsModal({
             {record.description || '—'}
           </div>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
 

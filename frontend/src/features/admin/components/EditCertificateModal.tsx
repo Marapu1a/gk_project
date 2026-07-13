@@ -9,8 +9,9 @@ import { uploadFile } from '@/features/files/api/uploadFile';
 import { deleteFile } from '@/features/files/api/deleteFile';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 import { toCertificateDateInputValue } from '@/features/certificate/utils/certificateDates';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_CERTIFICATE_FILE_MB = 20;
@@ -166,8 +167,8 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
 
       setUploadedFile(uploaded);
       setUploadedFileId(uploaded.id);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.certificate.uploadFailed);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.certificate.uploadFailed));
     } finally {
       setIsUploadingFile(false);
     }
@@ -180,8 +181,8 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
       await deleteFile(uploadedFile.id);
       setUploadedFile(null);
       setUploadedFileId(null);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.certificate.deleteFileFailed);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.certificate.deleteFileFailed));
     }
   };
 
@@ -194,11 +195,17 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="relative max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-[18px] bg-white p-6 shadow-xl">
+    <ModalShell
+      onClose={onClose}
+      closeOnBackdrop={false}
+      closeOnEscape={false}
+      ariaLabelledBy="edit-certificate-title"
+      overlayClassName="z-50 bg-black/40 px-4"
+      dialogClassName="relative max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-[18px] bg-white p-6 shadow-xl"
+    >
         <ModalCloseButton onClick={onClose} disabled={isBusy} />
 
-        <h3 className="mb-5 text-center text-[22px] font-bold text-[var(--color-blue-dark)]">
+        <h3 id="edit-certificate-title" className="mb-5 text-center text-[22px] font-bold text-[var(--color-blue-dark)]">
           Редактирование сертификата
         </h3>
 
@@ -346,7 +353,6 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
             </div>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

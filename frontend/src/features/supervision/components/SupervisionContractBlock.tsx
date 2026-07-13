@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
 import { uploadFile } from '@/features/files/api/uploadFile';
@@ -11,6 +10,8 @@ import {
 } from '../hooks/useSupervisionContracts';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_SIZE_MB = 10;
@@ -122,8 +123,8 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
       setSupervisorInput('');
       setSelectedSupervisorId(undefined);
       setSelectedFile(null);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось загрузить контракт');
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, 'Не удалось загрузить контракт'));
     } finally {
       setUploading(false);
     }
@@ -140,8 +141,8 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
     try {
       await deleteContract.mutateAsync(id);
       toast.success('Контракт удален');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось удалить контракт');
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, 'Не удалось удалить контракт'));
     }
   };
 
@@ -158,14 +159,15 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
 
   if (!open) return null;
 
-  const modal = (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 px-4 py-6">
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="supervision-contract-title"
-        className="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[16px] bg-white px-5 pb-5 pt-4 text-[#1F305E] shadow-[0_16px_40px_rgba(0,0,0,0.24)] sm:px-7 sm:pb-7"
-      >
+  return (
+    <ModalShell
+      onClose={onClose}
+      closeOnBackdrop={false}
+      closeOnEscape={false}
+      ariaLabelledBy="supervision-contract-title"
+      overlayClassName="z-[1000] bg-black/70 px-4 py-6"
+      dialogClassName="relative max-h-[90vh] w-full max-w-[980px] overflow-y-auto rounded-[16px] bg-white px-5 pb-5 pt-4 text-[#1F305E] shadow-[0_16px_40px_rgba(0,0,0,0.24)] sm:px-7 sm:pb-7"
+    >
         <ModalCloseButton onClick={onClose} iconClassName="h-6 w-6" />
 
         <h2
@@ -328,9 +330,6 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
               </div>
             </div>
         </div>
-      </section>
-    </div>
+    </ModalShell>
   );
-
-  return createPortal(modal, document.body);
 }

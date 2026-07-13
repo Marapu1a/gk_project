@@ -13,6 +13,7 @@ import { AdminUserNotesModal } from './AdminUserNotesModal';
 import { useUserActionLog } from '../hooks/useUserActionLog';
 import { ReviewerRelationsOverviewBlock } from './ReviewerRelationsOverviewBlock';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 
 export default function UserDetails() {
   const { id } = useParams<{ id: string }>();
@@ -149,11 +150,16 @@ export default function UserDetails() {
       ) : null}
 
       {isUserDataOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-          <div className="relative max-h-[90vh] w-full max-w-[960px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+        <ModalShell
+          onClose={() => setIsUserDataOpen(false)}
+          closeOnBackdrop={false}
+          ariaLabelledBy="admin-user-data-title"
+          overlayClassName="z-50 bg-black/45 px-4 py-6"
+          dialogClassName="relative max-h-[90vh] w-full max-w-[960px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft"
+        >
             <ModalCloseButton onClick={() => setIsUserDataOpen(false)} />
             <div className="mb-4 flex items-center justify-between gap-4">
-              <h3 className="dashboard-v2-title">Данные пользователя</h3>
+              <h3 id="admin-user-data-title" className="dashboard-v2-title">Данные пользователя</h3>
             </div>
             <UserBasicBlock
               userId={data.id}
@@ -171,25 +177,28 @@ export default function UserDetails() {
               createdAt={data.createdAt}
               groupName={activeGroup}
             />
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
 
       {isStatusOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
-          <div className="relative max-h-[90vh] w-full max-w-[1120px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft">
+        <ModalShell
+          onClose={() => setIsStatusOpen(false)}
+          closeOnBackdrop={false}
+          ariaLabelledBy="admin-user-status-title"
+          overlayClassName="z-50 bg-black/45 px-4 py-6"
+          dialogClassName="relative max-h-[90vh] w-full max-w-[1120px] overflow-y-auto rounded-[22px] bg-white p-5 text-[var(--color-blue-dark)] shadow-soft"
+        >
             <ModalCloseButton onClick={() => setIsStatusOpen(false)} />
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
-                <h3 className="dashboard-v2-title">Статус и сертификат</h3>
+                <h3 id="admin-user-status-title" className="dashboard-v2-title">Статус и сертификат</h3>
                 <p className="mt-1 text-[13px] font-semibold text-[#8D96B5]">
                   Управление группой, активным процессом и сертификатом пользователя.
                 </p>
               </div>
             </div>
             <AdminUserGroupsBlock userId={data.id} />
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
     </div>
   );

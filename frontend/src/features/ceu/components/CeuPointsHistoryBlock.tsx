@@ -3,6 +3,7 @@ import { useCeuHistory } from '../hooks/useCeuHistory';
 import type { CeuHistoryItem } from '../api/getCeuHistory';
 import { displayCeuEventName } from '../utils/displayCeuEventName';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 const categoryLabels: Record<string, string> = {
@@ -137,11 +138,17 @@ function CeuDetailsModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
-      <div className="relative max-h-[90vh] w-full max-w-[1080px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
+    <ModalShell
+      onClose={onClose}
+      closeOnBackdrop={false}
+      closeOnEscape={false}
+      ariaLabelledBy="ceu-history-details-title"
+      overlayClassName="z-50 bg-black/70 px-4 py-6"
+      dialogClassName="relative max-h-[90vh] w-full max-w-[1080px] overflow-y-auto rounded-[16px] bg-white px-6 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)]"
+    >
         <ModalCloseButton onClick={onClose} />
 
-        <h3 className="mb-6 text-center text-[22px] font-extrabold text-[#1F305E]">
+        <h3 id="ceu-history-details-title" className="mb-6 text-center text-[22px] font-extrabold text-[#1F305E]">
           {record.isAdminCorrection ? 'Детали корректировки' : 'Детали заявки'}
         </h3>
 
@@ -214,8 +221,7 @@ function CeuDetailsModal({
             ) : null}
           </div>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
 

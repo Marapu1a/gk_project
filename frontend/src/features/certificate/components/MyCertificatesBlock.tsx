@@ -1,6 +1,5 @@
 // src/features/certificate/components/MyCertificatesBlock.tsx
-import { useEffect, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, type ReactNode } from 'react';
 import { Mail, Printer, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -8,6 +7,7 @@ import { useMyCertificates } from '../hooks/useMyCertificates';
 import type { CertificateDTO } from '../api/issueCertificate';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 import { usePdfPreview } from '@/hooks/usePdfPreview';
 
 function fileUrl(cert: CertificateDTO) {
@@ -91,15 +91,6 @@ function CertificatePreview({ cert, className = '' }: { cert: CertificateDTO; cl
 function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: () => void }) {
   const url = fileUrl(cert);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
   const handlePrint = () => {
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
@@ -127,16 +118,13 @@ function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: ()
     toast.info(UI_TOAST_MESSAGES.certificate.sendUnavailable);
   };
 
-  const modal = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-5">
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        onClick={onClose}
-        aria-label="Закрыть просмотр сертификата"
-      />
-
-      <div className="relative z-10 flex max-h-[96vh] w-full max-w-[760px] flex-col items-center">
+  return (
+    <ModalShell
+      onClose={onClose}
+      ariaLabelledBy="my-certificate-preview-title"
+      overlayClassName="z-50 bg-black/75 px-4 py-5"
+      dialogClassName="relative flex max-h-[96vh] w-full max-w-[760px] flex-col items-center"
+    >
         <ModalCloseButton
           onClick={onClose}
           variant="light"
@@ -144,6 +132,8 @@ function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: ()
           positionClassName="absolute right-[34px] top-[-34px] flex h-11 w-11"
           className="opacity-80"
         />
+
+        <h2 id="my-certificate-preview-title" className="sr-only">Просмотр сертификата</h2>
 
         <div className="flex max-h-[calc(96vh-82px)] w-full items-center justify-center">
           <div className="rounded-[6px] bg-white p-2 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
@@ -174,11 +164,8 @@ function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: ()
             </IconAction>
           </div>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
-
-  return createPortal(modal, document.body);
 }
 
 function IconAction({

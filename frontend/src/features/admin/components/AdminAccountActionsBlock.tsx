@@ -9,7 +9,9 @@ import { useUpdateUserVisibility } from '../hooks/useUpdateUserVisibility';
 import { useUserActionLog } from '../hooks/useUserActionLog';
 import { UI_TOAST_MESSAGES } from '../../../utils/uiMessages';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 import { formatDateTimeRu as formatDate } from '@/utils/dateFormat';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 
 type ActionKey = 'registryVisible' | 'archived' | 'adminRole';
 
@@ -147,8 +149,8 @@ export function AdminAccountActionsBlock({
       resetSelected();
       queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] });
       toast.success(UI_TOAST_MESSAGES.admin.actionsDone);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.actionFailed);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.admin.actionFailed));
     }
   };
 
@@ -213,11 +215,16 @@ export function AdminAccountActionsBlock({
       ) : null}
 
       {isHistoryOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4">
-          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[18px] bg-white p-5 pr-14 shadow-soft">
+        <ModalShell
+          onClose={() => setIsHistoryOpen(false)}
+          closeOnBackdrop={false}
+          ariaLabelledBy="admin-action-history-title"
+          overlayClassName="z-50 bg-black/35 px-4"
+          dialogClassName="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[18px] bg-white p-5 pr-14 shadow-soft"
+        >
             <ModalCloseButton onClick={() => setIsHistoryOpen(false)} />
             <div className="mb-4 flex items-center justify-between gap-4">
-              <h3 className="dashboard-v2-title">История действий администратора</h3>
+              <h3 id="admin-action-history-title" className="dashboard-v2-title">История действий администратора</h3>
             </div>
 
             <div className="max-h-[420px] overflow-auto rounded-[14px] border border-[var(--color-blue-soft)]">
@@ -262,8 +269,7 @@ export function AdminAccountActionsBlock({
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
+        </ModalShell>
       ) : null}
     </div>
   );

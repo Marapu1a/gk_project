@@ -1,5 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { CheckCircle, Mail, Printer, Send, XCircle } from 'lucide-react';
 import { useRegistryProfile } from '../hooks/useRegistryProfile';
@@ -7,6 +6,7 @@ import type { RegistryCertificate } from '../api/getRegistryProfile';
 import { SpecialistContactModal } from './SpecialistContactModal';
 import { formatCertificateDate, isCertificateDateActive } from '@/features/certificate/utils/certificateDates';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 import { usePdfPreview } from '@/hooks/usePdfPreview';
 
 const COPY_ICON = '/dashboard-v2/icon_copy.svg';
@@ -207,14 +207,6 @@ function CertificatePreview({ cert, className = '' }: { cert: RegistryCertificat
 function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertificate; onClose: () => void }) {
   const url = certificateUrl(cert);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
   const handlePrint = () => {
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
@@ -241,11 +233,13 @@ function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertifica
     toast.info('Отправка пока не работает. Скачайте сертификат и отправьте файл вручную.');
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-5">
-      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Закрыть просмотр сертификата" />
-
-      <div className="relative z-10 flex max-h-[96vh] w-full max-w-[760px] flex-col items-center overflow-y-auto">
+  return (
+    <ModalShell
+      onClose={onClose}
+      ariaLabelledBy="registry-certificate-preview-title"
+      overlayClassName="z-50 bg-black/75 px-4 py-5"
+      dialogClassName="relative flex max-h-[96vh] w-full max-w-[760px] flex-col items-center overflow-y-auto"
+    >
         <ModalCloseButton
           onClick={onClose}
           variant="light"
@@ -253,6 +247,8 @@ function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertifica
           positionClassName="absolute right-[34px] top-[-34px] flex h-11 w-11"
           className="opacity-80"
         />
+
+        <h2 id="registry-certificate-preview-title" className="sr-only">Просмотр сертификата</h2>
 
         <div className="flex max-h-[calc(96vh-82px)] w-full items-center justify-center">
           <div className="rounded-[6px] bg-white p-2 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
@@ -281,9 +277,7 @@ function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertifica
             </IconAction>
           </div>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }
 
@@ -298,22 +292,16 @@ function CertificateCheckModal({
 }) {
   const active = isCertificateActive(cert);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-5">
-      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Закрыть проверку сертификата" />
-
-      <div className="relative z-10 max-h-[90vh] w-full max-w-[750px] overflow-y-auto rounded-[22px] bg-white px-7 py-7 shadow-soft">
+  return (
+    <ModalShell
+      onClose={onClose}
+      ariaLabelledBy="certificate-check-title"
+      overlayClassName="z-50 bg-black/70 px-4 py-5"
+      dialogClassName="relative max-h-[90vh] w-full max-w-[750px] overflow-y-auto rounded-[22px] bg-white px-7 py-7 shadow-soft"
+    >
         <ModalCloseButton onClick={onClose} iconClassName="h-7 w-7" />
 
-        <h2 className="mb-6 flex items-center justify-center gap-2 text-[30px] font-extrabold leading-none text-[var(--color-blue-dark)]">
+        <h2 id="certificate-check-title" className="mb-6 flex items-center justify-center gap-2 text-[30px] font-extrabold leading-none text-[var(--color-blue-dark)]">
           {active ? (
             <CheckCircle size={28} className="text-[var(--color-green-brand)]" />
           ) : (
@@ -352,9 +340,7 @@ function CertificateCheckModal({
             <CertificateField label="Орган" value="ЦС ПАП" />
           </dl>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }
 

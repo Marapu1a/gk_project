@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 import { PageNav } from '@/components/PageNav';
 import { DocumentReviewForm } from '@/features/documentReview/components/DocumentReviewForm';
 import { useGetDocReviewReq } from '@/features/documentReview/hooks/useGetDocReviewReq';
@@ -351,8 +351,15 @@ function DeletionRequestModal({
 }) {
   const [comment, setComment] = useState('');
 
-  const modal = (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/75 px-4">
+  return (
+    <ModalShell
+      onClose={onClose}
+      closeOnBackdrop={false}
+      closeOnEscape={false}
+      ariaLabelledBy="document-deletion-request-title"
+      overlayClassName="z-[1000] bg-black/75 px-4"
+      dialogClassName="max-h-[90vh] w-full max-w-[430px] overflow-y-auto rounded-[16px] bg-white px-5 py-5 shadow-[0_16px_40px_rgba(0,0,0,0.22)]"
+    >
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -363,11 +370,11 @@ function DeletionRequestModal({
           }
           onSubmit(trimmed);
         }}
-        className="relative max-h-[90vh] w-full max-w-[430px] overflow-y-auto rounded-[16px] bg-white px-5 py-5 shadow-[0_16px_40px_rgba(0,0,0,0.22)]"
+        className="relative"
       >
         <ModalCloseButton onClick={onClose} disabled={isPending} />
 
-        <h2 className="text-center text-[22px] font-extrabold leading-tight text-[var(--color-blue-dark)]">
+        <h2 id="document-deletion-request-title" className="text-center text-[22px] font-extrabold leading-tight text-[var(--color-blue-dark)]">
           Запросить удаление
         </h2>
         <p className="mt-3 truncate text-center text-[13px] text-[#8D96B5]" title={fileName}>
@@ -404,8 +411,6 @@ function DeletionRequestModal({
           </button>
         </div>
       </form>
-    </div>
+    </ModalShell>
   );
-
-  return createPortal(modal, document.body);
 }

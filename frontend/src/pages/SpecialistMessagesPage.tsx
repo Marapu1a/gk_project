@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageNav } from '@/components/PageNav';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import {
   useDeleteSpecialistContactMessage,
@@ -15,6 +15,7 @@ import type {
   SpecialistContactRequestType,
 } from '@/features/registry/api/contactMessages';
 import { formatDateTimeRu as formatDateTime } from '@/utils/dateFormat';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 
 const REQUEST_TYPE_LABELS: Record<SpecialistContactRequestType, string> = {
   PARENT_CONSULTATION: 'Консультация родителя',
@@ -64,8 +65,8 @@ export default function SpecialistMessagesPage() {
       await deleteMessage.mutateAsync(message.id);
       if (selected?.id === message.id) setSelected(null);
       toast.success('Сообщение удалено.');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось удалить сообщение.');
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, 'Не удалось удалить сообщение.'));
     }
   };
 
@@ -238,19 +239,16 @@ function MessageDetailsModal({
   message: SpecialistContactMessage;
   onClose: () => void;
 }) {
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-5">
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        onClick={onClose}
-        aria-label="Закрыть сообщение"
-      />
-
-      <section className="relative z-10 max-h-[90vh] w-full max-w-[760px] overflow-y-auto rounded-[22px] bg-white px-6 py-7 shadow-soft md:px-8">
+  return (
+    <ModalShell
+      onClose={onClose}
+      ariaLabelledBy="specialist-message-details-title"
+      overlayClassName="z-50 bg-black/70 px-4 py-5"
+      dialogClassName="relative max-h-[90vh] w-full max-w-[760px] overflow-y-auto rounded-[22px] bg-white px-6 py-7 shadow-soft md:px-8"
+    >
         <ModalCloseButton onClick={onClose} label="Закрыть сообщение" iconClassName="h-7 w-7" />
 
-        <h2 className="mb-6 text-center text-[26px] font-extrabold leading-tight text-[var(--color-blue-dark)]">
+        <h2 id="specialist-message-details-title" className="mb-6 text-center text-[26px] font-extrabold leading-tight text-[var(--color-blue-dark)]">
           Сообщение из реестра
         </h2>
 
@@ -267,9 +265,7 @@ function MessageDetailsModal({
             {message.message}
           </p>
         </div>
-      </section>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }
 

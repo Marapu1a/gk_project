@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
+import { ModalShell } from '@/components/ModalShell';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { useCreateSpecialistContactMessage } from '../hooks/useSpecialistContactMessages';
 import type { SpecialistContactRequestType } from '../api/contactMessages';
 
@@ -48,17 +49,6 @@ export function SpecialistContactModal({ specialistId, specialistName, open, onC
     payload.message.length >= 10 &&
     !mutation.isPending;
 
-  useEffect(() => {
-    if (!open) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose, open]);
-
   if (!open) return null;
 
   const handleSubmit = async () => {
@@ -77,19 +67,21 @@ export function SpecialistContactModal({ specialistId, specialistName, open, onC
         message: '',
       });
       onClose();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось отправить сообщение.');
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, 'Не удалось отправить сообщение.'));
     }
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-5">
-      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Закрыть форму" />
-
-      <div className="relative z-10 max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-[22px] bg-white px-6 py-7 shadow-soft md:px-8">
+  return (
+    <ModalShell
+      onClose={onClose}
+      ariaLabelledBy="specialist-contact-title"
+      overlayClassName="z-50 bg-black/70 px-4 py-5"
+      dialogClassName="relative max-h-[90vh] w-full max-w-[680px] overflow-y-auto rounded-[22px] bg-white px-6 py-7 shadow-soft md:px-8"
+    >
         <ModalCloseButton onClick={onClose} disabled={mutation.isPending} iconClassName="h-7 w-7" />
 
-        <h2 className="mb-7 text-center text-[28px] font-extrabold leading-tight text-[var(--color-blue-dark)]">
+        <h2 id="specialist-contact-title" className="mb-7 text-center text-[28px] font-extrabold leading-tight text-[var(--color-blue-dark)]">
           Связаться со специалистом
         </h2>
 
@@ -164,8 +156,6 @@ export function SpecialistContactModal({ specialistId, specialistName, open, onC
             Отправить
           </button>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }
