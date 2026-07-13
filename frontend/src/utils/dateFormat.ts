@@ -88,3 +88,14 @@ export function formatTimeRu(value: DateValue, fallback = '—') {
   const date = parseDate(value);
   return date ? timeFormatter.format(date) : fallback;
 }
+
+export function toAppDateInputValue(value: Date = new Date()) {
+  if (Number.isNaN(value.getTime())) return '';
+
+  const parts = dateFormatter.formatToParts(value);
+  const day = parts.find((part) => part.type === 'day')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const year = parts.find((part) => part.type === 'year')?.value;
+
+  return day && month && year ? `${year}-${month}-${day}` : '';
+}

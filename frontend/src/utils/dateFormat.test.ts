@@ -4,6 +4,7 @@ import {
   formatDateTimeRu,
   formatOptionalDateRu,
   formatTimeRu,
+  toAppDateInputValue,
 } from './dateFormat';
 
 describe('dateFormat', () => {
@@ -35,5 +36,10 @@ describe('dateFormat', () => {
   it('rejects impossible calendar dates', () => {
     expect(formatDateRu('2026-02-29')).toBe('—');
     expect(formatDateRu('2024-02-29')).toBe('29.02.2024');
+  });
+
+  it('builds the current input date in Moscow instead of UTC', () => {
+    expect(toAppDateInputValue(new Date('2026-01-01T21:30:00.000Z'))).toBe('2026-01-02');
+    expect(toAppDateInputValue(new Date('invalid'))).toBe('');
   });
 });

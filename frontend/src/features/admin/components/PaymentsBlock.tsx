@@ -6,10 +6,6 @@ import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { formatDateTimeRu as formatDateTime } from '@/utils/dateFormat';
 import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
 import { useUpdatePaymentStatus } from '@/features/payment/hooks/useUpdatePaymentStatus';
-import { userPaymentsQueryKey } from '@/features/payment/hooks/useUserPayments';
-import { userPaymentsByIdQueryKey } from '@/features/payment/hooks/useUserPaymentsById';
-import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
-import { adminUserDetailsQueryKey } from '@/features/admin/hooks/useUserDetails';
 import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
 import type {
   PaymentStatus,
@@ -80,16 +76,8 @@ export default function PaymentsBlock({
   const queryClient = useQueryClient();
   const [pendingAction, setPendingAction] = useState<PaymentAction>(null);
 
-  const invalidate = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['payments'] }),
-      queryClient.invalidateQueries({ queryKey: userPaymentsQueryKey }),
-      queryClient.invalidateQueries({ queryKey: userPaymentsByIdQueryKey(userId) }),
-      queryClient.invalidateQueries({ queryKey: adminUserDetailsQueryKey(userId) }),
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] }),
-      queryClient.invalidateQueries({ queryKey: currentUserQueryKey }),
-    ]);
-  };
+  const invalidateActionLog = () =>
+    queryClient.invalidateQueries({ queryKey: ['admin', 'user', 'action-log', userId] });
 
   const visiblePayments = useMemo(() => {
     if (!activeCycle) return [];
@@ -187,7 +175,7 @@ export default function PaymentsBlock({
         status: nextStatus,
         notify,
       });
-      await invalidate();
+      await invalidateActionLog();
       setPendingAction(null);
       toast.success(
         nextStatus === 'PAID'

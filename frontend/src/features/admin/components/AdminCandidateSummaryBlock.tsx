@@ -1,7 +1,6 @@
 import {
   useEffect,
   useRef,
-  useMemo,
   useState,
   type FocusEvent,
   type MouseEvent,
@@ -11,19 +10,21 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  docReviewStatusLabels,
-  examStatusLabels,
   formatCertificationLevelName,
   targetLevelLabels,
 } from '@/utils/labels';
 import { formatDateRu as formatDate } from '@/utils/dateFormat';
 import { formatCertificateDate } from '@/features/certificate/utils/certificateDates';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
-import { findPaymentForTarget } from '@/features/payment/model/paymentPolicy';
 import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
+import type { AdminUserDetails } from '@/features/admin/api/getUserDetails';
+import {
+  buildAdminCandidateSummary,
+  type CandidateSummaryTone,
+} from '@/features/admin/model/adminCandidateSummary';
 
 type Props = {
-  user: any;
+  user: AdminUserDetails;
   activeGroupName: string | null;
   onOpenStatusManagement?: () => void;
 };
@@ -33,42 +34,7 @@ const cycleTypeLabels: Record<string, string> = {
   RENEWAL: 'ресертификация',
 };
 
-function formatNumber(value?: number | null) {
-  if (value == null) return '0';
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
-function capToRequired(current?: number | null, required?: number | null) {
-  const currentValue = Number(current ?? 0);
-  const requiredValue = Number(required ?? 0);
-
-  if (requiredValue <= 0) return Math.max(0, currentValue);
-  return Math.min(Math.max(0, currentValue), requiredValue);
-}
-
-function progressText(
-  current?: number | null,
-  required?: number | null,
-  options?: { cap?: boolean },
-) {
-  const currentValue =
-    options?.cap === false ? Math.max(0, Number(current ?? 0)) : capToRequired(current, required);
-  return `${formatNumber(currentValue)} / ${formatNumber(required)}`;
-}
-
-function buildUrl(path: string, params: Record<string, string | number | null | undefined>) {
-  const searchParams = new URLSearchParams();
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value == null || value === '') return;
-    searchParams.set(key, String(value));
-  });
-
-  const query = searchParams.toString();
-  return query ? `${path}?${query}` : path;
-}
-
-function resolveTargetLabel(user: any) {
+function resolveTargetLabel(user: AdminUserDetails) {
   const activeCycle = user.activeCycle;
   const targetLevel = activeCycle?.targetLevel ?? user.targetLevel;
 
@@ -80,7 +46,7 @@ function resolveTargetLabel(user: any) {
   return targetLevelLabels[targetLevel] ?? targetLevel;
 }
 
-function resolveProcessLabel(user: any, activeGroupName: string | null) {
+function resolveProcessLabel(user: AdminUserDetails, activeGroupName: string | null) {
   const cycle = user.activeCycle;
   if (!cycle) return 'Нет активного процесса';
 
@@ -96,7 +62,7 @@ function resolveProcessLabel(user: any, activeGroupName: string | null) {
   return `${cycleTypeLabels[cycle.type] ?? cycle.type} — ${baseLevel} · с ${formatDate(cycle.startedAt)}`;
 }
 
-function latestCertificateText(certificate: any) {
+function latestCertificateText(certificate: AdminUserDetails['latestCertificate']) {
   if (!certificate) return 'нет';
 
   const group = certificate.group?.name
@@ -108,82 +74,7 @@ function latestCertificateText(certificate: any) {
   return `${group} · ${expiresAt}`;
 }
 
-function countPendingHours(user: any, mode: 'supervision' | 'mentorship') {
-  const activeCycleId = user.activeCycle?.id;
-
-  return (user.supervisionRecords ?? []).reduce((sum: number, record: any) => {
-    if (activeCycleId && record.cycleId !== activeCycleId) return sum;
-
-    const count = (record.hours ?? []).filter((hour: any) => {
-      if (hour.status !== 'UNCONFIRMED') return false;
-      const isMentorship = hour.type === 'SUPERVISOR';
-      return mode === 'mentorship' ? isMentorship : !isMentorship;
-    }).length;
-
-    return sum + count;
-  }, 0);
-}
-
-function reviewerWorkloadValue(
-  user: any,
-  key: 'supervisionPendingRequests' | 'mentorshipPendingRequests',
-) {
-  return Number(user.reviewerWorkload?.[key] ?? 0);
-}
-
-function getRenewalPayment(user: any) {
-  const cycle = user.activeCycle;
-  if (!cycle || cycle.type !== 'RENEWAL') return null;
-
-  return findPaymentForTarget(user.payments ?? [], 'RENEWAL', cycle.targetLevel) ?? null;
-}
-
-function documentStatus(user: any) {
-  const readiness = user.examReadiness?.documents;
-  const latestRequest = readiness?.request ?? null;
-  const hasArchivedRequests = Boolean(user.documentReviewRequests?.length);
-
-  if (readiness?.ready)
-    return {
-      label: 'Принято',
-      tone: 'good' as const,
-      to: latestRequest?.adminUrl,
-      mode: 'history' as const,
-    };
-  if (latestRequest) {
-    const label =
-      latestRequest.status === 'CONFIRMED'
-        ? 'Принято'
-        : latestRequest.status === 'REJECTED'
-          ? 'Отклонено'
-          : 'На проверке';
-
-    return {
-      label: docReviewStatusLabels[latestRequest.status] ?? label,
-      tone: latestRequest.status === 'REJECTED' ? ('bad' as const) : ('warn' as const),
-      to: latestRequest.adminUrl ?? `/admin/document-review/${latestRequest.id}`,
-      mode:
-        latestRequest.status === 'UNCONFIRMED' || latestRequest.status === 'PARTIALLY_CONFIRMED'
-          ? ('active' as const)
-          : ('history' as const),
-    };
-  }
-
-  if (user.activeCycle && hasArchivedRequests) {
-    return {
-      label: 'Нет заявки активной сертификации',
-      tone: 'bad' as const,
-      to: null,
-      mode: 'history' as const,
-    };
-  }
-
-  return { label: 'Нет заявки', tone: 'bad' as const, to: null, mode: 'active' as const };
-}
-
-type SummaryTone = 'good' | 'warn' | 'bad' | 'soft';
-
-const summaryStatusTone: Record<SummaryTone, StatusPillTone> = {
+const summaryStatusTone: Record<CandidateSummaryTone, StatusPillTone> = {
   good: 'success',
   warn: 'warning',
   bad: 'danger',
@@ -198,7 +89,7 @@ function SummaryLine({
 }: {
   label: string;
   value: ReactNode;
-  tone?: SummaryTone;
+  tone?: CandidateSummaryTone;
   to?: string | null;
 }) {
   const rowClass = to
@@ -234,247 +125,14 @@ export function AdminCandidateSummaryBlock({
   activeGroupName,
   onOpenStatusManagement,
 }: Props) {
-  const readiness = user.examReadiness;
-  const docs = documentStatus(user);
   const latestCertificate = user.latestCertificate;
-  const examApplication = user.activeCycleExamApplication;
   const [openTooltipKey, setOpenTooltipKey] = useState<string | null>(null);
-  const supervisionCurrent = readiness?.supervision?.current;
-  const supervisionRequired = readiness?.supervision?.required;
-  const ceuCurrent = readiness?.ceu?.current;
-  const ceuRequired = readiness?.ceu?.required;
-  const activeCycle = user.activeCycle;
-  const isRenewal = activeCycle?.type === 'RENEWAL';
-  const renewalPayment = getRenewalPayment(user);
-
   const activeCycleText = resolveProcessLabel(user, activeGroupName);
-
-  const pendingSupervision = countPendingHours(user, 'supervision');
-  const pendingMentorship = countPendingHours(user, 'mentorship');
-  const userSearch = user.email || user.fullName || '';
-  const documentReviewUrl = buildUrl('/admin/document-review', {
-    search: userSearch,
-    mode: docs.mode,
-  });
-  const supervisionUrl = buildUrl('/admin/supervision-candidates', {
-    kind: 'supervision',
-    search: userSearch,
-  });
-  const supervisionNeedsReviewUrl = buildUrl('/admin/supervision-candidates', {
-    kind: 'supervision',
-    search: userSearch,
-    hourState: 'NEEDS_REVIEW',
-  });
-  const mentorshipUrl = buildUrl('/admin/supervision-candidates', {
-    kind: 'mentorship',
-    search: userSearch,
-  });
-  const mentorshipNeedsReviewUrl = buildUrl('/admin/supervision-candidates', {
-    kind: 'mentorship',
-    search: userSearch,
-    hourState: 'NEEDS_REVIEW',
-  });
-  const reviewerSupervisionNeedsReviewUrl = buildUrl('/admin/supervision-candidates', {
-    kind: 'supervision',
-    reviewerSearch: userSearch,
-    hourState: 'NEEDS_REVIEW',
-  });
-  const reviewerMentorshipNeedsReviewUrl = buildUrl('/admin/supervision-candidates', {
-    kind: 'mentorship',
-    reviewerSearch: userSearch,
-    hourState: 'NEEDS_REVIEW',
-  });
-  const ceuReviewUrl = buildUrl('/review/ceu', { search: userSearch });
-  const certificateIssueUrl = buildUrl('/certificate', { email: user.email });
-  const examApplicationsUrl = buildUrl('/exam-applications', {
-    search: userSearch,
-    status: 'ALL',
-  });
-  const canReviewSupervision =
-    activeGroupName === 'Супервизор' || activeGroupName === 'Опытный Супервизор';
-  const canReviewMentorship = activeGroupName === 'Опытный Супервизор';
-  const reviewerSupervisionPending = reviewerWorkloadValue(user, 'supervisionPendingRequests');
-  const reviewerMentorshipPending = reviewerWorkloadValue(user, 'mentorshipPendingRequests');
-
-  const summaryLines = useMemo(() => {
-    if (!activeCycle) return [];
-
-    const lines: Array<{
-      label: string;
-      value: ReactNode;
-      tone: 'good' | 'warn' | 'bad' | 'soft';
-      to?: string | null;
-    }> = [];
-
-    if (!isRenewal) {
-      lines.push({
-        label: 'Документы',
-        value: docs.label,
-        tone: docs.tone,
-        to: documentReviewUrl,
-      });
-    }
-
-    if ((supervisionRequired?.practice ?? 0) > 0) {
-      lines.push({
-        label: 'Часы практики',
-        value: progressText(supervisionCurrent?.practice, supervisionRequired?.practice),
-        tone:
-          (supervisionCurrent?.practice ?? 0) >= (supervisionRequired?.practice ?? 0)
-            ? 'good'
-            : 'bad',
-        to: supervisionUrl,
-      });
-    }
-
-    if ((supervisionRequired?.supervision ?? 0) > 0) {
-      lines.push({
-        label: 'Часы супервизии',
-        value: progressText(supervisionCurrent?.supervision, supervisionRequired?.supervision),
-        tone:
-          (supervisionCurrent?.supervision ?? 0) >= (supervisionRequired?.supervision ?? 0)
-            ? 'good'
-            : 'bad',
-        to: supervisionUrl,
-      });
-      lines.push({
-        label: 'Заявки часов на проверке',
-        value: pendingSupervision,
-        tone: pendingSupervision > 0 ? 'warn' : 'good',
-        to: supervisionNeedsReviewUrl,
-      });
-    }
-
-    if ((supervisionRequired?.supervisor ?? 0) > 0) {
-      lines.push({
-        label: 'Часы менторства',
-        value: progressText(supervisionCurrent?.mentor, supervisionRequired?.supervisor),
-        tone:
-          (supervisionCurrent?.mentor ?? 0) >= (supervisionRequired?.supervisor ?? 0)
-            ? 'good'
-            : 'bad',
-        to: mentorshipUrl,
-      });
-      lines.push({
-        label: 'Заявки менторства на проверке',
-        value: pendingMentorship,
-        tone: pendingMentorship > 0 ? 'warn' : 'good',
-        to: mentorshipNeedsReviewUrl,
-      });
-    }
-
-    if ((ceuRequired?.total ?? 0) > 0) {
-      lines.push({
-        label: 'CEU-баллы',
-        value: progressText(ceuCurrent?.total, ceuRequired?.total, { cap: false }),
-        tone: readiness?.ceu?.ready ? 'good' : 'bad',
-        to: ceuReviewUrl,
-      });
-    }
-
-    if (isRenewal) {
-      lines.push({
-        label: 'Оплата ресертификации',
-        value:
-          renewalPayment?.status === 'PAID'
-            ? 'Оплачено'
-            : renewalPayment?.status === 'PENDING'
-              ? 'На подтверждении'
-              : 'Не оплачено',
-        tone:
-          renewalPayment?.status === 'PAID'
-            ? 'good'
-            : renewalPayment?.status === 'PENDING'
-              ? 'warn'
-              : 'bad',
-      });
-    } else if ((readiness?.payments?.items ?? []).length > 0) {
-      lines.push({
-        label: 'Оплаты',
-        value: readiness?.payments?.ready ? 'Оплачено' : 'Есть неоплаченные',
-        tone: readiness?.payments?.ready ? 'good' : 'bad',
-      });
-    }
-
-    lines.push({
-      label: 'Заявка на экзамен',
-      value: examApplication
-        ? (examStatusLabels[examApplication.status] ?? examApplication.status)
-        : 'Не подана',
-      tone: examApplication?.status === 'APPROVED' ? 'good' : examApplication ? 'warn' : 'bad',
-      to: examApplicationsUrl,
-    });
-
-    return lines;
-  }, [
-    activeCycle,
-    ceuCurrent?.total,
-    ceuRequired?.total,
-    ceuReviewUrl,
-    documentReviewUrl,
-    docs.label,
-    docs.tone,
-    examApplication,
-    examApplicationsUrl,
-    isRenewal,
-    mentorshipNeedsReviewUrl,
-    mentorshipUrl,
-    pendingMentorship,
-    pendingSupervision,
-    readiness?.ceu?.ready,
-    readiness?.payments?.items,
-    readiness?.payments?.ready,
-    renewalPayment?.status,
-    supervisionCurrent?.mentor,
-    supervisionCurrent?.practice,
-    supervisionCurrent?.supervision,
-    supervisionNeedsReviewUrl,
-    supervisionRequired?.practice,
-    supervisionRequired?.supervision,
-    supervisionRequired?.supervisor,
-    supervisionUrl,
-  ]);
-
-  const reviewerLines = useMemo(() => {
-    const lines: Array<{
-      label: string;
-      value: ReactNode;
-      tone: 'good' | 'warn' | 'bad' | 'soft';
-      to?: string | null;
-    }> = [];
-
-    if (canReviewSupervision) {
-      lines.push({
-        label: 'Проверка часов',
-        value: reviewerSupervisionPending,
-        tone: reviewerSupervisionPending > 0 ? 'warn' : 'good',
-        to: reviewerSupervisionNeedsReviewUrl,
-      });
-    }
-
-    if (canReviewMentorship) {
-      lines.push({
-        label: 'Проверка менторства',
-        value: reviewerMentorshipPending,
-        tone: reviewerMentorshipPending > 0 ? 'warn' : 'good',
-        to: reviewerMentorshipNeedsReviewUrl,
-      });
-    }
-
-    return lines;
-  }, [
-    canReviewMentorship,
-    canReviewSupervision,
-    reviewerMentorshipNeedsReviewUrl,
-    reviewerMentorshipPending,
-    reviewerSupervisionNeedsReviewUrl,
-    reviewerSupervisionPending,
-  ]);
-
-  const requiresAttention =
-    !activeCycle ||
-    summaryLines.some((line) => line.tone === 'bad' || line.tone === 'warn') ||
-    reviewerLines.some((line) => line.tone === 'warn');
+  const certificateIssueUrl = `/certificate?email=${encodeURIComponent(user.email)}`;
+  const { summaryLines, reviewerLines, requiresAttention } = buildAdminCandidateSummary(
+    user,
+    activeGroupName,
+  );
 
   return (
     <section className="rounded-[14px] bg-white px-3 py-4 shadow-soft sm:rounded-[22px] sm:px-6 sm:py-5">

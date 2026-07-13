@@ -5,18 +5,13 @@ import {
   type SubmitSupervisionRequestResponse,
 } from '../api/submitSupervisionRequest';
 import type { SupervisionRequestFormData } from '../validation/supervisionRequestSchema';
-import { currentUserQueryKey } from '@/features/auth/hooks/useCurrentUser';
-import { supervisionSummaryQueryKey } from './useSupervisionSummary';
+import { invalidateSupervisionSubmissionQueries } from '../model/supervisionSubmission';
 
 export function useSubmitSupervisionRequest() {
   const qc = useQueryClient();
 
   return useMutation<SubmitSupervisionRequestResponse, Error, SupervisionRequestFormData>({
     mutationFn: submitSupervisionRequest,
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['supervision', 'history'] });
-      await qc.invalidateQueries({ queryKey: supervisionSummaryQueryKey });
-      await qc.invalidateQueries({ queryKey: currentUserQueryKey });
-    },
+    onSuccess: () => invalidateSupervisionSubmissionQueries(qc),
   });
 }

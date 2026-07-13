@@ -23,6 +23,8 @@ import {
   parseHours,
   sanitizeHoursInput,
 } from '@/features/supervision/model/hourCalculations';
+import { toAppDateInputValue } from '@/utils/dateFormat';
+import { buildMentorshipHoursSubmission } from '@/features/supervision/model/supervisionSubmission';
 
 const MENTORSHIP_FORMATS = ['Очно', 'По телефону', 'Дистанционно / онлайн'] as const;
 
@@ -31,10 +33,6 @@ const tokenize = (s: string) =>
   norm(s)
     .split(/[\s,.;:()"'`/\\|+\-_*[\]{}!?]+/g)
     .filter(Boolean);
-
-function todayInputValue() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 type ReviewerSuggestion = {
   id: string;
@@ -53,7 +51,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
   const { data: summary } = useSupervisionSummary();
 
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [mentorshipDate, setMentorshipDate] = useState(todayInputValue);
+  const [mentorshipDate, setMentorshipDate] = useState(toAppDateInputValue);
   const [mentorshipHours, setMentorshipHours] = useState('0');
   const [mentorEmail, setMentorEmail] = useState('');
   const [selectedMentorEmail, setSelectedMentorEmail] = useState('');
@@ -138,7 +136,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
     if (isRequirementCovered) setIsOpen(false);
   }, [isRequirementCovered]);
   const effectiveLimit = remaining == null ? null : Math.max(0, remaining);
-  const today = todayInputValue();
+  const today = toAppDateInputValue();
   const canSubmit =
     mentorshipDate.length > 0 &&
     mentorshipDate <= today &&
@@ -150,7 +148,7 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
     !mutation.isPending;
 
   const resetForm = () => {
-    setMentorshipDate(todayInputValue());
+    setMentorshipDate(toAppDateInputValue());
     setMentorshipHours('0');
     setMentorEmail('');
     setSelectedMentorEmail('');
@@ -188,15 +186,14 @@ export function MentorshipHoursRequestForm({ defaultOpen = true }: { defaultOpen
     if (!canSubmit) return;
 
     try {
-      await mutation.mutateAsync({
-        supervisorEmail: exactMentorMatch?.email ?? trimmedMentorEmail,
-        periodStartedAt: mentorshipDate,
-        periodEndedAt: mentorshipDate,
-        treatmentSetting: format,
-        description: comment.trim() || undefined,
+      await mutation.mutateAsync(buildMentorshipHoursSubmission({
+        mentorEmail: exactMentorMatch?.email ?? trimmedMentorEmail,
+        mentorshipDate,
+        format,
+        comment,
         ethicsAccepted: effectiveEthicsAccepted,
-        entries: [{ type: 'SUPERVISOR', value: hoursValue }],
-      });
+        hours: hoursValue,
+      }));
 
       resetForm();
       setIsOpen(false);

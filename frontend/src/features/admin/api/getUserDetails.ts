@@ -216,3 +216,5 @@ export async function getUserDetails(id: string) {
     }[];
   };
 }
+
+export type AdminUserDetails = Awaited<ReturnType<typeof getUserDetails>>;

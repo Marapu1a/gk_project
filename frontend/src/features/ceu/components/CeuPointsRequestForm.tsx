@@ -6,7 +6,14 @@ import { uploadFile } from '@/features/files/api/uploadFile';
 import { submitCeuRequest } from '../api/submitCeuRequest';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { SubmissionSuccessModal } from '@/components/SubmissionSuccessModal';
-import { ceuSummaryQueryKey } from '../hooks/useCeuSummary';
+import {
+  buildCeuSubmissionPayload,
+  getCeuSubmissionValidationError,
+  invalidateCeuSubmissionQueries,
+  type CeuActivityType,
+  type CeuCategory,
+  type CeuSubmissionValidationError,
+} from '../model/ceuSubmission';
 import {
   formatDecimalInput,
   getDecimalInputBlurValue,
@@ -15,9 +22,8 @@ import {
   parseDecimalInput,
   sanitizeDecimalInput,
 } from '@/utils/decimalInput';
+import { toAppDateInputValue } from '@/utils/dateFormat';
 
-type CeuCategory = 'ETHICS' | 'CULTURAL_DIVERSITY' | 'SUPERVISION' | 'GENERAL';
-type CeuActivityType = 'TRAINING_ATTENDANCE' | 'PRESENTATION' | 'PUBLICATION' | 'TEACHING';
 type CeuCategoryDraft = {
   selected: boolean;
   value: string;
@@ -63,10 +69,6 @@ function createInitialEntries(): Record<CeuCategory, CeuCategoryDraft> {
   };
 }
 
-function todayInputValue() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function parseCeuValue(value: string) {
   const parsed = parseDecimalInput(value);
   if (parsed == null) return 0;
@@ -81,9 +83,15 @@ function normalizeCeuValueInput(value: string) {
   return normalizeDecimalInput(value, { maxDecimals: 2 });
 }
 
-function isHalfStep(value: number) {
-  return Math.abs(value * 2 - Math.round(value * 2)) < 0.001;
-}
+const validationMessages: Record<CeuSubmissionValidationError, string> = {
+  POINTS_REQUIRED: UI_TOAST_MESSAGES.ceu.pointsRequired,
+  STEP_INVALID: UI_TOAST_MESSAGES.ceu.stepInvalid,
+  ACTIVITY_TYPE_REQUIRED: UI_TOAST_MESSAGES.ceu.activityTypeRequired,
+  EVENT_DATE_REQUIRED: UI_TOAST_MESSAGES.ceu.eventDateRequired,
+  EVENT_DATE_IN_FUTURE: UI_TOAST_MESSAGES.ceu.eventDateInFuture,
+  EVENT_NAME_REQUIRED: UI_TOAST_MESSAGES.ceu.eventNameRequired,
+  FILE_REQUIRED: UI_TOAST_MESSAGES.ceu.fileRequired,
+};
 
 type CeuPointsRequestFormProps = {
   defaultOpen?: boolean;
@@ -142,68 +150,37 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
   };
 
   const submit = async () => {
-    const trimmedEventName = eventName.trim();
-    const today = todayInputValue();
+    const today = toAppDateInputValue();
+    const validationError = getCeuSubmissionValidationError(
+      {
+        eventName,
+        eventDate,
+        activityType,
+        entries: selectedEntries,
+        hasFile: Boolean(selectedFile),
+      },
+      today,
+    );
 
-    if (selectedEntries.length === 0) {
-      toast.error(UI_TOAST_MESSAGES.ceu.pointsRequired);
+    if (validationError) {
+      toast.error(validationMessages[validationError]);
       return;
     }
 
-    if (selectedEntries.some((entry) => entry.value <= 0)) {
-      toast.error(UI_TOAST_MESSAGES.ceu.pointsRequired);
-      return;
-    }
-
-    if (selectedEntries.some((entry) => !isHalfStep(entry.value))) {
-      toast.error(UI_TOAST_MESSAGES.ceu.stepInvalid);
-      return;
-    }
-
-    if (!activityType) {
-      toast.error(UI_TOAST_MESSAGES.ceu.activityTypeRequired);
-      return;
-    }
-
-    if (!eventDate) {
-      toast.error(UI_TOAST_MESSAGES.ceu.eventDateRequired);
-      return;
-    }
-
-    if (eventDate > today) {
-      toast.error(UI_TOAST_MESSAGES.ceu.eventDateInFuture);
-      return;
-    }
-
-    if (!trimmedEventName) {
-      toast.error(UI_TOAST_MESSAGES.ceu.eventNameRequired);
-      return;
-    }
-
-    if (!selectedFile) {
-      toast.error(UI_TOAST_MESSAGES.ceu.fileRequired);
-      return;
-    }
+    if (!selectedFile) return;
 
     setSubmitting(true);
     try {
       const uploaded = await uploadFile(selectedFile, 'ceu');
-      await submitCeuRequest({
-        eventName: trimmedEventName,
+      await submitCeuRequest(buildCeuSubmissionPayload({
+        eventName,
         eventDate,
         fileId: uploaded.fileId,
         activityType,
-        entries: selectedEntries.map((entry) => ({
-          ...entry,
-          activityType,
-        })),
-      });
+        entries: selectedEntries,
+      }));
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ceuSummaryQueryKey }),
-        queryClient.invalidateQueries({ queryKey: ['ceu', 'history'] }),
-        queryClient.invalidateQueries({ queryKey: ['ceu', 'unconfirmed'] }),
-      ]);
+      await invalidateCeuSubmissionQueries(queryClient);
 
       resetForm();
       setIsOpen(false);
@@ -258,7 +235,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
                     <input
                       className="input-design h-[32px]"
                       type="date"
-                      max={todayInputValue()}
+                      max={toAppDateInputValue()}
                       value={eventDate}
                       onChange={(event) => setEventDate(event.target.value)}
                       disabled={submitting}

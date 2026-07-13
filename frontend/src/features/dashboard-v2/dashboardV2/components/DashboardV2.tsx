@@ -28,6 +28,7 @@ import { UserDashboardBanner } from '@/features/userBanner/components/UserDashbo
 import { DashboardGuidance } from '@/features/dashboard-guidance';
 import { useDashboardGuidanceVisible } from '@/features/dashboard-guidance/hooks/useDashboardGuidanceVisible';
 import { hasCertificationAccessPayment } from '@/features/payment/model/paymentPolicy';
+import { resolveDashboardSections } from '@/features/dashboard-v2/model/dashboardSections';
 
 const TARGET_LEVEL_LABELS = {
   INSTRUCTOR: 'Инструктор',
@@ -125,9 +126,6 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
   const [mobilePaymentOpen, setMobilePaymentOpen] = useState(false);
 
   const activeGroupName = user.activeGroup?.name ?? '';
-  const isBasicSupervisor = activeGroupName === 'Супервизор';
-  const isExperiencedSupervisor = activeGroupName === 'Опытный Супервизор';
-  const canReviewCandidates = isBasicSupervisor || isExperiencedSupervisor;
   const unreadContactCount = contactMessages?.unreadCount ?? 0;
 
   if (paymentsLoading) {
@@ -146,6 +144,10 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
     isRenewalCycle ? 'RENEWAL' : 'CERTIFICATION',
     user.targetLevel,
   );
+  const sections = resolveDashboardSections({
+    activeGroupName,
+    hasCertificationAccess: canUseCertificationContent,
+  });
 
   // Claim активен пока не SETUP_COMPLETE/REJECTED — оплата и доступ к функциям не актуальны.
   const claimStatus = user.externalSupervisorClaimStatus;
@@ -264,34 +266,36 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
           </div>
         </div>
 
-        {canUseCertificationContent ? (
+        {sections.showCertificationContent ? (
           <>
             {/* Десктоп/планшет — полные блоки */}
             <div className="hidden lg:block lg:space-y-6">
-              {!isExperiencedSupervisor ? (
-                <HoursOverviewBlock forceMentorship={isBasicSupervisor} />
+              {sections.hoursMode ? (
+                <HoursOverviewBlock forceMentorship={sections.hoursMode === 'mentorship'} />
               ) : null}
 
-              <CeuOverviewBlock level={user.targetLevel} />
+              {sections.showCeu ? <CeuOverviewBlock level={user.targetLevel} /> : null}
             </div>
 
             {/* Мобильная версия — компактные строки-ссылки */}
             <div className="space-y-2 lg:hidden">
-              {!isExperiencedSupervisor ? (
+              {sections.hoursMode ? (
                 <DashboardNavRow
-                  label={isBasicSupervisor ? 'Часы менторства' : 'Часы супервизии'}
+                  label={sections.hoursMode === 'mentorship' ? 'Часы менторства' : 'Часы супервизии'}
                   onClick={() => navigate('/supervision/hours')}
                 />
               ) : null}
 
-              <DashboardNavRow label="CEU-Баллы" onClick={() => navigate('/ceu/points')} />
+              {sections.showCeu ? (
+                <DashboardNavRow label="CEU-Баллы" onClick={() => navigate('/ceu/points')} />
+              ) : null}
             </div>
           </>
         ) : (
           <CertificationAccessPlaceholder externalClaimActive={isExternalClaimActive} />
         )}
 
-        {canReviewCandidates ? (
+        {sections.showReviewerWork ? (
           <div id="dashboard-reviewer-work" className="scroll-mt-6">
             <ReviewerCandidatesBlocks />
           </div>
