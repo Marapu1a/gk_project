@@ -53,7 +53,7 @@ export function MyCertificatesBlock() {
             className="group flex min-h-[408px] cursor-pointer items-center justify-center rounded-[10px] border border-[#B8C4D8] bg-white p-5 transition hover:border-[var(--color-blue-dark)] hover:shadow-soft"
             title="Открыть сертификат"
           >
-            <CertificatePreview cert={cert} className="h-full max-h-[368px] w-full" />
+            <CertificatePreview cert={cert} mode="card" className="h-full max-h-[368px] w-full" />
           </button>
         ))}
       </section>
@@ -65,11 +65,29 @@ export function MyCertificatesBlock() {
   );
 }
 
-function CertificatePreview({ cert, className = '' }: { cert: CertificateDTO; className?: string }) {
+function CertificatePreview({
+  cert,
+  mode,
+  className = '',
+}: {
+  cert: CertificateDTO;
+  mode: 'card' | 'modal';
+  className?: string;
+}) {
   const url = fileUrl(cert);
   const { canvasRef, failed } = usePdfPreview(url);
 
   if (failed) {
+    if (mode === 'modal') {
+      return (
+        <iframe
+          src={`${url}#toolbar=0&navpanes=0&view=FitH`}
+          title={cert.title || 'Сертификат'}
+          className={`min-h-[70vh] border-0 bg-white ${className}`}
+        />
+      );
+    }
+
     return (
       <div
         className={`flex items-center justify-center rounded-[4px] border border-[#DCE3EF] bg-[#F4F6FA] text-[18px] font-extrabold text-[#8D96B5] ${className}`}
@@ -137,7 +155,7 @@ function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: ()
 
         <div className="flex max-h-[calc(96vh-82px)] w-full items-center justify-center">
           <div className="rounded-[6px] bg-white p-2 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
-            <CertificatePreview cert={cert} className="max-h-[calc(96vh-98px)] max-w-full" />
+            <CertificatePreview cert={cert} mode="modal" className="max-h-[calc(96vh-98px)] w-[744px] max-w-full" />
           </div>
         </div>
 

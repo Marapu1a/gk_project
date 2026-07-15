@@ -147,7 +147,7 @@ export function RegistryProfile({ userId }: Props) {
                   aria-label="Открыть сертификат"
                   title="Открыть сертификат"
                 >
-                  <CertificatePreview cert={cert} className="h-full w-full" />
+                  <CertificatePreview cert={cert} mode="card" className="h-full w-full" />
                 </button>
                 <button
                   type="button"
@@ -186,16 +186,34 @@ export function RegistryProfile({ userId }: Props) {
   );
 }
 
-function CertificatePreview({ cert, className = '' }: { cert: RegistryCertificate; className?: string }) {
+function CertificatePreview({
+  cert,
+  mode,
+  className = '',
+}: {
+  cert: RegistryCertificate;
+  mode: 'card' | 'modal';
+  className?: string;
+}) {
   const url = certificateUrl(cert);
   const { canvasRef, failed } = usePdfPreview(url);
 
   if (failed) {
+    if (mode === 'modal') {
+      return (
+        <iframe
+          src={`${url}#toolbar=0&navpanes=0&view=FitH`}
+          title={cert.title || 'Сертификат'}
+          className={`min-h-[70vh] border-0 bg-white ${className}`}
+        />
+      );
+    }
+
     return (
       <div className={`flex flex-col items-center justify-center rounded-[8px] border border-[#DCE3EF] bg-[#F4F6FA] px-5 text-center text-[#8D96B5] ${className}`}>
-        <p className="text-[18px] font-extrabold text-[var(--color-blue-dark)]">Сертификат не найден</p>
+        <p className="text-[22px] font-extrabold text-[var(--color-blue-dark)]">PDF</p>
         <p className="mt-2 max-w-[260px] text-[14px] font-semibold leading-[1.25]">
-          Тут должен быть файл сертификата, но сейчас он недоступен.
+          Открыть сертификат
         </p>
       </div>
     );
@@ -252,7 +270,7 @@ function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertifica
 
         <div className="flex max-h-[calc(96vh-82px)] w-full items-center justify-center">
           <div className="rounded-[6px] bg-white p-2 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
-            <CertificatePreview cert={cert} className="max-h-[calc(96vh-98px)] max-w-full" />
+            <CertificatePreview cert={cert} mode="modal" className="max-h-[calc(96vh-98px)] w-[744px] max-w-full" />
           </div>
         </div>
 
@@ -312,7 +330,7 @@ function CertificateCheckModal({
 
         <div className="grid grid-cols-1 gap-7 md:grid-cols-[330px_minmax(0,1fr)]">
           <div className="flex justify-center">
-            <CertificatePreview cert={cert} className="max-h-[462px] w-full max-w-[330px]" />
+            <CertificatePreview cert={cert} mode="card" className="max-h-[462px] w-full max-w-[330px]" />
           </div>
 
           <dl className="space-y-7 text-[#222]">
