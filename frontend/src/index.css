@@ -277,6 +277,47 @@ select:disabled,
   box-shadow: 0px 10px 15px 0px rgba(0, 0, 0, 0.1);
 }
 
+/* Шапка площадки повторяет навигацию основного сайта, чтобы переход между доменами
+   не выглядел как смена продукта. */
+.nav-btn {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-blue-dark);
+  padding: 7px 18px;
+  color: var(--color-white);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.12s ease;
+}
+
+.nav-btn:hover {
+  background: var(--color-green-brand);
+}
+
+.nav-btn:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 767px) {
+  .nav-btn {
+    justify-content: flex-start;
+    border-radius: 0;
+    background: transparent;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    color: var(--color-blue-dark);
+  }
+
+  .nav-btn:hover {
+    background: var(--color-blue-soft);
+  }
+}
+
 /* ==========================================================================
    ✏️ Инпуты
    ========================================================================== */

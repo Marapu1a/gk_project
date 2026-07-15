@@ -5,7 +5,7 @@ import { Menu, X } from 'lucide-react';
 const NAV_LINKS = [
   { href: 'https://reestrpap.ru/about', label: 'О нас' },
   { to: '/registry', label: 'Реестр' },
-  { href: 'https://reestrpap.ru/certification', label: 'О сертификации' },
+  { href: 'https://reestrpap.ru/certification', label: 'Специалистам о сертификации' },
   { href: 'https://reestrpap.ru/pricing', label: 'Тарифы' },
   { href: 'https://reestrpap.ru/contacts', label: 'Контакты' },
 ];
