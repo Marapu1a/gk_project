@@ -602,8 +602,11 @@ select:disabled,
   background: var(--color-white);
   box-shadow: 0 10px 28px rgba(31, 48, 94, 0.18);
   color: var(--color-blue-dark);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
+  gap: 10px;
+  padding: 18px 20px;
+  width: 420px;
   line-height: 1.35;
   opacity: 0;
   pointer-events: none;
@@ -868,16 +871,40 @@ select:disabled,
    🔔 Sonner
    ========================================================================== */
 [data-sonner-toast] {
-  border: 1px solid var(--color-green-light);
-  border-radius: 12px;
+  font-family: var(--font-sans);
+}
+
+[data-sonner-toast][data-styled='true'] {
+  border: 1px solid #DCE3EF;
+  border-left: 4px solid var(--color-blue-dark);
+  border-radius: 14px;
+  background: var(--color-white);
+  box-shadow: 0 10px 24px rgba(31, 48, 94, 0.16);
+  color: var(--color-blue-dark);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+[data-sonner-toast][data-styled='true'] [data-description] {
+  color: #6B7894;
+}
+
+[data-sonner-toast][data-styled='true'] [data-title] {
+  color: var(--color-blue-dark);
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 [data-sonner-toast][data-type="success"] {
-  border-left: 4px solid var(--color-green-brand);
+  border-color: rgba(165, 203, 55, 0.42);
+  border-left-color: var(--color-green-brand);
+  background: #F4F8E3;
 }
 
 [data-sonner-toast][data-type="error"] {
-  border-left: 4px solid var(--color-danger);
+  border-color: rgba(255, 83, 100, 0.30);
+  border-left-color: var(--color-danger);
+  background: #FFF0F2;
 }
 
 /* Подтверждающие модалки: action-кнопка должна быть видимой поверх базового .btn. */
@@ -901,7 +928,26 @@ select:disabled,
 
 [data-sonner-toast][data-type="info"],
 [data-sonner-toast][data-type="warning"] {
-  border-left: 4px solid var(--color-blue-dark);
+  border-left-color: var(--color-blue-dark);
+}
+
+[data-sonner-toast][data-type="info"] {
+  background: var(--color-blue-soft);
+}
+
+[data-sonner-toast][data-type="warning"] {
+  border-color: #FFE0A0;
+  border-left-color: #D99500;
+  background: #FFF7DD;
+}
+
+@media (max-width: 600px) {
+  [data-sonner-toast][data-styled='true'] {
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(31, 48, 94, 0.14);
+    font-size: 14px;
+    padding: 16px 18px;
+  }
 }
 
 /* Уведомления v2: широкий скролл как в макете. */

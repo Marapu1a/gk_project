@@ -39,6 +39,7 @@ type TaskItem = {
   label: string;
   to: string;
   count?: number | null;
+  separated?: boolean;
 };
 
 type DocumentReviewRequestRow = {
@@ -89,6 +90,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
     { label: 'Заявки на экзамен', to: '/exam-applications', count: pendingExamCount },
     { label: 'Заявки CEU', to: '/review/ceu' },
     { label: 'Заявки на супервизию', to: '/admin/supervision-candidates' },
+    { label: 'Баннер для пользователей', to: '/admin/user-banner', separated: true },
   ];
 
   const onExportUsers = async () => {
@@ -185,7 +187,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
 
         <AdminPanel
           title="Рабочие задачи"
-          className="px-0 py-4 lg:col-start-1 lg:row-start-1"
+          className="min-h-[390px] px-0 py-4 lg:col-start-1 lg:row-start-1"
         >
           <nav className="mt-1">
             {tasks.map((task) => (
@@ -252,7 +254,11 @@ function TaskLink({ task }: { task: TaskItem }) {
   return (
     <Link
       to={task.to}
-      className="dashboard-v2-text flex min-h-[44px] items-center justify-between gap-3 px-5 py-2 text-[#222] transition hover:bg-[var(--color-blue-soft)]"
+      className={`dashboard-v2-text flex min-h-[44px] items-center justify-between gap-3 px-5 py-2 text-[#222] transition hover:bg-[var(--color-blue-soft)] ${
+        task.separated
+          ? 'mt-3 border-t border-[var(--color-blue-soft)] pt-4 text-[#6B7894]'
+          : ''
+      }`}
     >
       <span>{task.label}</span>
       {typeof task.count === 'number' && task.count > 0 ? <TaskBadge count={task.count} /> : null}

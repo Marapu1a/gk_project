@@ -116,7 +116,17 @@ export default function App() {
         <Suspense fallback={<PageFallback />}>
           <RouterProvider router={router} />
         </Suspense>
-        <Toaster richColors position="top-center" toastOptions={{ duration: 3500 }} />
+        <Toaster
+          position="top-center"
+          offset={{ top: 96, right: 20, bottom: 20, left: 20 }}
+          mobileOffset={{
+            top: 'calc(12px + env(safe-area-inset-top))',
+            left: 12,
+            right: 12,
+          }}
+          visibleToasts={3}
+          toastOptions={{ duration: 4000 }}
+        />
       </ConfirmProvider>
     </QueryClientProvider>
   );
