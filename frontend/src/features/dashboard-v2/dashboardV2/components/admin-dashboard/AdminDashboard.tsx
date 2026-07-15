@@ -85,11 +85,10 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
       to: '/admin/qualification-claims',
       count: qualificationClaims?.total ?? 0,
     },
-    { label: 'Баннер для пользователей', to: '/admin/user-banner' },
     { label: 'Проверка документов', to: '/admin/document-review', count: documentCount },
-    { label: 'Проверка CEU', to: '/review/ceu' },
-    { label: 'Проверка часов', to: '/admin/supervision-candidates' },
     { label: 'Заявки на экзамен', to: '/exam-applications', count: pendingExamCount },
+    { label: 'Заявки CEU', to: '/review/ceu' },
+    { label: 'Заявки на супервизию', to: '/admin/supervision-candidates' },
   ];
 
   const onExportUsers = async () => {
