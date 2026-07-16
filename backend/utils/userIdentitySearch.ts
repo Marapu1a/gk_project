@@ -26,19 +26,9 @@ export function buildUserIdentitySearchWhere(
   const q = (query ?? '').trim();
   if (!q) return null;
 
-  const digits = onlyDigits(q);
-
   if (q.includes('@')) {
     return {
-      OR: [
-        { email: { contains: q, mode: 'insensitive' } },
-        ...(digits
-          ? [
-              { phone: { contains: digits, mode: 'insensitive' as const } },
-              { registrationNumber: { contains: digits, mode: 'insensitive' as const } },
-            ]
-          : []),
-      ],
+      email: { contains: q, mode: 'insensitive' },
     };
   }
 
