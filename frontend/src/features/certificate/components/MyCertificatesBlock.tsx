@@ -1,11 +1,9 @@
 // src/features/certificate/components/MyCertificatesBlock.tsx
 import { useState, type ReactNode } from 'react';
-import { Mail, Printer, Send } from 'lucide-react';
-import { toast } from 'sonner';
+import { Printer } from 'lucide-react';
 
 import { useMyCertificates } from '../hooks/useMyCertificates';
 import type { CertificateDTO } from '../api/issueCertificate';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { ModalShell } from '@/components/ModalShell';
 import { usePdfPreview } from '@/hooks/usePdfPreview';
@@ -132,10 +130,6 @@ function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: ()
     };
   };
 
-  const showTemporaryUnavailable = () => {
-    toast.info(UI_TOAST_MESSAGES.certificate.sendUnavailable);
-  };
-
   return (
     <ModalShell
       onClose={onClose}
@@ -169,14 +163,6 @@ function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: ()
           </a>
 
           <div className="flex items-center gap-3">
-            <IconAction title="Отправить по email" onClick={showTemporaryUnavailable}>
-              <Mail size={22} />
-            </IconAction>
-
-            <IconAction title="Отправить в мессенджере" onClick={showTemporaryUnavailable}>
-              <Send size={22} />
-            </IconAction>
-
             <IconAction title="Распечатать" onClick={handlePrint}>
               <Printer size={22} />
             </IconAction>

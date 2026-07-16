@@ -1,58 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { RenderTask } from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
 
 type UsePdfPreviewOptions = {
   targetWidth?: number;
 };
-
-type CompatiblePromiseConstructor = PromiseConstructor & {
-  try?: <T, Args extends unknown[]>(callback: (...args: Args) => T | PromiseLike<T>, ...args: Args) => Promise<T>;
-  withResolvers?: <T>() => {
-    promise: Promise<T>;
-    resolve: (value: T | PromiseLike<T>) => void;
-    reject: (reason?: unknown) => void;
-  };
-};
-
-type CompatibleUint8Array = Uint8Array & {
-  toBase64?: () => string;
-};
-
-function ensurePdfJsBrowserCompatibility() {
-  const compatiblePromise = Promise as CompatiblePromiseConstructor;
-
-  compatiblePromise.try ??= function promiseTry<T, Args extends unknown[]>(
-    callback: (...args: Args) => T | PromiseLike<T>,
-    ...args: Args
-  ) {
-    return new Promise<T>((resolve) => resolve(callback(...args)));
-  };
-
-  compatiblePromise.withResolvers ??= function withResolvers<T>() {
-    let resolve!: (value: T | PromiseLike<T>) => void;
-    let reject!: (reason?: unknown) => void;
-    const promise = new Promise<T>((promiseResolve, promiseReject) => {
-      resolve = promiseResolve;
-      reject = promiseReject;
-    });
-    return { promise, resolve, reject };
-  };
-
-  const uint8ArrayPrototype = Uint8Array.prototype as CompatibleUint8Array;
-  uint8ArrayPrototype.toBase64 ??= function toBase64() {
-    const bytes = this as Uint8Array;
-    const chunkSize = 0x6000;
-    let result = '';
-
-    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-      const chunk = bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length));
-      result += btoa(String.fromCharCode(...chunk));
-    }
-
-    return result;
-  };
-}
 
 export function usePdfPreview(
   url: string,
@@ -77,8 +29,7 @@ export function usePdfPreview(
 
     async function renderPdf() {
       try {
-        ensurePdfJsBrowserCompatibility();
-        const pdfjs = await import('pdfjs-dist');
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
         if (cancelled) return;
 
         pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;

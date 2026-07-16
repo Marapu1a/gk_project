@@ -182,7 +182,7 @@ export function DocumentFileCard({
             maxLength={COMMENT_MAX_LENGTH}
             disabled={disabled || item.status === 'DELETED'}
             className="input-design mt-1 min-h-[70px] resize-y py-2"
-            placeholder="Комментарий к документу"
+            placeholder="Добавьте комментарий к документу"
           />
         </label>
       </div>

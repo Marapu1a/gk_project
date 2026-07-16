@@ -66,7 +66,7 @@ export function ResetPasswordForm() {
             <PasswordInput
               id="password"
               autoComplete="new-password"
-              placeholder="Мин. 6 символов"
+              placeholder="Не менее 6 символов"
               disabled={isSubmitting}
               aria-invalid={!!errors.password}
               valueVisible={passwordVisible}

@@ -377,7 +377,7 @@ export function CertificationBlock({ user, onOpenPayment }: Props) {
 
         <div className="relative mb-5">
           <select
-            className="dashboard-v2-label h-[32px] w-full appearance-none rounded-[8px] border-0 bg-[var(--color-blue-dark)] px-4 pr-10 text-center text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            className="dashboard-v2-label h-[32px] w-full appearance-none rounded-[8px] border-0 bg-[var(--color-blue-dark)] px-4 pr-9 text-center text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
             value={selected}
             onChange={(e) => {
               const value = e.target.value;
@@ -403,7 +403,7 @@ export function CertificationBlock({ user, onOpenPayment }: Props) {
             ))}
           </select>
 
-          <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-white">
+          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white">
             <svg width="14" height="9" viewBox="0 0 14 9" fill="none" aria-hidden="true">
               <path
                 d="M1 1.5L7 7.5L13 1.5"

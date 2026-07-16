@@ -94,7 +94,7 @@ export function SpecialistContactModal({ specialistId, specialistName, open, onC
                 value={form.senderName}
                 maxLength={120}
                 onChange={(event) => setForm((current) => ({ ...current, senderName: event.target.value }))}
-                placeholder="Как к вам обращаться"
+                placeholder="Введите ваше имя"
               />
             </label>
 
@@ -105,7 +105,7 @@ export function SpecialistContactModal({ specialistId, specialistName, open, onC
                 value={form.replyContact}
                 maxLength={160}
                 onChange={(event) => setForm((current) => ({ ...current, replyContact: event.target.value }))}
-                placeholder="Email, телефон"
+                placeholder="Укажите email или телефон"
               />
             </label>
           </div>

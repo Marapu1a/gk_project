@@ -37,7 +37,7 @@ export function UserLookup({ onSelect }: { onSelect: (u: UserLite) => void }) {
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="ФИО, email, телефон, рег. номер"
+            placeholder="Введите ФИО, email, телефон или рег. номер"
             className="input w-72"
           />
         </div>

@@ -195,7 +195,7 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
                     if (supervisorInput.trim()) setShowSuggestions(true);
                   }}
                   onBlur={() => window.setTimeout(() => setShowSuggestions(false), 150)}
-                  placeholder="ФИО или Email"
+                  placeholder="Введите ФИО или email супервизора"
                   autoComplete="off"
                 />
 

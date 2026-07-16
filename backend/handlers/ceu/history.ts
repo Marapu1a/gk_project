@@ -1,6 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { RecordStatus } from '@prisma/client';
+import { CycleStatus, RecordStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+
+type CeuHistoryPeriod = 'current' | 'legacy';
 
 function aggregateStatus(statuses: RecordStatus[]) {
   if (statuses.length === 0) return RecordStatus.UNCONFIRMED;
@@ -15,15 +17,31 @@ export async function ceuHistoryHandler(req: FastifyRequest, reply: FastifyReply
   const userId = req.user?.userId;
   if (!userId) return reply.code(401).send({ error: 'Не авторизован' });
 
-  const activeCycle = await prisma.certificationCycle.findFirst({
-    where: { userId, status: 'ACTIVE' },
-    select: { id: true },
-  });
+  const requestedPeriod = (req.query as { period?: unknown }).period;
+  if (
+    requestedPeriod !== undefined &&
+    requestedPeriod !== 'current' &&
+    requestedPeriod !== 'legacy'
+  ) {
+    return reply.code(400).send({ error: 'Некорректный период истории CEU' });
+  }
+  const period: CeuHistoryPeriod = requestedPeriod === 'legacy' ? 'legacy' : 'current';
 
-  if (!activeCycle) return reply.send([]);
+  const activeCycle =
+    period === 'current'
+      ? await prisma.certificationCycle.findFirst({
+          where: { userId, status: CycleStatus.ACTIVE },
+          select: { id: true },
+        })
+      : null;
+
+  if (period === 'current' && !activeCycle) return reply.send([]);
 
   const records = await prisma.cEURecord.findMany({
-    where: { userId, cycleId: activeCycle.id },
+    where: {
+      userId,
+      cycleId: period === 'legacy' ? null : activeCycle!.id,
+    },
     orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }],
     select: {
       id: true,

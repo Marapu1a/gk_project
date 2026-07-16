@@ -248,7 +248,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
                       value={eventName}
                       onChange={(event) => setEventName(event.target.value)}
                       disabled={submitting}
-                      placeholder="Название, провайдер или ведущий"
+                      placeholder="Введите название, провайдера или ведущего"
                     />
                   </Field>
                 </div>

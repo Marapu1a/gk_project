@@ -290,7 +290,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
                 ? 'border-[var(--color-danger)]'
                 : ''
           }`}
-          placeholder="ФИО, email, телефон, рег. номер"
+          placeholder="Введите ФИО, email, телефон или рег. номер"
           autoComplete="off"
           required
         />

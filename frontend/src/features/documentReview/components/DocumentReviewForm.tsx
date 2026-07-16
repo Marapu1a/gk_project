@@ -243,7 +243,7 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
           value={comment}
           onChange={(event) => setComment(event.target.value)}
           maxLength={COMMENT_MAX_LENGTH}
-          placeholder="Необязательно"
+          placeholder="Добавьте комментарий, если необходимо"
           className="input-design mt-1 h-[34px]"
         />
       </label>

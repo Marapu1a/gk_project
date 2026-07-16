@@ -47,7 +47,7 @@ export function UpdateUserPasswordModal({ userId, onClose }: Props) {
       <input
         type="password"
         className="input w-full"
-        placeholder="Новый пароль"
+        placeholder="Введите новый пароль"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         disabled={mutation.isPending}

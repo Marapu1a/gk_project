@@ -103,7 +103,7 @@ export function PasswordInput({
       <input
         {...props}
         type={valueVisible ? 'text' : 'password'}
-        className={cn('input-design h-[32px] pr-10', className)}
+        className={cn('input-design input-design-trailing-icon h-[32px]', className)}
       />
       <button
         type="button"

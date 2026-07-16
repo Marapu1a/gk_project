@@ -126,7 +126,7 @@ export function AdminDocumentReviewList() {
               <AdminIdentityFilterInput
                 value={searchInput}
                 onChange={setSearchInput}
-                placeholder="ФИО, email, телефон, рег. номер"
+                placeholder="Введите ФИО, email, телефон или рег. номер"
                 className="mt-1 w-full sm:w-[320px]"
                 inputClassName="h-[36px]"
                 ariaLabel="Поиск по пользователю"

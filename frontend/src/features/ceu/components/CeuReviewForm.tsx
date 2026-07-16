@@ -141,7 +141,7 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                           <div className="flex flex-col items-center gap-2">
                             <input
                               type="text"
-                              placeholder="Причина"
+                              placeholder="Укажите причину отклонения"
                               className="input w-44"
                               value={reasons[entry.id] || ''}
                               maxLength={COMMENT_MAX_LENGTH}

@@ -101,7 +101,7 @@ export default function ExamAppsTable() {
               value={query}
               onChange={(value) => updateQuery({ search: value })}
               className="mt-1"
-              placeholder="ФИО, email, телефон, рег. номер"
+              placeholder="Введите ФИО, email, телефон или рег. номер"
               ariaLabel="Поиск кандидата"
             />
           </label>

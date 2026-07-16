@@ -157,7 +157,7 @@ function AdminUserBannerPageInner() {
                 onChange={(event) => setCtaUrl(event.target.value)}
                 className="input-design mt-1 h-[36px]"
                 maxLength={500}
-                placeholder="https://reestrpap.ru/contacts или /dashboard-v2"
+                placeholder="Введите полный URL или внутренний путь, например /dashboard-v2"
               />
             </label>
           </div>

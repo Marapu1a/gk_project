@@ -221,7 +221,7 @@ export default function ExamAppModal({ app, onClose }: ExamAppModalProps) {
           value={comment}
           onChange={(event) => setComment(event.target.value)}
           maxLength={COMMENT_MAX_LENGTH}
-          placeholder="Причина отклонения или служебный комментарий"
+          placeholder="Укажите причину отклонения или служебный комментарий"
           disabled={disabled}
         />
       </label>

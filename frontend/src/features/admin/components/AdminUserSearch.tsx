@@ -23,7 +23,7 @@ export function AdminUserSearch({
   autoFocus = false,
   className = '',
   size = 'compact',
-  placeholder = 'ФИО, email, телефон, рег. номер',
+  placeholder = 'Введите ФИО, email, телефон или рег. номер',
 }: Props) {
   const navigate = useNavigate();
   const listId = useId();
@@ -127,7 +127,7 @@ export function AdminUserSearch({
         autoFocus={autoFocus}
         placeholder={placeholder}
         autoComplete="off"
-        className={`input-design w-full ${inputClass}`}
+        className={`input-design input-design-trailing-icon w-full ${inputClass}`}
         role="combobox"
         aria-expanded={showResults}
         aria-controls={`${listId}-results`}
@@ -135,7 +135,7 @@ export function AdminUserSearch({
       {!query ? (
         <Search
           size={size === 'large' ? 20 : 17}
-          className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#8D96B5]"
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8D96B5]"
         />
       ) : null}
 

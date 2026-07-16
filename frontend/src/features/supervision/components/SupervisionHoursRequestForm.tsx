@@ -423,7 +423,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                       value={treatmentSetting}
                       onChange={(event) => setTreatmentSetting(event.target.value)}
                       disabled={practiceLocked}
-                      placeholder="кто / где"
+                      placeholder="Укажите ФИО и место работы"
                     />
                   </Field>
                   <Field label="Дата начала периода практики">

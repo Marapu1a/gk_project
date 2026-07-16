@@ -44,7 +44,9 @@ export interface CeuHistoryItem {
   };
 }
 
-export async function getCeuHistory(): Promise<CeuHistoryItem[]> {
-  const res = await api.get<CeuHistoryItem[]>('/ceu/history');
+export type CeuHistoryPeriod = 'current' | 'legacy';
+
+export async function getCeuHistory(period: CeuHistoryPeriod): Promise<CeuHistoryItem[]> {
+  const res = await api.get<CeuHistoryItem[]>('/ceu/history', { params: { period } });
   return res.data;
 }

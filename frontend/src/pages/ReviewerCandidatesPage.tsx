@@ -177,7 +177,7 @@ function ReviewerCandidatesContent() {
               value={candidate}
               list="reviewer-history-candidates"
               onChange={(event) => updateFilters({ candidate: event.target.value })}
-              placeholder="ФИО или email"
+              placeholder="Введите ФИО или email кандидата"
               className="input-design mt-1 h-[36px]"
             />
             <datalist id="reviewer-history-candidates">

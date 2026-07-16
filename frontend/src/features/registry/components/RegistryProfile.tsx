@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { CheckCircle, Mail, Printer, Send, XCircle } from 'lucide-react';
+import { CheckCircle, Printer, XCircle } from 'lucide-react';
 import { useRegistryProfile } from '../hooks/useRegistryProfile';
 import type { RegistryCertificate } from '../api/getRegistryProfile';
 import { SpecialistContactModal } from './SpecialistContactModal';
@@ -247,10 +247,6 @@ function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertifica
     };
   };
 
-  const showTemporaryUnavailable = () => {
-    toast.info('Отправка пока не работает. Скачайте сертификат и отправьте файл вручную.');
-  };
-
   return (
     <ModalShell
       onClose={onClose}
@@ -284,12 +280,6 @@ function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertifica
           </a>
 
           <div className="flex items-center gap-3">
-            <IconAction title="Отправить по email" onClick={showTemporaryUnavailable}>
-              <Mail size={22} />
-            </IconAction>
-            <IconAction title="Отправить в мессенджере" onClick={showTemporaryUnavailable}>
-              <Send size={22} />
-            </IconAction>
             <IconAction title="Распечатать" onClick={handlePrint}>
               <Printer size={22} />
             </IconAction>

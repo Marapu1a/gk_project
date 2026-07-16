@@ -12,7 +12,7 @@ type Props = {
 export function AdminIdentityFilterInput({
   value,
   onChange,
-  placeholder = 'ФИО, email, телефон, рег. номер',
+  placeholder = 'Введите ФИО, email, телефон или рег. номер',
   className = '',
   inputClassName = '',
   ariaLabel = 'Поиск пользователя',
@@ -26,7 +26,7 @@ export function AdminIdentityFilterInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className={`input-design w-full pr-10 ${inputClassName}`}
+        className={`input-design input-design-trailing-icon w-full ${inputClassName}`}
         autoComplete="off"
         aria-label={ariaLabel}
       />
@@ -34,7 +34,7 @@ export function AdminIdentityFilterInput({
         <button
           type="button"
           onClick={() => onChange('')}
-          className="btn absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-[#8D96B5] transition hover:bg-[var(--color-blue-soft)] hover:text-[var(--color-blue-dark)]"
+          className="btn absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-[#8D96B5] transition hover:bg-[var(--color-blue-soft)] hover:text-[var(--color-blue-dark)]"
           aria-label="Очистить поиск"
         >
           <X size={16} />
@@ -42,7 +42,7 @@ export function AdminIdentityFilterInput({
       ) : (
         <Search
           size={18}
-          className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#8D96B5]"
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8D96B5]"
           aria-hidden="true"
         />
       )}

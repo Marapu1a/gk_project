@@ -311,7 +311,7 @@ function AdminSupervisionCandidatesContent() {
               value={search}
               onChange={(value) => updateQuery({ search: value }, { replace: true })}
               className="mt-1"
-              placeholder="ФИО, email, телефон, рег. номер"
+              placeholder="Введите ФИО, email, телефон или рег. номер"
               ariaLabel="Поиск кандидата"
             />
           </label>
@@ -322,7 +322,7 @@ function AdminSupervisionCandidatesContent() {
               value={reviewerSearch}
               onChange={(value) => updateQuery({ reviewerSearch: value }, { replace: true })}
               className="mt-1"
-              placeholder="ФИО, email, телефон, рег. номер"
+              placeholder="Введите ФИО, email, телефон или рег. номер"
               ariaLabel="Поиск назначенного проверяющего"
             />
           </label>

@@ -389,7 +389,7 @@ function DeletionRequestModal({
             maxLength={COMMENT_MAX_LENGTH}
             disabled={isPending}
             className="input-design mt-1 min-h-[108px] resize-y py-2"
-            placeholder="Почему нужно удалить документ"
+            placeholder="Укажите причину удаления документа"
           />
         </label>
 

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useCeuHistory } from '../hooks/useCeuHistory';
-import type { CeuHistoryItem } from '../api/getCeuHistory';
+import type { CeuHistoryItem, CeuHistoryPeriod } from '../api/getCeuHistory';
 import { displayCeuEventName } from '../utils/displayCeuEventName';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { ModalShell } from '@/components/ModalShell';
+import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
 import { formatDateRu as formatDate } from '@/utils/dateFormat';
 
 const categoryLabels: Record<string, string> = {
@@ -35,10 +36,11 @@ function formatNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function statusTextClass(status: string) {
-  if (status === 'CONFIRMED') return 'text-[#1F305E]';
-  if (status === 'REJECTED') return 'text-[#FF5364]';
-  return 'text-[#7F8AA3]';
+function statusTone(status: string): StatusPillTone {
+  if (status === 'CONFIRMED') return 'green';
+  if (status === 'REJECTED') return 'danger';
+  if (status === 'SPENT') return 'muted';
+  return 'warning';
 }
 
 function categorySummary(record: CeuHistoryItem) {
@@ -50,23 +52,63 @@ function categorySummary(record: CeuHistoryItem) {
 }
 
 export function CeuPointsHistoryBlock() {
+  const [period, setPeriod] = useState<CeuHistoryPeriod>('current');
   const [selectedRecord, setSelectedRecord] = useState<CeuHistoryItem | null>(null);
-  const { data, isLoading, error } = useCeuHistory();
+  const { data, isLoading, error } = useCeuHistory(period);
   const records = data ?? [];
+
+  const handlePeriodChange = (nextPeriod: CeuHistoryPeriod) => {
+    setPeriod(nextPeriod);
+    setSelectedRecord(null);
+  };
 
   return (
     <section
       id="ceu-history"
       className="mt-5 scroll-mt-5 rounded-[16px] bg-white px-5 py-5 shadow-[0_2px_12px_rgba(0,0,0,0.10)]"
     >
-      <h2 className="mb-5 text-center text-[18px] font-extrabold text-[#1F305E]">История</h2>
+      <h2 className="text-center text-[18px] font-extrabold text-[#1F305E]">История</h2>
+
+      <div
+        role="tablist"
+        aria-label="Период истории CEU"
+        className="mx-auto mb-5 mt-4 grid w-full max-w-[360px] grid-cols-2 rounded-[10px] bg-[#ECEDEF] p-1"
+      >
+        {([
+          { value: 'current', label: 'Текущий цикл' },
+          { value: 'legacy', label: 'Старые заявки' },
+        ] as const).map((option) => {
+          const active = period === option.value;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => handlePeriodChange(option.value)}
+              className={`min-h-[38px] cursor-pointer rounded-[8px] px-3 text-[13px] font-extrabold transition sm:text-[14px] ${
+                active
+                  ? 'bg-[var(--color-green-brand)] text-[var(--color-blue-dark)] shadow-[0_1px_5px_rgba(117,173,20,0.28)]'
+                  : 'text-[#8D96B5] hover:bg-white/70 hover:text-[var(--color-blue-dark)]'
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
 
       {isLoading ? (
         <p className="text-[14px] text-[#6B7894]">Загрузка истории...</p>
       ) : error ? (
         <p className="text-[14px] text-[#FF5364]">Не удалось загрузить историю CEU-баллов</p>
       ) : records.length === 0 ? (
-        <p className="text-[14px] text-[#6B7894]">Пока нет заявок.</p>
+        <p className="text-[14px] text-[#6B7894]">
+          {period === 'current'
+            ? 'В текущем цикле пока нет заявок.'
+            : 'Старых заявок без привязки к циклу нет.'}
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[920px] text-[14px] text-[#1F305E]">
@@ -104,8 +146,14 @@ export function CeuPointsHistoryBlock() {
                   <td className="px-4 py-4 text-center">
                     {categorySummary(record)}
                   </td>
-                  <td className={`px-4 py-4 text-center ${statusTextClass(record.status)}`}>
-                    {statusLabels[record.status] ?? record.status}
+                  <td className="px-4 py-4 text-center">
+                    <StatusPill
+                      tone={statusTone(record.status)}
+                      size="custom"
+                      className="min-h-[26px] px-3 py-1 text-[12px] font-extrabold leading-tight"
+                    >
+                      {statusLabels[record.status] ?? record.status}
+                    </StatusPill>
                   </td>
                   <td className="px-4 py-4 text-right">
                     <button
@@ -210,8 +258,14 @@ function CeuDetailsModal({
               <ReadOnlyPlain label="Email" value={record.user.email || '—'} mutedLabel />
             </div>
 
-            <div className="rounded-[10px] bg-[#C8CEDB] px-4 py-3 text-center text-[14px] font-extrabold text-[#6B7894]">
-              {statusLabels[record.status] ?? record.status}
+            <div className="flex justify-center">
+              <StatusPill
+                tone={statusTone(record.status)}
+                size="custom"
+                className="min-h-[34px] px-5 py-2 text-[14px] font-extrabold"
+              >
+                {statusLabels[record.status] ?? record.status}
+              </StatusPill>
             </div>
 
             {record.rejectedReason ? (

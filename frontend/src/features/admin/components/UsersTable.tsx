@@ -156,7 +156,7 @@ export function UsersTable() {
             onChange={setSearchInput}
             autoFocus
             size="large"
-            placeholder="ФИО, email, телефон, рег. номер"
+            placeholder="Введите ФИО, email, телефон или рег. номер"
             className="min-w-0 flex-1"
           />
           <button
