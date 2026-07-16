@@ -6,7 +6,7 @@ import { useMyCertificates } from '../hooks/useMyCertificates';
 import type { CertificateDTO } from '../api/issueCertificate';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { ModalShell } from '@/components/ModalShell';
-import { usePdfPreview } from '@/hooks/usePdfPreview';
+import { CertificateImagePreview } from './CertificateImagePreview';
 
 function fileUrl(cert: CertificateDTO) {
   return `/uploads/${cert.file.fileId}`;
@@ -72,34 +72,13 @@ function CertificatePreview({
   mode: 'card' | 'modal';
   className?: string;
 }) {
-  const url = fileUrl(cert);
-  const { canvasRef, failed } = usePdfPreview(url);
-
-  if (failed) {
-    if (mode === 'modal') {
-      return (
-        <iframe
-          src={`${url}#toolbar=0&navpanes=0&view=FitH`}
-          title={cert.title || 'Сертификат'}
-          className={`min-h-[70vh] border-0 bg-white ${className}`}
-        />
-      );
-    }
-
-    return (
-      <div
-        className={`flex items-center justify-center rounded-[4px] border border-[#DCE3EF] bg-[#F4F6FA] text-[18px] font-extrabold text-[#8D96B5] ${className}`}
-      >
-        PDF
-      </div>
-    );
-  }
-
   return (
-    <canvas
-      ref={canvasRef}
-      className={`object-contain ${className}`}
-      aria-label={cert.title || 'Сертификат'}
+    <CertificateImagePreview
+      certificateId={cert.id}
+      fileVersion={cert.file.id}
+      title={cert.title}
+      className={className}
+      allowRetry={mode === 'modal'}
     />
   );
 }

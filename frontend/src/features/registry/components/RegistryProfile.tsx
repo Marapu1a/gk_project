@@ -7,7 +7,7 @@ import { SpecialistContactModal } from './SpecialistContactModal';
 import { formatCertificateDate, isCertificateDateActive } from '@/features/certificate/utils/certificateDates';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { ModalShell } from '@/components/ModalShell';
-import { usePdfPreview } from '@/hooks/usePdfPreview';
+import { CertificateImagePreview } from '@/features/certificate/components/CertificateImagePreview';
 
 const COPY_ICON = '/dashboard-v2/icon_copy.svg';
 
@@ -195,31 +195,15 @@ function CertificatePreview({
   mode: 'card' | 'modal';
   className?: string;
 }) {
-  const url = certificateUrl(cert);
-  const { canvasRef, failed } = usePdfPreview(url);
-
-  if (failed) {
-    if (mode === 'modal') {
-      return (
-        <iframe
-          src={`${url}#toolbar=0&navpanes=0&view=FitH`}
-          title={cert.title || 'Сертификат'}
-          className={`min-h-[70vh] border-0 bg-white ${className}`}
-        />
-      );
-    }
-
-    return (
-      <div className={`flex flex-col items-center justify-center rounded-[8px] border border-[#DCE3EF] bg-[#F4F6FA] px-5 text-center text-[#8D96B5] ${className}`}>
-        <p className="text-[22px] font-extrabold text-[var(--color-blue-dark)]">PDF</p>
-        <p className="mt-2 max-w-[260px] text-[14px] font-semibold leading-[1.25]">
-          Открыть сертификат
-        </p>
-      </div>
-    );
-  }
-
-  return <canvas ref={canvasRef} className={`object-contain ${className}`} aria-label={cert.title || 'Сертификат'} />;
+  return (
+    <CertificateImagePreview
+      certificateId={cert.id}
+      fileVersion={cert.fileId}
+      title={cert.title}
+      className={className}
+      allowRetry={mode === 'modal'}
+    />
+  );
 }
 
 function CertificateFullscreenModal({ cert, onClose }: { cert: RegistryCertificate; onClose: () => void }) {

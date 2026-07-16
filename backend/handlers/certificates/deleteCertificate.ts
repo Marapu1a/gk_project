@@ -3,6 +3,7 @@ import { FastifyReply, FastifyRequest, RouteGenericInterface } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import fs from 'fs/promises';
 import path from 'path';
+import { deleteCertificatePreviews } from '../../utils/certificatePreview';
 
 interface DeleteCertificateRoute extends RouteGenericInterface {
   Params: { id: string };
@@ -112,6 +113,8 @@ export async function deleteCertificateHandler(
       await fs.unlink(filePath);
     } catch { }
   }
+
+  await deleteCertificatePreviews(cert.id);
 
   return reply.code(204).send();
 }

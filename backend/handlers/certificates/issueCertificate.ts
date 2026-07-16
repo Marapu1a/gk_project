@@ -11,6 +11,7 @@ import {
 } from '@prisma/client';
 import { parseCertificateExpiresAt, parseCertificateIssuedAt } from '../../utils/certificateDates';
 import { isStoredPdfFile } from '../../utils/pdfValidation';
+import { ensureCertificatePreview } from '../../utils/certificatePreview';
 
 interface IssueCertificateRoute extends RouteGenericInterface {
   Body: {
@@ -289,6 +290,10 @@ export async function issueCertificateHandler(
     });
 
     const created = result.cert;
+
+    void ensureCertificatePreview(created.id).catch((error) => {
+      req.log.warn({ err: error, certificateId: created.id }, 'Certificate preview warmup failed');
+    });
 
     return reply.code(201).send({
       id: created.id,

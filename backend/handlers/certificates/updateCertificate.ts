@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import fs from 'fs/promises';
 import path from 'path';
 import { parseCertificateExpiresAt, parseCertificateIssuedAt } from '../../utils/certificateDates';
+import { deleteCertificatePreviews, ensureCertificatePreview } from '../../utils/certificatePreview';
 
 interface UpdateCertificateRoute extends RouteGenericInterface {
   Params: { id: string };
@@ -217,6 +218,8 @@ export async function updateCertificateHandler(
     });
 
     if (oldFileToDelete?.fileId) {
+      await deleteCertificatePreviews(existing.id);
+
       const baseDir = UPLOAD_ROOT;
       const filePath = path.join(baseDir, oldFileToDelete.fileId);
 
@@ -225,6 +228,10 @@ export async function updateCertificateHandler(
       } catch {
         // если файл уже удалён — забиваем
       }
+
+      void ensureCertificatePreview(existing.id).catch((error) => {
+        req.log.warn({ err: error, certificateId: existing.id }, 'Certificate preview warmup failed');
+      });
     }
 
     return reply.send({

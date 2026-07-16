@@ -27,7 +27,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN apk add --no-cache postgresql-client
+RUN apk add --no-cache postgresql-client poppler-utils
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist

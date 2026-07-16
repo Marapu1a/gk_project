@@ -5,10 +5,12 @@ import { getMyCertificatesHandler } from '../handlers/certificates/getMyCertific
 import { getUserCertificatesHandler } from '../handlers/certificates/getUserCertificates';
 import { deleteCertificateHandler } from '../handlers/certificates/deleteCertificate';
 import { updateCertificateHandler } from '../handlers/certificates/updateCertificate';
+import { getCertificatePreviewHandler } from '../handlers/certificates/getCertificatePreview';
 import { verifyToken } from '../middlewares/verifyToken';
 import { requireAdmin } from '../middlewares/requireRole';
 
 export async function certificatesRoutes(app: FastifyInstance) {
+  app.get('/certificates/:id/preview', getCertificatePreviewHandler);
   app.post('/admin/certificates/issue', { preHandler: [verifyToken, requireAdmin] }, issueCertificateHandler);
   app.patch('/admin/certificates/:id', { preHandler: [verifyToken, requireAdmin] }, updateCertificateHandler);
   app.delete('/admin/certificates/:id', { preHandler: [verifyToken, requireAdmin] }, deleteCertificateHandler);
