@@ -37,6 +37,36 @@ function getDailySeed(): number {
   return Number(new Date().toISOString().slice(0, 10).replace(/-/g, ''));
 }
 
+function applicantProfilePriority(user: RegistryCardType): number {
+  const avatar = hasAvatar(user);
+  const city = hasCity(user);
+
+  if (avatar && city) return 0;
+  if (avatar) return 1;
+  if (city) return 2;
+  return 3;
+}
+
+function applicantActivityTime(user: RegistryCardType): number {
+  const value = user.activeCycle?.startedAt ?? user.createdAt;
+  return value ? Date.parse(value) || 0 : 0;
+}
+
+function applicantBaseSort(items: RegistryCardType[]): RegistryCardType[] {
+  return [...items].sort((a, b) => {
+    const priorityDiff = applicantProfilePriority(a) - applicantProfilePriority(b);
+    if (priorityDiff !== 0) return priorityDiff;
+
+    const activityDiff = applicantActivityTime(b) - applicantActivityTime(a);
+    if (activityDiff !== 0) return activityDiff;
+
+    const nameDiff = norm(a.fullName || '').localeCompare(norm(b.fullName || ''));
+    if (nameDiff !== 0) return nameDiff;
+
+    return String(a.id).localeCompare(String(b.id));
+  });
+}
+
 /**
  * BASE SORT (без рандома)
  *
@@ -102,6 +132,32 @@ export function smartDefaultSort(items: RegistryCardType[]): RegistryCardType[] 
 
   const shuffledTop = seededShuffle(top, getDailySeed());
   return [...shuffledTop, ...rest];
+}
+
+/**
+ * Сортировка соискателей:
+ * 1) заполненность публичного профиля;
+ * 2) свежесть активного цикла;
+ * 3) ежедневная ротация только внутри одинакового приоритета профиля.
+ *
+ * Текущая группа пользователя намеренно не учитывается: специалист с истёкшим
+ * сертификатом и активным циклом остаётся соискателем на тех же условиях.
+ */
+export function smartApplicantSort(items: RegistryCardType[]): RegistryCardType[] {
+  const sorted = applicantBaseSort(items);
+  const result: RegistryCardType[] = [];
+  const dailySeed = getDailySeed();
+
+  for (let priority = 0; priority <= 3; priority += 1) {
+    const bucket = sorted.filter((item) => applicantProfilePriority(item) === priority);
+    if (!bucket.length) continue;
+
+    const top = bucket.slice(0, 40);
+    const rest = bucket.slice(40);
+    result.push(...seededShuffle(top, dailySeed + priority), ...rest);
+  }
+
+  return result;
 }
 
 /**

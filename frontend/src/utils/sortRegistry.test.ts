@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { smartDefaultSort } from './sortRegistry';
+import { smartApplicantSort, smartDefaultSort } from './sortRegistry';
 import type { RegistryCard as User } from '../features/registry/api/getRegistry';
 
 function user(partial: Partial<User>): User {
@@ -140,5 +140,62 @@ describe('smartDefaultSort', () => {
     const b = smartDefaultSort(users).map((u) => u.id);
 
     expect(a).toEqual(b);
+  });
+});
+
+describe('smartApplicantSort', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-01-01'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('keeps profile-quality buckets in the expected order', () => {
+    const complete = user({ fullName: 'Complete', avatarUrl: 'x', city: 'Москва' });
+    const avatarOnly = user({ fullName: 'Avatar only', avatarUrl: 'x', city: null });
+    const cityOnly = user({ fullName: 'City only', avatarUrl: null, city: 'Москва' });
+    const empty = user({ fullName: 'Empty', avatarUrl: null, city: null });
+
+    expect(smartApplicantSort([empty, cityOnly, avatarOnly, complete]).map((item) => item.fullName))
+      .toEqual(['Complete', 'Avatar only', 'City only', 'Empty']);
+  });
+
+  it('does not let the current group outrank applicant profile completeness', () => {
+    const currentSpecialist = user({
+      fullName: 'Current specialist group',
+      groupName: 'Опытный Супервизор',
+      groupRank: 99,
+      avatarUrl: null,
+      city: 'Москва',
+    });
+    const regularApplicant = user({
+      fullName: 'Regular applicant',
+      groupName: 'Соискатель',
+      groupRank: 0,
+      avatarUrl: 'x',
+      city: 'Москва',
+    });
+
+    expect(smartApplicantSort([currentSpecialist, regularApplicant])[0].fullName)
+      .toBe('Regular applicant');
+  });
+
+  it('rotates deterministically without moving users between priority buckets', () => {
+    const complete = Array.from({ length: 10 }, (_, index) =>
+      user({ fullName: `Complete ${index}`, avatarUrl: 'x', city: 'Москва' }),
+    );
+    const withoutAvatar = Array.from({ length: 10 }, (_, index) =>
+      user({ fullName: `Without avatar ${index}`, city: 'Москва' }),
+    );
+
+    const first = smartApplicantSort([...withoutAvatar, ...complete]);
+    const second = smartApplicantSort([...complete, ...withoutAvatar]);
+
+    expect(first.map((item) => item.id)).toEqual(second.map((item) => item.id));
+    expect(first.slice(0, complete.length).every(hasAvatar)).toBe(true);
+    expect(first.slice(complete.length).every((item) => !hasAvatar(item))).toBe(true);
   });
 });

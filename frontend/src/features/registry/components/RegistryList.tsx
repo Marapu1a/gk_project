@@ -6,7 +6,7 @@ import { RegistryCard } from '../components/RegistryCard';
 import { SpecialistContactModal } from './SpecialistContactModal';
 import { DashboardPagination } from '@/components/DashboardPagination';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
-import { smartDefaultSort } from '@/utils/sortRegistry';
+import { smartApplicantSort, smartDefaultSort } from '@/utils/sortRegistry';
 
 type Props = { onOpenProfile?: (userId: string) => void; pageSize?: number };
 type RegistryTab = 'specialists' | 'applicants';
@@ -274,7 +274,10 @@ export function RegistryList({ onOpenProfile, pageSize = 18 }: Props) {
     });
   }, [tabItems, nameFilter, countryFilter, cityFilter, groupFilter, isApplicantsTab]);
 
-  const sorted = useMemo(() => smartDefaultSort(filtered), [filtered]);
+  const sorted = useMemo(
+    () => (isApplicantsTab ? smartApplicantSort(filtered) : smartDefaultSort(filtered)),
+    [filtered, isApplicantsTab],
+  );
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
 
