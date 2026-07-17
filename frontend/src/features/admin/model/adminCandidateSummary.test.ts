@@ -216,7 +216,7 @@ describe('buildAdminCandidateSummary', () => {
     expect(result.requiresAttention).toBe(true);
   });
 
-  it('uses the renewal payment and omits document review for renewal cycles', () => {
+  it('shows inherited document approval and the renewal payment for renewal cycles', () => {
     const result = buildAdminCandidateSummary(
       makeUser({
         activeCycle: makeActiveCycle('RENEWAL'),
@@ -251,11 +251,14 @@ describe('buildAdminCandidateSummary', () => {
       'Опытный Супервизор',
     );
 
-    expect(result.summaryLines).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ label: 'Документы' })]),
-    );
     expect(result.summaryLines).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          label: 'Документы',
+          value: 'Принято',
+          tone: 'good',
+          to: '/admin/document-review?search=user%40example.com&mode=history',
+        }),
         expect.objectContaining({
           label: 'Оплата ресертификации',
           value: 'На подтверждении',

@@ -135,17 +135,15 @@ export function buildAdminCandidateSummary(
       search: userSearch,
     });
 
-    if (!isRenewal) {
-      summaryLines.push({
-        label: 'Документы',
-        value: documents.label,
-        tone: documents.tone,
-        to: buildUrl('/admin/document-review', {
-          search: userSearch,
-          mode: documents.mode,
-        }),
-      });
-    }
+    summaryLines.push({
+      label: 'Документы',
+      value: documents.label,
+      tone: documents.tone,
+      to: buildUrl('/admin/document-review', {
+        search: userSearch,
+        mode: documents.mode,
+      }),
+    });
 
     if ((supervisionRequired?.practice ?? 0) > 0) {
       summaryLines.push({
