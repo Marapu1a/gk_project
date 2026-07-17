@@ -8,7 +8,8 @@ import { prisma } from '../../lib/prisma';
 import { UPLOAD_ROOT, MAX_FILE_SIZE_MB, MAX_FILE_SIZE_BYTES } from '../../config/storage';
 import { isPdfBuffer } from '../../utils/pdfValidation';
 
-const MAX_FILES = 10;
+const MAX_PENDING_DOCUMENT_FILES = 10;
+const PENDING_DOCUMENT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyReply) {
   const user = req.user as any;
@@ -63,11 +64,20 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
   }
 
   if (category === 'documents') {
-    const count = await prisma.uploadedFile.count({
-      where: { userId: ownerUserId, fileId: { contains: '/documents/' } },
+    const pendingCount = await prisma.uploadedFile.count({
+      where: {
+        userId: ownerUserId,
+        fileId: { startsWith: `${ownerUserId}/documents/` },
+        requestId: null,
+        documentReviewFiles: { none: {} },
+        createdAt: { gte: new Date(Date.now() - PENDING_DOCUMENT_WINDOW_MS) },
+      },
     });
-    if (count >= MAX_FILES)
-      return reply.code(400).send({ error: `Можно загрузить максимум ${MAX_FILES} документов` });
+    if (pendingCount >= MAX_PENDING_DOCUMENT_FILES) {
+      return reply.code(400).send({
+        error: `Можно загрузить максимум ${MAX_PENDING_DOCUMENT_FILES} документов за одну отправку`,
+      });
+    }
   }
 
   const buffer = await data.toBuffer();

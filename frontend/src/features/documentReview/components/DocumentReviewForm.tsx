@@ -99,15 +99,13 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
     }
 
     setUploading(true);
+    const uploaded: UploadedDocument[] = [];
 
     try {
-      const uploaded: UploadedDocument[] = [];
-
       for (const file of nextFiles) {
         uploaded.push(await uploadFile(file, 'documents'));
       }
 
-      setFiles((current) => [...current, ...uploaded]);
       toast.success(
         uploaded.length === 1 ? UI_TOAST_MESSAGES.files.fileUploaded : UI_TOAST_MESSAGES.files.filesUploaded,
       );
@@ -120,6 +118,9 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
 
       toast.error(message);
     } finally {
+      if (uploaded.length > 0) {
+        setFiles((current) => [...current, ...uploaded]);
+      }
       setUploading(false);
     }
   };

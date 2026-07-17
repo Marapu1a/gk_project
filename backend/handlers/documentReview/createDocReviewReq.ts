@@ -8,6 +8,7 @@ import {
 } from '../documentReviewAdmin/documentReviewFileStatusUtils';
 
 const allowedDocumentTypes = new Set(['HIGHER_EDUCATION', 'ADDITIONAL_EDUCATION', 'OTHER']);
+const MAX_DOCUMENTS_PER_SUBMISSION = 10;
 
 type DocumentPayloadItem = {
   fileId: string;
@@ -47,6 +48,12 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
   // Защита от пустого списка файлов
   if (!fileIds || fileIds.length === 0) {
     return reply.code(400).send({ error: 'Не выбраны файлы для проверки' });
+  }
+
+  if (fileIds.length > MAX_DOCUMENTS_PER_SUBMISSION) {
+    return reply.code(400).send({
+      error: `Можно отправить максимум ${MAX_DOCUMENTS_PER_SUBMISSION} документов за один раз`,
+    });
   }
 
   if (new Set(fileIds).size !== fileIds.length) {
