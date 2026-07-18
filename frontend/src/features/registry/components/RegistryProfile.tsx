@@ -4,7 +4,7 @@ import { CheckCircle, Printer, XCircle } from 'lucide-react';
 import { useRegistryProfile } from '../hooks/useRegistryProfile';
 import type { RegistryCertificate } from '../api/getRegistryProfile';
 import { SpecialistContactModal } from './SpecialistContactModal';
-import { formatCertificateDate, isCertificateDateActive } from '@/features/certificate/utils/certificateDates';
+import { formatCertificateDate } from '@/features/certificate/utils/certificateDates';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { ModalShell } from '@/components/ModalShell';
 import { CertificateImagePreview } from '@/features/certificate/components/CertificateImagePreview';
@@ -24,7 +24,11 @@ function certificateFileName(cert: RegistryCertificate) {
 }
 
 function isCertificateActive(cert: RegistryCertificate) {
-  return isCertificateDateActive(cert.expiresAt);
+  return cert.registryStatus === 'ACTIVE';
+}
+
+function isCertificateAvailableInRegistry(cert: RegistryCertificate) {
+  return cert.registryStatus === 'ACTIVE' || cert.registryStatus === 'SUSPENDED';
 }
 
 async function copyText(value: string, label: string) {
@@ -51,7 +55,7 @@ export function RegistryProfile({ userId }: Props) {
   }
 
   const cert = profile.certificate;
-  const canContact = Boolean(cert && isCertificateActive(cert));
+  const canContact = Boolean(cert && isCertificateAvailableInRegistry(cert));
   const avatarPlaceholder = '/avatar_placeholder.svg';
   const location = [profile.country, profile.city].filter(Boolean).join(', ');
 
@@ -90,7 +94,7 @@ export function RegistryProfile({ userId }: Props) {
                 onClick={() => setContactOpen(true)}
                 disabled={!canContact}
                 className="btn min-h-[44px] rounded-[8px] bg-[var(--color-blue-dark)] px-4 text-[15px] font-extrabold text-white hover:bg-[#16254A] disabled:cursor-not-allowed disabled:bg-[#D1D7E3]"
-                title={canContact ? 'Связаться со специалистом' : 'Связаться можно только со специалистом с действующим сертификатом'}
+                title={canContact ? 'Связаться со специалистом' : 'Связаться можно только со специалистом, который отображается в реестре'}
               >
                 Связаться
               </button>
@@ -283,6 +287,12 @@ function CertificateCheckModal({
   onClose: () => void;
 }) {
   const active = isCertificateActive(cert);
+  const suspended = cert.registryStatus === 'SUSPENDED';
+  const expiryStatus = suspended
+    ? ' — сертификат приостановлен'
+    : cert.registryStatus === 'GRACE_EXPIRED'
+      ? ' — срок приостановки истёк'
+      : '';
 
   return (
     <ModalShell
@@ -313,7 +323,7 @@ function CertificateCheckModal({
             <CertificateField label="Выдан" value={formatCertificateDate(cert.issuedAt)} />
             <CertificateField
               label="Действует до"
-              value={formatCertificateDate(cert.expiresAt)}
+              value={`${formatCertificateDate(cert.expiresAt)}${expiryStatus}`}
               danger={!active}
             />
             <div>

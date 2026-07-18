@@ -445,7 +445,6 @@ function NotificationRow({ notification }: { notification: Notification }) {
           <NotificationMessage
             message={notification.message}
             className="dashboard-v2-text mt-1 text-[#222]"
-            truncate
           />
         </div>
 

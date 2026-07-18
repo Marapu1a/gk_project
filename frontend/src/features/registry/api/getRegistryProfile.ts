@@ -8,6 +8,7 @@ export type RegistryCertificate = {
   issuedAt: string;   // ISO
   expiresAt: string;  // ISO
   fileId: string;
+  registryStatus: 'ACTIVE' | 'SUSPENDED' | 'GRACE_EXPIRED';
 };
 
 export type RegistryProfile = {
@@ -20,6 +21,7 @@ export type RegistryProfile = {
   createdAt: string;    // ISO
   bio?: string | null;
   groupName?: string | null;
+  certificateStatus?: 'ACTIVE' | 'SUSPENDED' | 'GRACE_EXPIRED' | null;
   certificate?: RegistryCertificate | null;
 };
 

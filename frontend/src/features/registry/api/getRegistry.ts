@@ -13,6 +13,7 @@ export type RegistryCard = {
   groupName?: string | null;
   groupRank?: number | null;
   isCertified: boolean;
+  certificateStatus?: 'ACTIVE' | 'SUSPENDED' | 'GRACE_EXPIRED' | null;
   hasActiveCycle: boolean;
   activeCycle?: {
     id: string;

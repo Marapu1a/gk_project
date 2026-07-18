@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { SpecialistContactRequestType } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
+import { getCertificateSuspensionBoundary } from '../../utils/certificateLifecycle';
 
 const contactRequestSchema = z.object({
   senderName: z.string().trim().min(2).max(120),
@@ -25,6 +26,7 @@ export async function createSpecialistContactMessageHandler(
     return reply.code(400).send({ error: 'Заполните обязательные поля сообщения.' });
   }
 
+  const suspensionBoundary = getCertificateSuspensionBoundary();
   const specialist = await prisma.user.findFirst({
     where: {
       id: specialistId,
@@ -33,7 +35,7 @@ export async function createSpecialistContactMessageHandler(
       isProfileVisible: true,
       certificates: {
         some: {
-          expiresAt: { gte: new Date() },
+          expiresAt: { gte: suspensionBoundary },
         },
       },
     },
@@ -41,7 +43,7 @@ export async function createSpecialistContactMessageHandler(
   });
 
   if (!specialist) {
-    return reply.code(403).send({ error: 'Сообщение можно отправить только специалисту с действующим сертификатом.' });
+    return reply.code(403).send({ error: 'Сообщение можно отправить только специалисту, который отображается в реестре.' });
   }
 
   // TODO: публичная форма доступна извне; при необходимости добавить антиспам/лимиты.

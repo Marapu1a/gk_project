@@ -6,15 +6,15 @@ const REASON_MARKER = 'Причина:';
 type Props = {
   message: string;
   className?: string;
-  truncate?: boolean;
 };
 
-export function NotificationMessage({ message, className = '', truncate = false }: Props) {
+export function NotificationMessage({ message, className = '' }: Props) {
   const markerIndex = message.indexOf(REASON_MARKER);
+  const textLayoutClassName = 'whitespace-pre-line [overflow-wrap:anywhere]';
 
   if (markerIndex === -1) {
     return (
-      <p className={`${className} ${truncate ? 'truncate' : 'whitespace-pre-line'}`}>
+      <p className={`${className} ${textLayoutClassName}`}>
         {message}
       </p>
     );
@@ -25,14 +25,14 @@ export function NotificationMessage({ message, className = '', truncate = false 
 
   if (!reason) {
     return (
-      <p className={`${className} ${truncate ? 'truncate' : 'whitespace-pre-line'}`}>
+      <p className={`${className} ${textLayoutClassName}`}>
         {message}
       </p>
     );
   }
 
   return (
-    <p className={`${className} whitespace-pre-line`}>
+    <p className={`${className} whitespace-pre-line [overflow-wrap:anywhere]`}>
       {intro}
       {intro ? ' ' : null}
       <span>{REASON_MARKER} </span>

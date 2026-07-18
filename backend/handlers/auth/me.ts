@@ -3,6 +3,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { TargetLevel } from '@prisma/client';
 import { TRANSBORDER_CONSENT_DOCUMENT } from '../../utils/transborderConsentDocument';
+import { getCertificateSuspensionBoundary } from '../../utils/certificateLifecycle';
 
 type RenewalEligibleLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | null;
 
@@ -99,7 +100,7 @@ export async function meHandler(req: FastifyRequest, reply: FastifyReply) {
     const activeCertificate = await prisma.certificate.findFirst({
       where: {
         userId: dbUser.id,
-        expiresAt: { gt: new Date() },
+        expiresAt: { gte: getCertificateSuspensionBoundary() },
         ...(supervisorBranch
           ? {
             group: {

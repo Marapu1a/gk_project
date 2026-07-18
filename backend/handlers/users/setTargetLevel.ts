@@ -19,6 +19,7 @@ type Body = {
 type RequirementsGroupName = keyof typeof supervisionRequirementsByGroup;
 
 import { targetLevelToGroupName, TARGET_GROUP_NAMES } from '../../domain/levels';
+import { getCertificateSuspensionBoundary } from '../../utils/certificateLifecycle';
 
 // Какие цели можно выбирать с конкретной активной группы для ПЕРВИЧНОЙ сертификации
 const ALLOWED_CERTIFICATION_TARGETS_BY_GROUP: Record<string, TargetLevel[]> = {
@@ -195,7 +196,7 @@ export async function setTargetLevelHandler(req: FastifyRequest, reply: FastifyR
       const activeCertificate = await prisma.certificate.findFirst({
         where: {
           userId: id,
-          expiresAt: { gte: new Date() },
+          expiresAt: { gte: getCertificateSuspensionBoundary() },
         },
         select: { id: true },
       });

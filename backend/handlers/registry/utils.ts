@@ -1,6 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { prisma } from '../../lib/prisma';
+import {
+  getCertificateRegistryStatus,
+  isCertificateVisibleAsSpecialist,
+} from '../../utils/certificateLifecycle';
 
 const UPLOADS_PREFIX = '/uploads/';
 import { UPLOAD_ROOT } from '../../config/storage';
@@ -121,12 +125,11 @@ export async function getRegistryList({
       bio: true,
       // тянем группы, чтобы вычислить активную
       groups: { include: { group: { select: { name: true, rank: true } } } },
-      // тянем только активный сертификат (если есть), чтобы посчитать isCertified
+      // Последний сертификат нужен и в течение 60 дней приостановки.
       certificates: {
-        where: { expiresAt: { gte: now } },
         orderBy: { issuedAt: 'desc' },
         take: 1,
-        select: { id: true },
+        select: { id: true, expiresAt: true },
       },
       cycles: {
         where: { status: 'ACTIVE' },
@@ -150,7 +153,10 @@ export async function getRegistryList({
 
   const items = users.map((u) => {
     const top = u.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank)[0];
-    const activeCert = u.certificates[0] || null;
+    const latestCert = u.certificates[0] || null;
+    const certificateStatus = latestCert
+      ? getCertificateRegistryStatus(latestCert.expiresAt, now)
+      : null;
     const activeCycle = u.cycles[0] || null;
 
     return {
@@ -164,7 +170,10 @@ export async function getRegistryList({
       bio: u.bio,
       groupName: top?.name ?? null,
       groupRank: top?.rank ?? null,
-      isCertified: !!activeCert,
+      isCertified: Boolean(
+        latestCert && isCertificateVisibleAsSpecialist(latestCert.expiresAt, now),
+      ),
+      certificateStatus,
       hasActiveCycle: !!activeCycle,
       activeCycle: activeCycle
         ? {
@@ -224,6 +233,7 @@ export async function getRegistryProfile(userId: string) {
 
   const top = user.groups.map((g) => g.group).sort((a, b) => b.rank - a.rank)[0];
   const c = user.certificates[0] || null;
+  const certificateStatus = c ? getCertificateRegistryStatus(c.expiresAt) : null;
 
   return {
     id: user.id,
@@ -235,6 +245,7 @@ export async function getRegistryProfile(userId: string) {
     createdAt: user.createdAt,
     bio: user.bio,
     groupName: top?.name ?? null,
+    certificateStatus,
     certificate: c
       ? {
         id: c.id,
@@ -243,6 +254,7 @@ export async function getRegistryProfile(userId: string) {
         issuedAt: c.issuedAt,
         expiresAt: c.expiresAt,
         fileId: c.file.fileId,
+        registryStatus: certificateStatus,
       }
       : null,
   };

@@ -179,6 +179,9 @@ export async function updateCertificateHandler(
           issuedAt: nextIssuedAt,
           expiresAt: nextExpiresAt,
           fileId: newFileId,
+          ...(typeof expiresAt === 'string'
+            ? { suspensionNotifiedAt: null, graceExpiredNotifiedAt: null }
+            : {}),
         },
         include: {
           group: true,

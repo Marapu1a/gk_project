@@ -27,6 +27,7 @@ import { locationRoutes } from './routes/location';
 import { userBannerRoutes } from './routes/userBanner';
 import { specialistContactMessagesRoutes } from './routes/specialistContactMessages';
 import { MAX_FILE_SIZE_MB, UPLOAD_ROOT } from './config/storage';
+import { startCertificateLifecycleScheduler } from './utils/certificateLifecycleNotifications';
 
 dotenv.config()
 
@@ -91,4 +92,5 @@ app.listen({ port: +PORT, host: '0.0.0.0' }, (err, address) => {
     process.exit(1)
   }
   console.log(`🚀 Server listening at ${address}`)
+  startCertificateLifecycleScheduler(app.log)
 })
