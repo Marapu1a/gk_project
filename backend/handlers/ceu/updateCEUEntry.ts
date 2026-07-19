@@ -5,6 +5,7 @@ import path from 'path';
 import { prisma } from '../../lib/prisma';
 import { NotificationType } from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 import { UPLOAD_ROOT } from '../../config/storage';
 
@@ -168,7 +169,18 @@ export async function updateCEUEntryHandler(
       },
     });
 
-    if (notifyUser) {
+  } catch (err) {
+    reportOperationalFailure(
+      'ceu_review_action_log',
+      err,
+      { userId: entry.record.userId, recordId: entry.record.id, requestId: req.id },
+      req.log,
+    );
+  }
+
+  let notificationCreated = false;
+  if (notifyUser) {
+    try {
       await createNotification({
         userId: entry.record.userId,
         type: NotificationType.CEU,
@@ -178,9 +190,15 @@ export async function updateCEUEntryHandler(
             : `Ваши CEU-баллы отклонены: ${reason}`,
         link: '/ceu/points?panel=history',
       });
+      notificationCreated = true;
+    } catch (err) {
+      reportOperationalFailure(
+        'ceu_review_notification',
+        err,
+        { userId: entry.record.userId, recordId: entry.record.id, requestId: req.id },
+        req.log,
+      );
     }
-  } catch (err) {
-    req.log.error(err, 'CEU_REVIEW side effects failed');
   }
 
   return reply.send({
@@ -190,7 +208,7 @@ export async function updateCEUEntryHandler(
       status,
       rejectedReason: status === 'REJECTED' ? reason : null,
       fileDeleted: !!fileIdToDelete,
-      notified: notifyUser,
+      notified: notificationCreated,
     },
   });
 }

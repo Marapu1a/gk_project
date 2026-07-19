@@ -1,5 +1,11 @@
 version: '3.9'
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '5'
+
 services:
   db:
     image: postgres:16-alpine
@@ -14,6 +20,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    logging: *default-logging
     restart: unless-stopped
 
   backend:
@@ -23,13 +30,26 @@ services:
     environment:
       NODE_ENV: production
       UPLOAD_DIR: /app/uploads
+      UPLOAD_MIN_FREE_MB: ${UPLOAD_MIN_FREE_MB:-256}
     volumes:
       - /srv/storage/uploads:/app/uploads
       - ./backend/data:/app/data
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     expose:
       - '3000'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *default-logging
     restart: unless-stopped
 
   frontend:
@@ -37,10 +57,15 @@ services:
       context: ./frontend
       args:
         - VITE_API_URL=/api
+        - VITE_SENTRY_DSN=${VITE_SENTRY_DSN:-}
+        - VITE_SENTRY_ENVIRONMENT=${VITE_SENTRY_ENVIRONMENT:-production}
+        - VITE_SENTRY_RELEASE=${SENTRY_RELEASE:-}
     expose:
       - '80'
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    logging: *default-logging
     restart: unless-stopped
 
 volumes:

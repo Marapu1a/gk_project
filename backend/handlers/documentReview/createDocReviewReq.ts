@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
 import { NotificationType, Prisma } from '@prisma/client';
 import { notifyAdmins } from '../../utils/notifications';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 import {
   recalculateDocumentReviewRequestStatus,
   resolveDocumentReviewRequestStatus,
@@ -131,7 +132,12 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
         excludeUserId: user.userId,
       });
     } catch (err) {
-      req.log.error(err, 'DOCUMENT_REVIEW_CREATE notification failed');
+      reportOperationalFailure(
+        'document_review_admin_notification',
+        err,
+        { userId: user.userId, requestId },
+        req.log,
+      );
     }
   };
 

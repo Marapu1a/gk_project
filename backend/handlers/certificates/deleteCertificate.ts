@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import fs from 'fs/promises';
 import path from 'path';
 import { deleteCertificatePreviews } from '../../utils/certificatePreview';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 interface DeleteCertificateRoute extends RouteGenericInterface {
   Params: { id: string };
@@ -55,7 +56,16 @@ export async function deleteCertificateHandler(
 
   const chainGroupNames = getChainGroupNames(cert.group.name);
   if (!chainGroupNames.length) {
-    return reply.code(500).send({ error: 'CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED' });
+    reportOperationalFailure(
+      'certificate_group_configuration',
+      new Error('CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED'),
+      { certificateId: cert.id, userId: cert.user.id, requestId: req.id },
+      req.log,
+    );
+    return reply.code(500).send({
+      error: 'CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED',
+      requestId: req.id,
+    });
   }
 
   const chainGroups = await prisma.group.findMany({
@@ -64,6 +74,18 @@ export async function deleteCertificateHandler(
   });
 
   const chainGroupIds = chainGroups.map((g) => g.id);
+  if (!chainGroupIds.length) {
+    reportOperationalFailure(
+      'certificate_group_configuration',
+      new Error('CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED'),
+      { certificateId: cert.id, userId: cert.user.id, requestId: req.id },
+      req.log,
+    );
+    return reply.code(500).send({
+      error: 'CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED',
+      requestId: req.id,
+    });
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -101,7 +123,12 @@ export async function deleteCertificateHandler(
       }
     });
   } catch (e: any) {
-    req.log?.error?.(e);
+    reportOperationalFailure(
+      'certificate_delete',
+      e,
+      { certificateId: cert.id, userId: cert.user.id, requestId: req.id },
+      req.log,
+    );
     return reply.code(500).send({ error: 'Internal Server Error' });
   }
 

@@ -1,5 +1,6 @@
 import { NotificationType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
+import { reportOperationalWarning } from '../lib/errorMonitoring';
 
 type CreateNotificationInput = {
   userId: string;
@@ -84,7 +85,14 @@ export async function notifyAdmins({
     select: { id: true },
   });
 
-  if (!admins.length) return { count: 0 };
+  if (!admins.length) {
+    reportOperationalWarning(
+      'admin_notification',
+      'Admin notification has no active recipients',
+      { type },
+    );
+    return { count: 0, expectedCount: 0 };
+  }
 
   const result = await prisma.notification.createMany({
     data: admins.map((admin) => {
@@ -100,5 +108,13 @@ export async function notifyAdmins({
     }),
   });
 
-  return { count: result.count };
+  if (result.count !== admins.length) {
+    reportOperationalWarning(
+      'admin_notification',
+      'Admin notification recipient count mismatch',
+      { type, expectedCount: admins.length, actualCount: result.count },
+    );
+  }
+
+  return { count: result.count, expectedCount: admins.length };
 }

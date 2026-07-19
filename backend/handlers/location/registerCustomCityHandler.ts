@@ -1,6 +1,7 @@
 // src/handlers/location/registerCustomCityHandler.ts
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../../lib/prisma';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 type RegisterCityBody = {
   countryCodes: string[];
@@ -91,7 +92,12 @@ export async function registerCustomCityHandler(req: FastifyRequest, reply: Fast
       countryCodes: uniqueCodes,
     });
   } catch (err) {
-    req.log.error({ err }, 'Failed to register custom city');
+    reportOperationalFailure(
+      'custom_city_registration',
+      err,
+      { userId, requestId: req.id },
+      req.log,
+    );
     return reply.code(500).send({ error: 'Не удалось сохранить город' });
   }
 }

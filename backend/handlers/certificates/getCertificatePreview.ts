@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 import { FastifyReply, FastifyRequest, RouteGenericInterface } from 'fastify';
 
 import { ensureCertificatePreview } from '../../utils/certificatePreview';
@@ -24,7 +25,12 @@ export async function getCertificatePreviewHandler(
 
     return reply.send(fs.createReadStream(preview.path));
   } catch (error) {
-    req.log.error({ err: error, certificateId: req.params.id }, 'Certificate preview generation failed');
+    reportOperationalFailure(
+      'certificate_preview_generation',
+      error,
+      { certificateId: req.params.id, requestId: req.id },
+      req.log,
+    );
     return reply.code(503).send({ error: 'Не удалось подготовить превью сертификата' });
   }
 }

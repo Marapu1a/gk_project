@@ -1,6 +1,11 @@
 import { NotificationType } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { getCertificateRegistryStatus } from './certificateLifecycle';
+import {
+  markCertificateLifecycleFailure,
+  markCertificateLifecycleSuccess,
+} from '../lib/monitoringState';
+import { reportOperationalFailure, reportOperationalWarning } from '../lib/errorMonitoring';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -23,7 +28,14 @@ async function createAdminCertificateTask(
       select: { id: true },
     });
 
-    if (!admins.length) return false;
+    if (!admins.length) {
+      reportOperationalWarning(
+        'certificate_lifecycle_notification',
+        'Certificate lifecycle task has no active admin recipients',
+        { certificateId, kind },
+      );
+      return false;
+    }
 
     const claimed = await tx.certificate.updateMany({
       where: { id: certificateId, [notifiedField]: null },
@@ -111,11 +123,13 @@ export function startCertificateLifecycleScheduler(log: {
   const run = async () => {
     try {
       const result = await processCertificateLifecycleNotifications();
+      markCertificateLifecycleSuccess();
       if (result.suspensionTasks || result.graceExpiredTasks) {
         log.info(result, 'Certificate lifecycle admin tasks created');
       }
     } catch (error) {
-      log.error(error, 'Certificate lifecycle scheduler failed');
+      markCertificateLifecycleFailure();
+      reportOperationalFailure('certificate_lifecycle_scheduler', error);
     }
   };
 

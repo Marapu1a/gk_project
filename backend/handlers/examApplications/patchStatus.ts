@@ -5,6 +5,7 @@ import { assertStatusTransition, getMissingExamPaymentTypes, getOrCreateExamApp 
 import { NotificationType, PaymentType } from '@prisma/client';
 import { createNotification, notifyAdmins } from '../../utils/notifications';
 import { buildExamReadiness } from './readiness';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 type Body = {
   status: 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -148,7 +149,12 @@ export async function patchExamAppStatusHandler(req: FastifyRequest, reply: Fast
       });
     }
   } catch (err) {
-    req.log.error(err, 'EXAM_APPLICATION notification failed');
+    reportOperationalFailure(
+      'exam_application_notification',
+      err,
+      { userId, applicationId: updated.id, nextStatus: next, requestId: req.id },
+      req.log,
+    );
   }
 
   return reply.send(updated);

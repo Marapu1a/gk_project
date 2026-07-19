@@ -5,6 +5,7 @@ import { NotificationType, PaymentType, PaymentStatus, Role, TargetLevel } from 
 import { updatePaymentSchema } from '../../schemas/updatePaymentSchema';
 import { createNotification, notifyAdmins } from '../../utils/notifications';
 import { logAdminUserAction } from '../../utils/adminUserActionLog';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 type AuthUser = {
   userId: string;
@@ -284,7 +285,12 @@ export async function updatePaymentStatusHandler(req: FastifyRequest, reply: Fas
         });
       }
     } catch (err) {
-      req.log.error(err, 'PAYMENT_STATUS notification failed');
+      reportOperationalFailure(
+        'payment_status_notification',
+        err,
+        { paymentId: id, userId: dbPayment.userId, nextStatus: status, requestId: req.id },
+        req.log,
+      );
     }
   }
 

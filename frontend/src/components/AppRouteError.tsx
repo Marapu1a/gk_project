@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
+import { captureFrontendException } from '@/lib/errorMonitoring';
 
 function getReturnPath() {
   try {
@@ -15,8 +16,10 @@ export function AppRouteError() {
   const returnPath = getReturnPath();
 
   useEffect(() => {
-    console.error('Route rendering failed', error);
-  }, [error]);
+    if (!isNotFound) {
+      captureFrontendException(error, { operation: 'route_render' });
+    }
+  }, [error, isNotFound]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#F0F0F0] px-4 py-8">

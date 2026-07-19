@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma';
 import jwt from 'jsonwebtoken';
 import { sendEmail } from '../../lib/mailer';
 import { z } from 'zod';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email(),
@@ -38,7 +39,12 @@ export async function forgotPasswordHandler(req: FastifyRequest, reply: FastifyR
 
     return reply.send({ success: true });
   } catch (err) {
-    console.error('[EMAIL ERROR]', err);
+    reportOperationalFailure(
+      'password_reset_email',
+      err,
+      { userId: user.id, requestId: req.id },
+      req.log,
+    );
     return reply.code(500).send({ error: 'Не удалось отправить письмо' });
   }
 }

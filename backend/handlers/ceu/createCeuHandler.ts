@@ -23,6 +23,26 @@ export async function createCeuHandler(req: FastifyRequest, reply: FastifyReply)
     return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
   }
 
+  const uploadedFile = await prisma.uploadedFile.findUnique({
+    where: { fileId },
+    select: { userId: true, fileId: true },
+  });
+  if (
+    !uploadedFile ||
+    uploadedFile.userId !== user.userId ||
+    !uploadedFile.fileId.startsWith(`${user.userId}/ceu/`)
+  ) {
+    return reply.code(400).send({ error: 'CEU_FILE_INVALID' });
+  }
+
+  const existingByFile = await prisma.cEURecord.findFirst({
+    where: { fileId },
+    select: { id: true },
+  });
+  if (existingByFile) {
+    return reply.code(409).send({ error: 'CEU_FILE_ALREADY_USED' });
+  }
+
   const ceuRecord = await prisma.cEURecord.create({
     data: {
       userId: user.userId,

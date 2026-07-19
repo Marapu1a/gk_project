@@ -34,7 +34,8 @@ export async function sendEmail({
       html,
     });
   } catch (error) {
-    console.error('✉ [EMAIL ERROR]:', error instanceof Error ? error.message : error);
-    throw new Error('Не удалось отправить письмо');
+    const wrapped = new Error('Не удалось отправить письмо');
+    (wrapped as Error & { cause?: unknown }).cause = error;
+    throw wrapped;
   }
 }

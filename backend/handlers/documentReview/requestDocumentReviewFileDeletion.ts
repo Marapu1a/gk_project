@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import { DocumentReviewFileStatus, NotificationType } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { notifyAdmins } from '../../utils/notifications';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 type Body = {
   comment?: string;
@@ -68,7 +69,12 @@ export async function requestDocumentReviewFileDeletion(
       excludeUserId: user.userId,
     });
   } catch (err) {
-    req.log.error(err, 'DOCUMENT_REVIEW_FILE_DELETE_REQUEST notification failed');
+    reportOperationalFailure(
+      'document_deletion_admin_notification',
+      err,
+      { userId: user.userId, fileReviewId, requestId: req.id },
+      req.log,
+    );
   }
 
   return reply.send(updated);

@@ -7,6 +7,7 @@ import {
   ReviewerCandidateKind,
 } from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 interface UpdateSupervisionHourRoute extends RouteGenericInterface {
   Params: { id: string };
@@ -202,7 +203,12 @@ export async function updateSupervisionHourHandler(
       link: '/supervision/hours?panel=history',
     });
   } catch (err) {
-    req.log.error(err, 'SUPERVISION_REVIEW notification failed');
+    reportOperationalFailure(
+      'supervision_review_notification',
+      err,
+      { userId: recordOwnerId, hourId: id, nextStatus: desiredStatus, requestId: req.id },
+      req.log,
+    );
   }
 
   return reply.send({

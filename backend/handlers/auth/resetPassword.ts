@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 const resetPasswordSchema = z.object({
   token: z.string(),
@@ -19,12 +20,26 @@ export async function resetPasswordHandler(req: FastifyRequest, reply: FastifyRe
   const secret = process.env.RESET_PASSWORD_SECRET;
 
   if (!secret) {
-    return reply.code(500).send({ error: 'Секрет сброса не задан' });
+    reportOperationalFailure(
+      'password_reset_configuration',
+      new Error('RESET_PASSWORD_SECRET is not configured'),
+      { requestId: req.id },
+      req.log,
+    );
+    return reply.code(500).send({
+      error: 'Не удалось изменить пароль',
+      requestId: req.id,
+    });
+  }
+
+  let decoded: { userId: string };
+  try {
+    decoded = jwt.verify(token, secret) as { userId: string };
+  } catch {
+    return reply.code(401).send({ error: 'Недействительный или просроченный токен' });
   }
 
   try {
-    const decoded = jwt.verify(token, secret) as { userId: string };
-
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await prisma.user.update({
@@ -34,7 +49,15 @@ export async function resetPasswordHandler(req: FastifyRequest, reply: FastifyRe
 
     return reply.send({ success: true });
   } catch (err) {
-    console.error('[RESET ERROR]', err);
-    return reply.code(401).send({ error: 'Недействительный или просроченный токен' });
+    reportOperationalFailure(
+      'password_reset',
+      err,
+      { userId: decoded.userId, requestId: req.id },
+      req.log,
+    );
+    return reply.code(500).send({
+      error: 'Не удалось изменить пароль',
+      requestId: req.id,
+    });
   }
 }

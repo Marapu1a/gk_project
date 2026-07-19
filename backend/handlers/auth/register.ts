@@ -5,7 +5,9 @@ import { prisma } from '../../lib/prisma';
 import { signJwt } from '../../utils/jwt';
 import { registerSchema } from '../../schemas/auth';
 import { PaymentType, PaymentStatus, NotificationType } from '@prisma/client';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 import { getNextRegistrationNumber } from '../../utils/registrationNumber';
+import { notifyAdmins } from '../../utils/notifications';
 
 /** Канон: lower + убрать точки до @ (для всех доменов), без изменения хранимого email */
 function canonicalSimple(emailInput: string): string {
@@ -105,21 +107,20 @@ export async function registerHandler(req: FastifyRequest, reply: FastifyReply) 
 
   // нотификации админам — как было (вне транзакции)
   try {
-    const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
-    if (admins.length) {
-      await prisma.notification.createMany({
-        data: admins.map((a) => ({
-          userId: a.id,
-          type: NotificationType.NEW_USER,
-          message: isExternalSupervisor
-            ? `Новый пользователь указал, что уже является супервизором IBAO (BCBA): ${user.email}`
-            : `Новая регистрация: ${user.email}`,
-          link: `/admin/users/${encodeURIComponent(user.id)}`,
-        })),
-      });
-    }
+    await notifyAdmins({
+      type: NotificationType.NEW_USER,
+      message: isExternalSupervisor
+        ? `Новый пользователь указал, что уже является супервизором IBAO (BCBA): ${user.email}`
+        : `Новая регистрация: ${user.email}`,
+      link: `/admin/users/${encodeURIComponent(user.id)}`,
+    });
   } catch (e) {
-    req.log.error(e, 'NEW_USER notifications createMany failed');
+    reportOperationalFailure(
+      'new_user_admin_notification',
+      e,
+      { userId: user.id, requestId: req.id },
+      req.log,
+    );
   }
 
   const token = signJwt({ userId: user.id, role: user.role });

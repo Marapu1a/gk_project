@@ -12,6 +12,7 @@ import {
 import { parseCertificateExpiresAt, parseCertificateIssuedAt } from '../../utils/certificateDates';
 import { isStoredPdfFile } from '../../utils/pdfValidation';
 import { ensureCertificatePreview } from '../../utils/certificatePreview';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 interface IssueCertificateRoute extends RouteGenericInterface {
   Body: {
@@ -131,7 +132,15 @@ export async function issueCertificateHandler(
   const renewalTargetLevel = resolveRenewalTargetLevel(issuedGroupName);
 
   const targetGroup = await prisma.group.findUnique({ where: { name: issuedGroupName } });
-  if (!targetGroup) return reply.code(500).send({ error: 'TARGET_GROUP_NOT_CONFIGURED' });
+  if (!targetGroup) {
+    reportOperationalFailure(
+      'certificate_group_configuration',
+      new Error('TARGET_GROUP_NOT_CONFIGURED'),
+      { userId: user.id, cycleId: activeCycle.id, requestId: req.id },
+      req.log,
+    );
+    return reply.code(500).send({ error: 'TARGET_GROUP_NOT_CONFIGURED', requestId: req.id });
+  }
 
   const chainGroupNames = getChainGroupNames(activeCycle.targetLevel);
   const chainGroups = await prisma.group.findMany({
@@ -141,7 +150,16 @@ export async function issueCertificateHandler(
 
   const chainGroupIds = chainGroups.map((g) => g.id);
   if (!chainGroupIds.length) {
-    return reply.code(500).send({ error: 'CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED' });
+    reportOperationalFailure(
+      'certificate_group_configuration',
+      new Error('CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED'),
+      { userId: user.id, cycleId: activeCycle.id, requestId: req.id },
+      req.log,
+    );
+    return reply.code(500).send({
+      error: 'CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED',
+      requestId: req.id,
+    });
   }
 
   try {
@@ -292,7 +310,12 @@ export async function issueCertificateHandler(
     const created = result.cert;
 
     void ensureCertificatePreview(created.id).catch((error) => {
-      req.log.warn({ err: error, certificateId: created.id }, 'Certificate preview warmup failed');
+      reportOperationalFailure(
+        'certificate_preview_warmup',
+        error,
+        { certificateId: created.id, userId: user.id, requestId: req.id },
+        req.log,
+      );
     });
 
     return reply.code(201).send({
@@ -330,7 +353,12 @@ export async function issueCertificateHandler(
         detail: 'Нарушено уникальное ограничение (fileId или previousId или cycleId)',
       });
     }
-    req.log?.error?.(e);
+    reportOperationalFailure(
+      'certificate_issue',
+      e,
+      { userId: user.id, cycleId: activeCycle.id, requestId: req.id },
+      req.log,
+    );
     return reply.code(500).send({ error: 'Internal Server Error' });
   }
 }

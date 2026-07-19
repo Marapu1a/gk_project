@@ -13,6 +13,10 @@ import {
   buildTransborderConsentEmailHtml,
   buildTransborderConsentEmailSubject,
 } from '../../utils/transborderConsentEmail';
+import {
+  reportOperationalFailure,
+  reportOperationalWarning,
+} from '../../lib/errorMonitoring';
 
 type Body = {
   acceptedItems?: Record<string, boolean> | null;
@@ -239,15 +243,11 @@ export async function acceptTransborderConsentHandler(
     });
 
     if (!existingConsent) {
-      req.log.error(
-        {
-          userId: dbUser.id,
-          documentType,
-          documentVersion,
-          requestId: req.id,
-          error,
-        },
-        '[TRANSBORDER CONSENT] Unique conflict happened, but existing consent was not found',
+      reportOperationalFailure(
+        'transborder_consent_conflict',
+        error,
+        { userId: dbUser.id, documentType, documentVersion, requestId: req.id },
+        req.log,
       );
       throw error;
     }
@@ -258,16 +258,16 @@ export async function acceptTransborderConsentHandler(
 
   if (alreadyAccepted) {
     if (consent.documentTextHash !== documentTextHash) {
-      req.log.error(
+      reportOperationalWarning(
+        'transborder_consent_hash_mismatch',
+        'Existing consent hash does not match current document hash',
         {
           userId: dbUser.id,
           consentId: consent.id,
           documentType,
           documentVersion,
-          storedHash: consent.documentTextHash,
-          actualHash: documentTextHash,
         },
-        '[TRANSBORDER CONSENT] Existing consent hash does not match current document hash',
+        req.log,
       );
     }
 
@@ -296,13 +296,11 @@ export async function acceptTransborderConsentHandler(
       },
     });
   } catch (error) {
-    req.log.error(
-      {
-        userId: dbUser.id,
-        consentId: consent.id,
-        error,
-      },
-      '[TRANSBORDER CONSENT EMAIL ERROR]',
+    reportOperationalFailure(
+      'transborder_consent_email',
+      error,
+      { userId: dbUser.id, consentId: consent.id, requestId: req.id },
+      req.log,
     );
 
     await prisma.userConsent.update({

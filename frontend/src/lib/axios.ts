@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getServerErrorMessage } from '@/utils/uiMessages';
 import { expireCurrentSession } from '@/features/auth/utils/authSession';
+import { captureFrontendException } from '@/lib/errorMonitoring';
 
 const PUBLIC_AUTH_ENDPOINTS = [
   '/auth/login',
@@ -30,6 +31,22 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const method = String(error?.config?.method || 'GET').toUpperCase();
+    const statusCode = error?.response?.status as number | undefined;
+    const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+    const shouldCapture = (statusCode != null && statusCode >= 500) || (!statusCode && isMutation);
+
+    if (shouldCapture) {
+      const responseRequestId = error?.response?.headers?.['x-request-id'];
+      captureFrontendException(error, {
+        operation: 'api_request',
+        method,
+        endpoint: String(error?.config?.url || '').split('?')[0],
+        statusCode,
+        requestId: typeof responseRequestId === 'string' ? responseRequestId : undefined,
+      });
+    }
+
     const data = error?.response?.data;
     if (data && typeof data.error === 'string') {
       const originalError = data.error;

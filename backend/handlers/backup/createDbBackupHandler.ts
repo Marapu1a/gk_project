@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { spawn } from 'child_process';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 export async function createDbBackupHandler(req: FastifyRequest, reply: FastifyReply) {
   if (req.user.role !== 'ADMIN') {
@@ -10,7 +11,13 @@ export async function createDbBackupHandler(req: FastifyRequest, reply: FastifyR
   const dbUrl = rawUrl.split('?')[0];
 
   if (!dbUrl) {
-    return reply.code(500).send({ error: 'DATABASE_URL пуст' });
+    reportOperationalFailure(
+      'database_backup_configuration',
+      new Error('DATABASE_URL is empty'),
+      { requestId: req.id },
+      req.log,
+    );
+    return reply.code(500).send({ error: 'Не удалось создать резервную копию' });
   }
 
   const ts = () => {
@@ -43,9 +50,17 @@ export async function createDbBackupHandler(req: FastifyRequest, reply: FastifyR
   const finishWithJsonError = (
     statusCode: number,
     payload: { error: string; details?: string },
+    cause?: unknown,
   ) => {
     if (finished) return;
     finished = true;
+
+    reportOperationalFailure(
+      'database_backup',
+      cause ?? new Error(payload.error),
+      { requestId: req.id },
+      req.log,
+    );
 
     try {
       if (!reply.raw.headersSent) {
@@ -73,7 +88,7 @@ export async function createDbBackupHandler(req: FastifyRequest, reply: FastifyR
 
   const timeout = setTimeout(() => {
     proc.kill('SIGKILL');
-    finishWithJsonError(500, { error: 'pg_dump timeout' });
+    finishWithJsonError(500, { error: 'pg_dump timeout' }, new Error('pg_dump timeout'));
   }, 60_000);
 
   proc.stderr.on('data', (chunk) => {
@@ -83,8 +98,8 @@ export async function createDbBackupHandler(req: FastifyRequest, reply: FastifyR
   proc.on('error', (err) => {
     clearTimeout(timeout);
     finishWithJsonError(500, {
-      error: `pg_dump start error: ${String(err)}`,
-    });
+      error: 'Не удалось запустить создание резервной копии',
+    }, err);
   });
 
   reply.hijack();
@@ -96,11 +111,11 @@ export async function createDbBackupHandler(req: FastifyRequest, reply: FastifyR
     ...corsHeaders,
   });
 
-  proc.stdout.on('error', () => {
+  proc.stdout.on('error', (error) => {
     clearTimeout(timeout);
     finishWithJsonError(500, {
       error: 'Ошибка чтения потока pg_dump',
-    });
+    }, error);
   });
 
   reply.raw.on('close', () => {
@@ -135,6 +150,6 @@ export async function createDbBackupHandler(req: FastifyRequest, reply: FastifyR
     finishWithJsonError(500, {
       error: `pg_dump exit ${code}`,
       details: stderr.trim() || undefined,
-    });
+    }, new Error(`pg_dump exited with code ${code}`));
   });
 }

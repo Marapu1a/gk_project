@@ -20,6 +20,7 @@ import {
 } from '../../utils/supervisionRequirements';
 import { targetLevelToGroupName as mapTargetLevel } from '../../domain/levels';
 import { getSupervisorBonusPracticeHours } from '../../utils/getSupervisorBonusPracticeHours';
+import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 const PRACTICE_REVIEWER_REQUIRED_MESSAGE =
   'Заявку на подтверждение часов практики можно отправить только супервизорам, которые есть в системе. Напишите в поддержку, если вашего супервизора нет в системе или что-то пошло не так.';
@@ -393,7 +394,12 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
         : '/reviewer/candidates/supervision?status=UNCONFIRMED',
     });
   } catch (err) {
-    req.log.error(err, 'SUPERVISION_CREATE notification failed');
+    reportOperationalFailure(
+      'supervision_request_notification',
+      err,
+      { userId, reviewerId: reviewer.id, recordId: record.id, requestId: req.id },
+      req.log,
+    );
   }
 
   return reply.code(201).send({ success: true, record });

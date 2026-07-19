@@ -21,7 +21,7 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
       limits: { fileSize: MAX_FILE_SIZE_BYTES } // обязательное условие!
     });
   } catch (e: any) {
-    console.error('multipart-limit:', e.message);
+    req.log.warn({ err: e, requestId: req.id }, 'Upload rejected by multipart limit');
     return reply.code(413).send({ error: `Файл превышает ${MAX_FILE_SIZE_MB}MB` });
   }
 
@@ -92,25 +92,20 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
 
   const dir = path.join(baseDir, String(ownerUserId), category);
 
-  if (category === 'avatar') {
-    try {
-      const files = await fs.readdir(dir).catch(() => []);
-      await Promise.all(files.map(x => fs.unlink(path.join(dir, x)).catch(() => { })));
-
-      await prisma.uploadedFile.deleteMany({
-        where: { userId: ownerUserId, fileId: { startsWith: `${ownerUserId}/avatar/` } },
-      });
-    } catch { }
-  }
-
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, fileName), buffer);
 
   const fileId = `${ownerUserId}/${category}/${fileName}`;
 
-  const uploaded = await prisma.uploadedFile.create({
-    data: { userId: ownerUserId, fileId, name: data.filename, mimeType: data.mimetype },
-  });
+  let uploaded;
+  try {
+    uploaded = await prisma.uploadedFile.create({
+      data: { userId: ownerUserId, fileId, name: data.filename, mimeType: data.mimetype },
+    });
+  } catch (error) {
+    await fs.unlink(path.join(dir, fileName)).catch(() => undefined);
+    throw error;
+  }
 
   return reply.code(201).send(uploaded);
 }

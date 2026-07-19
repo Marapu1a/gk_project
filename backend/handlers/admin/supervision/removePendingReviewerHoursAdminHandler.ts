@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { createNotification } from '../../../utils/notifications';
+import { reportOperationalFailure } from '../../../lib/errorMonitoring';
 
 interface RemovePendingReviewerHoursRoute extends RouteGenericInterface {
   Params: { relationId: string };
@@ -133,6 +134,7 @@ export async function removePendingReviewerHoursAdminHandler(
     });
   });
 
+  let notificationCreated = false;
   if (notifyUser) {
     try {
       await createNotification({
@@ -141,14 +143,20 @@ export async function removePendingReviewerHoursAdminHandler(
         message: notificationMessage(relation.kind),
         link: '/supervision/hours?panel=history',
       });
+      notificationCreated = true;
     } catch (error) {
-      req.log.error(error, 'REMOVE_PENDING_SUPERVISION_HOURS notification failed');
+      reportOperationalFailure(
+        'remove_pending_supervision_notification',
+        error,
+        { relationId, userId: relation.candidateId, requestId: req.id },
+        req.log,
+      );
     }
   }
 
   return reply.send({
     success: true,
-    notified: notifyUser,
+    notified: notificationCreated,
     removedRecordsCount: pendingRecords.length,
     removedHoursCount: hourIds.length,
   });
