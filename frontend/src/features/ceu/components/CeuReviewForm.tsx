@@ -5,6 +5,7 @@ import type { CEUReviewResponse } from '../hooks/useCeuRecordsByEmail';
 import { toast } from 'sonner';
 import { displayCeuEventName } from '../utils/displayCeuEventName';
 import { formatDateRu } from '@/utils/dateFormat';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 
 export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
   const updateMutation = useUpdateCEUEntry(data.user.id, data.user.email);
@@ -12,7 +13,7 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
 
   const handleStatusChange = async (
     entryId: string,
-    status: 'CONFIRMED' | 'REJECTED' | 'UNCONFIRMED',
+    status: 'CONFIRMED' | 'REJECTED',
   ) => {
     const rejectedReason = reasons[entryId];
 
@@ -28,15 +29,12 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
           const message =
             status === 'CONFIRMED'
               ? 'Ваши CEU-баллы подтверждены'
-                : status === 'REJECTED'
-                  ? `Ваши CEU-баллы отклонены: ${rejectedReason}`
-                  : 'Статус CEU-баллов изменён';
+              : `Ваши CEU-баллы отклонены: ${rejectedReason}`;
 
           toast.success(message);
         },
-        onError: (err: any) => {
-          const msg = err?.response?.data?.error || 'Не удалось обновить статус';
-          toast.error(msg);
+        onError: (error) => {
+          toast.error(getUiErrorMessage(error, 'Не удалось обновить статус'));
         },
       },
     );
@@ -96,7 +94,7 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                 <p className="text-sm text-gray-500">
                   Дата мероприятия: {formatDateRu(record.eventDate)}
                 </p>
-                <p className="text-sm">
+                {record.fileId ? <p className="text-sm">
                   <a
                     href={`/uploads/${record.fileId}`}
                     target="_blank"
@@ -105,7 +103,7 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                   >
                     Открыть файл подтверждения
                   </a>
-                </p>
+                </p> : null}
               </div>
 
               {/* Body */}
@@ -138,37 +136,43 @@ export function CeuReviewForm({ data }: { data: CEUReviewResponse }) {
                           {entry.rejectedReason || '—'}
                         </td>
                         <td className="p-2 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <input
-                              type="text"
-                              placeholder="Укажите причину отклонения"
-                              className="input w-44"
-                              value={reasons[entry.id] || ''}
-                              maxLength={COMMENT_MAX_LENGTH}
-                              onChange={(e) =>
-                                setReasons((prev) => ({ ...prev, [entry.id]: e.target.value }))
-                              }
-                              disabled={updateMutation.isPending}
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleStatusChange(entry.id, 'CONFIRMED')}
-                                disabled={updateMutation.isPending || entry.status === 'CONFIRMED'}
-                                className="btn btn-brand"
-                              >
-                                Подтвердить
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleStatusChange(entry.id, 'REJECTED')}
+                          {entry.status === 'REJECTED' || entry.status === 'SPENT' ? (
+                            <span className="text-[#8D96B5]">Изменение недоступно</span>
+                          ) : (
+                            <div className="flex flex-col items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder="Укажите причину отклонения"
+                                className="input w-44"
+                                value={reasons[entry.id] || ''}
+                                maxLength={COMMENT_MAX_LENGTH}
+                                onChange={(e) =>
+                                  setReasons((prev) => ({ ...prev, [entry.id]: e.target.value }))
+                                }
                                 disabled={updateMutation.isPending}
-                                className="btn btn-danger"
-                              >
-                                Отклонить
-                              </button>
+                              />
+                              <div className="flex gap-2">
+                                {entry.status === 'UNCONFIRMED' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStatusChange(entry.id, 'CONFIRMED')}
+                                    disabled={updateMutation.isPending}
+                                    className="btn btn-brand"
+                                  >
+                                    Подтвердить
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() => handleStatusChange(entry.id, 'REJECTED')}
+                                  disabled={updateMutation.isPending}
+                                  className="btn btn-danger"
+                                >
+                                  Отклонить заявку
+                                </button>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </td>
                       </tr>
                     ))}

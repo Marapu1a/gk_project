@@ -19,6 +19,12 @@ export const SERVER_ERROR_MESSAGES: Record<string, string> = {
   CERTIFICATE_CHAIN_GROUPS_NOT_CONFIGURED:
     'В системе не настроена цепочка групп для сертификатов. Уровень сертификата не совпадает с целевым уровнем пользователя. Обратитесь к техническому специалисту.',
   CERTIFICATE_FILE_MUST_BE_PDF: 'Файл сертификата для загрузки может быть только формата PDF.',
+  CEU_FILE_ALREADY_USED: 'Этот загруженный файл уже используется в CEU-заявке.',
+  CEU_FILE_DUPLICATE:
+    'Этот файл уже добавлен в CEU текущего цикла. Повторная загрузка не требуется.',
+  CEU_FILE_INVALID: 'Не удалось использовать этот файл для CEU. Выберите файл заново.',
+  CEU_REJECTION_IRREVERSIBLE: 'Отклонённую CEU-заявку нельзя восстановить.',
+  CEU_SPENT_IRREVERSIBLE: 'Использованную CEU-заявку нельзя изменить.',
   CEU_NOT_IN_ACTIVE_CYCLE:
     'Эти CEU-баллы были использованы в предыдущей сертификации. Проверить точнее можно в конкретной записи о CEU или в активной сертификации.',
   CEU_NOT_LINKED_TO_CYCLE:
@@ -115,7 +121,7 @@ export const UI_TOAST_MESSAGES = {
     fileRequired: 'Выберите файл сертификата.',
     confirmed: 'CEU-баллы подтверждены.',
     rejected: 'CEU-баллы отклонены.',
-    rejectedWithFileDeleted: 'CEU отклонены, файл удален.',
+    rejectedWithFileDeleted: 'CEU-заявка отклонена, файл удалён.',
     recordDeleted: 'CEU-запись удалена.',
     valuesInvalid: 'Проверьте значения CEU-баллов.',
     confirmFailed: 'Не удалось подтвердить CEU-баллы. Попробуйте ещё раз или обратитесь к техническому специалисту.',

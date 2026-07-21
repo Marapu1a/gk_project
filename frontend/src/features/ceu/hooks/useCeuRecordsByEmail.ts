@@ -20,7 +20,7 @@ type CEURecord = {
   id: string;
   eventName: string;
   eventDate: string;
-  fileId: string;
+  fileId: string | null;
   entries: CEUEntry[];
 };
 

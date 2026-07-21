@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { submitCeuRequest } from '../api/submitCeuRequest';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { SubmissionSuccessModal } from '@/components/SubmissionSuccessModal';
 import {
   buildCeuSubmissionPayload,
@@ -185,8 +185,8 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
       resetForm();
       setIsOpen(false);
       setIsSuccessOpen(true);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.ceu.requestFailed);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.ceu.requestFailed));
     } finally {
       setSubmitting(false);
     }

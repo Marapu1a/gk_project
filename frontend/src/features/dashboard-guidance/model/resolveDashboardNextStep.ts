@@ -150,5 +150,10 @@ export function resolveDashboardNextStep(
     id: 'exam-ready',
     tone: 'success',
     ...M.examReady,
+    action: {
+      type: 'section',
+      target: 'dashboard-certification',
+      label: 'Подать заявку',
+    },
   };
 }

@@ -23,12 +23,11 @@ export function AdminCeuDetailsModal({
   const deleteMutation = useDeleteCEURecord(row.userId, row.email);
   const { confirm: confirmDialog } = useConfirm();
   const [rejectedReason, setRejectedReason] = useState(row.rejectedReason ?? '');
-  const [deleteFile, setDeleteFile] = useState(false);
   const [pendingAction, setPendingAction] = useState<'CONFIRM' | 'REJECT' | null>(null);
   const isBrokenRecord = row.entries.length === 0;
   const isSpent = row.status === 'SPENT';
-  const canConfirm = !isBrokenRecord && row.status === 'REJECTED';
-  const canReject = !isBrokenRecord && !isSpent && !canConfirm;
+  const canConfirm = !isBrokenRecord && row.status === 'UNCONFIRMED';
+  const canReject = !isBrokenRecord && row.status === 'CONFIRMED';
   const isActionPending = mutation.isPending || deleteMutation.isPending;
 
   const requestConfirm = () => {
@@ -67,14 +66,9 @@ export function AdminCeuDetailsModal({
         id: row.entryId,
         status: 'REJECTED',
         rejectedReason: reason,
-        deleteFile,
         notifyUser,
       });
-      toast.success(
-        deleteFile
-          ? UI_TOAST_MESSAGES.ceu.rejectedWithFileDeleted
-          : UI_TOAST_MESSAGES.ceu.rejected,
-      );
+      toast.success(UI_TOAST_MESSAGES.ceu.rejectedWithFileDeleted);
       setPendingAction(null);
       onClose();
     } catch (error) {
@@ -206,19 +200,9 @@ export function AdminCeuDetailsModal({
               </label>
 
               {row.file ? (
-                <label className="dashboard-v2-caption flex cursor-pointer items-center gap-2 text-[#1F305E]">
-                  <input
-                    type="checkbox"
-                    checked={deleteFile}
-                    onChange={(event) => setDeleteFile(event.target.checked)}
-                    className="h-4 w-4 cursor-pointer"
-                  />
-                  Удалить файл у всей заявки CEU
-                </label>
-              ) : null}
-              {deleteFile ? (
                 <p className="dashboard-v2-caption text-[#8D96B5]">
-                  Вся заявка будет отклонена с этим комментарием, потому что файл общий.
+                  При отклонении баллы этой заявки будут исключены, а файл удалён. Заявка
+                  останется в истории с указанной причиной, восстановить её будет нельзя.
                 </p>
               ) : null}
             </div>
@@ -226,7 +210,7 @@ export function AdminCeuDetailsModal({
         </div>
       </div>
 
-      {!isSpent ? (
+      {!isSpent && (isBrokenRecord || canConfirm || canReject) ? (
         <div className="mt-6 flex flex-wrap justify-end gap-3">
           {isBrokenRecord ? (
             <button
@@ -246,16 +230,16 @@ export function AdminCeuDetailsModal({
             >
               Подтвердить
             </button>
-          ) : (
+          ) : canReject ? (
             <button
               type="button"
               onClick={requestReject}
               disabled={isActionPending}
               className="btn btn-dark dashboard-v2-label h-[42px] min-w-[150px] rounded-full px-6 disabled:bg-[#B7BFCE]"
             >
-              Отклонить как ошибочную
+              Отклонить заявку
             </button>
-          )}
+          ) : null}
         </div>
       ) : null}
 
@@ -264,12 +248,14 @@ export function AdminCeuDetailsModal({
           title={
             pendingAction === 'CONFIRM'
               ? 'Подтвердить CEU-баллы?'
-              : deleteFile
-                ? 'Отклонить CEU и удалить файл?'
-                : 'Отклонить CEU как ошибочную?'
+              : 'Отклонить CEU-заявку?'
           }
-          message="Отправить пользователю уведомление об этом действии?"
-          danger={pendingAction === 'REJECT'}
+          message={
+            pendingAction === 'CONFIRM'
+              ? 'Отправить пользователю уведомление об этом действии?'
+              : 'Файл будет удалён, а восстановить заявку будет нельзя. Отправить пользователю уведомление?'
+          }
+          danger={pendingAction !== 'CONFIRM'}
           isPending={mutation.isPending}
           onClose={() => setPendingAction(null)}
           onChoose={(notify) =>
@@ -343,7 +329,7 @@ function AdminCeuFilePreview({ file }: { file: AdminCeuHistoryRow['file'] }) {
   const isImage = file.mimeType.startsWith('image/');
 
   return (
-    <div className="grid grid-cols-[74px_minmax(0,1fr)_auto] items-center gap-4 rounded-[10px] bg-white px-3 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
+    <div className="grid grid-cols-[74px_minmax(0,1fr)] items-center gap-4 rounded-[10px] bg-white px-3 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.10)] sm:grid-cols-[74px_minmax(0,1fr)_auto]">
       <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[4px] border border-[#DCE3EF] bg-white dashboard-v2-caption font-bold text-[#A7B1C7]">
         {isImage ? (
           <img src={fileUrl} alt="" className="h-full w-full rounded-[4px] object-cover" />
@@ -354,14 +340,16 @@ function AdminCeuFilePreview({ file }: { file: AdminCeuHistoryRow['file'] }) {
       <div className="dashboard-v2-caption min-w-0 truncate text-[#1F305E]" title={file.name}>
         {file.name}
       </div>
-      <a
-        href={fileUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="btn dashboard-v2-caption h-[34px] rounded-full border border-[#1F305E] px-4 font-semibold text-[#1F305E]"
-      >
-        Открыть
-      </a>
+      <div className="col-span-2 flex flex-wrap justify-end gap-2 sm:col-span-1">
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="btn dashboard-v2-caption h-[34px] rounded-full border border-[#1F305E] px-4 font-semibold text-[#1F305E]"
+        >
+          Открыть
+        </a>
+      </div>
     </div>
   );
 }

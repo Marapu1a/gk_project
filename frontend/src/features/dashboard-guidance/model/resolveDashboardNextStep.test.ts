@@ -107,7 +107,13 @@ describe('resolveDashboardNextStep', () => {
   });
 
   it('directs a ready user to the exam application', () => {
-    expect(resolveDashboardNextStep(readyContext)?.id).toBe('exam-ready');
+    const step = resolveDashboardNextStep(readyContext);
+    expect(step?.id).toBe('exam-ready');
+    expect(step?.action).toEqual({
+      type: 'section',
+      target: 'dashboard-certification',
+      label: 'Подать заявку',
+    });
   });
 
   it('shows a certificate prompt instead of exam prompt for supervisor renewal', () => {

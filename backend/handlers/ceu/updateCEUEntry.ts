@@ -6,6 +6,7 @@ import { prisma } from '../../lib/prisma';
 import { NotificationType } from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
 import { reportOperationalFailure } from '../../lib/errorMonitoring';
+import { getCeuReviewTransitionError } from '../../domain/ceu/reviewPolicy';
 
 import { UPLOAD_ROOT } from '../../config/storage';
 
@@ -14,11 +15,12 @@ interface UpdateCEUEntryRoute extends RouteGenericInterface {
   Body: {
     status: 'CONFIRMED' | 'REJECTED';
     rejectedReason?: string;
-    deleteFile?: boolean;
     notify?: boolean;
     notifyUser?: boolean;
   };
 }
+
+class IrreversibleCeuReviewError extends Error {}
 
 async function deletePhysicalFile(fileId: string) {
   const baseDir = UPLOAD_ROOT;
@@ -35,7 +37,7 @@ export async function updateCEUEntryHandler(
   reply: FastifyReply
 ) {
   const { id } = req.params;
-  const { status, rejectedReason, deleteFile = false } = req.body;
+  const { status, rejectedReason } = req.body;
   const notifyUser = req.body.notifyUser ?? req.body.notify ?? true;
   const reviewerId = req.user?.userId;
   const reviewerRole = req.user?.role;
@@ -81,8 +83,11 @@ export async function updateCEUEntryHandler(
   });
   if (!entry) return reply.code(404).send({ error: 'Запись не найдена' });
 
-  if (entry.record.entries.some((recordEntry) => recordEntry.status === 'SPENT')) {
-    return reply.code(400).send({ error: 'Статус SPENT необратим' });
+  const transitionError = getCeuReviewTransitionError(
+    entry.record.entries.map((recordEntry) => recordEntry.status),
+  );
+  if (transitionError) {
+    return reply.code(409).send({ error: transitionError });
   }
 
   if (entry.record.userId === reviewerId) {
@@ -103,42 +108,74 @@ export async function updateCEUEntryHandler(
   }
 
   let fileIdToDelete: string | null = null;
+  let fileDetached = false;
 
-  const res = await prisma.$transaction(async (tx) => {
-    const updateResult = await tx.cEUEntry.updateMany({
-      where: { recordId: entry.record.id, status: { not: 'SPENT' } },
-      data: {
-        status,
-        reviewedAt: new Date(),
-        rejectedReason: status === 'REJECTED' ? reason : null,
-        reviewerId,
-      },
-    });
-
-    if (updateResult.count === 0) return updateResult;
-
-    if (status === 'REJECTED' && deleteFile && entry.record.fileId) {
-      const file = await tx.uploadedFile.findUnique({
-        where: { fileId: entry.record.fileId },
-        select: { id: true, fileId: true },
+  try {
+    await prisma.$transaction(async (tx) => {
+      const updateResult = await tx.cEUEntry.updateMany({
+        where: {
+          recordId: entry.record.id,
+          status:
+            status === 'CONFIRMED'
+              ? 'UNCONFIRMED'
+              : { in: ['UNCONFIRMED', 'CONFIRMED'] },
+        },
+        data: {
+          status,
+          reviewedAt: new Date(),
+          rejectedReason: status === 'REJECTED' ? reason : null,
+          reviewerId,
+        },
       });
 
-      await tx.cEURecord.update({
-        where: { id: entry.record.id },
-        data: { fileId: null },
-      });
-
-      if (file) {
-        await tx.uploadedFile.delete({ where: { id: file.id } });
-        fileIdToDelete = file.fileId;
+      if (updateResult.count !== entry.record.entries.length) {
+        throw new IrreversibleCeuReviewError();
       }
+
+      if (status === 'REJECTED' && entry.record.fileId) {
+        const file = await tx.uploadedFile.findUnique({
+          where: { fileId: entry.record.fileId },
+          select: {
+            id: true,
+            fileId: true,
+            requestId: true,
+            certificate: { select: { id: true } },
+            supervisionContract: { select: { id: true } },
+            _count: { select: { documentReviewFiles: true } },
+          },
+        });
+
+        await tx.cEURecord.update({
+          where: { id: entry.record.id },
+          data: { fileId: null },
+        });
+        fileDetached = true;
+
+        if (file) {
+          const otherCEURecordsWithSameFile = await tx.cEURecord.count({
+            where: { fileId: file.fileId },
+          });
+          const canDeleteUploadedFile =
+            otherCEURecordsWithSameFile === 0 &&
+            file._count.documentReviewFiles === 0 &&
+            !file.requestId &&
+            !file.certificate &&
+            !file.supervisionContract;
+
+          if (canDeleteUploadedFile) {
+            await tx.uploadedFile.delete({ where: { id: file.id } });
+            fileIdToDelete = file.fileId;
+          }
+        }
+      }
+
+      return updateResult;
+    });
+  } catch (error) {
+    if (error instanceof IrreversibleCeuReviewError) {
+      return reply.code(409).send({ error: 'CEU_REJECTION_IRREVERSIBLE' });
     }
-
-    return updateResult;
-  });
-
-  if (res.count === 0) {
-    return reply.code(400).send({ error: 'Статус SPENT необратим' });
+    throw error;
   }
 
   if (fileIdToDelete) {
@@ -153,15 +190,17 @@ export async function updateCEUEntryHandler(
         action:
           status === 'CONFIRMED'
             ? 'Подтвердил CEU-баллы'
-            : deleteFile
-              ? 'Отклонил CEU-баллы и удалил файл'
-              : 'Отклонил CEU-баллы',
+            : 'Отклонил CEU-заявку',
         details: [
           `Запись: ${entry.record.eventName || entry.record.id}`,
           `Категории: ${entry.record.entries.map((item) => item.category).join(', ')}`,
           `Всего баллов: ${entry.record.entries.reduce((sum, item) => sum + item.value, 0)}`,
           status === 'REJECTED' ? `Причина: ${reason}` : null,
-          deleteFile ? 'Файл удален' : null,
+          fileDetached
+            ? fileIdToDelete
+              ? 'Файл отвязан от заявки и удален из хранилища'
+              : 'Файл отвязан от заявки; общий файл сохранен'
+            : null,
           notifyUser ? 'Пользователь уведомлен' : 'Без уведомления',
         ]
           .filter(Boolean)
@@ -208,6 +247,7 @@ export async function updateCEUEntryHandler(
       status,
       rejectedReason: status === 'REJECTED' ? reason : null,
       fileDeleted: !!fileIdToDelete,
+      fileDetached,
       notified: notificationCreated,
     },
   });

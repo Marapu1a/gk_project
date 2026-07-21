@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Eye } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCurrentUser } from '@/features/auth/hooks/useCurrentUser';
 import { TransborderConsentModal } from '@/features/auth/components/TransborderConsentModal';
 import {
@@ -25,10 +26,14 @@ import { MailIcon } from './info/profile-card/icons/MailIcon';
 import { LogoutIcon } from './info/profile-card/icons/LogoutIcon';
 import { AdminDashboard } from './admin-dashboard/AdminDashboard';
 import { UserDashboardBanner } from '@/features/userBanner/components/UserDashboardBanner';
-import { DashboardGuidance } from '@/features/dashboard-guidance';
+import { DashboardNextStepCard } from '@/features/dashboard-guidance/components/DashboardNextStepCard';
+import { useDashboardGuidance } from '@/features/dashboard-guidance/hooks/useDashboardGuidance';
 import { useDashboardGuidanceVisible } from '@/features/dashboard-guidance/hooks/useDashboardGuidanceVisible';
+import { ExamApplicationReminderModal } from '@/features/exam/components/ExamApplicationReminderModal';
+import { usePatchExamAppStatus } from '@/features/exam/hooks/usePatchExamAppStatus';
 import { hasCertificationAccessPayment } from '@/features/payment/model/paymentPolicy';
 import { resolveDashboardSections } from '@/features/dashboard-v2/model/dashboardSections';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const TARGET_LEVEL_LABELS = {
   INSTRUCTOR: 'Инструктор',
@@ -124,9 +129,63 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
   const { data: contactMessages } = useSpecialistContactMessages();
   const { visible: guidanceVisible, hide: hideGuidance, show: showGuidance } = useDashboardGuidanceVisible();
   const [mobilePaymentOpen, setMobilePaymentOpen] = useState(false);
+  const [examReminderOpen, setExamReminderOpen] = useState(false);
 
   const activeGroupName = user.activeGroup?.name ?? '';
   const unreadContactCount = contactMessages?.unreadCount ?? 0;
+  const targetLevelName = user.targetLevel ? TARGET_LEVEL_LABELS[user.targetLevel] : undefined;
+  const isRenewalCycle = user.activeCycle?.type === 'RENEWAL';
+  // Для ресертификации текущая продуктовая логика не блокирует формы до оплаты.
+  const canUseCertificationContent = hasCertificationAccessPayment(
+    payments,
+    isRenewalCycle ? 'RENEWAL' : 'CERTIFICATION',
+    user.targetLevel,
+  );
+  const guidance = useDashboardGuidance({
+    user,
+    hasCertificationAccess: canUseCertificationContent,
+  });
+  const patchExamApp = usePatchExamAppStatus();
+  const examReminderStorageKey = `exam-application-reminder:${user.id}:${user.activeCycle?.id ?? 'no-cycle'}`;
+  const transborderConsentPending = Boolean(
+    user.transborderConsent?.required && !user.transborderConsent?.accepted,
+  );
+
+  useEffect(() => {
+    const shouldOpen =
+      guidance.step?.id === 'exam-ready' &&
+      !guidance.isLoading &&
+      !transborderConsentPending;
+
+    if (!shouldOpen) {
+      setExamReminderOpen(false);
+      return;
+    }
+
+    try {
+      if (sessionStorage.getItem(examReminderStorageKey) === 'shown') return;
+      sessionStorage.setItem(examReminderStorageKey, 'shown');
+    } catch {
+      // Если sessionStorage недоступен, напоминание всё равно должно работать.
+    }
+
+    setExamReminderOpen(true);
+  }, [examReminderStorageKey, guidance.isLoading, guidance.step?.id, transborderConsentPending]);
+
+  const submitExamApplicationFromReminder = () => {
+    patchExamApp.mutate(
+      { userId: user.id, status: 'PENDING' },
+      {
+        onSuccess: () => {
+          setExamReminderOpen(false);
+          toast.success(UI_TOAST_MESSAGES.exam.requestSent);
+        },
+        onError: (error) => {
+          toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.exam.requestSendFailed));
+        },
+      },
+    );
+  };
 
   if (paymentsLoading) {
     return (
@@ -136,14 +195,6 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
     );
   }
 
-  const targetLevelName = user.targetLevel ? TARGET_LEVEL_LABELS[user.targetLevel] : undefined;
-  const isRenewalCycle = user.activeCycle?.type === 'RENEWAL';
-  // Для ресертификации текущая продуктовая логика не блокирует формы до оплаты.
-  const canUseCertificationContent = hasCertificationAccessPayment(
-    payments,
-    isRenewalCycle ? 'RENEWAL' : 'CERTIFICATION',
-    user.targetLevel,
-  );
   const sections = resolveDashboardSections({
     activeGroupName,
     hasCertificationAccess: canUseCertificationContent,
@@ -217,11 +268,9 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
 
         <UserDashboardBanner />
         {guidanceVisible ? (
-          <DashboardGuidance
-            user={user}
-            hasCertificationAccess={canUseCertificationContent}
-            onHide={hideGuidance}
-          />
+          !guidance.isLoading && guidance.step ? (
+            <DashboardNextStepCard step={guidance.step} onHide={hideGuidance} />
+          ) : null
         ) : (
           <div className="flex justify-end">
             <button
@@ -301,6 +350,13 @@ function UserDashboardV2({ user }: { user: NonNullable<ReturnType<typeof useCurr
           </div>
         ) : null}
       </div>
+
+      <ExamApplicationReminderModal
+        open={examReminderOpen}
+        isPending={patchExamApp.isPending}
+        onClose={() => setExamReminderOpen(false)}
+        onSubmit={submitExamApplicationFromReminder}
+      />
     </div>
   );
 }

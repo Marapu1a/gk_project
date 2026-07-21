@@ -4,6 +4,11 @@ import path from 'path';
 import fs from 'fs/promises';
 import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
+import { CycleStatus } from '@prisma/client';
+import {
+  calculateFileContentHash,
+  findCeuFileDuplicate,
+} from '../../domain/ceu/duplicateFile';
 
 import { UPLOAD_ROOT, MAX_FILE_SIZE_MB, MAX_FILE_SIZE_BYTES } from '../../config/storage';
 import { isPdfBuffer } from '../../utils/pdfValidation';
@@ -85,6 +90,34 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
     return reply.code(415).send({ error: 'Файл сертификата поврежден или не является PDF' });
   }
 
+  const contentHash = calculateFileContentHash(buffer);
+
+  if (category === 'ceu') {
+    const activeCycle = await prisma.certificationCycle.findFirst({
+      where: { userId: ownerUserId, status: CycleStatus.ACTIVE },
+      select: { id: true },
+    });
+
+    if (activeCycle) {
+      const duplicate = await findCeuFileDuplicate(prisma, {
+        userId: ownerUserId,
+        cycleId: activeCycle.id,
+        contentHash,
+      });
+
+      if (duplicate) {
+        return reply.code(409).send({
+          error: 'CEU_FILE_DUPLICATE',
+          duplicate: {
+            recordId: duplicate.recordId,
+            eventName: duplicate.eventName,
+            eventDate: duplicate.eventDate,
+          },
+        });
+      }
+    }
+  }
+
   const ext = path.extname(data.filename).replace(/[^a-zA-Z0-9.]/g, '');
   const fileName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`;
 
@@ -100,7 +133,13 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
   let uploaded;
   try {
     uploaded = await prisma.uploadedFile.create({
-      data: { userId: ownerUserId, fileId, name: data.filename, mimeType: data.mimetype },
+      data: {
+        userId: ownerUserId,
+        fileId,
+        contentHash,
+        name: data.filename,
+        mimeType: data.mimetype,
+      },
     });
   } catch (error) {
     await fs.unlink(path.join(dir, fileName)).catch(() => undefined);

@@ -700,6 +700,7 @@ model UploadedFile {
   user   User   @relation(fields: [userId], references: [id])
 
   fileId              String               @unique
+  contentHash         String?
   name                String
   certificate         Certificate?
   supervisionContract SupervisionContract?
@@ -712,6 +713,8 @@ model UploadedFile {
   request   DocumentReviewRequest? @relation(fields: [requestId], references: [id])
 
   documentReviewFiles DocumentReviewFile[]
+
+  @@index([userId, contentHash])
 }
 
 model DocumentReviewFile {

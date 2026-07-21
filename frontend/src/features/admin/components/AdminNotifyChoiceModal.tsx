@@ -24,7 +24,7 @@ export function AdminNotifyChoiceModal({
       ariaLabelledBy="admin-notify-choice-title"
       closeOnBackdrop={false}
       closeOnEscape={!isPending}
-      overlayClassName="z-[60] bg-black/45 px-4 py-4"
+      overlayClassName="z-[1100] bg-black/45 px-4 py-4"
       dialogClassName="relative w-full max-w-[520px] rounded-[20px] bg-white p-5 pr-14 text-[var(--color-blue-dark)] shadow-soft"
     >
         <ModalCloseButton onClick={onClose} disabled={isPending} />

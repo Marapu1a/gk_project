@@ -2,9 +2,8 @@
 import { api } from '@/lib/axios';
 
 export type UpdateCEUEntryPayload = {
-  status: 'CONFIRMED' | 'REJECTED' | 'UNCONFIRMED';
+  status: 'CONFIRMED' | 'REJECTED';
   rejectedReason?: string;
-  deleteFile?: boolean;
   notifyUser?: boolean;
   notify?: boolean;
 };
