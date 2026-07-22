@@ -1,40 +1,51 @@
 // src/App.tsx
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { Toaster } from 'sonner';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ConfirmProvider } from '@/components/confirm/ConfirmProvider';
 import { AppRouteError } from '@/components/AppRouteError';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { lazyWithReload } from '@/lib/lazyWithReload';
 import { queryClient } from '@/lib/queryClient';
 import MainLayout from './layouts/MainLayout';
 
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
-const LoginPage = lazy(() => import('./pages/LoginPage'));
-const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
-const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
-const CeuReviewPage = lazy(() => import('./pages/CeuReviewPage'));
-const DocumentReviewPage = lazy(() => import('./pages/DocumentReviewPage'));
-const AdminDocumentReviewListPage = lazy(() => import('./pages/AdminDocumentReviewListPage'));
-const AdminDocumentReviewDetailsPage = lazy(() => import('./pages/AdminDocumentReviewDetailsPage'));
-const UsersPage = lazy(() => import('./pages/UsersPage'));
-const ExamApplicationsPage = lazy(() => import('./pages/ExamApplicationsPage'));
-const UserDetailsPage = lazy(() => import('@/pages/UserDetailsPage'));
-const CertificateIssuePage = lazy(() => import('@/pages/CertificateIssuePage'));
-const MyCertificatesPage = lazy(() => import('@/pages/MyCertificatesPage'));
-const RegistryPage = lazy(() => import('./pages/RegistryPage'));
-const RegistryProfilePage = lazy(() => import('@/pages/RegistryProfilePage'));
-const DashboardPageV2 = lazy(() => import('./pages/DashboardPageV2'));
-const SupervisionHoursPage = lazy(() => import('./pages/SupervisionHoursPage'));
-const CeuPointsPage = lazy(() => import('./pages/CeuPointsPage'));
-const ReviewerCandidatesPage = lazy(() => import('./pages/ReviewerCandidatesPage'));
-const ReviewerCandidateDetailsPage = lazy(() => import('./pages/ReviewerCandidateDetailsPage'));
-const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage'));
-const AdminUserBannerPage = lazy(() => import('./pages/AdminUserBannerPage'));
-const AdminSupervisionCandidatesPage = lazy(() => import('./pages/AdminSupervisionCandidatesPage'));
-const AdminExternalSupervisorClaimsPage = lazy(() => import('./pages/AdminExternalSupervisorClaimsPage'));
-const SpecialistMessagesPage = lazy(() => import('./pages/SpecialistMessagesPage'));
-const AccessDeniedPage = lazy(() => import('./pages/AccessDeniedPage'));
+const RegisterPage = lazyWithReload(() => import('./pages/RegisterPage'));
+const LoginPage = lazyWithReload(() => import('./pages/LoginPage'));
+const ForgotPasswordPage = lazyWithReload(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazyWithReload(() => import('./pages/ResetPasswordPage'));
+const CeuReviewPage = lazyWithReload(() => import('./pages/CeuReviewPage'));
+const DocumentReviewPage = lazyWithReload(() => import('./pages/DocumentReviewPage'));
+const AdminDocumentReviewListPage = lazyWithReload(
+  () => import('./pages/AdminDocumentReviewListPage'),
+);
+const AdminDocumentReviewDetailsPage = lazyWithReload(
+  () => import('./pages/AdminDocumentReviewDetailsPage'),
+);
+const UsersPage = lazyWithReload(() => import('./pages/UsersPage'));
+const ExamApplicationsPage = lazyWithReload(() => import('./pages/ExamApplicationsPage'));
+const UserDetailsPage = lazyWithReload(() => import('@/pages/UserDetailsPage'));
+const CertificateIssuePage = lazyWithReload(() => import('@/pages/CertificateIssuePage'));
+const MyCertificatesPage = lazyWithReload(() => import('@/pages/MyCertificatesPage'));
+const RegistryPage = lazyWithReload(() => import('./pages/RegistryPage'));
+const RegistryProfilePage = lazyWithReload(() => import('@/pages/RegistryProfilePage'));
+const DashboardPageV2 = lazyWithReload(() => import('./pages/DashboardPageV2'));
+const SupervisionHoursPage = lazyWithReload(() => import('./pages/SupervisionHoursPage'));
+const CeuPointsPage = lazyWithReload(() => import('./pages/CeuPointsPage'));
+const ReviewerCandidatesPage = lazyWithReload(() => import('./pages/ReviewerCandidatesPage'));
+const ReviewerCandidateDetailsPage = lazyWithReload(
+  () => import('./pages/ReviewerCandidateDetailsPage'),
+);
+const ProfileEditPage = lazyWithReload(() => import('./pages/ProfileEditPage'));
+const AdminUserBannerPage = lazyWithReload(() => import('./pages/AdminUserBannerPage'));
+const AdminSupervisionCandidatesPage = lazyWithReload(
+  () => import('./pages/AdminSupervisionCandidatesPage'),
+);
+const AdminExternalSupervisorClaimsPage = lazyWithReload(
+  () => import('./pages/AdminExternalSupervisorClaimsPage'),
+);
+const SpecialistMessagesPage = lazyWithReload(() => import('./pages/SpecialistMessagesPage'));
+const AccessDeniedPage = lazyWithReload(() => import('./pages/AccessDeniedPage'));
 
 function RootRedirect() {
   const target = localStorage.getItem('token') ? '/dashboard-v2' : '/login';
