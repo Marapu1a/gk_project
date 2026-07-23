@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import { LegacyVersionBadge } from '@/features/supervision/components/LegacyVersionBadge';
 import { AdminIdentityFilterInput } from '@/components/AdminIdentityFilterInput';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { DashboardDateInput } from '@/components/DashboardDateInput';
@@ -411,6 +412,9 @@ function AdminSupervisionCandidatesContent() {
                 {rows.map((row) => {
                   const date = row.latestPendingRequestAt ?? row.latestRequestAt;
                   const state = hourState(row);
+                  const hasLegacyRequest = row.pendingRequests.some(
+                    (request) => request.source === 'LEGACY_VERSION',
+                  );
 
                   return (
                     <tr
@@ -427,6 +431,7 @@ function AdminSupervisionCandidatesContent() {
                         >
                           {candidateName(row.candidate.fullName, row.candidate.email)}
                         </AdminUserNameLink>
+                        {hasLegacyRequest ? <LegacyVersionBadge className="mt-1.5" /> : null}
                       </td>
                       <td className="break-all px-3 py-3 leading-snug">{row.candidate.email}</td>
                       <td className="break-all px-3 py-3 leading-snug">

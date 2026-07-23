@@ -20,6 +20,7 @@ import {
 } from '../../utils/supervisionRequirements';
 import { targetLevelToGroupName as mapTargetLevel } from '../../domain/levels';
 import { getSupervisorBonusPracticeHours } from '../../utils/getSupervisorBonusPracticeHours';
+import { splitLegacyPractice } from '../../domain/supervision/legacyPracticeRequest';
 import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 const PRACTICE_REVIEWER_REQUIRED_MESSAGE =
@@ -208,15 +209,21 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
         });
       }
 
-      normalized.push({
-        type:
-          entry.type === 'IMPLEMENTING'
-            ? PracticeLevel.IMPLEMENTING
-            : entry.type === 'PROGRAMMING'
-              ? PracticeLevel.PROGRAMMING
-              : PracticeLevel.PRACTICE,
-        value: entry.value,
-      });
+      if (entry.type === 'PRACTICE') {
+        const split = splitLegacyPractice(entry.value);
+        normalized.push(
+          { type: PracticeLevel.IMPLEMENTING, value: split.implementing },
+          { type: PracticeLevel.PROGRAMMING, value: split.programming },
+        );
+      } else {
+        normalized.push({
+          type:
+            entry.type === 'IMPLEMENTING'
+              ? PracticeLevel.IMPLEMENTING
+              : PracticeLevel.PROGRAMMING,
+          value: entry.value,
+        });
+      }
     }
   }
 

@@ -68,6 +68,7 @@ export function DocumentFileCard({
   const canAccept = item.status !== 'CONFIRMED' && item.status !== 'DELETED';
   const canReject = item.status !== 'REJECTED' && item.status !== 'DELETED';
   const canSoftDelete = item.status !== 'DELETED';
+  const fileHref = `/uploads/${item.file.fileId}`;
 
   const toneClass = hasDeletionRequest
     ? 'border-[var(--color-danger)] bg-white'
@@ -92,20 +93,31 @@ export function DocumentFileCard({
             />
             <span className="text-[12px] font-extrabold text-[#8D96B5]">Удалено</span>
           </div>
-        ) : item.file.mimeType.startsWith('image/') ? (
-          <img
-            src={`/uploads/${item.file.fileId}`}
-            alt={item.file.name}
-            className="h-[84px] w-[84px] rounded-[10px] border border-[#DCE3EF] object-cover"
-          />
-        ) : item.file.mimeType === 'application/pdf' ? (
-          <div className="flex h-[84px] w-[84px] items-center justify-center rounded-[10px] bg-[var(--color-danger)] text-[18px] font-extrabold text-white">
-            PDF
-          </div>
         ) : (
-          <div className="flex h-[84px] w-[84px] items-center justify-center rounded-[10px] bg-[#F0F0F0] text-[12px] text-[#6B7894]">
-            FILE
-          </div>
+          <a
+            href={fileHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Открыть файл ${item.file.name} в новой вкладке`}
+            title="Открыть файл в новой вкладке"
+            className="block rounded-[10px] transition hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-blue-dark)]"
+          >
+            {item.file.mimeType.startsWith('image/') ? (
+              <img
+                src={fileHref}
+                alt={item.file.name}
+                className="h-[84px] w-[84px] rounded-[10px] border border-[#DCE3EF] object-cover"
+              />
+            ) : item.file.mimeType === 'application/pdf' ? (
+              <span className="flex h-[84px] w-[84px] items-center justify-center rounded-[10px] bg-[var(--color-danger)] text-[18px] font-extrabold text-white">
+                PDF
+              </span>
+            ) : (
+              <span className="flex h-[84px] w-[84px] items-center justify-center rounded-[10px] bg-[#F0F0F0] text-[12px] text-[#6B7894]">
+                FILE
+              </span>
+            )}
+          </a>
         )}
       </div>
 
@@ -129,7 +141,7 @@ export function DocumentFileCard({
         <div className="flex flex-wrap items-center gap-3">
           {fileAvailable ? (
             <a
-              href={`/uploads/${item.file.fileId}`}
+              href={fileHref}
               target="_blank"
               rel="noopener noreferrer"
               className="min-w-0 truncate text-[15px] font-extrabold text-[var(--color-blue-dark)] underline"

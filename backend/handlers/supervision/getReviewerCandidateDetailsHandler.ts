@@ -234,6 +234,7 @@ function aggregateDistribution(
 
 function serializeRequest(record: {
   id: string;
+  source: 'CURRENT' | 'LEGACY_VERSION';
   createdAt: Date;
   supervisionDate: Date | null;
   periodStartedAt: Date | null;
@@ -255,6 +256,7 @@ function serializeRequest(record: {
 
   return {
     id: record.id,
+    source: record.source,
     createdAt: record.createdAt,
     supervisionDate: record.supervisionDate,
     periodStartedAt: record.periodStartedAt,
@@ -463,6 +465,7 @@ export async function getReviewerCandidateDetailsHandler(
       },
       select: {
         id: true,
+        source: true,
         createdAt: true,
         supervisionDate: true,
         periodStartedAt: true,
@@ -500,6 +503,7 @@ export async function getReviewerCandidateDetailsHandler(
           },
           select: {
             id: true,
+            source: true,
             createdAt: true,
             supervisionDate: true,
             periodStartedAt: true,

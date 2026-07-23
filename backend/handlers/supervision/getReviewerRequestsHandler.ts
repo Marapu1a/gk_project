@@ -113,6 +113,7 @@ function serializeRequest(record: any) {
 
   return {
     id: record.id,
+    source: record.source,
     candidate: record.user,
     createdAt: record.createdAt,
     supervisionDate: record.supervisionDate,
@@ -246,6 +247,7 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
       where,
       select: {
         id: true,
+        source: true,
         createdAt: true,
         supervisionDate: true,
         periodStartedAt: true,

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSupervisionRecordHistory } from '../hooks/useSupervisionRecordHistory';
 import type { SupervisionRecordHistoryItem } from '../api/getSupervisionRecordHistory';
+import { LegacyVersionBadge } from './LegacyVersionBadge';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { ModalShell } from '@/components/ModalShell';
 import { getSupervisionRequestDateLabel } from '../utils/requestDateLabels';
@@ -116,7 +117,12 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
                       isAdminCorrection(record) ? 'bg-[rgba(255,83,100,0.07)]' : ''
                     }`}
                   >
-                    <td className="px-4 py-4">{formatDate(recordSupervisionDate(record))}</td>
+                    <td className="px-4 py-4">
+                      <div>{formatDate(recordSupervisionDate(record))}</div>
+                      {record.source === 'LEGACY_VERSION' ? (
+                        <LegacyVersionBadge className="mt-1.5" />
+                      ) : null}
+                    </td>
                     <td className="px-4 py-4 text-center font-extrabold">
                       {formatNumber(record.hours.mentor)}
                     </td>
@@ -157,7 +163,12 @@ export function SupervisionRecordHistoryBlock({ mode = 'supervision' }: { mode?:
                       isAdminCorrection(record) ? 'bg-[rgba(255,83,100,0.07)]' : ''
                     }`}
                   >
-                    <td className="px-4 py-4">{formatDate(recordSupervisionDate(record))}</td>
+                    <td className="px-4 py-4">
+                      <div>{formatDate(recordSupervisionDate(record))}</div>
+                      {record.source === 'LEGACY_VERSION' ? (
+                        <LegacyVersionBadge className="mt-1.5" />
+                      ) : null}
+                    </td>
                     <td className="px-4 py-4">{recordPracticePeriod(record)}</td>
                     <td className="px-4 py-4 text-center text-[#6B7894]">
                       {formatNumber(record.hours.implementing)}
@@ -238,6 +249,11 @@ function SupervisionRecordDetailsModal({
         <h3 id="supervision-record-details-title" className="mb-5 text-center text-[18px] font-extrabold text-[#1F305E]">
           {isAdminCorrection(record) ? 'Детали корректировки' : 'Детали заявки'}
         </h3>
+        {record.source === 'LEGACY_VERSION' ? (
+          <div className="mb-5 text-center">
+            <LegacyVersionBadge />
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <div className="space-y-5">

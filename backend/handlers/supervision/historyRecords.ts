@@ -100,6 +100,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
       },
       select: {
         id: true,
+        source: true,
         fileId: true,
         createdAt: true,
         supervisionDate: true,
@@ -153,6 +154,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
 
     return {
       id: record.id,
+      source: record.source,
       fileId: record.fileId,
       createdAt: record.createdAt,
       supervisionDate: record.supervisionDate,
@@ -185,6 +187,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
   if (!cursor && mentorCorrection && user) {
     mappedRecords.push({
       id: `admin-mentorship-${mentorCorrection.id}`,
+      source: 'CURRENT' as const,
       fileId: null,
       createdAt: mentorCorrection.updatedAt,
       supervisionDate: mentorCorrection.updatedAt,
@@ -230,6 +233,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
 
     mappedRecords.push({
       id: `admin-practice-${practiceCorrection.id}`,
+      source: 'CURRENT' as const,
       fileId: null,
       createdAt: practiceCorrection.updatedAt,
       supervisionDate: practiceCorrection.updatedAt,

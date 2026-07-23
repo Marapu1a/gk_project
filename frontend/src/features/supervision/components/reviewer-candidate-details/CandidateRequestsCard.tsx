@@ -7,6 +7,7 @@ import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { CandidateRequestDetailsModal } from './CandidateRequestDetailsModal';
 import { getSupervisionRequestDateLabel } from '../../utils/requestDateLabels';
 import { formatDateRu as formatDate } from '@/utils/dateFormat';
+import { LegacyVersionBadge } from '../LegacyVersionBadge';
 
 type CandidateRequestsCardProps = {
   kind: ReviewerCandidateKind;
@@ -88,7 +89,10 @@ export function CandidateRequestsCard({ kind, title, requests }: CandidateReques
                     }`}
                   >
                     <td className="px-3 py-4 text-center">
-                      {formatDate(request.supervisionDate ?? request.createdAt)}
+                      <div>{formatDate(request.supervisionDate ?? request.createdAt)}</div>
+                      {request.source === 'LEGACY_VERSION' ? (
+                        <LegacyVersionBadge className="mt-1.5" />
+                      ) : null}
                     </td>
 
                     {kind === 'supervision' ? (

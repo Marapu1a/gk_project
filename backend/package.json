@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only server.ts",
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/utils/certificateLifecycle.test.js dist/lib/monitoringState.test.js dist/domain/ceu/duplicateFile.test.js dist/domain/ceu/reviewPolicy.test.js",
+    "test": "npm run build && node --test dist/utils/certificateLifecycle.test.js dist/lib/monitoringState.test.js dist/domain/ceu/duplicateFile.test.js dist/domain/ceu/reviewPolicy.test.js dist/domain/supervision/legacyPracticeRequest.test.js",
     "start": "node dist/server.js",
     "migrate:deploy": "prisma migrate deploy",
     "backfill:ceu-file-hashes": "node dist/scripts/backfillCeuFileHashes.js",
     "backfill:ceu-file-hashes:build": "npm run build && npm run backfill:ceu-file-hashes",
+    "legacy:supervision:dry-run": "node dist/scripts/normalizeLegacySupervisionRequests.js",
+    "legacy:supervision:apply": "node dist/scripts/normalizeLegacySupervisionRequests.js --apply",
     "postinstall": "prisma generate"
   },
   "prisma": {

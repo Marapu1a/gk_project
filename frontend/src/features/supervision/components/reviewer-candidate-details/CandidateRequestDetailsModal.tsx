@@ -12,6 +12,7 @@ import type {
   ReviewerCandidateRequest,
 } from '../../api/getReviewerCandidateDetails';
 import { formatDateRu as formatDate } from '@/utils/dateFormat';
+import { LegacyVersionBadge } from '../LegacyVersionBadge';
 
 type CandidateRequestDetailsModalProps = {
   kind: ReviewerCandidateKind;
@@ -143,6 +144,11 @@ export function CandidateRequestDetailsModal({
         <h3 id="candidate-request-details-title" className="dashboard-v2-page-title mb-5 text-center text-[#1F305E]">
           Детали заявки на подтверждение часов
         </h3>
+        {request.source === 'LEGACY_VERSION' ? (
+          <div className="mb-5 text-center">
+            <LegacyVersionBadge />
+          </div>
+        ) : null}
 
         <div className="mb-5 grid gap-4 sm:grid-cols-3">
           <ReadOnlyField

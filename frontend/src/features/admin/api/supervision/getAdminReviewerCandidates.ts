@@ -92,6 +92,7 @@ export type AdminReviewerCandidateRow = {
   } | null;
   pendingRequests: Array<{
     id: string;
+    source: 'CURRENT' | 'LEGACY_VERSION';
     createdAt: string;
     supervisionDate: string | null;
     periodStartedAt: string | null;

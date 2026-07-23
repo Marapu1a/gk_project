@@ -9,6 +9,7 @@ export type SupervisionRecordHistoryStatus =
 
 export type SupervisionRecordHistoryItem = {
   id: string;
+  source: 'CURRENT' | 'LEGACY_VERSION';
   fileId: string | null;
   createdAt: string;
   supervisionDate: string | null;

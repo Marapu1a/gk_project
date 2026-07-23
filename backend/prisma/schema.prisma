@@ -79,6 +79,11 @@ enum SupervisionAdminCorrectionKind {
   MENTORSHIP
 }
 
+enum SupervisionRecordSource {
+  CURRENT
+  LEGACY_VERSION
+}
+
 enum TargetLevel {
   INSTRUCTOR
   CURATOR
@@ -590,6 +595,7 @@ model SupervisionRecord {
   treatmentSetting String?
   description      String?
   ethicsAcceptedAt DateTime?
+  source           SupervisionRecordSource @default(CURRENT)
 
   draftDirectIndividual       Float?
   draftDirectGroup            Float?

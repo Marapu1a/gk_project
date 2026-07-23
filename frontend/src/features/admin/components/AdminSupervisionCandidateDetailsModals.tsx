@@ -1,11 +1,15 @@
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { ModalShell } from '@/components/ModalShell';
-import type { AdminReviewerCandidateRow } from '@/features/admin/api/supervision/getAdminReviewerCandidates';
+import type {
+  AdminReviewerCandidateRow,
+  AdminReviewerHourStatus,
+} from '@/features/admin/api/supervision/getAdminReviewerCandidates';
 import { getSupervisionRequestDateLabel } from '@/features/supervision/utils/requestDateLabels';
 import {
   formatDateRu as formatDate,
   formatDateTimeRu as formatDateTime,
 } from '@/utils/dateFormat';
+import { LegacyVersionBadge } from '@/features/supervision/components/LegacyVersionBadge';
 
 const HOUR_LABELS: Record<string, string> = {
   INSTRUCTOR: 'Практика',
@@ -15,6 +19,13 @@ const HOUR_LABELS: Record<string, string> = {
   PROGRAMMING: 'Работа с информацией',
   SUPERVISOR: 'Менторские часы',
   SUPERVISION: 'Менторские часы',
+};
+
+const HOUR_STATUS_LABELS: Record<AdminReviewerHourStatus, string> = {
+  UNCONFIRMED: 'Ожидает подтверждения',
+  CONFIRMED: 'Подтверждено',
+  REJECTED: 'Отклонено',
+  SPENT: 'Использовано',
 };
 
 function formatNumber(value?: number | null) {
@@ -37,7 +48,14 @@ function CompactField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function HoursList({ hours }: { hours: AdminReviewerCandidateRow['pendingRequests'][number]['hours'] }) {
+type DisplayHour = {
+  id: string;
+  type: string;
+  value: number;
+  status?: AdminReviewerHourStatus;
+};
+
+function HoursList({ hours, showStatus = false }: { hours: DisplayHour[]; showStatus?: boolean }) {
   const total = hours.reduce((sum, hour) => sum + Number(hour.value || 0), 0);
 
   return (
@@ -47,7 +65,14 @@ function HoursList({ hours }: { hours: AdminReviewerCandidateRow['pendingRequest
           key={hour.id}
           className="flex items-center justify-between gap-4 border-b border-[#DCE8EC] py-2 last:border-b-0"
         >
-          <span>{HOUR_LABELS[hour.type] ?? hour.type}</span>
+          <span>
+            {HOUR_LABELS[hour.type] ?? hour.type}
+            {showStatus && hour.status ? (
+              <span className="mt-0.5 block dashboard-v2-small text-[#8D96B5]">
+                {HOUR_STATUS_LABELS[hour.status]}
+              </span>
+            ) : null}
+          </span>
           <span className="font-extrabold">{formatNumber(hour.value)}</span>
         </div>
       ))}
@@ -215,7 +240,7 @@ export function LegacyHoursDetailsModal({
         <section className="rounded-[14px] bg-[var(--color-blue-soft)] px-4 py-4 dashboard-v2-text">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
             <div className="space-y-4">
-              <HoursList hours={record?.hours ?? []} />
+              <HoursList hours={record?.hours ?? []} showStatus />
               {row.kind === 'supervision' ? (
                 <DistributionBlock distribution={distribution} />
               ) : null}
@@ -285,9 +310,12 @@ export function AdminPendingHoursDetailsModal({
                 className="rounded-[14px] bg-[var(--color-blue-soft)] px-4 py-4 dashboard-v2-text"
               >
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h4 className="dashboard-v2-title">
-                    {pendingRequests.length > 1 ? `Заявка ${index + 1}` : 'Заявка'}
-                  </h4>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="dashboard-v2-title">
+                      {pendingRequests.length > 1 ? `Заявка ${index + 1}` : 'Заявка'}
+                    </h4>
+                    {request.source === 'LEGACY_VERSION' ? <LegacyVersionBadge /> : null}
+                  </div>
                   <span className="dashboard-v2-caption text-[#8D96B5]">
                     {requestDateLabel}: {formatDate(request.supervisionDate ?? request.createdAt)}
                   </span>

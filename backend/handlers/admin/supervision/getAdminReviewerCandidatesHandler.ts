@@ -6,6 +6,7 @@ import {
   ReviewerCandidateKind,
   ReviewerCandidateStatus,
   SupervisionAdminCorrectionKind,
+  SupervisionRecordSource,
 } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { buildUserIdentitySearchWhere } from '../../../utils/userIdentitySearch';
@@ -252,6 +253,7 @@ export async function getAdminReviewerCandidatesHandler(
     string,
     Array<{
       id: string;
+      source: SupervisionRecordSource;
       createdAt: Date;
       supervisionDate: Date | null;
       periodStartedAt: Date | null;
@@ -291,6 +293,7 @@ export async function getAdminReviewerCandidatesHandler(
         id: true,
         userId: true,
         cycleId: true,
+        source: true,
         createdAt: true,
         supervisionDate: true,
         periodStartedAt: true,
@@ -336,6 +339,7 @@ export async function getAdminReviewerCandidatesHandler(
         const list = recordsByRelationKey.get(key) ?? [];
         list.push({
           id: record.id,
+          source: record.source,
           createdAt: record.createdAt,
           supervisionDate: record.supervisionDate,
           periodStartedAt: record.periodStartedAt,
@@ -400,6 +404,7 @@ export async function getAdminReviewerCandidatesHandler(
         legacyRecord: null,
         pendingRequests: pendingRecords.map((record) => ({
           id: record.id,
+          source: record.source,
           createdAt: record.createdAt,
           supervisionDate: record.supervisionDate,
           periodStartedAt: record.periodStartedAt,
@@ -426,6 +431,14 @@ export async function getAdminReviewerCandidatesHandler(
         sortRank: hourStateRank(resolvedHourState),
       };
     });
+
+  const relationRecordIds = Array.from(
+    new Set(
+      Array.from(recordsByRelationKey.values()).flatMap((records) =>
+        records.map((record) => record.id),
+      ),
+    ),
+  );
 
   const corrections = await prisma.supervisionAdminCorrection.findMany({
     where: {
@@ -501,6 +514,9 @@ export async function getAdminReviewerCandidatesHandler(
       ? []
       : await prisma.supervisionRecord.findMany({
           where: {
+            ...(relationRecordIds.length > 0
+              ? { id: { notIn: relationRecordIds } }
+              : {}),
             user: {
               archivedAt: null,
               ...(candidateSearchWhere ?? {}),
