@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { NotificationType, Prisma } from '@prisma/client';
+import { DocumentReviewState, NotificationType, Prisma } from '@prisma/client';
 import { notifyAdmins } from '../../utils/notifications';
 import { reportOperationalFailure } from '../../lib/errorMonitoring';
 import {
@@ -202,6 +202,17 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
         },
       });
 
+      if (createdFiles.count > 0) {
+        await tx.documentReviewRequest.update({
+          where: { id: targetRequest.id },
+          data: {
+            reviewState: DocumentReviewState.OPEN,
+            reviewClosedAt: null,
+            reviewClosedById: null,
+          },
+        });
+      }
+
       const updatedRequest = await recalculateDocumentReviewRequestStatus(tx, targetRequest.id);
       const email = currentUser?.email ?? 'пользователя';
       const commentChanged = !isNewRequest && !commentsEqual(targetRequest.comment, trimmedComment);
@@ -264,6 +275,17 @@ export async function createDocReviewReq(req: FastifyRequest, reply: FastifyRepl
           reviewerEmail: null,
         },
       });
+
+      if (createdFiles.count > 0) {
+        await tx.documentReviewRequest.update({
+          where: { id: existingConfirmed.id },
+          data: {
+            reviewState: DocumentReviewState.OPEN,
+            reviewClosedAt: null,
+            reviewClosedById: null,
+          },
+        });
+      }
 
       const request = await recalculateDocumentReviewRequestStatus(tx, existingConfirmed.id);
       const email = currentUser?.email ?? 'пользователя';

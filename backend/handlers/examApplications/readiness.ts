@@ -223,6 +223,7 @@ export async function buildExamReadiness(userId: string) {
         id: true,
         cycleId: true,
         status: true,
+        reviewState: true,
         submittedAt: true,
         reviewedAt: true,
         comment: true,
@@ -279,7 +280,7 @@ export async function buildExamReadiness(userId: string) {
   }
 
   const documentsReady =
-    documentRequestStatus === RecordStatus.CONFIRMED ||
+    documentRequest?.reviewState === 'COMPLETED' ||
     (isRenewal && Boolean(platformCertificate));
   if (!documentsReady) missing.push('Документы не подтверждены');
 

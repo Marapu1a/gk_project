@@ -44,10 +44,10 @@ type TaskItem = {
 
 type DocumentReviewRequestRow = {
   status: string;
+  reviewState: 'OPEN' | 'COMPLETED';
   documentFiles?: { status: string; deletionRequestedAt?: string | null }[];
 };
 
-const activeDocumentStatuses = new Set(['UNCONFIRMED', 'PARTIALLY_CONFIRMED']);
 const ADMIN_TASKS_REFRESH_INTERVAL = 30_000;
 
 export function AdminDashboard({ user }: AdminDashboardProps) {
@@ -71,11 +71,11 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
   const backupDb = useCreateDbBackup();
 
   const documentCount = (documentRequests as DocumentReviewRequestRow[]).filter((request) => {
-    const hasActiveStatus = activeDocumentStatuses.has(request.status);
+    const hasOpenReview = request.reviewState !== 'COMPLETED';
     const hasDeletionRequest = request.documentFiles?.some(
       (file) => file.deletionRequestedAt && file.status !== 'DELETED',
     );
-    return hasActiveStatus || hasDeletionRequest;
+    return hasOpenReview || hasDeletionRequest;
   }).length;
   const pendingExamCount = examApplications.filter((application) => application.status === 'PENDING').length;
 

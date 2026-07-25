@@ -6,6 +6,8 @@ import { updateDocumentReviewRequestPaid } from '../handlers/documentReviewAdmin
 import { updateDocumentReviewFile } from '../handlers/documentReviewAdmin/updateDocumentReviewFile';
 import { deleteDocumentReviewFile } from '../handlers/documentReviewAdmin/deleteDocumentReviewFile';
 import { transferDocumentReviewFileToActiveCycle } from '../handlers/documentReviewAdmin/transferDocumentReviewFileToActiveCycle';
+import { completeDocumentReviewRequest } from '../handlers/documentReviewAdmin/completeDocumentReviewRequest';
+import { reopenDocumentReviewRequest } from '../handlers/documentReviewAdmin/reopenDocumentReviewRequest';
 
 import { verifyToken } from '../middlewares/verifyToken';
 import { requireAdmin } from '../middlewares/requireRole';
@@ -18,4 +20,6 @@ export async function documentReviewRoutesAdmin(app: FastifyInstance) {
   app.post('/document-review-requests/:id/files/:fileReviewId/transfer-to-active-cycle', { preHandler: [verifyToken, requireAdmin] }, transferDocumentReviewFileToActiveCycle);
   app.delete('/document-review-requests/:id/files/:fileReviewId', { preHandler: [verifyToken, requireAdmin] }, deleteDocumentReviewFile);
   app.patch('/document-review-requests/:id/paid', { preHandler: [verifyToken, requireAdmin] }, updateDocumentReviewRequestPaid);
+  app.post('/document-review-requests/:id/complete', { preHandler: [verifyToken, requireAdmin] }, completeDocumentReviewRequest);
+  app.post('/document-review-requests/:id/reopen', { preHandler: [verifyToken, requireAdmin] }, reopenDocumentReviewRequest);
 }

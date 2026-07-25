@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
 import { AdminIdentityFilterInput } from '@/components/AdminIdentityFilterInput';
 import { useAllDocReviewRequests } from '../hooks/useAllDocReviewRequests';
-import { documentReviewStatusLabels } from '@/utils/documentReviewStatusLabels';
 import { NameSortButton, nextNameSortDirection, sortByFullName, type NameSortDirection } from '@/components/NameSortButton';
 import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
 import { formatDateRu as formatDate } from '@/utils/dateFormat';
@@ -12,6 +11,7 @@ type RequestRow = {
   id: string;
   cycleId?: string | null;
   status: string;
+  reviewState: 'OPEN' | 'COMPLETED';
   comment?: string | null;
   submittedAt: string;
   user?: { id?: string | null; email?: string | null; fullName?: string | null } | null;
@@ -20,7 +20,6 @@ type RequestRow = {
   documentFiles?: { id: string; status: string; deletionRequestedAt?: string | null }[];
 };
 
-const activeStatuses = new Set(['UNCONFIRMED', 'PARTIALLY_CONFIRMED']);
 const statusWeight: Record<string, number> = {
   UNCONFIRMED: 0,
   PARTIALLY_CONFIRMED: 1,
@@ -35,6 +34,20 @@ function statusTone(status: string): StatusPillTone {
   return 'neutral';
 }
 
+function requestStatusLabel(request: RequestRow) {
+  if (request.reviewState === 'COMPLETED') return 'Завершена';
+  if (request.status === 'REJECTED') return 'Нужны документы';
+  if (request.status === 'CONFIRMED') return 'Завершите проверку';
+  return 'На проверке';
+}
+
+function requestStatusTone(request: RequestRow): StatusPillTone {
+  if (request.reviewState === 'COMPLETED') return 'success';
+  if (request.status === 'REJECTED') return 'danger';
+  if (request.status === 'CONFIRMED') return 'partial';
+  return statusTone(request.status);
+}
+
 function archiveLabel(request: RequestRow) {
   if (!request.cycleId) return 'Старая заявка';
   if (request.cycle?.status && request.cycle.status !== 'ACTIVE') return 'Предыдущий цикл';
@@ -43,28 +56,16 @@ function archiveLabel(request: RequestRow) {
 
 export function AdminDocumentReviewList() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlSearch = searchParams.get('search') ?? searchParams.get('email') ?? '';
-  const urlMode = searchParams.get('mode') === 'history' ? 'history' : 'active';
-  const [searchInput, setSearchInput] = useState(urlSearch);
-  const [search, setSearch] = useState(urlSearch.trim());
-  const [mode, setMode] = useState<'active' | 'history'>(urlMode);
+  const search = searchParams.get('search') ?? searchParams.get('email') ?? '';
+  const mode = searchParams.get('mode') === 'history' ? 'history' : 'active';
   const [nameSort, setNameSort] = useState<NameSortDirection>(null);
 
-  const { data: requests = [], isLoading, error } = useAllDocReviewRequests(search);
-
-  useEffect(() => {
-    setSearchInput(urlSearch);
-    setSearch(urlSearch.trim());
-  }, [urlSearch]);
-
-  useEffect(() => {
-    setMode(urlMode);
-  }, [urlMode]);
+  const { data: requests = [], isLoading, error } = useAllDocReviewRequests(search.trim());
 
   const rows = useMemo(() => {
     const filteredRows = (requests as RequestRow[])
       .filter((request) => {
-        const isActive = activeStatuses.has(request.status);
+        const isActive = request.reviewState !== 'COMPLETED';
         if (mode === 'active' && !isActive) return false;
         if (mode === 'history' && isActive) return false;
         return true;
@@ -77,22 +78,18 @@ export function AdminDocumentReviewList() {
     return sortByFullName(filteredRows, (request) => request.user?.fullName || request.user?.email, nameSort);
   }, [mode, nameSort, requests]);
 
-  const handleSearchSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    const nextSearch = searchInput.trim();
+  const handleSearchChange = (value: string) => {
     const next = new URLSearchParams(searchParams);
     next.delete('email');
-    if (nextSearch) {
-      next.set('search', nextSearch);
+    if (value) {
+      next.set('search', value);
     } else {
       next.delete('search');
     }
-    setSearch(nextSearch);
     setSearchParams(next, { replace: true });
   };
 
   const handleModeChange = (nextMode: 'active' | 'history') => {
-    setMode(nextMode);
     const next = new URLSearchParams(searchParams);
     if (nextMode === 'active') {
       next.delete('mode');
@@ -120,25 +117,17 @@ export function AdminDocumentReviewList() {
             </div>
           </div>
 
-          <form onSubmit={handleSearchSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <label className="block text-[13px] font-semibold">
-              Поиск
-              <AdminIdentityFilterInput
-                value={searchInput}
-                onChange={setSearchInput}
-                placeholder="Введите ФИО, email, телефон или рег. номер"
-                className="mt-1 w-full sm:w-[320px]"
-                inputClassName="h-[36px]"
-                ariaLabel="Поиск по пользователю"
-              />
-            </label>
-            <button
-              type="submit"
-              className="btn h-[36px] rounded-[10px] bg-[var(--color-blue-dark)] px-6 text-[14px] font-extrabold text-white"
-            >
-              Поиск
-            </button>
-          </form>
+          <label className="block text-[13px] font-semibold">
+            Поиск
+            <AdminIdentityFilterInput
+              value={search}
+              onChange={handleSearchChange}
+              placeholder="Введите ФИО, email, телефон или рег. номер"
+              className="mt-1 w-full sm:w-[380px]"
+              inputClassName="h-[36px]"
+              ariaLabel="Поиск по пользователю"
+            />
+          </label>
         </header>
 
         <div className="px-6 py-6">
@@ -202,11 +191,11 @@ export function AdminDocumentReviewList() {
                         <td className="border-b border-[var(--color-blue-soft)] px-4 py-4">
                           <div className="flex flex-wrap items-center gap-2">
                             <StatusPill
-                              tone={statusTone(request.status)}
+                              tone={requestStatusTone(request)}
                               size="md"
                               className="h-[26px]"
                             >
-                              {documentReviewStatusLabels[request.status] || request.status}
+                              {requestStatusLabel(request)}
                             </StatusPill>
                             {archive ? (
                               <span className="inline-flex h-[24px] items-center rounded-full bg-[#EEF0F4] px-2.5 text-[11px] font-bold text-[#8D96B5]">

@@ -34,3 +34,13 @@ export async function transferDocumentReviewFileToActiveCycle(
   );
   return res.data;
 }
+
+export async function completeDocumentReviewRequest(requestId: string) {
+  const res = await api.post(`/document-review-requests/${requestId}/complete`);
+  return res.data;
+}
+
+export async function reopenDocumentReviewRequest(requestId: string) {
+  const res = await api.post(`/document-review-requests/${requestId}/reopen`);
+  return res.data;
+}

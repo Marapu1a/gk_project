@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   deleteDocumentReviewFile,
+  completeDocumentReviewRequest,
+  reopenDocumentReviewRequest,
   transferDocumentReviewFileToActiveCycle,
   updateDocumentReviewFile,
   type UpdateDocumentReviewFilePayload,
@@ -63,5 +65,29 @@ export function useTransferDocumentReviewFileToActiveCycle(requestId?: string) {
         });
       }
     },
+  });
+}
+
+export function useCompleteDocumentReviewRequest(requestId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => {
+      if (!requestId) throw new Error('requestId is required');
+      return completeDocumentReviewRequest(requestId);
+    },
+    onSuccess: () => invalidateDocumentReviewQueries(queryClient, requestId),
+  });
+}
+
+export function useReopenDocumentReviewRequest(requestId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => {
+      if (!requestId) throw new Error('requestId is required');
+      return reopenDocumentReviewRequest(requestId);
+    },
+    onSuccess: () => invalidateDocumentReviewQueries(queryClient, requestId),
   });
 }

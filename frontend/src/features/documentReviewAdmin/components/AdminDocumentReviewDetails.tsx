@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AdminUserNameLink } from '@/components/AdminUserNameLink';
@@ -15,6 +16,8 @@ import {
 import { useGetDocReviewRequestById } from '../hooks/useGetDocReviewRequestById';
 import {
   useDeleteDocumentReviewFile,
+  useCompleteDocumentReviewRequest,
+  useReopenDocumentReviewRequest,
   useTransferDocumentReviewFileToActiveCycle,
   useUpdateDocumentReviewFile,
 } from '../hooks/useUpdateDocumentReviewFile';
@@ -46,6 +49,8 @@ type ReviewFilesSource = {
   status?: string | null;
   comment?: string | null;
 } | null | undefined;
+
+type FileFilter = 'ALL' | 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'DELETED';
 
 function normalizeReviewFiles(request: ReviewFilesSource): ReviewFile[] {
   if (!request) return [];
@@ -127,15 +132,27 @@ export function AdminDocumentReviewDetails() {
   const updateFile = useUpdateDocumentReviewFile(id);
   const deleteFileRecord = useDeleteDocumentReviewFile(id);
   const transferFile = useTransferDocumentReviewFileToActiveCycle(id);
+  const completeRequest = useCompleteDocumentReviewRequest(id);
+  const reopenRequest = useReopenDocumentReviewRequest(id);
   const { confirm } = useConfirm();
 
   const [comments, setComments] = useState<Record<string, string>>({});
   const [types, setTypes] = useState<Record<string, string>>({});
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+  const [fileFilter, setFileFilter] = useState<FileFilter>('ALL');
 
   const { data: payments } = useUserPaymentsById(request?.user?.id);
 
   const reviewFiles = useMemo(() => normalizeReviewFiles(request), [request]);
+  const visibleReviewFiles = useMemo(
+    () =>
+      reviewFiles.filter((item) => {
+        if (fileFilter === 'ALL') return true;
+        if (fileFilter === 'PENDING') return item.status === 'UNCONFIRMED';
+        return item.status === fileFilter;
+      }),
+    [fileFilter, reviewFiles],
+  );
   const relatedRequests: RelatedDocumentRequest[] = request?.relatedRequests ?? [];
 
   useEffect(() => {
@@ -177,6 +194,17 @@ export function AdminDocumentReviewDetails() {
     requestCycleType,
     paymentTargetLevel,
   );
+  const isReviewCompleted = request.reviewState === 'COMPLETED';
+  const reviewableFiles = reviewFiles.filter((item) => item.status !== 'DELETED');
+  const hasPendingFiles = reviewableFiles.some((item) => item.status === 'UNCONFIRMED');
+  const hasConfirmedFiles = reviewableFiles.some((item) => item.status === 'CONFIRMED');
+  const canCompleteReview = !isReviewCompleted && !hasPendingFiles && hasConfirmedFiles;
+  const fileCounts = {
+    all: reviewFiles.length,
+    pending: reviewFiles.filter((item) => item.status === 'UNCONFIRMED').length,
+    confirmed: reviewFiles.filter((item) => item.status === 'CONFIRMED').length,
+    rejected: reviewFiles.filter((item) => item.status === 'REJECTED').length,
+  };
 
   const handleTypeChange = async (item: ReviewFile, type: string) => {
     setTypes((prev) => ({ ...prev, [item.id]: type }));
@@ -269,6 +297,42 @@ export function AdminDocumentReviewDetails() {
     }
   };
 
+  const handleCompleteReview = async () => {
+    const ok = await confirm({
+      message: 'Завершить проверку документов?',
+      description:
+        'Документы будут считаться принятыми для текущего цикла. Новая загрузка пользователя снова откроет проверку.',
+      confirmLabel: 'Завершить',
+    });
+
+    if (!ok) return;
+
+    try {
+      await completeRequest.mutateAsync();
+      toast.success('Проверка документов завершена');
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, 'Не удалось завершить проверку документов.'));
+    }
+  };
+
+  const handleReopenReview = async () => {
+    const ok = await confirm({
+      message: 'Возобновить проверку документов?',
+      description:
+        'Заявка снова перестанет считаться завершенной для текущего цикла. Статусы файлов не изменятся.',
+      confirmLabel: 'Возобновить',
+    });
+
+    if (!ok) return;
+
+    try {
+      await reopenRequest.mutateAsync();
+      toast.success('Проверка документов возобновлена');
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, 'Не удалось возобновить проверку документов.'));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F0F0F0] px-2 py-6 text-[var(--color-blue-dark)] sm:px-4">
       <section className="mx-auto max-w-[1040px] overflow-hidden rounded-[18px] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.10)]">
@@ -323,7 +387,13 @@ export function AdminDocumentReviewDetails() {
             <InfoLine label="Email" value={request.user?.email ?? '—'} />
             <InfoLine
               label="Статус"
-              value={documentReviewStatusLabels[request.status] || request.status}
+              value={
+                isReviewCompleted
+                  ? 'Проверка завершена'
+                  : request.status === 'CONFIRMED'
+                    ? 'Все файлы обработаны'
+                  : documentReviewStatusLabels[request.status] || request.status
+              }
             />
             <InfoLine
               label="Оплата"
@@ -415,15 +485,41 @@ export function AdminDocumentReviewDetails() {
           ) : null}
 
           <section>
-            <h2 className="mb-4 text-[20px] font-extrabold">Файлы</h2>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-[20px] font-extrabold">Файлы</h2>
+                <p className="mt-1 text-[13px] text-[#6B7894]">
+                  Всего: {fileCounts.all} · На проверке: {fileCounts.pending} · Принято:{' '}
+                  {fileCounts.confirmed} · Отклонено: {fileCounts.rejected}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1 rounded-[10px] bg-[#F0F0F0] p-1">
+                <FileFilterButton active={fileFilter === 'ALL'} onClick={() => setFileFilter('ALL')}>
+                  Все
+                </FileFilterButton>
+                <FileFilterButton active={fileFilter === 'PENDING'} onClick={() => setFileFilter('PENDING')}>
+                  На проверке
+                </FileFilterButton>
+                <FileFilterButton active={fileFilter === 'CONFIRMED'} onClick={() => setFileFilter('CONFIRMED')}>
+                  Принятые
+                </FileFilterButton>
+                <FileFilterButton active={fileFilter === 'REJECTED'} onClick={() => setFileFilter('REJECTED')}>
+                  Отклоненные
+                </FileFilterButton>
+              </div>
+            </div>
 
             {reviewFiles.length === 0 ? (
               <p className="rounded-[12px] bg-[#F7F8FA] px-4 py-5 text-[14px] text-[#6B7894]">
                 Нет файлов
               </p>
+            ) : visibleReviewFiles.length === 0 ? (
+              <p className="rounded-[12px] bg-[#F7F8FA] px-4 py-5 text-[14px] text-[#6B7894]">
+                В этой категории файлов нет.
+              </p>
             ) : (
-              <div className="space-y-4">
-                {reviewFiles.map((item) => (
+              <div className="space-y-2">
+                {visibleReviewFiles.map((item) => (
                   <DocumentFileCard
                     key={item.id}
                     item={item}
@@ -450,6 +546,42 @@ export function AdminDocumentReviewDetails() {
               </div>
             )}
           </section>
+
+          {!isArchiveRequest ? (
+            <section className="sticky bottom-3 z-10 flex flex-col gap-3 rounded-[14px] border border-[var(--color-blue-soft)] bg-white/95 p-4 shadow-[0_4px_14px_rgba(31,48,94,0.12)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-[18px] font-extrabold">Проверка документов</h2>
+                <p className="mt-1 text-[13px] text-[#6B7894]">
+                  {isReviewCompleted
+                    ? 'Проверка текущего комплекта завершена.'
+                    : hasPendingFiles
+                      ? 'Сначала обработайте все загруженные документы.'
+                      : hasConfirmedFiles
+                        ? 'Все файлы обработаны. Можно завершить проверку комплекта.'
+                        : 'Для завершения нужен хотя бы один принятый документ.'}
+                </p>
+              </div>
+              {isReviewCompleted ? (
+                <button
+                  type="button"
+                  onClick={handleReopenReview}
+                  disabled={reopenRequest.isPending}
+                  className="btn h-[40px] shrink-0 rounded-full border-2 border-[var(--color-blue-dark)] px-5 text-[14px] font-extrabold text-[var(--color-blue-dark)] disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {reopenRequest.isPending ? 'Возобновляем...' : 'Возобновить проверку'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCompleteReview}
+                  disabled={!canCompleteReview || completeRequest.isPending}
+                  className="btn h-[40px] shrink-0 rounded-full bg-[var(--color-blue-dark)] px-5 text-[14px] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {completeRequest.isPending ? 'Завершаем...' : 'Завершить проверку'}
+                </button>
+              )}
+            </section>
+          ) : null}
         </div>
       </section>
     </div>
@@ -462,5 +594,27 @@ function InfoLine({ label, value }: { label: string; value: string }) {
       <span className="font-extrabold">{label}: </span>
       <span className="text-[#222]">{value}</span>
     </div>
+  );
+}
+
+function FileFilterButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`btn h-8 rounded-[7px] px-3 text-[12px] font-extrabold ${
+        active ? 'bg-white text-[var(--color-blue-dark)] shadow-sm' : 'text-[#6B7894]'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

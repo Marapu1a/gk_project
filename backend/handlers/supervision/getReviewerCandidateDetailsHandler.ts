@@ -3,6 +3,7 @@ import {
   CEUCategory,
   CycleStatus,
   CycleType,
+  DocumentReviewState,
   PracticeLevel,
   RecordStatus,
   ReviewerCandidateKind,
@@ -598,6 +599,7 @@ export async function getReviewerCandidateDetailsHandler(
       orderBy: { submittedAt: 'desc' },
       select: {
         status: true,
+        reviewState: true,
         documentFiles: { select: { status: true } },
       },
     }),
@@ -632,7 +634,7 @@ export async function getReviewerCandidateDetailsHandler(
     ? resolveDocumentReviewRequestStatus(documentReviewRequest)
     : null;
   const documentsReady =
-    documentReviewStatus === RecordStatus.CONFIRMED ||
+    documentReviewRequest?.reviewState === DocumentReviewState.COMPLETED ||
     (activeCycle.type === CycleType.RENEWAL && Boolean(platformCertificate));
 
   return reply.send({

@@ -122,7 +122,7 @@ export function useQualificationProgress(
     ? docReview?.cycleId === activeCycleId
     : false;
   const documentsReady =
-    (docReview?.status === 'CONFIRMED' && documentsBelongToActiveCycle) ||
+    (docReview?.reviewState === 'COMPLETED' && documentsBelongToActiveCycle) ||
     (mode === 'RENEWAL' && Boolean(certificates?.length));
 
   const requiredPaymentsPaid = areRequiredPaymentsPaid(

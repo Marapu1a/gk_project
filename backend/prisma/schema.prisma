@@ -29,6 +29,11 @@ enum DocumentReviewFileStatus {
   DELETED
 }
 
+enum DocumentReviewState {
+  OPEN
+  COMPLETED
+}
+
 enum ReviewerCandidateKind {
   SUPERVISION
   MENTORSHIP
@@ -688,6 +693,9 @@ model DocumentReviewRequest {
   cycle   CertificationCycle? @relation(fields: [cycleId], references: [id])
 
   status        RecordStatus @default(UNCONFIRMED)
+  reviewState   DocumentReviewState @default(OPEN)
+  reviewClosedAt DateTime?
+  reviewClosedById String?
   paid          Boolean      @default(false)
   reviewerEmail String?
   submittedAt   DateTime     @default(now())

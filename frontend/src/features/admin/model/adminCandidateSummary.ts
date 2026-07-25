@@ -79,6 +79,30 @@ function resolveDocumentStatus(user: AdminUserDetails) {
   }
 
   if (latestRequest) {
+    if (latestRequest.reviewState === 'COMPLETED') {
+      return {
+        label: 'Завершена',
+        tone: 'good' as const,
+        mode: 'history' as const,
+      };
+    }
+
+    if (latestRequest.status === 'REJECTED') {
+      return {
+        label: 'Нужны документы',
+        tone: 'bad' as const,
+        mode: 'active' as const,
+      };
+    }
+
+    if (latestRequest.status === 'CONFIRMED') {
+      return {
+        label: 'Завершите проверку',
+        tone: 'warn' as const,
+        mode: 'active' as const,
+      };
+    }
+
     const fallbackLabel =
       latestRequest.status === 'CONFIRMED'
         ? 'Принято'
@@ -87,12 +111,12 @@ function resolveDocumentStatus(user: AdminUserDetails) {
           : 'На проверке';
 
     return {
-      label: docReviewStatusLabels[latestRequest.status] ?? fallbackLabel,
-      tone: latestRequest.status === 'REJECTED' ? ('bad' as const) : ('warn' as const),
-      mode:
+      label:
         latestRequest.status === 'UNCONFIRMED' || latestRequest.status === 'PARTIALLY_CONFIRMED'
-          ? ('active' as const)
-          : ('history' as const),
+          ? 'На проверке'
+          : (docReviewStatusLabels[latestRequest.status] ?? fallbackLabel),
+      tone: 'warn' as const,
+      mode: 'active' as const,
     };
   }
 

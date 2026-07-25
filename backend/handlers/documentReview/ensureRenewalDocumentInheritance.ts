@@ -1,5 +1,6 @@
 import {
   CycleType,
+  DocumentReviewState,
   DocumentReviewFileStatus,
   Prisma,
   RecordStatus,
@@ -51,7 +52,9 @@ export async function ensureRenewalDocumentInheritance(
   });
 
   const source = previousRequests.find(
-    (request) => resolveDocumentReviewRequestStatus(request) === RecordStatus.CONFIRMED,
+    (request) =>
+      request.reviewState === DocumentReviewState.COMPLETED &&
+      resolveDocumentReviewRequestStatus(request) === RecordStatus.CONFIRMED,
   );
 
   const inheritedFiles = new Map<
@@ -84,6 +87,8 @@ export async function ensureRenewalDocumentInheritance(
       userId,
       cycleId: cycle.id,
       status: RecordStatus.CONFIRMED,
+      reviewState: DocumentReviewState.COMPLETED,
+      reviewClosedAt: new Date(),
       reviewedAt: new Date(),
       comment: 'Документы подтверждены на основании ранее выданного сертификата ЦС ПАП',
     },

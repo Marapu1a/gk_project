@@ -77,6 +77,7 @@ export async function getUserDetails(id: string) {
         request: {
           id: string;
           status: string;
+          reviewState: 'OPEN' | 'COMPLETED';
           submittedAt: string;
           reviewedAt: string | null;
           adminUrl: string;
@@ -207,6 +208,9 @@ export async function getUserDetails(id: string) {
     documentReviewRequests: {
       id: string;
       status: string;
+      reviewState: 'OPEN' | 'COMPLETED';
+      reviewClosedAt: string | null;
+      reviewClosedById: string | null;
       paid: boolean;
       reviewerEmail: string | null;
       submittedAt: string;

@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { DocumentReviewFileStatus } from '@prisma/client';
+import { DocumentReviewFileStatus, DocumentReviewState } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { recalculateDocumentReviewRequestStatus } from './documentReviewFileStatusUtils';
 
@@ -111,6 +111,15 @@ export async function transferDocumentReviewFileToActiveCycle(
         status: DocumentReviewFileStatus.UNCONFIRMED,
       },
       select: { id: true },
+    });
+
+    await tx.documentReviewRequest.update({
+      where: { id: targetRequest.id },
+      data: {
+        reviewState: DocumentReviewState.OPEN,
+        reviewClosedAt: null,
+        reviewClosedById: null,
+      },
     });
 
     await recalculateDocumentReviewRequestStatus(tx, targetRequest.id);
