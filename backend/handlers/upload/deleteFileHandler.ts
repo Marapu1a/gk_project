@@ -15,6 +15,11 @@ export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply
 
   const file = await prisma.uploadedFile.findUnique({
     where: { id },
+    include: {
+      certificate: { select: { id: true } },
+      supervisionContract: { select: { id: true } },
+      documentReviewFiles: { select: { id: true }, take: 1 },
+    },
   });
 
   if (!file) {
@@ -26,15 +31,22 @@ export async function deleteFileHandler(req: FastifyRequest, reply: FastifyReply
     return reply.code(403).send({ error: 'Нет доступа к этому файлу' });
   }
 
-  // CEU ищем по file.fileId, а не по id
+  // CEU хранит строковый fileId, остальные сущности ссылаются на UploadedFile.id.
   const usedInCeu = await prisma.cEURecord.findFirst({
     where: { fileId: file.fileId },
     select: { id: true },
   });
 
-  if (usedInCeu) {
+  const isInUse =
+    Boolean(usedInCeu) ||
+    Boolean(file.requestId) ||
+    Boolean(file.certificate) ||
+    Boolean(file.supervisionContract) ||
+    file.documentReviewFiles.length > 0;
+
+  if (isInUse) {
     return reply
-      .code(400)
+      .code(409)
       .send({ error: 'Файл уже прикреплён к заявке и не может быть удалён' });
   }
 

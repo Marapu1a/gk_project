@@ -5,6 +5,7 @@ import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { ModalShell } from '@/components/ModalShell';
 import { FileUpload, type UploadedFile } from '@/utils/FileUpload';
 import { useSetAvatarUrl } from '../hooks/useSetAvatarUrl';
+import { deleteFile } from '@/features/files/api/deleteFile';
 
 type Props = {
   userId: string;
@@ -29,9 +30,18 @@ export function AvatarUploadModal({
   const resetKeyRef = useRef(0);
   const hasCurrentAvatar = Boolean(currentAvatarUrl?.trim());
 
+  const handleClose = async () => {
+    if (file?.id) {
+      await deleteFile(file.id).catch(() => undefined);
+    }
+    setFile(null);
+    onClose();
+  };
+
   const handleSave = async () => {
     const url = file ? `/uploads/${file.fileId}` : null;
     await setAvatar.mutateAsync(url);
+    setFile(null);
     onClose();
     // сброс для следующего открытия модалки
     resetKeyRef.current += 1;
@@ -45,12 +55,12 @@ export function AvatarUploadModal({
 
   return (
     <ModalShell
-      onClose={onClose}
+      onClose={handleClose}
       ariaLabelledBy="avatar-upload-title"
       overlayClassName="z-50 bg-black/40 px-4"
       dialogClassName="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[var(--color-green-light)] bg-white p-6 header-shadow"
     >
-      <ModalCloseButton onClick={onClose} disabled={setAvatar.isPending} />
+      <ModalCloseButton onClick={handleClose} disabled={setAvatar.isPending} />
 
       <div className="mb-4 flex items-center gap-2">
         <h3 id="avatar-upload-title" className="text-xl font-semibold text-blue-dark">
@@ -62,7 +72,11 @@ export function AvatarUploadModal({
       <FileUpload
         category="avatar"
         onChange={setFile}
-        accept={{ 'image/*': [] }}
+        accept={{
+          'image/png': [],
+          'image/jpeg': [],
+          'image/webp': [],
+        }}
         maxSizeMB={2}
         helperText="PNG/JPEG/WebP, до 2 МБ"
         resetKey={resetKeyRef.current}
@@ -81,7 +95,7 @@ export function AvatarUploadModal({
           </button>
         ) : null}
 
-        <button className="btn" onClick={onClose} disabled={setAvatar.isPending}>
+        <button className="btn" onClick={handleClose} disabled={setAvatar.isPending}>
           Отмена
         </button>
         <button

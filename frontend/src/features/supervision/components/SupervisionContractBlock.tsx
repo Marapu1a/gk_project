@@ -11,7 +11,8 @@ import {
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { ModalShell } from '@/components/ModalShell';
-import { getUiErrorMessage } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { deleteFile } from '@/features/files/api/deleteFile';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_SIZE_MB = 10;
@@ -112,8 +113,10 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
     if (!confirmed) return;
 
     setUploading(true);
+    let temporaryFileId: string | null = null;
     try {
       const uploaded = await uploadFile(selectedFile, 'supervisor-contracts');
+      temporaryFileId = uploaded.id;
       await createContract.mutateAsync({
         uploadedFileId: uploaded.id,
         supervisorInput: trimmedSupervisor,
@@ -124,6 +127,9 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
       setSelectedSupervisorId(undefined);
       setSelectedFile(null);
     } catch (error) {
+      if (temporaryFileId) {
+        await deleteFile(temporaryFileId).catch(() => undefined);
+      }
       toast.error(getUiErrorMessage(error, 'Не удалось загрузить контракт'));
     } finally {
       setUploading(false);
@@ -148,6 +154,7 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleDrop,
+    onDropRejected: () => toast.error(UI_TOAST_MESSAGES.files.documentFormatsOnly),
     multiple: false,
     accept: {
       'application/pdf': [],

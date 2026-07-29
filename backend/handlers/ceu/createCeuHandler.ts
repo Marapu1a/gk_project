@@ -70,7 +70,7 @@ export async function createCeuHandler(req: FastifyRequest, reply: FastifyReply)
   try {
     const ceuRecord = await prisma.$transaction(async (tx) => {
       if (uploadedFile.contentHash) {
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`ceu-file:${user.userId}:${uploadedFile.contentHash}`}))`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`ceu-file:${user.userId}:${uploadedFile.contentHash}`}))`;
 
         const duplicate = await findCeuFileDuplicate(tx, {
           userId: user.userId,
@@ -119,6 +119,9 @@ export async function createCeuHandler(req: FastifyRequest, reply: FastifyReply)
       });
     }
 
+    if (fileId) {
+      await removeUnusedUploadedFile(fileId).catch(() => undefined);
+    }
     throw error;
   }
 }

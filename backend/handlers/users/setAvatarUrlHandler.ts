@@ -79,31 +79,32 @@ export async function setAvatarUrlHandler(
   let fileIdToDelete: string | null = null;
 
   const updated = await prisma.$transaction(async (tx) => {
-    if (!normalizedAvatarUrl) {
-      const currentUser = await tx.user.findUnique({
-        where: { id },
-        select: { avatarUrl: true },
-      });
-
-      const currentFileId = avatarFileIdFromUrl(currentUser?.avatarUrl);
-      const currentAvatarFile = currentFileId
+    const currentUser = await tx.user.findUnique({
+      where: { id },
+      select: { avatarUrl: true },
+    });
+    const currentFileId = avatarFileIdFromUrl(currentUser?.avatarUrl);
+    const nextFileId = avatarFileIdFromUrl(normalizedAvatarUrl);
+    const currentAvatarFile =
+      currentFileId && currentFileId !== nextFileId
         ? await tx.uploadedFile.findUnique({
           where: { fileId: currentFileId },
           select: { id: true, userId: true, fileId: true },
         })
         : null;
 
-      if (currentAvatarFile?.userId === id && currentAvatarFile.fileId.includes('/avatar/')) {
-        await tx.uploadedFile.delete({ where: { id: currentAvatarFile.id } });
-        fileIdToDelete = currentAvatarFile.fileId;
-      }
-    }
-
-    return tx.user.update({
+    const result = await tx.user.update({
       where: { id },
       data: { avatarUrl: normalizedAvatarUrl || null },
       select: { id: true, avatarUrl: true },
     });
+
+    if (currentAvatarFile?.userId === id && currentAvatarFile.fileId.includes('/avatar/')) {
+      await tx.uploadedFile.delete({ where: { id: currentAvatarFile.id } });
+      fileIdToDelete = currentAvatarFile.fileId;
+    }
+
+    return result;
   });
 
   if (fileIdToDelete) {

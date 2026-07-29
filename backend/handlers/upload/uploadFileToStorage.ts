@@ -11,7 +11,12 @@ import {
 } from '../../domain/ceu/duplicateFile';
 
 import { UPLOAD_ROOT, MAX_FILE_SIZE_MB, MAX_FILE_SIZE_BYTES } from '../../config/storage';
-import { isPdfBuffer } from '../../utils/pdfValidation';
+import {
+  getCanonicalUploadExtension,
+  isAllowedUploadMimeType,
+  isMimeTypeAllowedForCategory,
+  matchesDeclaredUploadType,
+} from '../../utils/uploadValidation';
 
 const MAX_PENDING_DOCUMENT_FILES = 10;
 const PENDING_DOCUMENT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -37,8 +42,7 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
     return reply.code(413).send({ error: `Файл превышает ${MAX_FILE_SIZE_MB}MB` });
   }
 
-  const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
-  if (!allowed.includes(data.mimetype)) {
+  if (!isAllowedUploadMimeType(data.mimetype)) {
     return reply.code(415).send({ error: 'Недопустимый тип файла' });
   }
 
@@ -55,6 +59,10 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
 
   if (!/^[a-z0-9_-]+$/i.test(category))
     return reply.code(400).send({ error: 'Недопустимая категория файлов' });
+
+  if (!isMimeTypeAllowedForCategory(category, data.mimetype)) {
+    return reply.code(415).send({ error: 'Этот тип файла нельзя загрузить в выбранный раздел' });
+  }
 
   if (targetUserId && (category !== 'avatar' || user.role !== 'ADMIN')) {
     return reply.code(403).send({ error: 'Нельзя загружать файл за другого пользователя' });
@@ -86,8 +94,13 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
   }
 
   const buffer = await data.toBuffer();
-  if (category === 'certificate' && !isPdfBuffer(buffer)) {
-    return reply.code(415).send({ error: 'Файл сертификата поврежден или не является PDF' });
+  if (!matchesDeclaredUploadType(buffer, data.mimetype)) {
+    return reply.code(415).send({
+      error:
+        category === 'certificate'
+          ? 'Файл сертификата поврежден или не является PDF'
+          : 'Содержимое файла не соответствует его формату',
+    });
   }
 
   const contentHash = calculateFileContentHash(buffer);
@@ -118,7 +131,7 @@ export async function uploadFileToStorage(req: FastifyRequest, reply: FastifyRep
     }
   }
 
-  const ext = path.extname(data.filename).replace(/[^a-zA-Z0-9.]/g, '');
+  const ext = getCanonicalUploadExtension(data.mimetype);
   const fileName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`;
 
   const baseDir = UPLOAD_ROOT;

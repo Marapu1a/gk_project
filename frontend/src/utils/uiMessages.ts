@@ -104,6 +104,7 @@ export const UI_TOAST_MESSAGES = {
     physicalDeleteFailed: 'Физически удалить файл не удалось. Мы уберем его из списка.',
     maxFiles: (maxFiles: number) => `Можно загрузить до ${maxFiles} файлов.`,
     tooLarge: (maxMb: number) => `Файл больше ${maxMb} МБ.`,
+    documentFormatsOnly: 'Можно загрузить только PDF, JPG или PNG.',
     pdfOnly: 'Файл сертификата для загрузки может быть только формата PDF.',
   },
   ceu: {
@@ -133,6 +134,7 @@ export const UI_TOAST_MESSAGES = {
   },
   documents: {
     requestSent: 'Заявка отправлена',
+    requestFailed: 'Не удалось отправить документы на проверку.',
     noFilesSelected: 'Добавьте хотя бы один файл.',
     fileTypeRequired: 'Не для всех файлов выбран тип документа. Выберите тип документа для каждого файла и повторите отправку.',
     deleteReasonRequired: 'Укажите причину удаления.',
@@ -271,6 +273,18 @@ export function getServerErrorMessage(codeOrMessage: unknown) {
 
 export function getUiErrorMessage(error: any, fallback = 'Произошла ошибка. Попробуйте еще раз.') {
   const data = error?.response?.data;
+
+  if (Number(error?.response?.status) >= 500) {
+    const requestId =
+      typeof data?.requestId === 'string' && data.requestId.trim()
+        ? data.requestId.trim()
+        : null;
+
+    return requestId
+      ? `${fallback} Код ошибки: ${requestId}.`
+      : fallback;
+  }
+
   const raw = data?.errorCode ?? data?.error ?? data?.message ?? error?.message;
   return getServerErrorMessage(raw) ?? fallback;
 }

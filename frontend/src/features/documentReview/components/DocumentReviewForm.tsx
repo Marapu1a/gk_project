@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -10,8 +10,9 @@ import { deleteFile } from '@/features/files/api/deleteFile';
 import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabels';
 import { COMMENT_MAX_LENGTH } from '@/utils/formLimits';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { StatusPill } from '@/components/StatusPill';
+import { usePendingDocumentFiles } from '../hooks/useGetUploadedFiles';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_FILES = 10;
@@ -23,6 +24,8 @@ type UploadedDocument = {
   name: string;
   mimeType: string;
   type?: DocumentType | null;
+  requestId?: string | null;
+  createdAt?: string;
 };
 
 type Props = {
@@ -38,8 +41,23 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
 
   const createRequest = useCreateDocReviewReq();
   const updateFileType = useUpdateFileType();
+  const pendingFiles = usePendingDocumentFiles();
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
+  const pendingFilesRestored = useRef(false);
+
+  useEffect(() => {
+    if (pendingFilesRestored.current || !pendingFiles.data) return;
+    pendingFilesRestored.current = true;
+
+    setFiles((current) => {
+      const knownIds = new Set(current.map((file) => file.id));
+      const restored = (pendingFiles.data as UploadedDocument[]).filter(
+        (file) => !knownIds.has(file.id),
+      );
+      return [...current, ...restored];
+    });
+  }, [pendingFiles.data]);
 
   const saveType = async (fileId: string, type: DocumentType) => {
     const previousType = files.find((file) => file.id === fileId)?.type;
@@ -74,10 +92,10 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
     try {
       await deleteFile(fileId);
       toast.success(UI_TOAST_MESSAGES.files.fileDeleted);
-    } catch {
-      toast.info(UI_TOAST_MESSAGES.files.physicalDeleteFailed);
-    } finally {
+      queryClient.invalidateQueries({ queryKey: ['uploadedFiles', 'documents', 'pending'] });
       setFiles((current) => current.filter((file) => file.id !== fileId));
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.documents.deleteFailed));
     }
   };
 
@@ -109,17 +127,12 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
       toast.success(
         uploaded.length === 1 ? UI_TOAST_MESSAGES.files.fileUploaded : UI_TOAST_MESSAGES.files.filesUploaded,
       );
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.error ??
-        (err?.response?.status === 413
-          ? UI_TOAST_MESSAGES.files.tooLarge(MAX_SIZE_MB)
-          : UI_TOAST_MESSAGES.files.uploadFailed);
-
-      toast.error(message);
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.files.uploadFailed));
     } finally {
       if (uploaded.length > 0) {
         setFiles((current) => [...current, ...uploaded]);
+        queryClient.invalidateQueries({ queryKey: ['uploadedFiles', 'documents', 'pending'] });
       }
       setUploading(false);
     }
@@ -127,6 +140,7 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleDrop,
+    onDropRejected: () => toast.error(UI_TOAST_MESSAGES.files.documentFormatsOnly),
     multiple: true,
     maxFiles: MAX_FILES,
     accept: {
@@ -163,8 +177,10 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
       setFiles([]);
       setComment('');
       queryClient.invalidateQueries({ queryKey: ['docReviewReq'] });
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.files.uploadFailed);
+      queryClient.setQueryData(['uploadedFiles', 'documents', 'pending'], []);
+      queryClient.invalidateQueries({ queryKey: ['uploadedFiles', 'documents', 'pending'] });
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.documents.requestFailed));
     }
   };
 

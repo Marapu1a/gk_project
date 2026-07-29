@@ -132,6 +132,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleDrop,
+    onDropRejected: () => toast.error(UI_TOAST_MESSAGES.files.documentFormatsOnly),
     multiple: false,
     accept: {
       'application/pdf': [],
@@ -383,7 +384,7 @@ export function CeuPointsRequestForm({ defaultOpen = true }: CeuPointsRequestFor
                       {isDragActive
                         ? 'Отпустите файл здесь'
                         : selectedFile
-                          ? 'Файл загружен'
+                          ? 'Файл выбран'
                           : 'Выберите или перетащите файл PDF, JPG, PNG'}
                     </div>
 

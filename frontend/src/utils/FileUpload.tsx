@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useDropzone, type Accept } from 'react-dropzone';
 import { uploadFile } from '@/features/files/api/uploadFile';
 import { deleteFile } from '@/features/files/api/deleteFile';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
@@ -16,7 +17,7 @@ export type UploadedFile = {
 
 interface FileUploadProps {
   category: string;
-  onChange: (file: UploadedFile | null) => void;
+  onChange: (file: UploadedFile | null) => void | Promise<void>;
   disabled?: boolean;
 
   // новые, опциональные
@@ -34,7 +35,7 @@ export function FileUpload({
   onChange,
   disabled,
   accept,
-  maxSizeMB = 20,
+  maxSizeMB = 10,
   helperText,
   resetKey,
   onError,
@@ -104,42 +105,25 @@ export function FileUpload({
       return;
     }
 
-    // удаляем предыдущий файл на сервере (если был)
-    if (file) {
-      try {
-        await deleteFile(file.id);
-      } catch (err: any) {
-        const msg =
-          err?.response?.data?.error ??
-          (err?.response?.status === 413
-            ? `Файл превышает допустимый размер (${maxSizeMB}MB)`
-            : 'Ошибка загрузки файла');
-
-        makeObjectPreview(null);
-        setFile(null);
-        setError(msg);
-        onError?.(new Error(msg));
-        console.error('Ошибка загрузки файла:', err);
-      } finally {
-        setUploading(false);
-      }
-    }
-
+    const previousFile = file;
     setUploading(true);
     setError(null);
     makeObjectPreview(f); // мгновенное локальное превью для изображений
     try {
       const uploaded = await uploadFile(f, category, targetUserId);
+      await onChange(uploaded);
       setFile(uploaded);
-      onChange(uploaded);
       if (storageKey) localStorage.setItem(storageKey, JSON.stringify(uploaded));
+
+      if (previousFile && previousFile.id !== uploaded.id) {
+        // Для аватара backend мог уже удалить старый файл при успешной замене.
+        await deleteFile(previousFile.id).catch(() => undefined);
+      }
     } catch (err) {
-      // откатываем превью при реальном фейле
+      // Старый файл и привязка остаются рабочими, пока новый не сохранён полностью.
       makeObjectPreview(null);
-      setFile(null);
-      setError('Ошибка загрузки файла, не тот формат или превышен размер файла, попробуйте снова.');
+      setError(getUiErrorMessage(err, 'Не удалось загрузить файл. Проверьте формат и размер.'));
       onError?.(err);
-      console.error('Ошибка загрузки файла:', err);
     } finally {
       setUploading(false);
     }
@@ -150,12 +134,11 @@ export function FileUpload({
     try {
       await deleteFile(file.id);
       setFile(null);
-      onChange(null);
+      await onChange(null);
       if (storageKey) localStorage.removeItem(storageKey);
     } catch (err) {
-      setError('Ошибка удаления файла');
+      setError(getUiErrorMessage(err, 'Ошибка удаления файла'));
       onError?.(err);
-      console.error('Ошибка удаления файла:', err);
     } finally {
       makeObjectPreview(null);
     }
@@ -163,6 +146,14 @@ export function FileUpload({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleDrop,
+    onDropRejected: () => {
+      const message =
+        category === 'avatar'
+          ? 'Можно загрузить только PNG, JPEG или WebP.'
+          : 'Недопустимый формат файла.';
+      setError(message);
+      onError?.(new Error(message));
+    },
     multiple: false,
     accept: accept ?? { 'application/pdf': [], 'image/*': [] },
     disabled,

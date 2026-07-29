@@ -36,10 +36,15 @@ export function AvatarBlock({ userId, avatarUrl, readOnly }: Props) {
           <FileUpload
             category="avatar"
             onChange={handleChange}
-            accept={{ 'image/*': [] }}
+            accept={{
+              'image/png': [],
+              'image/jpeg': [],
+              'image/webp': [],
+            }}
             maxSizeMB={2}
             helperText="PNG/JPEG/WebP, до 2 МБ"
             disabled={setAvatar.isPending}
+            persistKey={false}
           />
         </div>
       )}
