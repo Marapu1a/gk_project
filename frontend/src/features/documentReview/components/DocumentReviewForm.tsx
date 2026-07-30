@@ -184,11 +184,7 @@ export function DocumentReviewForm({ paymentStatusLabel, isDocumentReviewPaid, o
     }
   };
 
-  const submitDisabled =
-    createRequest.isPending ||
-    uploading ||
-    files.length === 0 ||
-    files.some((file) => !file.type);
+  const submitDisabled = createRequest.isPending || uploading;
 
   return (
     <form
