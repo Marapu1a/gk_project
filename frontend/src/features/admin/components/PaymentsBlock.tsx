@@ -16,6 +16,10 @@ import {
   hasPaidSeparatePayment,
   isFullPackageActive,
 } from '@/features/payment/model/paymentPolicy';
+import {
+  getAdminPaymentActions,
+  type AdminPaymentNextStatus,
+} from '@/features/admin/model/paymentActions';
 
 type Payment = {
   id: string;
@@ -43,7 +47,7 @@ type Props = {
 
 type PaymentAction = {
   payment: Payment;
-  nextStatus: 'PAID' | 'UNPAID';
+  nextStatus: AdminPaymentNextStatus;
 } | null;
 
 const TYPE_ORDER: Record<PaymentType, number> = {
@@ -206,12 +210,16 @@ export default function PaymentsBlock({
       ) : (
         <div className="overflow-hidden rounded-[18px] border border-[var(--color-blue-soft)] bg-white">
           {sortedPayments.map((payment, index) => {
-            const isPaid = payment.status === 'PAID';
-            const nextStatus = isPaid ? 'UNPAID' : 'PAID';
             const inheritedPending =
               packageActive && payment.type !== 'FULL_PACKAGE';
             const isBlockedFullPackage =
-              payment.type === 'FULL_PACKAGE' && !isPaid && hasPaidSeparate;
+              payment.type === 'FULL_PACKAGE' &&
+              payment.status === 'UNPAID' &&
+              hasPaidSeparate;
+            const availableActions = getAdminPaymentActions(payment, {
+              managedByPackage: inheritedPending,
+              hasPaidSeparatePayment: hasPaidSeparate,
+            });
 
             return (
               <div
@@ -235,6 +243,12 @@ export default function PaymentsBlock({
                     <div className="dashboard-v2-caption mt-2 text-[#8D96B5]">
                       Отдельный платеж уже принят.
                     </div>
+                  ) : payment.type === 'FULL_PACKAGE' &&
+                    payment.status === 'PENDING' &&
+                    hasPaidSeparate ? (
+                    <div className="dashboard-v2-caption mt-2 text-[#8D96B5]">
+                      Отдельный платеж уже принят. Пакет можно отменить.
+                    </div>
                   ) : null}
                 </div>
 
@@ -253,18 +267,23 @@ export default function PaymentsBlock({
                       Недоступен
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      className={`btn dashboard-v2-action w-full max-w-[180px] ${
-                        isPaid
-                          ? 'dashboard-v2-action-secondary border-[var(--color-danger)] text-[var(--color-danger)]'
-                          : 'dashboard-v2-action-primary'
-                      }`}
-                      onClick={() => setPendingAction({ payment, nextStatus })}
-                      disabled={mutate.isPending}
-                    >
-                      {isPaid ? 'Отменить' : 'Подтвердить'}
-                    </button>
+                    <div className="flex w-full max-w-[180px] flex-col gap-2">
+                      {availableActions.map((nextStatus) => (
+                        <button
+                          key={nextStatus}
+                          type="button"
+                          className={`btn dashboard-v2-action w-full ${
+                            nextStatus === 'UNPAID'
+                              ? 'dashboard-v2-action-secondary border-[var(--color-danger)] text-[var(--color-danger)]'
+                              : 'dashboard-v2-action-primary'
+                          }`}
+                          onClick={() => setPendingAction({ payment, nextStatus })}
+                          disabled={mutate.isPending}
+                        >
+                          {nextStatus === 'UNPAID' ? 'Отменить' : 'Подтвердить'}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
