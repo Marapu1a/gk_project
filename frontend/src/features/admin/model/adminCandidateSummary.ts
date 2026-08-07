@@ -70,6 +70,26 @@ function resolveDocumentStatus(user: AdminUserDetails) {
   const latestRequest = readiness?.request ?? null;
   const hasArchivedRequests = user.documentReviewRequests.length > 0;
 
+  if (!user.activeCycle) {
+    if (hasArchivedRequests) {
+      const hasOpenRequest = user.documentReviewRequests.some(
+        (request) => request.reviewState !== 'COMPLETED',
+      );
+
+      return {
+        label: 'История',
+        tone: 'soft' as const,
+        mode: hasOpenRequest ? ('active' as const) : ('history' as const),
+      };
+    }
+
+    return {
+      label: 'Нет заявок',
+      tone: 'soft' as const,
+      mode: 'active' as const,
+    };
+  }
+
   if (readiness?.ready) {
     return {
       label: 'Принято',
@@ -140,9 +160,19 @@ export function buildAdminCandidateSummary(
   const summaryLines: CandidateSummaryLine[] = [];
   const reviewerLines: CandidateSummaryLine[] = [];
   const userSearch = user.email || user.fullName || '';
+  const documents = resolveDocumentStatus(user);
+
+  summaryLines.push({
+    label: 'Документы',
+    value: documents.label,
+    tone: documents.tone,
+    to: buildUrl('/admin/document-review', {
+      search: userSearch,
+      mode: documents.mode,
+    }),
+  });
 
   if (activeCycle) {
-    const documents = resolveDocumentStatus(user);
     const supervisionCurrent = readiness?.supervision.current;
     const supervisionRequired = readiness?.supervision.required;
     const ceuCurrent = readiness?.ceu.current;
@@ -157,16 +187,6 @@ export function buildAdminCandidateSummary(
     const mentorshipUrl = buildUrl('/admin/supervision-candidates', {
       kind: 'mentorship',
       search: userSearch,
-    });
-
-    summaryLines.push({
-      label: 'Документы',
-      value: documents.label,
-      tone: documents.tone,
-      to: buildUrl('/admin/document-review', {
-        search: userSearch,
-        mode: documents.mode,
-      }),
     });
 
     if ((supervisionRequired?.practice ?? 0) > 0) {

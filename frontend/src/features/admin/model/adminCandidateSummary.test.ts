@@ -120,11 +120,81 @@ describe('buildAdminCandidateSummary', () => {
       'Супервизор',
     );
 
-    expect(result.summaryLines).toEqual([]);
+    expect(result.summaryLines).toEqual([
+      expect.objectContaining({
+        label: 'Документы',
+        value: 'Нет заявок',
+        tone: 'soft',
+        to: '/admin/document-review?search=user%40example.com&mode=active',
+      }),
+    ]);
     expect(result.reviewerLines).toEqual([
       expect.objectContaining({ label: 'Проверка часов', value: 2, tone: 'warn' }),
     ]);
     expect(result.requiresAttention).toBe(true);
+  });
+
+  it('keeps completed document requests accessible without an active cycle', () => {
+    const result = buildAdminCandidateSummary(
+      makeUser({
+        documentReviewRequests: [
+          {
+            id: 'documents-old',
+            status: 'CONFIRMED',
+            reviewState: 'COMPLETED',
+            reviewClosedAt: NOW,
+            reviewClosedById: 'admin-1',
+            paid: true,
+            reviewerEmail: 'admin@example.com',
+            submittedAt: NOW,
+            reviewedAt: NOW,
+            comment: null,
+            documents: [{ fileId: 'file-1', name: 'document.pdf' }],
+          },
+        ],
+      }),
+      'Опытный Супервизор',
+    );
+
+    expect(result.summaryLines).toEqual([
+      expect.objectContaining({
+        label: 'Документы',
+        value: 'История',
+        tone: 'soft',
+        to: '/admin/document-review?search=user%40example.com&mode=history',
+      }),
+    ]);
+  });
+
+  it('links to an unfinished document request without an active cycle', () => {
+    const result = buildAdminCandidateSummary(
+      makeUser({
+        documentReviewRequests: [
+          {
+            id: 'documents-open',
+            status: 'UNCONFIRMED',
+            reviewState: 'OPEN',
+            reviewClosedAt: null,
+            reviewClosedById: null,
+            paid: true,
+            reviewerEmail: null,
+            submittedAt: NOW,
+            reviewedAt: null,
+            comment: null,
+            documents: [{ fileId: 'file-1', name: 'document.pdf' }],
+          },
+        ],
+      }),
+      'Опытный Супервизор',
+    );
+
+    expect(result.summaryLines).toEqual([
+      expect.objectContaining({
+        label: 'Документы',
+        value: 'История',
+        to: '/admin/document-review?search=user%40example.com&mode=active',
+      }),
+    ]);
   });
 
   it('marks a fully completed certification cycle as ready', () => {
