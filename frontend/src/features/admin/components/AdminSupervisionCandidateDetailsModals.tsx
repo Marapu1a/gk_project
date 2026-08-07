@@ -279,7 +279,9 @@ export function AdminPendingHoursDetailsModal({
   onRemove: () => void;
 }) {
   const pendingRequests = row.pendingRequests ?? [];
-  const hasPendingRequests = pendingRequests.length > 0;
+  const requests = pendingRequests.length > 0 ? pendingRequests : row.requests ?? [];
+  const hasRequests = requests.length > 0;
+  const isHistory = pendingRequests.length === 0;
   const requestDateLabel = getSupervisionRequestDateLabel(row.kind);
 
   return (
@@ -302,9 +304,9 @@ export function AdminPendingHoursDetailsModal({
           <CompactField label="Состояние" value={stateText} />
         </div>
 
-        {hasPendingRequests ? (
+        {hasRequests ? (
           <div className="space-y-4">
-            {pendingRequests.map((request, index) => (
+            {requests.map((request, index) => (
               <section
                 key={request.id}
                 className="rounded-[14px] bg-[var(--color-blue-soft)] px-4 py-4 dashboard-v2-text"
@@ -312,7 +314,7 @@ export function AdminPendingHoursDetailsModal({
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="dashboard-v2-title">
-                      {pendingRequests.length > 1 ? `Заявка ${index + 1}` : 'Заявка'}
+                      {requests.length > 1 ? `Заявка ${index + 1}` : 'Заявка'}
                     </h4>
                     {request.source === 'LEGACY_VERSION' ? <LegacyVersionBadge /> : null}
                   </div>
@@ -323,7 +325,7 @@ export function AdminPendingHoursDetailsModal({
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                   <div className="space-y-4">
-                    <HoursList hours={request.hours} />
+                    <HoursList hours={request.hours} showStatus={isHistory} />
                     {row.kind === 'supervision' ? (
                       <DistributionBlock distribution={request.distribution} />
                     ) : null}
@@ -354,11 +356,11 @@ export function AdminPendingHoursDetailsModal({
           </div>
         ) : (
           <div className="dashboard-v2-text rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-5 text-[#6B7894]">
-            Сейчас нет часов, ожидающих проверки.
+            История заявок пока пуста.
           </div>
         )}
 
-        {hasPendingRequests ? (
+        {!isHistory && hasRequests ? (
           <div className="mt-6 flex flex-wrap justify-end gap-3">
             <button
               type="button"

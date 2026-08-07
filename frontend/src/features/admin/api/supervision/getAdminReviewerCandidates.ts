@@ -111,6 +111,28 @@ export type AdminReviewerCandidateRow = {
       value: number;
     }>;
   }>;
+  requests: Array<{
+    id: string;
+    source: 'CURRENT' | 'LEGACY_VERSION';
+    createdAt: string;
+    supervisionDate: string | null;
+    periodStartedAt: string | null;
+    periodEndedAt: string | null;
+    treatmentSetting: string | null;
+    description: string | null;
+    distribution: {
+      directIndividual: number;
+      directGroup: number;
+      nonObservingIndividual: number;
+      nonObservingGroup: number;
+    };
+    hours: Array<{
+      id: string;
+      type: string;
+      value: number;
+      status: AdminReviewerHourStatus;
+    }>;
+  }>;
   relationCreatedAt: string;
   relationUpdatedAt: string;
   pendingCount: number;

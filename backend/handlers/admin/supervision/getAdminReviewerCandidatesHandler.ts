@@ -1,6 +1,5 @@
 import { FastifyReply, FastifyRequest, RouteGenericInterface } from 'fastify';
 import {
-  CycleStatus,
   PracticeLevel,
   RecordStatus,
   ReviewerCandidateKind,
@@ -226,7 +225,6 @@ export async function getAdminReviewerCandidatesHandler(
   const relations = await prisma.reviewerCandidateRelation.findMany({
     where: {
       kind: prismaKind(normalizedKind),
-      cycle: { status: CycleStatus.ACTIVE },
       candidate: {
         archivedAt: null,
         ...(candidateSearchWhere ?? {}),
@@ -425,6 +423,28 @@ export async function getAdminReviewerCandidatesHandler(
               value: hour.value,
             })),
         })),
+        requests: records.map((record) => ({
+          id: record.id,
+          source: record.source,
+          createdAt: record.createdAt,
+          supervisionDate: record.supervisionDate,
+          periodStartedAt: record.periodStartedAt,
+          periodEndedAt: record.periodEndedAt,
+          treatmentSetting: record.treatmentSetting,
+          description: record.description,
+          distribution: {
+            directIndividual: record.draftDirectIndividual ?? 0,
+            directGroup: record.draftDirectGroup ?? 0,
+            nonObservingIndividual: record.draftNonObservingIndividual ?? 0,
+            nonObservingGroup: record.draftNonObservingGroup ?? 0,
+          },
+          hours: record.hours.map((hour) => ({
+            id: hour.id,
+            type: hour.type,
+            value: hour.value,
+            status: hour.status,
+          })),
+        })),
         relationCreatedAt: relation.createdAt,
         relationUpdatedAt: relation.updatedAt,
         pendingCount,
@@ -443,7 +463,6 @@ export async function getAdminReviewerCandidatesHandler(
   const corrections = await prisma.supervisionAdminCorrection.findMany({
     where: {
       kind: correctionKind(normalizedKind),
-      cycle: { status: CycleStatus.ACTIVE },
       user: {
         archivedAt: null,
         ...(candidateSearchWhere ?? {}),
@@ -482,6 +501,7 @@ export async function getAdminReviewerCandidatesHandler(
     latestReview: null,
     hourState: 'ADMIN_CORRECTION' as const,
     pendingRequests: [],
+    requests: [],
     legacyRecord: null,
     adminCorrection: {
       id: correction.id,
@@ -567,6 +587,7 @@ export async function getAdminReviewerCandidatesHandler(
     latestReview: null,
     hourState: 'LEGACY_RECORD' as const,
     pendingRequests: [],
+    requests: [],
     adminCorrection: null,
     legacyRecord: {
       id: record.id,

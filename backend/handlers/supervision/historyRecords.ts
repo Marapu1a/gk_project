@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { CycleStatus, PracticeLevel, RecordStatus } from '@prisma/client';
+import { PracticeLevel, RecordStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
 import { getCyclePracticeCorrection } from '../../utils/getCyclePracticeCorrection';
@@ -79,20 +79,23 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
   const limitNum = Number(take);
   const limit = Math.max(1, Math.min(100, Number.isFinite(limitNum) ? limitNum : 25));
 
-  const activeCycle = await prisma.certificationCycle.findFirst({
-    where: { userId, status: CycleStatus.ACTIVE },
+  const cycles = await prisma.certificationCycle.findMany({
+    where: { userId },
     select: { id: true },
+    orderBy: { startedAt: 'desc' },
   });
 
-  if (!activeCycle) {
+  if (cycles.length === 0) {
     return reply.send({ records: [], nextCursor: null });
   }
 
-  const [records, user, mentorshipTotals, practiceCorrectionTotals] = await Promise.all([
+  const cycleIds = cycles.map((cycle) => cycle.id);
+
+  const [records, user, cycleCorrections] = await Promise.all([
     prisma.supervisionRecord.findMany({
       where: {
         userId,
-        cycleId: activeCycle.id,
+        cycleId: { in: cycleIds },
         hours: {
           some: { type: { in: NEW_HISTORY_TYPES } },
           none: { type: { in: LEGACY_HISTORY_TYPES } },
@@ -136,8 +139,13 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
       where: { id: userId },
       select: { id: true, fullName: true, email: true },
     }),
-    getCycleMentorshipTotal(activeCycle.id),
-    getCyclePracticeCorrection(activeCycle.id),
+    Promise.all(
+      cycleIds.map(async (cycleId) => ({
+        cycleId,
+        mentorship: await getCycleMentorshipTotal(cycleId),
+        practice: await getCyclePracticeCorrection(cycleId),
+      })),
+    ),
   ]);
 
   const nextCursor = records.length === limit ? records[records.length - 1].id : null;
@@ -183,8 +191,10 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
     };
   });
 
-  const mentorCorrection = mentorshipTotals.adminCorrection;
-  if (!cursor && mentorCorrection && user) {
+  for (const cycleCorrection of !cursor && user ? cycleCorrections : []) {
+    const mentorCorrection = cycleCorrection.mentorship.adminCorrection;
+    if (!mentorCorrection || !user) continue;
+
     mappedRecords.push({
       id: `admin-mentorship-${mentorCorrection.id}`,
       source: 'CURRENT' as const,
@@ -218,14 +228,16 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
       isAdminCorrection: true,
       correction: {
         kind: 'MENTORSHIP',
-        before: round2(mentorshipTotals.rawConfirmed),
+        before: round2(cycleCorrection.mentorship.rawConfirmed),
         after: round2(mentorCorrection.mentor),
       },
     });
   }
 
-  const practiceCorrection = practiceCorrectionTotals.adminCorrection;
-  if (!cursor && practiceCorrection && user) {
+  for (const cycleCorrection of !cursor && user ? cycleCorrections : []) {
+    const practiceCorrection = cycleCorrection.practice.adminCorrection;
+    if (!practiceCorrection || !user) continue;
+
     const directIndividual = round2(practiceCorrection.directIndividual);
     const directGroup = round2(practiceCorrection.directGroup);
     const nonObservingIndividual = round2(practiceCorrection.nonObservingIndividual);
@@ -264,8 +276,8 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
       isAdminCorrection: true,
       correction: {
         kind: 'PRACTICE',
-        before: round2(practiceCorrectionTotals.rawPractice),
-        after: round2(practiceCorrectionTotals.correctedPractice),
+        before: round2(cycleCorrection.practice.rawPractice),
+        after: round2(cycleCorrection.practice.correctedPractice),
       },
     });
   }

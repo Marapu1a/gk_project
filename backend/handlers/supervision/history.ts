@@ -1,7 +1,7 @@
 // src/handlers/supervision/history.ts
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../lib/prisma';
-import { RecordStatus, CycleStatus } from '@prisma/client';
+import { RecordStatus } from '@prisma/client';
 import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
 
 type Query = {
@@ -29,21 +29,24 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
   const limitNum = Number(take);
   const limit = Math.max(1, Math.min(100, Number.isFinite(limitNum) ? limitNum : 25));
 
-  const activeCycle = await prisma.certificationCycle.findFirst({
-    where: { userId, status: CycleStatus.ACTIVE },
+  const cycles = await prisma.certificationCycle.findMany({
+    where: { userId },
     select: { id: true },
+    orderBy: { startedAt: 'desc' },
   });
 
-  if (!activeCycle) {
+  if (cycles.length === 0) {
     return reply.send({ items: [], nextCursor: null });
   }
 
+  const cycleIds = cycles.map((cycle) => cycle.id);
+
   const where = {
-    record: { userId, cycleId: activeCycle.id },
+    record: { userId, cycleId: { in: cycleIds } },
     ...(status ? { status } : {}),
   };
 
-  const [hours, mentorshipTotals] = await Promise.all([
+  const [hours, mentorshipTotalsByCycle] = await Promise.all([
     prisma.supervisionHour.findMany({
       where,
       select: {
@@ -61,7 +64,7 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       orderBy: { id: 'desc' }, // ✅ стабильная пагинация
     }),
-    getCycleMentorshipTotal(activeCycle.id),
+    Promise.all(cycleIds.map((cycleId) => getCycleMentorshipTotal(cycleId))),
   ]);
 
   const nextCursor = hours.length === limit ? hours[hours.length - 1].id : null;
@@ -83,8 +86,15 @@ export async function supervisionHistoryHandler(req: FastifyRequest, reply: Fast
       : null,
   }));
 
-  const mentorCorrection = mentorshipTotals.adminCorrection;
-  if (!cursor && (!status || status === RecordStatus.CONFIRMED) && mentorCorrection) {
+  const mentorCorrections = mentorshipTotalsByCycle.filter(
+    (totals) => totals.adminCorrection,
+  );
+  for (const mentorshipTotals of !cursor && (!status || status === RecordStatus.CONFIRMED)
+    ? mentorCorrections
+    : []) {
+    const mentorCorrection = mentorshipTotals.adminCorrection;
+    if (!mentorCorrection) continue;
+
     items.push({
       id: `admin-mentorship-${mentorCorrection.id}`,
       recordId: mentorCorrection.id,
