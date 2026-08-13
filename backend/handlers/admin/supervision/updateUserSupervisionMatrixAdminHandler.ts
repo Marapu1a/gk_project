@@ -19,6 +19,7 @@ import {
 } from '../../../utils/supervisionRequirements';
 import { logAdminUserAction } from '../../../utils/adminUserActionLog';
 import { getSupervisorBonusPracticeHours } from '../../../utils/getSupervisorBonusPracticeHours';
+import { getCumulativePracticeBalanceError } from '../../../domain/supervision/practiceBalance';
 
 // Принимаем legacy-уровни, но внутри работаем только с новыми.
 type IncomingLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | 'PRACTICE' | 'SUPERVISION';
@@ -92,18 +93,6 @@ function getRequirements(activeCycle: { targetLevel: TargetLevel; type: CycleTyp
   return activeCycle.type === CycleType.RENEWAL
     ? renewalSupervisionRequirementsByGroup[groupName]
     : supervisionRequirementsByGroup[groupName];
-}
-
-function getPracticeRuleError(implementing: number, programming: number) {
-  const total = implementing + programming;
-  if (total <= 0) return null;
-
-  const minEach = total * 0.4;
-  if (implementing < minEach || programming < minEach) {
-    return 'Часы полевой практики и работы с информацией должны быть распределены сбалансированно: не менее 40% часов — полевая практика и не менее 40% — работа с информацией. Оставшиеся 20% можно добавить к любому из этих двух типов.';
-  }
-
-  return null;
 }
 
 function getDistributionRuleError(params: {
@@ -185,11 +174,21 @@ export async function updateUserSupervisionMatrixAdminHandler(
     const programming = round2(incoming.programming);
     const practiceTotal = round2(implementing + programming);
     const requirements = getRequirements(activeCycle);
-    const practiceRuleError = getPracticeRuleError(implementing, programming);
-    if (practiceRuleError) return reply.code(400).send({ error: practiceRuleError });
-
     const groupName = mapTargetLevel(activeCycle.targetLevel);
     const { value: bonusPractice } = await getSupervisorBonusPracticeHours(userId, activeCycle);
+    const bonusImplementing = round2(bonusPractice / 2);
+    const practiceRuleError = requirements?.practice
+      ? getCumulativePracticeBalanceError({
+          requiredPractice: requirements.practice,
+          current: {
+            implementing: bonusImplementing,
+            programming: round2(bonusPractice - bonusImplementing),
+          },
+          added: { implementing, programming },
+        })
+      : null;
+    if (practiceRuleError) return reply.code(400).send({ error: practiceRuleError });
+
     const totalPracticeWithBonus = round2(practiceTotal + bonusPractice);
     if (requirements && requirements.practice > 0 && totalPracticeWithBonus > requirements.practice) {
       return reply.code(400).send({

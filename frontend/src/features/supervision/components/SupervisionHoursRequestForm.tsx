@@ -11,18 +11,16 @@ import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { CopyEmailLink } from '@/components/CopyEmailLink';
 import { SubmissionSuccessModal } from '@/components/SubmissionSuccessModal';
 import { SupervisionHoursGuideModal } from './SupervisionHoursGuideModal';
-import {
-  getDecimalInputBlurValue,
-  getDecimalInputFocusValue,
-} from '@/utils/decimalInput';
+import { getDecimalInputBlurValue, getDecimalInputFocusValue } from '@/utils/decimalInput';
 import {
   calculateIncrementalSupervision,
   calculateRemainingHours,
   formatHours as formatNumber,
   getDistributionRuleError,
-  getPracticeRuleError,
+  getCumulativePracticeRuleError,
   normalizeHoursInput,
   parseHours,
+  resolvePracticeBalance,
   roundHours as round2,
   sanitizeHoursInput,
   summarizeSupervisionDistribution,
@@ -154,15 +152,28 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     : isRequirementCovered
       ? 'Необходимое количество часов уже отправлено на проверку'
       : 'Добавить часы';
-  const practiceLimit =
-    calculateRemainingHours(summary?.required?.practice, practiceBase);
+  const practiceLimit = calculateRemainingHours(summary?.required?.practice, practiceBase);
+  const confirmedLegacy = summary?.practiceBreakdown.legacy ?? 0;
+  const pendingLegacy = summary?.pendingPracticeBreakdown.legacy ?? 0;
+  const unspecifiedPractice =
+    confirmedLegacy + pendingLegacy + (summary?.practiceBreakdown.bonus ?? 0);
+  const currentBalance = resolvePracticeBalance({
+    implementing:
+      (summary?.practiceBreakdown.implementing ?? 0) +
+      (summary?.pendingPracticeBreakdown.implementing ?? 0),
+    programming:
+      (summary?.practiceBreakdown.programming ?? 0) +
+      (summary?.pendingPracticeBreakdown.programming ?? 0),
+    neutralHours: unspecifiedPractice,
+  });
+  const currentImplementing = currentBalance.implementing;
+  const currentProgramming = currentBalance.programming;
 
   useEffect(() => {
     if (isRequirementCovered) setIsOpen(false);
   }, [isRequirementCovered]);
   const supervisionBase = (summary?.usable.supervision ?? 0) + (summary?.pending.supervision ?? 0);
-  const supervisionLimit =
-    calculateRemainingHours(summary?.required?.supervision, supervisionBase);
+  const supervisionLimit = calculateRemainingHours(summary?.required?.supervision, supervisionBase);
   const expectedSupervision = calculateIncrementalSupervision({
     basePractice: practiceBase,
     addedPractice: practiceTotal,
@@ -178,15 +189,16 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     nonObservingGroup: parseHours(nonObservingGroup),
   };
 
-  const {
-    directTotal,
-    nonObservingTotal,
-    distributionTotal,
-    groupTotal,
-    distributionRemaining,
-  } = summarizeSupervisionDistribution(distribution, expectedSupervision);
+  const { directTotal, nonObservingTotal, distributionTotal, groupTotal, distributionRemaining } =
+    summarizeSupervisionDistribution(distribution, expectedSupervision);
   const today = toAppDateInputValue();
-  const practiceRuleError = getPracticeRuleError(implementingValue, programmingValue);
+  const practiceRuleError = getCumulativePracticeRuleError({
+    requiredPractice,
+    currentImplementing,
+    currentProgramming,
+    addedImplementing: implementingValue,
+    addedProgramming: programmingValue,
+  });
   const practiceLimitError =
     practiceLimit != null && practiceTotal > practiceLimit
       ? `Можно добавить не более ${formatNumber(practiceLimit)} часов практики для текущего цикла.`
@@ -324,18 +336,20 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     if (!canSubmit) return;
 
     try {
-      await mutation.mutateAsync(buildPracticeHoursSubmission({
-        supervisorEmail: exactSupervisorMatch?.email ?? trimmedSupervisorEmail,
-        supervisionDate,
-        periodStartedAt,
-        periodEndedAt,
-        treatmentSetting,
-        description,
-        ethicsAccepted: effectiveEthicsAccepted,
-        distribution,
-        implementing: implementingValue,
-        programming: programmingValue,
-      }));
+      await mutation.mutateAsync(
+        buildPracticeHoursSubmission({
+          supervisorEmail: exactSupervisorMatch?.email ?? trimmedSupervisorEmail,
+          supervisionDate,
+          periodStartedAt,
+          periodEndedAt,
+          treatmentSetting,
+          description,
+          ethicsAccepted: effectiveEthicsAccepted,
+          distribution,
+          implementing: implementingValue,
+          programming: programmingValue,
+        }),
+      );
 
       resetForm();
       setIsOpen(false);
@@ -472,6 +486,14 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                   <strong>{expectedSupervision}</strong>.
                 </div>
 
+                {requiredPractice > 0 ? (
+                  <p className="mt-2 text-[13px] text-[#66738F]">
+                    В цикле уже учтено: полевая практика — {formatNumber(currentImplementing)},
+                    работа с информацией — {formatNumber(currentProgramming)}. К завершению цикла
+                    каждого типа должно быть не менее {formatNumber(requiredPractice * 0.4)} часов.
+                  </p>
+                ) : null}
+
                 {practiceRuleError || practiceLimitError ? (
                   <p className="mt-2 text-[13px] font-semibold text-[#FF5364]">
                     {practiceRuleError || practiceLimitError}
@@ -557,7 +579,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                 {distributionRuleError ? (
                   <div className="mt-3 rounded-[10px] bg-white px-4 py-3 text-[13px] text-[#1F305E] shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
                     <p className="mb-2 font-extrabold text-[#FF5364]">
-                      Ошибка возможных пропорций часов
+                      Обратите внимание на пропорции часов
                     </p>
                     <p>{distributionRuleError}</p>
                     <p className="mt-2">100% часов могут быть индивидуальными.</p>

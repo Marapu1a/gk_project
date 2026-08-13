@@ -23,6 +23,7 @@ import { getSupervisorBonusPracticeHours } from '../../utils/getSupervisorBonusP
 import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
 import { resolveDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
 import { ensureRenewalDocumentInheritance } from '../documentReview/ensureRenewalDocumentInheritance';
+import { isPracticeBalanceComplete } from '../../domain/supervision/practiceBalance';
 
 import { targetLevelToGroupName } from '../../domain/levels';
 
@@ -85,13 +86,23 @@ function isCeuReady(current: CEUSummary, required: CEUSummary | null) {
 }
 
 function isSupervisionReady(
-  current: { practice: number; supervision: number; mentor: number },
+  current: {
+    practice: number;
+    supervision: number;
+    mentor: number;
+    implementing: number;
+    programming: number;
+  },
   required: SupervisionRequirement | null,
 ) {
   if (!required) return false;
 
   return (
     current.practice >= required.practice &&
+    isPracticeBalanceComplete({
+      requiredPractice: required.practice,
+      current: { implementing: current.implementing, programming: current.programming },
+    }) &&
     current.supervision >= required.supervision &&
     current.mentor >= required.supervisor
   );
@@ -269,14 +280,38 @@ export async function buildExamReadiness(userId: string) {
     practice: round2(supervisionTotals.practiceConfirmed),
     supervision: round2(supervisionTotals.supervisionConfirmed),
     mentor: round2(mentorTotals.confirmed),
+    implementing: round2(supervisionTotals.practiceImplementingConfirmed),
+    programming: round2(supervisionTotals.practiceProgrammingConfirmed),
   };
+  const practiceBalanceReady = supervisionRequired
+    ? isPracticeBalanceComplete({
+        requiredPractice: supervisionRequired.practice,
+        current: {
+          implementing: supervisionCurrent.implementing,
+          programming: supervisionCurrent.programming,
+        },
+      })
+    : false;
   const supervisionReady = isSupervisionReady(supervisionCurrent, supervisionRequired);
   if (!supervisionReady) {
-    missing.push(
-      supervisionRequired?.supervisor
-        ? 'Недостаточно часов менторства'
-        : 'Недостаточно часов супервизии',
-    );
+    if (
+      supervisionRequired?.practice &&
+      supervisionCurrent.practice >= supervisionRequired.practice &&
+      !practiceBalanceReady
+    ) {
+      missing.push('Не соблюден баланс типов практики');
+    }
+    if (
+      supervisionCurrent.practice < (supervisionRequired?.practice ?? 0) ||
+      supervisionCurrent.supervision < (supervisionRequired?.supervision ?? 0) ||
+      supervisionCurrent.mentor < (supervisionRequired?.supervisor ?? 0)
+    ) {
+      missing.push(
+        supervisionRequired?.supervisor
+          ? 'Недостаточно часов менторства'
+          : 'Недостаточно часов супервизии',
+      );
+    }
   }
 
   const documentsReady =

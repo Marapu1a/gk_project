@@ -4,8 +4,10 @@ import {
   calculateIncrementalSupervision,
   calculateRemainingHours,
   getDistributionRuleError,
-  getPracticeRuleError,
+  getCumulativePracticeRuleError,
+  getPracticeRequirementState,
   parseHours,
+  resolvePracticeBalance,
   summarizeSupervisionDistribution,
 } from './hourCalculations';
 
@@ -59,10 +61,62 @@ describe('hourCalculations', () => {
     ).toBe(3);
   });
 
-  it('enforces the 40/40 practice distribution rule', () => {
-    expect(getPracticeRuleError(40, 40)).toBeNull();
-    expect(getPracticeRuleError(60, 40)).toBeNull();
-    expect(getPracticeRuleError(70, 30)).toContain('не менее 40%');
+  it('checks the 40/40/20 rule against the accumulated cycle total', () => {
+    expect(
+      getCumulativePracticeRuleError({
+        requiredPractice: 1500,
+        currentImplementing: 0,
+        currentProgramming: 0,
+        addedImplementing: 750,
+        addedProgramming: 0,
+      }),
+    ).toBeNull();
+    expect(
+      getCumulativePracticeRuleError({
+        requiredPractice: 1500,
+        currentImplementing: 750,
+        currentProgramming: 0,
+        addedImplementing: 151,
+        addedProgramming: 0,
+      }),
+    ).toContain('не более 900');
+  });
+
+  it('combines current hours with neutral legacy and bonus hours', () => {
+    expect(
+      resolvePracticeBalance({
+        implementing: 350,
+        programming: 250,
+        neutralHours: 500.01,
+      }),
+    ).toEqual({ implementing: 600.01, programming: 500 });
+  });
+
+  it('distinguishes a completed total from a completed 40/40/20 balance', () => {
+    expect(
+      getPracticeRequirementState({
+        requiredPractice: 1500,
+        implementing: 900,
+        programming: 600,
+      }),
+    ).toMatchObject({ totalComplete: true, balanceComplete: true, complete: true });
+    expect(
+      getPracticeRequirementState({
+        requiredPractice: 1500,
+        implementing: 950,
+        programming: 550,
+      }),
+    ).toMatchObject({ totalComplete: true, balanceComplete: false, complete: false });
+  });
+
+  it('rounds fractional artifacts consistently with the backend', () => {
+    expect(
+      getPracticeRequirementState({
+        requiredPractice: 1500,
+        implementing: 600 - Number.EPSILON,
+        programming: 900,
+      }).complete,
+    ).toBe(true);
   });
 
   it('summarizes and validates supervision distribution', () => {

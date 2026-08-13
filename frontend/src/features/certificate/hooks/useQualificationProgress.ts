@@ -8,6 +8,10 @@ import { useMyCertificates } from '@/features/certificate/hooks/useMyCertificate
 import type { CeuSummaryResponse } from '@/features/ceu/api/getCeuSummary';
 import type { SupervisionSummaryResponse } from '@/features/supervision/api/getSupervisionSummary';
 import {
+  getPracticeRequirementState,
+  resolvePracticeBalance,
+} from '@/features/supervision/model/hourCalculations';
+import {
   areRequiredPaymentsPaid,
   hasPaymentStatus,
   isDocumentReviewPaymentCovered,
@@ -80,16 +84,35 @@ export function useQualificationProgress(
   // === Supervision / менторство ===
   const isExperiencedSupervisor = activeGroupName === 'Опытный Супервизор';
 
-  // Experienced supervisors have no hour requirements — consistent with buildExamReadiness.
+  // Experienced supervisors have no hour requirements - consistent with buildExamReadiness.
   let supervisionReady = isExperiencedSupervisor;
+  let practiceTotalReady = true;
+  let practiceBalanceReady = true;
+  let supervisionHoursReady = true;
+  let mentorshipHoursReady = true;
 
   if (!isExperiencedSupervisor && supervisionSummary?.required) {
     const required = supervisionSummary.required;
     const usable = supervisionSummary.usable;
+    const practiceBalance = resolvePracticeBalance({
+      implementing: supervisionSummary.practiceBreakdown.implementing,
+      programming: supervisionSummary.practiceBreakdown.programming,
+      neutralHours:
+        supervisionSummary.practiceBreakdown.legacy + supervisionSummary.practiceBreakdown.bonus,
+    });
+    const practiceState = getPracticeRequirementState({
+      requiredPractice: required.practice,
+      ...practiceBalance,
+    });
+    practiceTotalReady = practiceState.totalComplete;
+    practiceBalanceReady = practiceState.balanceComplete;
+    supervisionHoursReady = required.supervision <= 0 || usable.supervision >= required.supervision;
+    mentorshipHoursReady = required.supervisor <= 0 || usable.supervisor >= required.supervisor;
     supervisionReady =
-      (required.practice <= 0 || usable.practice >= required.practice) &&
-      (required.supervision <= 0 || usable.supervision >= required.supervision) &&
-      (required.supervisor <= 0 || usable.supervisor >= required.supervisor);
+      practiceTotalReady &&
+      practiceBalanceReady &&
+      supervisionHoursReady &&
+      mentorshipHoursReady;
   }
 
   // === Документы + платежи ===
@@ -136,7 +159,12 @@ export function useQualificationProgress(
   if (mode === 'EXAM') {
     if (!targetGroup) reasons.push('Цель сертификации не выбрана');
     if (!ceuReady) reasons.push('Недостаточно CEU-баллов');
-    if (!supervisionReady) reasons.push('Недостаточно часов супервизии');
+    if (!practiceBalanceReady) {
+      reasons.push('Не соблюден баланс типов практики');
+    }
+    if (!practiceTotalReady || !supervisionHoursReady || !mentorshipHoursReady) {
+      reasons.push('Недостаточно часов супервизии');
+    }
     if (!documentsReady) reasons.push('Документы не подтверждены');
     if (!documentReviewPaid) reasons.push('Проверка документов не оплачена');
     if (!registrationPaid || !examPaid) reasons.push('Не все платежи оплачены');

@@ -218,8 +218,8 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
   const practiceBreakdown: PracticeBreakdown = {
     total: cycleTotals.practiceConfirmed,
     legacy: practiceCorrection ? 0 : usableAgg.legacy,
-    implementing: practiceCorrection?.implementing ?? usableAgg.implementing,
-    programming: practiceCorrection?.programming ?? usableAgg.programming,
+    implementing: cycleTotals.practiceImplementingConfirmedRaw,
+    programming: cycleTotals.practiceProgrammingConfirmedRaw,
     bonus: bonusPractice,
   };
 
@@ -231,12 +231,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
   };
 
   const recordDistribution = practiceCorrection
-    ? {
-        directIndividual: practiceCorrection.directIndividual,
-        directGroup: practiceCorrection.directGroup,
-        nonObservingIndividual: practiceCorrection.nonObservingIndividual,
-        nonObservingGroup: practiceCorrection.nonObservingGroup,
-      }
+    ? cycleTotals.practiceDistributionConfirmed
     : distributionRecords.reduce<Distribution>(
         (acc, record) => ({
           directIndividual: acc.directIndividual + (record.draftDirectIndividual ?? 0),

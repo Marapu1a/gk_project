@@ -91,16 +91,78 @@ export function calculateIncrementalSupervision(params: {
     : Math.min(calculated, Math.max(0, remainingSupervision));
 }
 
-export function getPracticeRuleError(implementing: number, programming: number) {
-  const total = implementing + programming;
-  if (total <= 0) return null;
+export function getCumulativePracticeRuleError(params: {
+  requiredPractice?: number | null;
+  currentImplementing: number;
+  currentProgramming: number;
+  addedImplementing: number;
+  addedProgramming: number;
+}) {
+  const {
+    requiredPractice,
+    currentImplementing,
+    currentProgramming,
+    addedImplementing,
+    addedProgramming,
+  } = params;
+  if (!requiredPractice || requiredPractice <= 0) return null;
 
-  const minEachType = total * 0.4;
-  if (implementing < minEachType || programming < minEachType) {
-    return 'Часы полевой практики и работы с информацией должны быть распределены сбалансированно: не менее 40% часов — полевая практика и не менее 40% — работа с информацией. Оставшиеся 20% можно добавить к любому из этих двух типов.';
+  const minimumEach = roundHours(requiredPractice * 0.4);
+  const maximumEach = roundHours(requiredPractice - minimumEach);
+  const nextImplementing = roundHours(currentImplementing + addedImplementing);
+  const nextProgramming = roundHours(currentProgramming + addedProgramming);
+
+  if (addedImplementing > 0 && nextImplementing > maximumEach) {
+    return `Полевой практики в текущем цикле может быть не более ${maximumEach} часов: оставьте не менее ${minimumEach} часов для работы с информацией.`;
+  }
+  if (addedProgramming > 0 && nextProgramming > maximumEach) {
+    return `Работы с информацией в текущем цикле может быть не более ${maximumEach} часов: оставьте не менее ${minimumEach} часов для полевой практики.`;
   }
 
   return null;
+}
+
+export function splitNeutralPracticeHours(value: number) {
+  const implementing = roundHours(value / 2);
+  return {
+    implementing,
+    programming: roundHours(value - implementing),
+  };
+}
+
+export function resolvePracticeBalance(params: {
+  implementing: number;
+  programming: number;
+  neutralHours?: number;
+}) {
+  const neutral = splitNeutralPracticeHours(params.neutralHours ?? 0);
+  return {
+    implementing: roundHours(params.implementing + neutral.implementing),
+    programming: roundHours(params.programming + neutral.programming),
+  };
+}
+
+export function getPracticeRequirementState(params: {
+  requiredPractice?: number | null;
+  implementing: number;
+  programming: number;
+}) {
+  const requiredPractice = roundHours(params.requiredPractice ?? 0);
+  const implementing = roundHours(params.implementing);
+  const programming = roundHours(params.programming);
+  if (requiredPractice <= 0) {
+    return { totalComplete: true, balanceComplete: true, complete: true, minimumEach: 0 };
+  }
+
+  const minimumEach = roundHours(requiredPractice * 0.4);
+  const totalComplete = roundHours(implementing + programming) >= requiredPractice;
+  const balanceComplete = implementing >= minimumEach && programming >= minimumEach;
+  return {
+    totalComplete,
+    balanceComplete,
+    complete: totalComplete && balanceComplete,
+    minimumEach,
+  };
 }
 
 export function summarizeSupervisionDistribution(

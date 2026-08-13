@@ -21,6 +21,11 @@ import {
 import { targetLevelToGroupName as mapTargetLevel } from '../../domain/levels';
 import { getSupervisorBonusPracticeHours } from '../../utils/getSupervisorBonusPracticeHours';
 import { splitLegacyPractice } from '../../domain/supervision/legacyPracticeRequest';
+import {
+  getCumulativePracticeBalanceError,
+  resolveCumulativePracticeBalance,
+} from '../../domain/supervision/practiceBalance';
+import { aggregatePracticeBreakdown } from '../../domain/supervision/practiceBreakdown';
 import { reportOperationalFailure } from '../../lib/errorMonitoring';
 
 const PRACTICE_REVIEWER_REQUIRED_MESSAGE =
@@ -289,7 +294,8 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
           PracticeLevel.PROGRAMMING,
         ];
         const [confirmed, pending, correction] = await Promise.all([
-          tx.supervisionHour.aggregate({
+          tx.supervisionHour.groupBy({
+            by: ['type'],
             where: {
               record: { userId, cycleId: activeCycle.id },
               type: { in: practiceTypes },
@@ -297,7 +303,8 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
             },
             _sum: { value: true },
           }),
-          tx.supervisionHour.aggregate({
+          tx.supervisionHour.groupBy({
+            by: ['type'],
             where: {
               record: { userId, cycleId: activeCycle.id },
               type: { in: practiceTypes },
@@ -312,19 +319,59 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
                 kind: SupervisionAdminCorrectionKind.PRACTICE,
               },
             },
-            select: { implementing: true, programming: true },
+            select: { implementing: true, programming: true, updatedAt: true },
           }),
         ]);
+        const confirmedBreakdown = aggregatePracticeBreakdown(confirmed);
+        const pendingBreakdown = aggregatePracticeBreakdown(pending);
+        const confirmedRowsAfterCorrection = correction
+          ? await tx.supervisionHour.groupBy({
+                by: ['type'],
+                where: {
+                  record: { userId, cycleId: activeCycle.id },
+                  type: { in: practiceTypes },
+                  status: RecordStatus.CONFIRMED,
+                  reviewedAt: { gt: correction.updatedAt },
+                },
+                _sum: { value: true },
+              })
+          : null;
+        const confirmedAfterCorrection = confirmedRowsAfterCorrection
+          ? aggregatePracticeBreakdown(confirmedRowsAfterCorrection)
+          : confirmedBreakdown;
+        const currentBalance = resolveCumulativePracticeBalance({
+          confirmed: confirmedAfterCorrection,
+          pending: pendingBreakdown,
+          correction,
+          neutralBonus: bonusPractice,
+        });
         const confirmedPractice = correction
-          ? correction.implementing + correction.programming
-          : (confirmed._sum.value ?? 0);
-        const current = confirmedPractice + bonusPractice + (pending._sum.value ?? 0);
+          ? correction.implementing +
+            correction.programming +
+            confirmedAfterCorrection.implementing +
+            confirmedAfterCorrection.programming
+          : confirmedBreakdown.total;
+        const current = confirmedPractice + bonusPractice + pendingBreakdown.total;
         const remaining = Math.max(0, (requirements?.practice ?? 0) - current);
         if (incomingTotal > remaining) {
           throw new SupervisionHoursLimitError(
             `Можно добавить не более ${remaining} часов практики для текущего цикла.`,
             remaining,
           );
+        }
+
+        if (requirements?.practice) {
+          const incomingBreakdown = aggregatePracticeBreakdown(
+            normalized.map((entry) => ({ type: entry.type, _sum: { value: entry.value } })),
+          );
+          const balanceError = getCumulativePracticeBalanceError({
+            requiredPractice: requirements.practice,
+            current: currentBalance,
+            added: incomingBreakdown,
+          });
+          if (balanceError) {
+            throw new SupervisionHoursLimitError(balanceError, remaining);
+          }
         }
       }
 

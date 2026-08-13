@@ -194,7 +194,9 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
 
   // для админ-матрицы показываем авто-часы в SUPERVISION-ячейке
   if (practiceCorrection) {
-    matrix.PRACTICE.CONFIRMED = round2(practiceCorrection.implementing + practiceCorrection.programming);
+    matrix.PRACTICE.CONFIRMED = round2(
+      cycleTotals.practiceImplementingConfirmedRaw + cycleTotals.practiceProgrammingConfirmedRaw,
+    );
   }
   matrix.SUPERVISION.CONFIRMED = usable.supervision;
   matrix.SUPERVISION.UNCONFIRMED = pending.supervision;
@@ -215,22 +217,17 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
       mentor: isBasicSupervisor ? mentor(usable, pending) : null,
       practiceBreakdown: practiceCorrection
         ? {
-            total: round2(practiceCorrection.implementing + practiceCorrection.programming + bonusPractice),
+            total: cycleTotals.practiceConfirmed,
             legacy: 0,
-            implementing: round2(practiceCorrection.implementing),
-            programming: round2(practiceCorrection.programming),
+            implementing: cycleTotals.practiceImplementingConfirmedRaw,
+            programming: cycleTotals.practiceProgrammingConfirmedRaw,
             bonus: round2(bonusPractice),
           }
         : practiceBreakdown(confirmedAgg, bonusPractice),
       supervisionBreakdown: supervisionBreakdown(
         usable.supervision,
         practiceCorrection
-          ? {
-              directIndividual: round2(practiceCorrection.directIndividual),
-              directGroup: round2(practiceCorrection.directGroup),
-              nonObservingIndividual: round2(practiceCorrection.nonObservingIndividual),
-              nonObservingGroup: round2(practiceCorrection.nonObservingGroup),
-            }
+          ? cycleTotals.practiceDistributionConfirmed
           : recordDistribution,
       ),
     },

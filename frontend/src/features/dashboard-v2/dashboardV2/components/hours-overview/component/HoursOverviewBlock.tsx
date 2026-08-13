@@ -1,6 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { DashboardHelpTooltip } from '@/components/DashboardHelpTooltip';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
+import {
+  getPracticeRequirementState,
+  resolvePracticeBalance,
+} from '@/features/supervision/model/hourCalculations';
 
 function formatNumber(value: number | null | undefined) {
   if (value == null) return '—';
@@ -96,12 +100,14 @@ function TotalCircle({
   progress,
   complete = false,
   compact = false,
+  tooltip,
 }: {
   label: string;
   value: string;
   progress: number;
   complete?: boolean;
   compact?: boolean;
+  tooltip?: string;
 }) {
   const normalizedProgress = Math.max(0, Math.min(100, progress));
   const sizeClass = compact ? 'h-[76px] w-[76px]' : 'h-[86px] w-[86px]';
@@ -118,6 +124,8 @@ function TotalCircle({
       </span>
       <div
         className={`relative flex ${sizeClass} items-center justify-center rounded-full`}
+        title={tooltip}
+        aria-label={tooltip}
         style={{
           background: `conic-gradient(${
             complete ? 'var(--color-green-brand)' : '#D8DFEA'
@@ -227,6 +235,7 @@ export function HoursOverviewBlock({
             progress={mentor.percent}
             complete={isMentorComplete}
             compact
+            tooltip={`${formatNumber(mentor.total)} / ${formatNumber(mentor.required)}`}
           />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -248,8 +257,21 @@ export function HoursOverviewBlock({
     );
   }
 
-  const fieldPractice = summary.practiceBreakdown.legacy + summary.practiceBreakdown.implementing;
-  const infoPractice = summary.practiceBreakdown.programming;
+  const legacyAndBonusPractice =
+    summary.practiceBreakdown.legacy + summary.practiceBreakdown.bonus;
+  const practiceBalance = resolvePracticeBalance({
+    implementing: summary.practiceBreakdown.implementing,
+    programming: summary.practiceBreakdown.programming,
+    neutralHours: legacyAndBonusPractice,
+  });
+  const fieldPractice = practiceBalance.implementing;
+  const infoPractice = practiceBalance.programming;
+  const requiredPractice = summary.required?.practice ?? 0;
+  const practiceState = getPracticeRequirementState({
+    requiredPractice,
+    implementing: fieldPractice,
+    programming: infoPractice,
+  });
 
   const hasDistribution = summary.distribution !== null;
   const practiceProgress = getProgressPercent(
@@ -268,10 +290,7 @@ export function HoursOverviewBlock({
     summary.supervisionBreakdown.total,
     summary.required?.supervision,
   );
-  const isPracticeComplete = isRequirementComplete(
-    summary.practiceBreakdown.total,
-    summary.required?.practice,
-  );
+  const isPracticeComplete = requiredPractice > 0 && practiceState.complete;
   const isSupervisionComplete = isRequirementComplete(
     summary.supervisionBreakdown.total,
     summary.required?.supervision,
@@ -297,6 +316,7 @@ export function HoursOverviewBlock({
                 value={formatNumber(practiceDisplayTotal)}
                 progress={practiceProgress}
                 complete={isPracticeComplete}
+                tooltip={`${formatNumber(summary.practiceBreakdown.total)} / ${formatNumber(requiredPractice)}`}
               />
             </div>
 
@@ -316,6 +336,12 @@ export function HoursOverviewBlock({
               />
             </div>
           </div>
+          {practiceState.totalComplete && !practiceState.balanceComplete ? (
+            <p className="mt-3 rounded-[10px] bg-[#FFF3E8] px-3 py-2 text-[13px] font-semibold text-[#8A4B14]">
+              Общая сумма часов набрана, но для завершения цикла нужно не менее{' '}
+              {formatNumber(practiceState.minimumEach)} часов каждого типа практики.
+            </p>
+          ) : null}
         </div>
 
         <div
@@ -356,6 +382,7 @@ export function HoursOverviewBlock({
                 value={formatNumber(supervisionDisplayTotal)}
                 progress={supervisionProgress}
                 complete={isPracticeComplete || isSupervisionComplete}
+                tooltip={`${formatNumber(summary.supervisionBreakdown.total)} / ${formatNumber(summary.required?.supervision ?? 0)}`}
               />
             </div>
 

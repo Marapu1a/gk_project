@@ -670,9 +670,23 @@ export async function getReviewerCandidateDetailsHandler(
       practicePending: supervisionTotals.practicePending,
       supervisionConfirmed: supervisionTotals.supervisionConfirmed,
       supervisionPending: supervisionTotals.supervisionPending,
-      practiceBreakdown: aggregatePracticeBreakdown(confirmedPracticeHours, bonusPractice),
+      practiceBreakdown: {
+        total: supervisionTotals.practiceConfirmed,
+        legacy: supervisionTotals.adminCorrection ? 0 : aggregatePracticeBreakdown(confirmedPracticeHours, 0).legacy,
+        implementing: supervisionTotals.practiceImplementingConfirmedRaw,
+        programming: supervisionTotals.practiceProgrammingConfirmedRaw,
+        bonus: bonusPractice,
+      },
       supervisionBreakdown: aggregateDistribution(
-        distributionRecords,
+        [
+          {
+            draftDirectIndividual: supervisionTotals.practiceDistributionConfirmed.directIndividual,
+            draftDirectGroup: supervisionTotals.practiceDistributionConfirmed.directGroup,
+            draftNonObservingIndividual:
+              supervisionTotals.practiceDistributionConfirmed.nonObservingIndividual,
+            draftNonObservingGroup: supervisionTotals.practiceDistributionConfirmed.nonObservingGroup,
+          },
+        ],
         supervisionTotals.supervisionConfirmed,
       ),
       mentor: mentorRequired > 0

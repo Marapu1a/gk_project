@@ -1,5 +1,6 @@
 import { DashboardHelpTooltip } from '@/components/DashboardHelpTooltip';
 import type { ReviewerCandidateDetailsResponse } from '../../api/getReviewerCandidateDetails';
+import { resolvePracticeBalance } from '../../model/hourCalculations';
 
 type CandidateHoursOverviewCardProps = {
   summary: ReviewerCandidateDetailsResponse['supervisionSummary'];
@@ -160,8 +161,15 @@ export function CandidateHoursOverviewCard({
     summary.required?.supervision ?? 0,
   );
 
-  const fieldPractice = summary.practiceBreakdown.legacy + summary.practiceBreakdown.implementing;
-  const infoPractice = summary.practiceBreakdown.programming;
+  const legacyAndBonusPractice =
+    summary.practiceBreakdown.legacy + summary.practiceBreakdown.bonus;
+  const practiceBalance = resolvePracticeBalance({
+    implementing: summary.practiceBreakdown.implementing,
+    programming: summary.practiceBreakdown.programming,
+    neutralHours: legacyAndBonusPractice,
+  });
+  const fieldPractice = practiceBalance.implementing;
+  const infoPractice = practiceBalance.programming;
   const practiceDisplayTotal = capToRequired(
     summary.practiceBreakdown.total,
     summary.required?.practice,

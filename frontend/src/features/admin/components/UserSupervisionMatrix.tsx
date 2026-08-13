@@ -12,9 +12,10 @@ import {
   calculateExpectedSupervision as calcExpectedSupervision,
   formatHours as formatNumber,
   getDistributionRuleError,
-  getPracticeRuleError,
+  getCumulativePracticeRuleError,
   normalizeHoursInput,
   parseHours,
+  resolvePracticeBalance,
   roundHours as round2,
   sanitizeHoursInput,
   summarizeSupervisionDistribution,
@@ -110,9 +111,10 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       0,
       (data.summary.required?.practice ?? 0) - (breakdown?.bonus ?? data.summary.bonus?.practice ?? 0),
     );
+    const legacyImplementing = round2((breakdown?.legacy ?? 0) / 2);
     const practicePair = scalePairToMax(
-      (breakdown?.implementing ?? 0) + (breakdown?.legacy ?? 0),
-      breakdown?.programming ?? 0,
+      (breakdown?.implementing ?? 0) + legacyImplementing,
+      (breakdown?.programming ?? 0) + round2((breakdown?.legacy ?? 0) - legacyImplementing),
       manualPracticeLimit,
     );
     const activePracticeTotal = round2(practicePair.left + practicePair.right);
@@ -199,7 +201,18 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
     required,
   ]);
 
-  const practiceRuleError = getPracticeRuleError(values.implementingValue, values.programmingValue);
+  const currentBalance = resolvePracticeBalance({
+    implementing: 0,
+    programming: 0,
+    neutralHours: values.bonusPractice,
+  });
+  const practiceRuleError = getCumulativePracticeRuleError({
+    requiredPractice: required?.practice,
+    currentImplementing: currentBalance.implementing,
+    currentProgramming: currentBalance.programming,
+    addedImplementing: values.implementingValue,
+    addedProgramming: values.programmingValue,
+  });
   const practiceLimit = required?.practice ?? 0;
   const practiceLimitError =
     practiceLimit > 0 && values.practiceTotal > practiceLimit
