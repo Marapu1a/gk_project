@@ -82,7 +82,7 @@ async function buildCandidates(params: {
   kind: CandidateKind;
 }): Promise<CandidateAggregate[]> {
   const { reviewerId, kind } = params;
-  const relations = await prisma.reviewerCandidateRelation.findMany({
+  const storedRelations = await prisma.reviewerCandidateRelation.findMany({
     where: {
       reviewerId,
       kind: prismaKind(kind),
@@ -98,6 +98,48 @@ async function buildCandidates(params: {
       cycle: { select: { id: true } },
     },
   });
+  const storedRelationKeys = new Set(
+    storedRelations.map((relation) => `${relation.candidate.id}:${relation.cycle.id}`),
+  );
+  const applicationRecords = await prisma.supervisionRecord.findMany({
+    where: {
+      cycle: { status: CycleStatus.ACTIVE },
+      user: { archivedAt: null },
+      hours: {
+        some: {
+          reviewerId,
+          type: { in: typesForKind(kind) },
+        },
+      },
+    },
+    select: {
+      id: true,
+      createdAt: true,
+      user: { select: { id: true, fullName: true, email: true } },
+      cycle: { select: { id: true } },
+    },
+  });
+  const virtualRelations = new Map<string, CandidateRelation>();
+
+  for (const record of applicationRecords) {
+    if (!record.cycle) continue;
+    const key = `${record.user.id}:${record.cycle.id}`;
+    if (storedRelationKeys.has(key) || virtualRelations.has(key)) continue;
+
+    virtualRelations.set(key, {
+      id: `history:${record.id}:${reviewerId}`,
+      status: ReviewerCandidateStatus.ACCEPTED,
+      createdAt: record.createdAt,
+      updatedAt: record.createdAt,
+      candidate: record.user,
+      cycle: record.cycle,
+    });
+  }
+
+  const relations: CandidateRelation[] = [
+    ...storedRelations,
+    ...virtualRelations.values(),
+  ];
 
   const candidates = await Promise.all(
     relations.map(async (relation: CandidateRelation) => {

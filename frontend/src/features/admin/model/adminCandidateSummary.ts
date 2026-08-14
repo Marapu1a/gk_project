@@ -52,17 +52,15 @@ function countPendingHours(
 ) {
   const activeCycleId = user.activeCycle?.id;
 
-  return user.supervisionRecords.reduce((sum, record) => {
-    if (activeCycleId && record.cycleId !== activeCycleId) return sum;
+  return user.supervisionRecords.filter((record) => {
+    if (activeCycleId && record.cycleId !== activeCycleId) return false;
 
-    const count = record.hours.filter((hour) => {
+    return record.hours.some((hour) => {
       if (hour.status !== 'UNCONFIRMED') return false;
-      const isMentorship = hour.type === 'SUPERVISOR';
+      const isMentorship = hour.type === 'SUPERVISOR' || hour.type === 'SUPERVISION';
       return mode === 'mentorship' ? isMentorship : !isMentorship;
-    }).length;
-
-    return sum + count;
-  }, 0);
+    });
+  }).length;
 }
 
 function resolveDocumentStatus(user: AdminUserDetails) {

@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { buildUserIdentitySearchWhere } from '../../../utils/userIdentitySearch';
+import { isLegacySupervisionHistoryRecord } from '../../../domain/supervision/historyPractice';
 
 type CandidateKind = 'supervision' | 'mentorship';
 type SortBy = 'candidate' | 'candidateEmail' | 'reviewerEmail' | 'createdAt' | 'status';
@@ -222,7 +223,7 @@ export async function getAdminReviewerCandidatesHandler(
   const reviewerSearchWhere = buildUserIdentitySearchWhere(trimmedReviewerSearch);
   const attentionOnly = attention === true || attention === 'true' || attention === '1';
 
-  const relations = await prisma.reviewerCandidateRelation.findMany({
+  const storedRelations = await prisma.reviewerCandidateRelation.findMany({
     where: {
       kind: prismaKind(normalizedKind),
       candidate: {
@@ -243,6 +244,78 @@ export async function getAdminReviewerCandidatesHandler(
       cycle: { select: { id: true } },
     },
   });
+
+  // Historical applications may have a reviewer on their hour rows but no
+  // ReviewerCandidateRelation (the relation table was introduced later).
+  // Build read-only virtual relations so such processed requests remain
+  // discoverable in the same admin history without rewriting production data.
+  const storedRelationKeys = new Set(
+    storedRelations.map(
+      (relation) => `${relation.candidateId}:${relation.cycle.id}:${relation.reviewerId}`,
+    ),
+  );
+  const applicationRecords = await prisma.supervisionRecord.findMany({
+    where: {
+      cycleId: { not: null },
+      user: {
+        archivedAt: null,
+        ...(candidateSearchWhere ?? {}),
+      },
+      hours: {
+        some: {
+          reviewerId: { not: null },
+          reviewer: reviewerSearchWhere ?? undefined,
+          type: { in: typesForKind(normalizedKind) },
+        },
+      },
+    },
+    select: {
+      id: true,
+      userId: true,
+      cycleId: true,
+      createdAt: true,
+      user: { select: { id: true, email: true, fullName: true } },
+      hours: {
+        where: {
+          reviewerId: { not: null },
+          reviewer: reviewerSearchWhere ?? undefined,
+          type: { in: typesForKind(normalizedKind) },
+        },
+        select: {
+          reviewerId: true,
+          reviewer: { select: { id: true, email: true, fullName: true } },
+        },
+      },
+    },
+  });
+  const virtualRelationsByKey = new Map<string, RelationRow>();
+
+  for (const record of applicationRecords) {
+    if (!record.cycleId) continue;
+
+    for (const hour of record.hours) {
+      if (!hour.reviewerId || !hour.reviewer) continue;
+      const key = `${record.userId}:${record.cycleId}:${hour.reviewerId}`;
+      if (storedRelationKeys.has(key) || virtualRelationsByKey.has(key)) continue;
+
+      virtualRelationsByKey.set(key, {
+        id: `history:${record.id}:${hour.reviewerId}`,
+        status: ReviewerCandidateStatus.ACCEPTED,
+        createdAt: record.createdAt,
+        updatedAt: record.createdAt,
+        reviewerId: hour.reviewerId,
+        candidateId: record.userId,
+        reviewer: hour.reviewer,
+        candidate: record.user,
+        cycle: { id: record.cycleId },
+      });
+    }
+  }
+
+  const relations: RelationRow[] = [
+    ...storedRelations,
+    ...virtualRelationsByKey.values(),
+  ];
 
   const candidateIds = Array.from(new Set(relations.map((relation) => relation.candidateId)));
   const cycleIds = Array.from(new Set(relations.map((relation) => relation.cycle.id)));
@@ -337,7 +410,9 @@ export async function getAdminReviewerCandidatesHandler(
         const list = recordsByRelationKey.get(key) ?? [];
         list.push({
           id: record.id,
-          source: record.source,
+          source: isLegacySupervisionHistoryRecord(record.hours)
+            ? SupervisionRecordSource.LEGACY_VERSION
+            : record.source,
           createdAt: record.createdAt,
           supervisionDate: record.supervisionDate,
           periodStartedAt: record.periodStartedAt,

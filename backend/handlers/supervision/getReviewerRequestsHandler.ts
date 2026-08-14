@@ -7,6 +7,7 @@ import {
   ReviewerCandidateStatus,
 } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { isLegacySupervisionHistoryRecord } from '../../domain/supervision/historyPractice';
 
 type CandidateKind = 'supervision' | 'mentorship';
 type RequestStatus = 'ALL' | 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED';
@@ -113,7 +114,7 @@ function serializeRequest(record: any) {
 
   return {
     id: record.id,
-    source: record.source,
+    source: isLegacySupervisionHistoryRecord(hours) ? 'LEGACY_VERSION' : record.source,
     candidate: record.user,
     createdAt: record.createdAt,
     supervisionDate: record.supervisionDate,
@@ -180,22 +181,6 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
     },
   });
 
-  if (relations.length === 0) {
-    return reply.send({
-      items: [],
-      candidates: [],
-      total: 0,
-      page: 1,
-      limit,
-      totalPages: 1,
-      permissions: { canReviewSupervision, canReviewMentorship: isExperienced },
-    });
-  }
-
-  const relationPairs: Prisma.SupervisionRecordWhereInput[] = relations.map((relation) => ({
-    userId: relation.candidateId,
-    cycleId: relation.cycleId,
-  }));
   const candidate = query.candidate?.trim();
   const dateFrom = query.dateFrom ? startOfUtcDay(query.dateFrom) : null;
   const dateTo = query.dateTo ? endOfUtcDay(query.dateTo) : null;
@@ -217,7 +202,6 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
         : { status }),
   };
   const where: Prisma.SupervisionRecordWhereInput = {
-    OR: relationPairs,
     user: {
       archivedAt: null,
       ...(candidate
@@ -241,7 +225,7 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
     hours: { some: hoursWhere },
   };
 
-  const [total, records] = await Promise.all([
+  const [total, records, requestCandidateRecords] = await Promise.all([
     prisma.supervisionRecord.count({ where }),
     prisma.supervisionRecord.findMany({
       where,
@@ -279,10 +263,31 @@ export async function getReviewerRequestsHandler(req: FastifyRequest, reply: Fas
       skip: (page - 1) * limit,
       take: limit,
     }),
+    prisma.supervisionRecord.findMany({
+      where: {
+        user: { archivedAt: null },
+        hours: {
+          some: {
+            reviewerId,
+            type: { in: types },
+          },
+        },
+      },
+      select: {
+        userId: true,
+        user: { select: { id: true, fullName: true, email: true } },
+      },
+      distinct: ['userId'],
+    }),
   ]);
 
   const candidates = Array.from(
-    new Map(relations.map((relation) => [relation.candidate.id, relation.candidate])).values(),
+    new Map(
+      [
+        ...relations.map((relation) => relation.candidate),
+        ...requestCandidateRecords.map((record) => record.user),
+      ].map((item) => [item.id, item]),
+    ).values(),
   ).sort((a, b) => (a.fullName ?? a.email).localeCompare(b.fullName ?? b.email, 'ru'));
 
   return reply.send({

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only server.ts",
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/utils/certificateLifecycle.test.js dist/utils/uploadValidation.test.js dist/lib/monitoringState.test.js dist/domain/ceu/duplicateFile.test.js dist/domain/ceu/reviewPolicy.test.js dist/domain/supervision/legacyPracticeRequest.test.js dist/domain/supervision/practiceBalance.test.js dist/domain/supervision/practiceBreakdown.test.js",
+    "test": "npm run build && node --test dist/utils/certificateLifecycle.test.js dist/utils/uploadValidation.test.js dist/utils/supervisionRequirements.test.js dist/lib/monitoringState.test.js dist/domain/ceu/duplicateFile.test.js dist/domain/ceu/reviewPolicy.test.js dist/domain/supervision/distributionRules.test.js dist/domain/supervision/historyPractice.test.js dist/domain/supervision/legacyPracticeRequest.test.js dist/domain/supervision/mentorshipBalance.test.js dist/domain/supervision/practiceBalance.test.js dist/domain/supervision/practiceBreakdown.test.js",
     "start": "node dist/server.js",
     "migrate:deploy": "prisma migrate deploy",
     "backfill:ceu-file-hashes": "node dist/scripts/backfillCeuFileHashes.js",

@@ -3,11 +3,13 @@ import {
   calculateExpectedSupervision,
   calculateIncrementalSupervision,
   calculateRemainingHours,
+  getDistributionAvailability,
   getDistributionRuleError,
   getCumulativePracticeRuleError,
   getPracticeRequirementState,
   parseHours,
   resolvePracticeBalance,
+  sanitizeHoursInput,
   summarizeSupervisionDistribution,
 } from './hourCalculations';
 
@@ -16,6 +18,11 @@ describe('hourCalculations', () => {
     expect(parseHours('12,5')).toBe(12.5);
     expect(parseHours('-3')).toBe(0);
     expect(parseHours('abc')).toBe(0);
+  });
+
+  it('limits supervision distribution input to tenths', () => {
+    expect(sanitizeHoursInput('1,3', 1)).toBe('1,3');
+    expect(sanitizeHoursInput('1,35', 1)).toBeNull();
   });
 
   it('calculates the remaining hours without going below zero', () => {
@@ -46,6 +53,7 @@ describe('hourCalculations', () => {
       calculateIncrementalSupervision({
         basePractice: 19,
         addedPractice: 21,
+        baseDistributedSupervision: 0,
         requiredPractice: 1500,
         requiredSupervision: 75,
       }),
@@ -54,11 +62,45 @@ describe('hourCalculations', () => {
       calculateIncrementalSupervision({
         basePractice: 0,
         addedPractice: 100,
+        baseDistributedSupervision: 0,
         requiredPractice: 1500,
         requiredSupervision: 75,
         remainingSupervision: 3,
       }),
     ).toBe(3);
+  });
+
+  it('calculates tenths cumulatively and returns the previous remainder later', () => {
+    expect(
+      calculateIncrementalSupervision({
+        basePractice: 0,
+        addedPractice: 40,
+        baseDistributedSupervision: 0,
+        requiredPractice: 300,
+        requiredSupervision: 10,
+      }),
+    ).toBe(1.3);
+    expect(
+      calculateIncrementalSupervision({
+        basePractice: 40,
+        addedPractice: 20,
+        baseDistributedSupervision: 1.3,
+        requiredPractice: 300,
+        requiredSupervision: 10,
+      }),
+    ).toBe(0.7);
+  });
+
+  it('makes an undistributed legacy remainder available with the next request', () => {
+    expect(
+      calculateIncrementalSupervision({
+        basePractice: 19,
+        addedPractice: 1,
+        baseDistributedSupervision: 0,
+        requiredPractice: 300,
+        requiredSupervision: 10,
+      }),
+    ).toBe(0.6);
   });
 
   it('checks the 40/40/20 rule against the accumulated cycle total', () => {
@@ -146,5 +188,62 @@ describe('hourCalculations', () => {
         distributionRemaining: 0,
       }),
     ).toContain('не более 50%');
+  });
+
+  it('applies the 50 percent group limit to fractional supervision', () => {
+    expect(
+      getDistributionRuleError({
+        expectedSupervision: 1,
+        distributionTotal: 1,
+        groupTotal: 0.5,
+        distributionRemaining: 0,
+      }),
+    ).toBeNull();
+    expect(
+      getDistributionRuleError({
+        expectedSupervision: 1,
+        distributionTotal: 1,
+        groupTotal: 0.6,
+        distributionRemaining: 0,
+      }),
+    ).toContain('не более 50%');
+  });
+
+  it('does not allow repeated fractional requests to overfill the group basket', () => {
+    expect(
+      getDistributionRuleError({
+        expectedSupervision: 0.7,
+        distributionTotal: 0.7,
+        groupTotal: 0.5,
+        distributionRemaining: 0,
+        baseSupervision: 1.3,
+        baseGroup: 0.6,
+      }),
+    ).toContain('не более 50%');
+    expect(
+      getDistributionRuleError({
+        expectedSupervision: 0.7,
+        distributionTotal: 0.7,
+        groupTotal: 0.4,
+        distributionRemaining: 0,
+        baseSupervision: 1.3,
+        baseGroup: 0.5,
+      }),
+    ).toBeNull();
+  });
+
+  it('links distribution sections to the matching practice types', () => {
+    expect(getDistributionAvailability({ implementing: 10, programming: 0 })).toEqual({
+      directEnabled: true,
+      nonObservingEnabled: false,
+    });
+    expect(getDistributionAvailability({ implementing: 0, programming: 10 })).toEqual({
+      directEnabled: false,
+      nonObservingEnabled: true,
+    });
+    expect(getDistributionAvailability({ implementing: 10, programming: 10 })).toEqual({
+      directEnabled: true,
+      nonObservingEnabled: true,
+    });
   });
 });

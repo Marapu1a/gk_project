@@ -26,6 +26,9 @@ import {
   type SupervisionRequirement,
 } from '../../utils/supervisionRequirements';
 import { resolveDocumentReviewRequestStatus } from '../documentReviewAdmin/documentReviewFileStatusUtils';
+import { separateLegacyPracticeFromBalance } from '../../domain/supervision/practiceBreakdown';
+import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
+import { isLegacySupervisionHistoryRecord } from '../../domain/supervision/historyPractice';
 
 type CandidateKind = 'supervision' | 'mentorship';
 type Query = { kind?: CandidateKind; relationId?: string };
@@ -257,7 +260,9 @@ function serializeRequest(record: {
 
   return {
     id: record.id,
-    source: record.source,
+    source: isLegacySupervisionHistoryRecord(record.hours)
+      ? 'LEGACY_VERSION'
+      : record.source,
     createdAt: record.createdAt,
     supervisionDate: record.supervisionDate,
     periodStartedAt: record.periodStartedAt,
@@ -416,7 +421,7 @@ export async function getReviewerCandidateDetailsHandler(
     return reply.code(404).send({ error: 'Активный цикл кандидата изменился' });
   }
 
-  const relation = adminRelation
+  let relation = adminRelation
     ? { status: adminRelation.status }
     : await prisma.reviewerCandidateRelation.findUnique({
         where: {
@@ -429,6 +434,24 @@ export async function getReviewerCandidateDetailsHandler(
         },
         select: { status: true },
       });
+
+  if (!relation && !adminMode) {
+    const historicalAccess = await prisma.supervisionRecord.count({
+      where: {
+        userId: candidateId,
+        cycleId: activeCycle.id,
+        hours: {
+          some: {
+            reviewerId,
+            type: { in: typesForKind(requestedKind) },
+          },
+        },
+      },
+    });
+    if (historicalAccess > 0) {
+      relation = { status: ReviewerCandidateStatus.ACCEPTED };
+    }
+  }
 
   if (!relation || (!adminMode && relation.status !== ReviewerCandidateStatus.ACCEPTED)) {
     return reply.code(403).send({ error: 'Кандидат ещё не принят проверяющим' });
@@ -541,9 +564,7 @@ export async function getReviewerCandidateDetailsHandler(
     confirmedCeu,
     spentCeu,
     confirmedPracticeHours,
-    distributionRecords,
-    confirmedMentorHours,
-    pendingMentorHours,
+    legacyDistribution,
     documentReviewRequest,
     platformCertificate,
   ] = await Promise.all([
@@ -563,36 +584,14 @@ export async function getReviewerCandidateDetailsHandler(
       },
       select: { type: true, value: true },
     }),
-    prisma.supervisionRecord.findMany({
-      where: {
-        cycleId: activeCycle.id,
-        hours: {
-          some: {},
-          every: { status: RecordStatus.CONFIRMED },
-        },
-      },
+    prisma.supervisionDistribution.findUnique({
+      where: { cycleId: activeCycle.id },
       select: {
-        draftDirectIndividual: true,
-        draftDirectGroup: true,
-        draftNonObservingIndividual: true,
-        draftNonObservingGroup: true,
+        directIndividual: true,
+        directGroup: true,
+        nonObservingIndividual: true,
+        nonObservingGroup: true,
       },
-    }),
-    prisma.supervisionHour.aggregate({
-      where: {
-        status: RecordStatus.CONFIRMED,
-        type: { in: MENTORSHIP_TYPES },
-        record: { cycleId: activeCycle.id },
-      },
-      _sum: { value: true },
-    }),
-    prisma.supervisionHour.aggregate({
-      where: {
-        status: RecordStatus.UNCONFIRMED,
-        type: { in: MENTORSHIP_TYPES },
-        record: { cycleId: activeCycle.id },
-      },
-      _sum: { value: true },
     }),
     prisma.documentReviewRequest.findFirst({
       where: { userId: candidateId, cycleId: activeCycle.id },
@@ -616,6 +615,7 @@ export async function getReviewerCandidateDetailsHandler(
     activeCycle.targetLevel,
     bonusPractice,
   );
+  const mentorshipTotals = await getCycleMentorshipTotal(activeCycle.id);
 
   const ceuUsable = aggregateCeu(confirmedCeu);
   const ceuSpent = aggregateCeu(spentCeu);
@@ -628,8 +628,27 @@ export async function getReviewerCandidateDetailsHandler(
 
   const supervisionRequired = resolveSupervisionRequirement(activeCycle);
   const mentorRequired = supervisionRequired?.supervisor ?? 0;
-  const mentorTotal = round2(confirmedMentorHours._sum.value ?? 0);
-  const mentorPending = round2(pendingMentorHours._sum.value ?? 0);
+  const mentorTotal = mentorshipTotals.confirmed;
+  const mentorPending = mentorshipTotals.pending;
+  const confirmedPracticeBreakdown = aggregatePracticeBreakdown(confirmedPracticeHours, 0);
+  const confirmedLegacyPractice = supervisionTotals.adminCorrection
+    ? 0
+    : confirmedPracticeBreakdown.legacy;
+  const confirmedModernPractice = separateLegacyPracticeFromBalance({
+    implementing: supervisionTotals.practiceImplementingConfirmedRaw,
+    programming: supervisionTotals.practiceProgrammingConfirmedRaw,
+    legacy: confirmedLegacyPractice,
+  });
+  const recordDistribution = supervisionTotals.practiceDistributionConfirmed;
+  const hasRecordDistribution =
+    recordDistribution.directIndividual > 0 ||
+    recordDistribution.directGroup > 0 ||
+    recordDistribution.nonObservingIndividual > 0 ||
+    recordDistribution.nonObservingGroup > 0;
+  const effectiveDistribution =
+    supervisionTotals.adminCorrection || hasRecordDistribution || !legacyDistribution
+      ? recordDistribution
+      : legacyDistribution;
   const documentReviewStatus = documentReviewRequest
     ? resolveDocumentReviewRequestStatus(documentReviewRequest)
     : null;
@@ -672,19 +691,18 @@ export async function getReviewerCandidateDetailsHandler(
       supervisionPending: supervisionTotals.supervisionPending,
       practiceBreakdown: {
         total: supervisionTotals.practiceConfirmed,
-        legacy: supervisionTotals.adminCorrection ? 0 : aggregatePracticeBreakdown(confirmedPracticeHours, 0).legacy,
-        implementing: supervisionTotals.practiceImplementingConfirmedRaw,
-        programming: supervisionTotals.practiceProgrammingConfirmedRaw,
+        legacy: confirmedLegacyPractice,
+        implementing: confirmedModernPractice.implementing,
+        programming: confirmedModernPractice.programming,
         bonus: bonusPractice,
       },
       supervisionBreakdown: aggregateDistribution(
         [
           {
-            draftDirectIndividual: supervisionTotals.practiceDistributionConfirmed.directIndividual,
-            draftDirectGroup: supervisionTotals.practiceDistributionConfirmed.directGroup,
-            draftNonObservingIndividual:
-              supervisionTotals.practiceDistributionConfirmed.nonObservingIndividual,
-            draftNonObservingGroup: supervisionTotals.practiceDistributionConfirmed.nonObservingGroup,
+            draftDirectIndividual: effectiveDistribution.directIndividual,
+            draftDirectGroup: effectiveDistribution.directGroup,
+            draftNonObservingIndividual: effectiveDistribution.nonObservingIndividual,
+            draftNonObservingGroup: effectiveDistribution.nonObservingGroup,
           },
         ],
         supervisionTotals.supervisionConfirmed,

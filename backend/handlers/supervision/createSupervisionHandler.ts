@@ -15,6 +15,8 @@ import {
 } from '@prisma/client';
 import { createNotification } from '../../utils/notifications';
 import {
+  calcAutoRenewalSupervisionHours,
+  calcAutoSupervisionHours,
   renewalSupervisionRequirementsByGroup,
   supervisionRequirementsByGroup,
 } from '../../utils/supervisionRequirements';
@@ -27,6 +29,10 @@ import {
 } from '../../domain/supervision/practiceBalance';
 import { aggregatePracticeBreakdown } from '../../domain/supervision/practiceBreakdown';
 import { reportOperationalFailure } from '../../lib/errorMonitoring';
+import {
+  getDistributionPracticeLinkError,
+  getSupervisionDistributionError,
+} from '../../domain/supervision/distributionRules';
 
 const PRACTICE_REVIEWER_REQUIRED_MESSAGE =
   'Заявку на подтверждение часов практики можно отправить только супервизорам, которые есть в системе. Напишите в поддержку, если вашего супервизора нет в системе или что-то пошло не так.';
@@ -236,6 +242,23 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
     ? ReviewerCandidateKind.MENTORSHIP
     : ReviewerCandidateKind.SUPERVISION;
 
+  if (!isAuthorAnySupervisor && draftDistribution) {
+    const implementing = normalized
+      .filter((entry) => entry.type === PracticeLevel.IMPLEMENTING)
+      .reduce((sum, entry) => sum + entry.value, 0);
+    const programming = normalized
+      .filter((entry) => entry.type === PracticeLevel.PROGRAMMING)
+      .reduce((sum, entry) => sum + entry.value, 0);
+    const distributionPracticeLinkError = getDistributionPracticeLinkError({
+      implementing,
+      programming,
+      distribution: draftDistribution,
+    });
+    if (distributionPracticeLinkError) {
+      return reply.code(400).send({ error: distributionPracticeLinkError });
+    }
+  }
+
   const requirements = getRequirements(activeCycle);
   const incomingTotal = normalized.reduce((sum, entry) => sum + entry.value, 0);
   const bonusPractice = isAuthorSimpleSupervisor
@@ -293,7 +316,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
           PracticeLevel.IMPLEMENTING,
           PracticeLevel.PROGRAMMING,
         ];
-        const [confirmed, pending, correction] = await Promise.all([
+        const [confirmed, pending, correction, distributionRecords] = await Promise.all([
           tx.supervisionHour.groupBy({
             by: ['type'],
             where: {
@@ -319,7 +342,32 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
                 kind: SupervisionAdminCorrectionKind.PRACTICE,
               },
             },
-            select: { implementing: true, programming: true, updatedAt: true },
+            select: {
+              implementing: true,
+              programming: true,
+              directIndividual: true,
+              directGroup: true,
+              nonObservingIndividual: true,
+              nonObservingGroup: true,
+              updatedAt: true,
+            },
+          }),
+          tx.supervisionRecord.findMany({
+            where: {
+              userId,
+              cycleId: activeCycle.id,
+              hours: { some: { type: { in: practiceTypes } } },
+            },
+            select: {
+              draftDirectIndividual: true,
+              draftDirectGroup: true,
+              draftNonObservingIndividual: true,
+              draftNonObservingGroup: true,
+              hours: {
+                where: { type: { in: practiceTypes } },
+                select: { status: true, reviewedAt: true },
+              },
+            },
           }),
         ]);
         const confirmedBreakdown = aggregatePracticeBreakdown(confirmed);
@@ -358,6 +406,81 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
             `Можно добавить не более ${remaining} часов практики для текущего цикла.`,
             remaining,
           );
+        }
+
+        if (draftDistribution && requirements?.practice && requirements.supervision > 0) {
+          const baseDistribution = distributionRecords.reduce(
+            (sum, record) => {
+              const isConfirmed =
+                record.hours.length > 0 &&
+                record.hours.every((hour) => hour.status === RecordStatus.CONFIRMED);
+              const isPending =
+                record.hours.length > 0 &&
+                record.hours.every((hour) => hour.status === RecordStatus.UNCONFIRMED);
+              const isEffectiveConfirmed =
+                isConfirmed &&
+                (!correction ||
+                  record.hours.some(
+                    (hour) => hour.reviewedAt != null && hour.reviewedAt > correction.updatedAt,
+                  ));
+              if (!isPending && !isEffectiveConfirmed) return sum;
+
+              return {
+                directIndividual: sum.directIndividual + (record.draftDirectIndividual ?? 0),
+                directGroup: sum.directGroup + (record.draftDirectGroup ?? 0),
+                nonObservingIndividual:
+                  sum.nonObservingIndividual + (record.draftNonObservingIndividual ?? 0),
+                nonObservingGroup:
+                  sum.nonObservingGroup + (record.draftNonObservingGroup ?? 0),
+              };
+            },
+            correction
+              ? {
+                  directIndividual: correction.directIndividual,
+                  directGroup: correction.directGroup,
+                  nonObservingIndividual: correction.nonObservingIndividual,
+                  nonObservingGroup: correction.nonObservingGroup,
+                }
+              : {
+                  directIndividual: 0,
+                  directGroup: 0,
+                  nonObservingIndividual: 0,
+                  nonObservingGroup: 0,
+                },
+          );
+          const calculateSupervision = (practiceHours: number) => {
+            const calculated =
+              activeCycle.type === CycleType.RENEWAL
+                ? calcAutoRenewalSupervisionHours({ groupName: mapTargetLevel(activeCycle.targetLevel), practiceHours })
+                : calcAutoSupervisionHours({ groupName: mapTargetLevel(activeCycle.targetLevel), practiceHours });
+            return Math.min(calculated, requirements.supervision);
+          };
+          const baseDistributedSupervision =
+            baseDistribution.directIndividual +
+            baseDistribution.directGroup +
+            baseDistribution.nonObservingIndividual +
+            baseDistribution.nonObservingGroup;
+          const expectedIncomingSupervision = Math.max(
+            0,
+            calculateSupervision(current + incomingTotal) - baseDistributedSupervision,
+          );
+          const distributionTotal =
+            draftDistribution.directIndividual +
+            draftDistribution.directGroup +
+            draftDistribution.nonObservingIndividual +
+            draftDistribution.nonObservingGroup;
+          const distributionError = getSupervisionDistributionError({
+            expectedSupervision: expectedIncomingSupervision,
+            distribution: draftDistribution,
+            baseSupervision: baseDistributedSupervision,
+            baseGroup: baseDistribution.directGroup + baseDistribution.nonObservingGroup,
+          });
+          if (distributionError || Math.abs(distributionTotal - expectedIncomingSupervision) >= 0.01) {
+            throw new SupervisionHoursLimitError(
+              distributionError ?? 'Сумма распределенных часов должна совпадать с расчетной супервизией.',
+              remaining,
+            );
+          }
         }
 
         if (requirements?.practice) {

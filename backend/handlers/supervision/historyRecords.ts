@@ -1,8 +1,13 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { PracticeLevel, RecordStatus } from '@prisma/client';
+import { RecordStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
 import { getCyclePracticeCorrection } from '../../utils/getCyclePracticeCorrection';
+import {
+  aggregateSupervisionHistoryHours,
+  isLegacySupervisionHistoryRecord,
+  SUPERVISION_HISTORY_HOUR_TYPES,
+} from '../../domain/supervision/historyPractice';
 
 type Query = {
   take?: string;
@@ -14,19 +19,6 @@ type StatusSummary = {
   reviewedAt: Date | null;
   rejectedReason: string | null;
 };
-
-const NEW_HISTORY_TYPES = [
-  PracticeLevel.IMPLEMENTING,
-  PracticeLevel.PROGRAMMING,
-  PracticeLevel.SUPERVISOR,
-];
-
-const LEGACY_HISTORY_TYPES = [
-  PracticeLevel.INSTRUCTOR,
-  PracticeLevel.CURATOR,
-  PracticeLevel.PRACTICE,
-  PracticeLevel.SUPERVISION,
-];
 
 function round2(value: number) {
   return Math.round(value * 100) / 100;
@@ -47,28 +39,6 @@ function summarizeStatus(hours: Array<{ status: RecordStatus; reviewedAt: Date |
   const rejectedReason = hours.find((hour) => hour.rejectedReason)?.rejectedReason ?? null;
 
   return { status, reviewedAt, rejectedReason };
-}
-
-function aggregateHours(hours: Array<{ type: PracticeLevel; value: number }>) {
-  let implementing = 0;
-  let programming = 0;
-  let legacyPractice = 0;
-  let mentor = 0;
-
-  for (const hour of hours) {
-    if (hour.type === PracticeLevel.IMPLEMENTING) implementing += hour.value;
-    if (hour.type === PracticeLevel.PROGRAMMING) programming += hour.value;
-    if (hour.type === PracticeLevel.PRACTICE || hour.type === PracticeLevel.INSTRUCTOR) {
-      legacyPractice += hour.value;
-    }
-    if (hour.type === PracticeLevel.SUPERVISOR) mentor += hour.value;
-  }
-
-  return {
-    implementing: round2(implementing + legacyPractice),
-    programming: round2(programming),
-    mentor: round2(mentor),
-  };
 }
 
 export async function supervisionHistoryRecordsHandler(req: FastifyRequest, reply: FastifyReply) {
@@ -97,8 +67,10 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
         userId,
         cycleId: { in: cycleIds },
         hours: {
-          some: { type: { in: NEW_HISTORY_TYPES } },
-          none: { type: { in: LEGACY_HISTORY_TYPES } },
+          some: {
+            type: { in: SUPERVISION_HISTORY_HOUR_TYPES },
+            reviewerId: { not: null },
+          },
         },
       },
       select: {
@@ -118,6 +90,10 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
         draftNonObservingGroup: true,
         user: { select: { id: true, fullName: true, email: true } },
         hours: {
+          where: {
+            type: { in: SUPERVISION_HISTORY_HOUR_TYPES },
+            reviewerId: { not: null },
+          },
           select: {
             id: true,
             type: true,
@@ -151,7 +127,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
   const nextCursor = records.length === limit ? records[records.length - 1].id : null;
   const mappedRecords = records.map((record) => {
     const hours = record.hours;
-    const hourTotals = aggregateHours(hours);
+    const hourTotals = aggregateSupervisionHistoryHours(hours);
     const statusSummary = summarizeStatus(hours);
     const supervisor = hours.find((hour) => hour.reviewer)?.reviewer ?? null;
     const reviewedBy = hours.find((hour) => hour.reviewedBy)?.reviewedBy ?? null;
@@ -162,7 +138,7 @@ export async function supervisionHistoryRecordsHandler(req: FastifyRequest, repl
 
     return {
       id: record.id,
-      source: record.source,
+      source: isLegacySupervisionHistoryRecord(hours) ? 'LEGACY_VERSION' : record.source,
       fileId: record.fileId,
       createdAt: record.createdAt,
       supervisionDate: record.supervisionDate,

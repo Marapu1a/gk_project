@@ -31,3 +31,15 @@ export function aggregatePracticeBreakdown(rows: GroupedPracticeHours[]) {
     total: round2(implementing + programming),
   };
 }
+
+export function separateLegacyPracticeFromBalance(params: {
+  implementing: number;
+  programming: number;
+  legacy: number;
+}) {
+  const legacy = splitLegacyPractice(params.legacy);
+  return {
+    implementing: round2(Math.max(0, params.implementing - legacy.implementing)),
+    programming: round2(Math.max(0, params.programming - legacy.programming)),
+  };
+}

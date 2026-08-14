@@ -20,6 +20,10 @@ import {
 import { logAdminUserAction } from '../../../utils/adminUserActionLog';
 import { getSupervisorBonusPracticeHours } from '../../../utils/getSupervisorBonusPracticeHours';
 import { getCumulativePracticeBalanceError } from '../../../domain/supervision/practiceBalance';
+import {
+  getDistributionPracticeLinkError,
+  getSupervisionDistributionError,
+} from '../../../domain/supervision/distributionRules';
 
 // Принимаем legacy-уровни, но внутри работаем только с новыми.
 type IncomingLevel = 'INSTRUCTOR' | 'CURATOR' | 'SUPERVISOR' | 'PRACTICE' | 'SUPERVISION';
@@ -93,39 +97,6 @@ function getRequirements(activeCycle: { targetLevel: TargetLevel; type: CycleTyp
   return activeCycle.type === CycleType.RENEWAL
     ? renewalSupervisionRequirementsByGroup[groupName]
     : supervisionRequirementsByGroup[groupName];
-}
-
-function getDistributionRuleError(params: {
-  expectedSupervision: number;
-  distribution: {
-    directIndividual: number;
-    directGroup: number;
-    nonObservingIndividual: number;
-    nonObservingGroup: number;
-  };
-}) {
-  const { expectedSupervision, distribution } = params;
-  const distributionTotal = round2(
-    distribution.directIndividual +
-      distribution.directGroup +
-      distribution.nonObservingIndividual +
-      distribution.nonObservingGroup,
-  );
-  const groupTotal = round2(distribution.directGroup + distribution.nonObservingGroup);
-
-  if (expectedSupervision <= 0) {
-    return distributionTotal > 0 ? 'Пока расчетная супервизия равна 0, распределять часы нельзя.' : null;
-  }
-
-  if (Math.abs(expectedSupervision - distributionTotal) >= 0.01) {
-    return 'Сумма распределенных часов должна совпадать с расчетной супервизией.';
-  }
-
-  if (groupTotal > expectedSupervision * 0.5) {
-    return 'Часов в группе может быть не более 50% от всех часов супервизии.';
-  }
-
-  return null;
 }
 
 function formatHours(value: number) {
@@ -205,7 +176,15 @@ export async function updateUserSupervisionMatrixAdminHandler(
       requirements && requirements.supervision > 0
         ? Math.min(expectedActiveSupervision, requirements.supervision)
         : expectedActiveSupervision;
-    const distributionRuleError = getDistributionRuleError({
+    const distributionPracticeLinkError = getDistributionPracticeLinkError({
+      implementing,
+      programming,
+      distribution: incoming.distribution,
+    });
+    if (distributionPracticeLinkError) {
+      return reply.code(400).send({ error: distributionPracticeLinkError });
+    }
+    const distributionRuleError = getSupervisionDistributionError({
       expectedSupervision: cappedExpectedActiveSupervision,
       distribution: incoming.distribution,
     });

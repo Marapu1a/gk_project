@@ -15,6 +15,16 @@ export type SupervisionRequirement = {
   supervisor: number;  // менторские (если появятся)
 };
 
+export const SUPERVISION_DISTRIBUTION_STEP = 0.1;
+
+export function roundDownSupervisionHours(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return (
+    Math.floor((value + Number.EPSILON * 10) / SUPERVISION_DISTRIBUTION_STEP) *
+    SUPERVISION_DISTRIBUTION_STEP
+  );
+}
+
 export const supervisionRequirementsByGroup: Record<
   Exclude<SupervisionGroupName, 'Соискатель'>,
   SupervisionRequirement
@@ -61,7 +71,7 @@ export function calcAutoSupervisionHours(params: { groupName: string; practiceHo
   const ratio = getPracticeToSupervisionRatio(groupName);
   if (!ratio) return 0;
 
-  return Math.floor(practiceHours / ratio);
+  return roundDownSupervisionHours(practiceHours / ratio);
 }
 
 export function calcAutoRenewalSupervisionHours(params: { groupName: string; practiceHours: number }): number {
@@ -71,5 +81,5 @@ export function calcAutoRenewalSupervisionHours(params: { groupName: string; pra
   const ratio = getRenewalPracticeToSupervisionRatio(groupName);
   if (!ratio) return 0;
 
-  return Math.floor(practiceHours / ratio);
+  return roundDownSupervisionHours(practiceHours / ratio);
 }

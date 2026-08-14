@@ -5,11 +5,11 @@ import {
   PracticeLevel,
   RecordStatus,
   CycleStatus,
-  SupervisionAdminCorrectionKind,
 } from '@prisma/client';
 import { supervisionRequirementsByGroup, calcAutoSupervisionHours } from '../../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../../utils/getCycleSupervisionTotals';
 import { getSupervisorBonusPracticeHours } from '../../../utils/getSupervisorBonusPracticeHours';
+import { getCycleMentorshipTotal } from '../../../utils/getCycleMentorshipTotal';
 
 type Level = 'PRACTICE' | 'SUPERVISION' | 'SUPERVISOR';
 const STATUSES: RecordStatus[] = ['CONFIRMED', 'UNCONFIRMED'];
@@ -56,7 +56,7 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
   if (!activeCycle) return reply.code(400).send({ error: 'NO_ACTIVE_CYCLE' });
 
   // ===== matrix aggregation (ТОЛЬКО ACTIVE cycle) =====
-  const [grouped, confirmedHours, distributionRecords, mentorCorrection] = await Promise.all([
+  const [grouped, confirmedHours, distributionRecords, legacyDistribution, mentorshipTotals] = await Promise.all([
     prisma.supervisionHour.groupBy({
       by: ['type', 'status'],
       where: {
@@ -88,16 +88,18 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
         draftNonObservingGroup: true,
       },
     }),
-    prisma.supervisionAdminCorrection.findUnique({
-      where: {
-        cycleId_kind: {
-          cycleId: activeCycle.id,
-          kind: SupervisionAdminCorrectionKind.MENTORSHIP,
-        },
+    prisma.supervisionDistribution.findUnique({
+      where: { cycleId: activeCycle.id },
+      select: {
+        directIndividual: true,
+        directGroup: true,
+        nonObservingIndividual: true,
+        nonObservingGroup: true,
       },
-      select: { mentor: true, updatedAt: true },
     }),
+    getCycleMentorshipTotal(activeCycle.id),
   ]);
+  const mentorCorrection = mentorshipTotals.adminCorrection;
 
   const matrix = matrixEmpty();
   for (const g of grouped) {
@@ -113,12 +115,12 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
   const usableRaw: SupervisionSummary = {
     practice: matrix.PRACTICE.CONFIRMED,
     supervision: 0,
-    supervisor: matrix.SUPERVISOR.CONFIRMED,
+    supervisor: mentorshipTotals.confirmed,
   };
   const pendingRaw: SupervisionSummary = {
     practice: matrix.PRACTICE.UNCONFIRMED,
     supervision: 0,
-    supervisor: matrix.SUPERVISOR.UNCONFIRMED,
+    supervisor: mentorshipTotals.pending,
   };
 
   const isBasicSupervisor = current === 'Супервизор';
@@ -140,6 +142,21 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
       },
     ),
   );
+  const hasRecordDistribution =
+    recordDistribution.directIndividual > 0 ||
+    recordDistribution.directGroup > 0 ||
+    recordDistribution.nonObservingIndividual > 0 ||
+    recordDistribution.nonObservingGroup > 0;
+  const preCorrectionDistribution = hasRecordDistribution
+    ? recordDistribution
+    : roundDistribution(
+        legacyDistribution ?? {
+          directIndividual: 0,
+          directGroup: 0,
+          nonObservingIndividual: 0,
+          nonObservingGroup: 0,
+        },
+      );
 
   // если по каким-то причинам required нет — отдаём только статистику
   if (!current || !targetRu || !required) {
@@ -154,7 +171,7 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
         pending: pendingRaw,
         mentor: isBasicSupervisor ? mentor(usableRaw, pendingRaw) : null,
         practiceBreakdown: practiceBreakdown(confirmedAgg, 0),
-        supervisionBreakdown: supervisionBreakdown(0, recordDistribution),
+        supervisionBreakdown: supervisionBreakdown(0, preCorrectionDistribution),
       },
     });
   }
@@ -172,12 +189,12 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
   const usable: SupervisionSummary = {
     practice: cycleTotals.practiceConfirmed,
     supervision: cycleTotals.supervisionConfirmed,
-    supervisor: mentorCorrection?.mentor ?? usableRaw.supervisor,
+    supervisor: mentorshipTotals.confirmed,
   };
   const pending: SupervisionSummary = {
     practice: cycleTotals.practicePending,
     supervision: cycleTotals.supervisionPending,
-    supervisor: pendingRaw.supervisor,
+    supervisor: mentorshipTotals.pending,
   };
 
   const percent = {
@@ -201,7 +218,7 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
   matrix.SUPERVISION.CONFIRMED = usable.supervision;
   matrix.SUPERVISION.UNCONFIRMED = pending.supervision;
   if (mentorCorrection) {
-    matrix.SUPERVISOR.CONFIRMED = mentorCorrection.mentor;
+    matrix.SUPERVISOR.CONFIRMED = mentorshipTotals.confirmed;
   }
 
   return reply.send({
@@ -228,7 +245,7 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
         usable.supervision,
         practiceCorrection
           ? cycleTotals.practiceDistributionConfirmed
-          : recordDistribution,
+          : preCorrectionDistribution,
       ),
     },
   });

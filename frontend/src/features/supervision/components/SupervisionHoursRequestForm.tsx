@@ -16,6 +16,7 @@ import {
   calculateIncrementalSupervision,
   calculateRemainingHours,
   formatHours as formatNumber,
+  getDistributionAvailability,
   getDistributionRuleError,
   getCumulativePracticeRuleError,
   normalizeHoursInput,
@@ -172,11 +173,24 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   useEffect(() => {
     if (isRequirementCovered) setIsOpen(false);
   }, [isRequirementCovered]);
-  const supervisionBase = (summary?.usable.supervision ?? 0) + (summary?.pending.supervision ?? 0);
-  const supervisionLimit = calculateRemainingHours(summary?.required?.supervision, supervisionBase);
+  const distributedSupervisionBase = round2(
+    (summary?.supervisionBreakdown.directIndividual ?? 0) +
+      (summary?.supervisionBreakdown.directGroup ?? 0) +
+      (summary?.supervisionBreakdown.nonObservingIndividual ?? 0) +
+      (summary?.supervisionBreakdown.nonObservingGroup ?? 0) +
+      (summary?.pendingDistribution?.directIndividual ?? 0) +
+      (summary?.pendingDistribution?.directGroup ?? 0) +
+      (summary?.pendingDistribution?.nonObservingIndividual ?? 0) +
+      (summary?.pendingDistribution?.nonObservingGroup ?? 0),
+  );
+  const supervisionLimit = calculateRemainingHours(
+    summary?.required?.supervision,
+    distributedSupervisionBase,
+  );
   const expectedSupervision = calculateIncrementalSupervision({
     basePractice: practiceBase,
     addedPractice: practiceTotal,
+    baseDistributedSupervision: distributedSupervisionBase,
     requiredPractice: summary?.required?.practice,
     requiredSupervision: summary?.required?.supervision,
     remainingSupervision: supervisionLimit,
@@ -188,6 +202,10 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     nonObservingIndividual: parseHours(nonObservingIndividual),
     nonObservingGroup: parseHours(nonObservingGroup),
   };
+  const distributionAvailability = getDistributionAvailability({
+    implementing: implementingValue,
+    programming: programmingValue,
+  });
 
   const { directTotal, nonObservingTotal, distributionTotal, groupTotal, distributionRemaining } =
     summarizeSupervisionDistribution(distribution, expectedSupervision);
@@ -208,6 +226,12 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     distributionTotal,
     groupTotal,
     distributionRemaining,
+    baseSupervision: distributedSupervisionBase,
+    baseGroup:
+      (summary?.supervisionBreakdown.directGroup ?? 0) +
+      (summary?.supervisionBreakdown.nonObservingGroup ?? 0) +
+      (summary?.pendingDistribution?.directGroup ?? 0) +
+      (summary?.pendingDistribution?.nonObservingGroup ?? 0),
   });
   const isDistributionValid = !distributionRuleError;
   const canSubmit =
@@ -406,7 +430,14 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
               </button>
 
               {isGuideHidden ? (
-                <div className="hidden sm:block" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => setIsGuideOpen(true)}
+                  className="justify-self-center rounded-[10px] border border-[#A7B1C7] px-4 py-2 text-[13px] font-extrabold text-[#1F305E] transition-colors hover:bg-[#E7F1F4] sm:justify-self-end"
+                  aria-label="Открыть подсказку по заполнению часов"
+                >
+                  Как заполнить?
+                </button>
               ) : (
                 <button
                   type="button"
@@ -466,7 +497,13 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                   <Field label="Полевая практика">
                     <NumberInput
                       value={implementing}
-                      onChange={setImplementing}
+                      onChange={(value) => {
+                        setImplementing(value);
+                        if (parseHours(value) <= 0) {
+                          setDirectIndividual('0');
+                          setDirectGroup('0');
+                        }
+                      }}
                       disabled={practiceLocked}
                       max={practiceLimit}
                     />
@@ -474,7 +511,13 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                   <Field label="Работа с информацией">
                     <NumberInput
                       value={programming}
-                      onChange={setProgramming}
+                      onChange={(value) => {
+                        setProgramming(value);
+                        if (parseHours(value) <= 0) {
+                          setNonObservingIndividual('0');
+                          setNonObservingGroup('0');
+                        }
+                      }}
                       disabled={practiceLocked}
                       max={practiceLimit}
                     />
@@ -531,7 +574,11 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-4 sm:border-r sm:border-[#DCE3EF] sm:pr-4">
+                  <div
+                    className={`space-y-4 sm:border-r sm:border-[#DCE3EF] sm:pr-4 ${
+                      distributionAvailability.directEnabled ? '' : 'opacity-50'
+                    }`}
+                  >
                     <Field label="С наблюдением">
                       <input className="input-design h-[32px]" value={directTotal} disabled />
                     </Field>
@@ -540,7 +587,9 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                       <NumberInput
                         value={directIndividual}
                         onChange={setDirectIndividual}
+                        disabled={!distributionAvailability.directEnabled}
                         max={expectedSupervision}
+                        maxDecimals={1}
                       />
                     </Field>
 
@@ -548,12 +597,18 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                       <NumberInput
                         value={directGroup}
                         onChange={setDirectGroup}
+                        disabled={!distributionAvailability.directEnabled}
                         max={expectedSupervision}
+                        maxDecimals={1}
                       />
                     </Field>
                   </div>
 
-                  <div className="space-y-4">
+                  <div
+                    className={`space-y-4 ${
+                      distributionAvailability.nonObservingEnabled ? '' : 'opacity-50'
+                    }`}
+                  >
                     <Field label="Без наблюдения">
                       <input className="input-design h-[32px]" value={nonObservingTotal} disabled />
                     </Field>
@@ -562,7 +617,9 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                       <NumberInput
                         value={nonObservingIndividual}
                         onChange={setNonObservingIndividual}
+                        disabled={!distributionAvailability.nonObservingEnabled}
                         max={expectedSupervision}
+                        maxDecimals={1}
                       />
                     </Field>
 
@@ -570,7 +627,9 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                       <NumberInput
                         value={nonObservingGroup}
                         onChange={setNonObservingGroup}
+                        disabled={!distributionAvailability.nonObservingEnabled}
                         max={expectedSupervision}
+                        maxDecimals={1}
                       />
                     </Field>
                   </div>
@@ -725,11 +784,13 @@ function NumberInput({
   onChange,
   disabled,
   max,
+  maxDecimals = 2,
 }: {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   max?: number | null;
+  maxDecimals?: number;
 }) {
   const [restoreValue, setRestoreValue] = useState<string | null>(null);
 
@@ -745,11 +806,11 @@ function NumberInput({
       }}
       onBlur={() => {
         const rawValue = getDecimalInputBlurValue(value, restoreValue);
-        onChange(normalizeHoursInput(rawValue, max));
+        onChange(normalizeHoursInput(rawValue, max, maxDecimals));
         setRestoreValue(null);
       }}
       onChange={(event) => {
-        const nextValue = sanitizeHoursInput(event.target.value);
+        const nextValue = sanitizeHoursInput(event.target.value, maxDecimals);
         if (nextValue !== null) {
           const parsed = parseHours(nextValue);
           onChange(max != null && parsed > max ? formatNumber(Math.max(0, max)) : nextValue);

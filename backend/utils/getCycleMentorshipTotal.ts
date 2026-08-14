@@ -1,5 +1,6 @@
 import { PracticeLevel, RecordStatus, SupervisionAdminCorrectionKind } from '@prisma/client';
 import { prisma } from '../lib/prisma';
+import { resolveCumulativeMentorshipTotal } from '../domain/supervision/mentorshipBalance';
 
 function round2(value: number) {
   return Math.round(value * 100) / 100;
@@ -7,13 +8,13 @@ function round2(value: number) {
 
 export async function getCycleMentorshipTotal(cycleId: string) {
   const [confirmed, pending, adminCorrection] = await Promise.all([
-    prisma.supervisionHour.aggregate({
+    prisma.supervisionHour.findMany({
       where: {
         status: RecordStatus.CONFIRMED,
         type: PracticeLevel.SUPERVISOR,
         record: { cycleId },
       },
-      _sum: { value: true },
+      select: { value: true, reviewedAt: true },
     }),
     prisma.supervisionHour.aggregate({
       where: {
@@ -44,9 +45,12 @@ export async function getCycleMentorshipTotal(cycleId: string) {
     }),
   ]);
 
-  const rawConfirmed = round2(confirmed._sum.value ?? 0);
+  const rawConfirmed = round2(confirmed.reduce((sum, hour) => sum + hour.value, 0));
   const pendingTotal = round2(pending._sum.value ?? 0);
-  const confirmedTotal = adminCorrection ? round2(adminCorrection.mentor) : rawConfirmed;
+  const confirmedTotal = resolveCumulativeMentorshipTotal({
+    confirmed,
+    correction: adminCorrection,
+  });
 
   return {
     confirmed: confirmedTotal,

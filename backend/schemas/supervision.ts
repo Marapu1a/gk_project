@@ -16,10 +16,10 @@ const hourTypeEnum = z.enum([
 ]);
 
 const draftDistributionSchema = z.object({
-  directIndividual: z.coerce.number().finite().min(0),
-  directGroup: z.coerce.number().finite().min(0),
-  nonObservingIndividual: z.coerce.number().finite().min(0),
-  nonObservingGroup: z.coerce.number().finite().min(0),
+  directIndividual: z.coerce.number().finite().min(0).multipleOf(0.1),
+  directGroup: z.coerce.number().finite().min(0).multipleOf(0.1),
+  nonObservingIndividual: z.coerce.number().finite().min(0).multipleOf(0.1),
+  nonObservingGroup: z.coerce.number().finite().min(0).multipleOf(0.1),
 });
 
 export const createSupervisionSchema = z.object({

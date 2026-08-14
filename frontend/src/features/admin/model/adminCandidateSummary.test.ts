@@ -218,7 +218,7 @@ describe('buildAdminCandidateSummary', () => {
     expect(result.requiresAttention).toBe(false);
   });
 
-  it('counts only unconfirmed hours from the active cycle', () => {
+  it('counts pending requests rather than their hour rows in the active cycle', () => {
     const result = buildAdminCandidateSummary(
       makeUser({
         activeCycle: makeActiveCycle(),
@@ -241,8 +241,26 @@ describe('buildAdminCandidateSummary', () => {
                 reviewer: null,
               },
               {
+                id: 'hour-supervision-second-type',
+                type: 'PROGRAMMING',
+                value: 1,
+                status: 'UNCONFIRMED',
+                reviewedAt: null,
+                rejectedReason: null,
+                reviewer: null,
+              },
+              {
                 id: 'hour-mentorship',
                 type: 'SUPERVISOR',
+                value: 1,
+                status: 'UNCONFIRMED',
+                reviewedAt: null,
+                rejectedReason: null,
+                reviewer: null,
+              },
+              {
+                id: 'hour-legacy-mentorship',
+                type: 'SUPERVISION',
                 value: 1,
                 status: 'UNCONFIRMED',
                 reviewedAt: null,

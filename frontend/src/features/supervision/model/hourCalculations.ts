@@ -12,6 +12,14 @@ export type SupervisionDistribution = {
   nonObservingGroup: number;
 };
 
+export const SUPERVISION_DISTRIBUTION_STEP = 0.1;
+
+export function roundDownSupervisionHours(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.floor((value + Number.EPSILON * 10) / SUPERVISION_DISTRIBUTION_STEP) *
+    SUPERVISION_DISTRIBUTION_STEP;
+}
+
 export function roundHours(value: number) {
   return Math.round(value * 100) / 100;
 }
@@ -27,12 +35,12 @@ export function parseHours(value: string) {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
-export function sanitizeHoursInput(rawValue: string) {
-  return sanitizeDecimalInput(rawValue, { maxDecimals: 2 });
+export function sanitizeHoursInput(rawValue: string, maxDecimals = 2) {
+  return sanitizeDecimalInput(rawValue, { maxDecimals });
 }
 
-export function normalizeHoursInput(value: string, max?: number | null) {
-  return normalizeDecimalInput(value, { max, maxDecimals: 2 });
+export function normalizeHoursInput(value: string, max?: number | null, maxDecimals = 2) {
+  return normalizeDecimalInput(value, { max, maxDecimals });
 }
 
 export function calculateRemainingHours(
@@ -55,15 +63,13 @@ export function calculateExpectedSupervision(params: {
   }
 
   const ratio = requiredPractice / requiredSupervision;
-  return Math.min(
-    Math.max(0, Math.floor(practice / ratio)),
-    requiredSupervision,
-  );
+  return Math.min(roundDownSupervisionHours(practice / ratio), requiredSupervision);
 }
 
 export function calculateIncrementalSupervision(params: {
   basePractice: number;
   addedPractice: number;
+  baseDistributedSupervision: number;
   requiredPractice?: number | null;
   requiredSupervision?: number | null;
   remainingSupervision?: number | null;
@@ -71,6 +77,7 @@ export function calculateIncrementalSupervision(params: {
   const {
     basePractice,
     addedPractice,
+    baseDistributedSupervision,
     requiredPractice,
     requiredSupervision,
     remainingSupervision,
@@ -81,9 +88,12 @@ export function calculateIncrementalSupervision(params: {
   }
 
   const ratio = requiredPractice / requiredSupervision;
-  const calculated = Math.max(
-    0,
-    Math.floor((basePractice + addedPractice) / ratio) - Math.floor(basePractice / ratio),
+  const totalEntitlement = Math.min(
+    roundDownSupervisionHours((basePractice + addedPractice) / ratio),
+    requiredSupervision,
+  );
+  const calculated = roundHours(
+    Math.max(0, totalEntitlement - Math.max(0, baseDistributedSupervision)),
   );
 
   return remainingSupervision == null
@@ -185,13 +195,37 @@ export function summarizeSupervisionDistribution(
   };
 }
 
+export function getDistributionAvailability(params: {
+  implementing: number;
+  programming: number;
+}) {
+  return {
+    directEnabled: params.implementing > 0,
+    nonObservingEnabled: params.programming > 0,
+  };
+}
+
+export function getMaximumGroupHours(expectedSupervision: number) {
+  if (expectedSupervision <= 0) return 0;
+  return roundHours(expectedSupervision * 0.5);
+}
+
 export function getDistributionRuleError(params: {
   expectedSupervision: number;
   distributionTotal: number;
   groupTotal: number;
   distributionRemaining: number;
+  baseSupervision?: number;
+  baseGroup?: number;
 }) {
-  const { expectedSupervision, distributionTotal, groupTotal, distributionRemaining } = params;
+  const {
+    expectedSupervision,
+    distributionTotal,
+    groupTotal,
+    distributionRemaining,
+    baseSupervision = 0,
+    baseGroup = 0,
+  } = params;
 
   if (expectedSupervision <= 0) {
     return distributionTotal > 0
@@ -203,7 +237,10 @@ export function getDistributionRuleError(params: {
     return 'Сумма распределенных часов должна совпадать с расчетной супервизией.';
   }
 
-  if (groupTotal > expectedSupervision * 0.5) {
+  if (
+    roundHours(baseGroup + groupTotal) >
+    getMaximumGroupHours(roundHours(baseSupervision + expectedSupervision))
+  ) {
     return 'Часов в группе может быть не более 50% от всех часов супервизии.';
   }
 

@@ -116,6 +116,31 @@ test('adds supervision distribution confirmed after an admin correction', () => 
   );
 });
 
+test('preserves every distribution bucket when later confirmations are added', () => {
+  assert.deepEqual(
+    resolveCumulativePracticeDistribution({
+      correction: {
+        directIndividual: 2,
+        directGroup: 1,
+        nonObservingIndividual: 3,
+        nonObservingGroup: 0,
+      },
+      added: {
+        directIndividual: 1,
+        directGroup: 0,
+        nonObservingIndividual: 0,
+        nonObservingGroup: 1,
+      },
+    }),
+    {
+      directIndividual: 3,
+      directGroup: 1,
+      nonObservingIndividual: 3,
+      nonObservingGroup: 1,
+    },
+  );
+});
+
 test('rounds floating point artifacts before deciding that the cycle is complete', () => {
   assert.equal(
     isPracticeBalanceComplete({

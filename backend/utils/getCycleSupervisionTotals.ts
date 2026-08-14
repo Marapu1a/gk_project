@@ -25,7 +25,14 @@ export async function getCycleSupervisionTotals(
     PracticeLevel.PROGRAMMING,
   ];
 
-  const [cycle, confirmed, pending, adminCorrection, confirmedDistributionRecords] = await Promise.all([
+  const [
+    cycle,
+    confirmed,
+    pending,
+    adminCorrection,
+    confirmedDistributionRecords,
+    pendingDistributionRecords,
+  ] = await Promise.all([
     prisma.certificationCycle.findUnique({
       where: { id: cycleId },
       select: { type: true },
@@ -91,6 +98,24 @@ export async function getCycleSupervisionTotals(
         },
       },
     }),
+    prisma.supervisionRecord.findMany({
+      where: {
+        cycleId,
+        hours: {
+          some: {
+            status: 'UNCONFIRMED',
+            type: { in: practiceTypes },
+          },
+          every: { status: 'UNCONFIRMED' },
+        },
+      },
+      select: {
+        draftDirectIndividual: true,
+        draftDirectGroup: true,
+        draftNonObservingIndividual: true,
+        draftNonObservingGroup: true,
+      },
+    }),
   ]);
 
   const confirmedBreakdown = aggregatePracticeBreakdown(confirmed);
@@ -136,6 +161,7 @@ export async function getCycleSupervisionTotals(
     correction: adminCorrection,
     added: addedDistribution,
   });
+  const practiceDistributionPending = sumDistribution(pendingDistributionRecords);
   const correctionSupervision = adminCorrection
     ? round2(
         practiceDistributionConfirmed.directIndividual +
@@ -191,6 +217,7 @@ export async function getCycleSupervisionTotals(
     supervisionPending,
     supervisionTotalWithPending,
     practiceDistributionConfirmed,
+    practiceDistributionPending,
     adminCorrection,
   };
 }

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PracticeLevel } from '@prisma/client';
-import { aggregatePracticeBreakdown } from './practiceBreakdown';
+import {
+  aggregatePracticeBreakdown,
+  separateLegacyPracticeFromBalance,
+} from './practiceBreakdown';
 
 test('legacy hours participate in the cumulative balance as a neutral 50/50 split', () => {
   assert.deepEqual(
@@ -22,5 +25,16 @@ test('preserves the existing rule that old level rows are not practice hours', (
       { type: PracticeLevel.PRACTICE, _sum: { value: 100 } },
     ]),
     { implementing: 50, programming: 50, total: 100 },
+  );
+});
+
+test('keeps legacy hours separate when preparing the public summary breakdown', () => {
+  assert.deepEqual(
+    separateLegacyPracticeFromBalance({
+      implementing: 92,
+      programming: 98,
+      legacy: 160,
+    }),
+    { implementing: 12, programming: 18 },
   );
 });

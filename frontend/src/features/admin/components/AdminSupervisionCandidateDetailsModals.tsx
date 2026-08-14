@@ -279,7 +279,9 @@ export function AdminPendingHoursDetailsModal({
   onRemove: () => void;
 }) {
   const pendingRequests = row.pendingRequests ?? [];
-  const requests = pendingRequests.length > 0 ? pendingRequests : row.requests ?? [];
+  // The full request list is the audit trail. Do not hide already processed
+  // requests merely because the same reviewer relation has a new pending one.
+  const requests = row.requests ?? [];
   const hasRequests = requests.length > 0;
   const isHistory = pendingRequests.length === 0;
   const requestDateLabel = getSupervisionRequestDateLabel(row.kind);
@@ -325,7 +327,7 @@ export function AdminPendingHoursDetailsModal({
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                   <div className="space-y-4">
-                    <HoursList hours={request.hours} showStatus={isHistory} />
+                    <HoursList hours={request.hours} showStatus />
                     {row.kind === 'supervision' ? (
                       <DistributionBlock distribution={request.distribution} />
                     ) : null}

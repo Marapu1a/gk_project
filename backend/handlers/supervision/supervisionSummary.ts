@@ -6,7 +6,6 @@ import {
   CycleStatus,
   TargetLevel,
   CycleType,
-  SupervisionAdminCorrectionKind,
 } from '@prisma/client';
 import {
   supervisionRequirementsByGroup,
@@ -14,6 +13,8 @@ import {
 } from '../../utils/supervisionRequirements';
 import { getCycleSupervisionTotals } from '../../utils/getCycleSupervisionTotals';
 import { getSupervisorBonusPracticeHours } from '../../utils/getSupervisorBonusPracticeHours';
+import { separateLegacyPracticeFromBalance } from '../../domain/supervision/practiceBreakdown';
+import { getCycleMentorshipTotal } from '../../utils/getCycleMentorshipTotal';
 
 type SummaryTotals = {
   practice: number;
@@ -92,6 +93,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
       mentor: null,
       bonus: null,
       distribution: null,
+      pendingDistribution: emptyDistribution(),
       practiceBreakdown: emptyPracticeBreakdown(),
       pendingPracticeBreakdown: emptyPendingPracticeBreakdown(),
       supervisionBreakdown: emptySupervisionBreakdown(),
@@ -110,6 +112,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
       mentor: null,
       bonus: null,
       distribution: null,
+      pendingDistribution: emptyDistribution(),
       practiceBreakdown: emptyPracticeBreakdown(),
       pendingPracticeBreakdown: emptyPendingPracticeBreakdown(),
       supervisionBreakdown: emptySupervisionBreakdown(),
@@ -138,11 +141,11 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     PracticeLevel.PROGRAMMING,
   ];
 
-  const [confirmed, unconfirmed, rawDistribution, distributionRecords, mentorCorrection] = await Promise.all([
+  const [confirmed, unconfirmed, rawDistribution, distributionRecords] = await Promise.all([
     prisma.supervisionHour.findMany({
       where: {
         status: 'CONFIRMED',
-        type: { in: [...practiceTypes, PracticeLevel.SUPERVISOR] },
+        type: { in: practiceTypes },
         record: { cycleId: activeCycle.id },
       },
       select: { type: true, value: true },
@@ -150,7 +153,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     prisma.supervisionHour.findMany({
       where: {
         status: 'UNCONFIRMED',
-        type: { in: [...practiceTypes, PracticeLevel.SUPERVISOR] },
+        type: { in: practiceTypes },
         record: { cycleId: activeCycle.id },
       },
       select: { type: true, value: true },
@@ -179,15 +182,6 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
         draftNonObservingGroup: true,
       },
     }),
-    prisma.supervisionAdminCorrection.findUnique({
-      where: {
-        cycleId_kind: {
-          cycleId: activeCycle.id,
-          kind: SupervisionAdminCorrectionKind.MENTORSHIP,
-        },
-      },
-      select: { mentor: true, updatedAt: true },
-    }),
   ]);
 
   const usableAgg = aggregate(confirmed);
@@ -196,30 +190,35 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
   const { value: bonusPractice, sourceCycleId: bonusSourceCycleId } =
     await getSupervisorBonusPracticeHours(user.userId, activeCycle);
 
-  const cycleTotals = await getCycleSupervisionTotals(
-    activeCycle.id,
-    activeCycle.targetLevel,
-    bonusPractice
-  );
+  const [cycleTotals, mentorshipTotals] = await Promise.all([
+    getCycleSupervisionTotals(activeCycle.id, activeCycle.targetLevel, bonusPractice),
+    getCycleMentorshipTotal(activeCycle.id),
+  ]);
   const practiceCorrection = cycleTotals.adminCorrection;
 
   const usable: SummaryTotals = {
     practice: cycleTotals.practiceConfirmed,
     supervision: cycleTotals.supervisionConfirmed,
-    supervisor: mentorCorrection?.mentor ?? usableAgg.supervisor,
+    supervisor: mentorshipTotals.confirmed,
   };
 
   const pending: SummaryTotals = {
     practice: cycleTotals.practicePending,
     supervision: cycleTotals.supervisionPending,
-    supervisor: pendingAgg.supervisor,
+    supervisor: mentorshipTotals.pending,
   };
 
-  const practiceBreakdown: PracticeBreakdown = {
-    total: cycleTotals.practiceConfirmed,
-    legacy: practiceCorrection ? 0 : usableAgg.legacy,
+  const legacyPractice = practiceCorrection ? 0 : usableAgg.legacy;
+  const modernPractice = separateLegacyPracticeFromBalance({
     implementing: cycleTotals.practiceImplementingConfirmedRaw,
     programming: cycleTotals.practiceProgrammingConfirmedRaw,
+    legacy: legacyPractice,
+  });
+  const practiceBreakdown: PracticeBreakdown = {
+    total: cycleTotals.practiceConfirmed,
+    legacy: legacyPractice,
+    implementing: modernPractice.implementing,
+    programming: modernPractice.programming,
     bonus: bonusPractice,
   };
 
@@ -264,6 +263,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
           nonObservingGroup: rawDistribution.nonObservingGroup,
         }
       : null;
+  const pendingDistribution = roundDistribution(cycleTotals.practiceDistributionPending);
 
   const directIndividual = distribution?.directIndividual ?? 0;
   const directGroup = distribution?.directGroup ?? 0;
@@ -297,6 +297,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
       mentor,
       bonus: bonusPractice > 0 ? { practice: bonusPractice, fromCycleId: bonusSourceCycleId } : null,
       distribution,
+      pendingDistribution,
       practiceBreakdown,
       pendingPracticeBreakdown,
       supervisionBreakdown,
@@ -330,6 +331,7 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     mentor,
     bonus: bonusPractice > 0 ? { practice: bonusPractice, fromCycleId: bonusSourceCycleId } : null,
     distribution,
+    pendingDistribution,
     practiceBreakdown,
     pendingPracticeBreakdown,
     supervisionBreakdown,
@@ -340,6 +342,15 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
 
 function emptyTotals(): SummaryTotals {
   return { practice: 0, supervision: 0, supervisor: 0 };
+}
+
+function emptyDistribution(): Distribution {
+  return {
+    directIndividual: 0,
+    directGroup: 0,
+    nonObservingIndividual: 0,
+    nonObservingGroup: 0,
+  };
 }
 
 function emptyPracticeBreakdown(): PracticeBreakdown {

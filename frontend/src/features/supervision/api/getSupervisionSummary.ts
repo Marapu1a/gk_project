@@ -92,6 +92,9 @@ export interface SupervisionSummaryResponse {
   /** Ручное распределение авто-супервизии по подтипам */
   distribution: SupervisionDistribution | null;
 
+  /** Распределение супервизии в заявках, ожидающих проверки */
+  pendingDistribution?: SupervisionDistribution;
+
   /** Сводка по общей и распределенной супервизии */
   supervisionBreakdown: SupervisionBreakdown;
 }
