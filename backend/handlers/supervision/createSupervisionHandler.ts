@@ -35,7 +35,7 @@ import {
 } from '../../domain/supervision/distributionRules';
 
 const PRACTICE_REVIEWER_REQUIRED_MESSAGE =
-  'Заявку на подтверждение часов практики можно отправить только супервизорам, которые есть в системе. Напишите в поддержку, если вашего супервизора нет в системе или что-то пошло не так.';
+  'Заявку на подтверждение часов практики можно отправить только супервизорам, которые есть в реестре. Напишите в поддержку, если вашего супервизора нет в системе или что-то пошло не так.';
 const MENTOR_REVIEWER_REQUIRED_MESSAGE =
   'Заявку на подтверждение часов менторства можно отправить только наставникам, которые есть в системе. Напишите в поддержку, если вашего наставника нет в системе или что-то пошло не так.';
 const SUPERVISION_DATE_REQUIRED_MESSAGE = 'Укажите дату проведения супервизии.';
@@ -85,7 +85,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
   const now = new Date();
 
   if (periodStartedAt && periodEndedAt && periodEndedAt < periodStartedAt) {
-    return reply.code(400).send({ error: 'Дата окончания не может быть раньше даты начала' });
+    return reply.code(400).send({ error: 'Дата окончания практики не может быть раньше даты начала.' });
   }
 
   if (periodStartedAt && periodStartedAt > now) {
@@ -167,7 +167,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
 
   if (isAuthorExperiencedSupervisor) {
     return reply.code(400).send({
-      error: 'Опытные супервизоры не набирают часы менторства.',
+      error: 'Опытные супервизоры не набирают часы практики и менторства.',
     });
   }
 
@@ -403,7 +403,7 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
         const remaining = Math.max(0, (requirements?.practice ?? 0) - current);
         if (incomingTotal > remaining) {
           throw new SupervisionHoursLimitError(
-            `Можно добавить не более ${remaining} часов практики для текущего цикла.`,
+            `Можно добавить не более ${remaining} часов практики для текущей сертификации.`,
             remaining,
           );
         }
@@ -477,7 +477,8 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
           });
           if (distributionError || Math.abs(distributionTotal - expectedIncomingSupervision) >= 0.01) {
             throw new SupervisionHoursLimitError(
-              distributionError ?? 'Сумма распределенных часов должна совпадать с расчетной супервизией.',
+              distributionError ??
+                'Сумма часов, распределённых по типам супервизии, должна совпадать с рассчитанным количеством часов супервизии.',
               remaining,
             );
           }

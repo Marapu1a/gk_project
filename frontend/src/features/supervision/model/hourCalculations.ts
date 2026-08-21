@@ -123,10 +123,10 @@ export function getCumulativePracticeRuleError(params: {
   const nextProgramming = roundHours(currentProgramming + addedProgramming);
 
   if (addedImplementing > 0 && nextImplementing > maximumEach) {
-    return `Полевой практики в текущем цикле может быть не более ${maximumEach} часов: оставьте не менее ${minimumEach} часов для работы с информацией.`;
+    return `Полевой практики может быть не более ${maximumEach} часов: оставьте не менее ${minimumEach} часов для работы с информацией.`;
   }
   if (addedProgramming > 0 && nextProgramming > maximumEach) {
-    return `Работы с информацией в текущем цикле может быть не более ${maximumEach} часов: оставьте не менее ${minimumEach} часов для полевой практики.`;
+    return `Работы с информацией может быть не более ${maximumEach} часов: оставьте не менее ${minimumEach} часов для полевой практики.`;
   }
 
   return null;
@@ -234,14 +234,14 @@ export function getDistributionRuleError(params: {
   }
 
   if (Math.abs(distributionRemaining) >= 0.01) {
-    return 'Сумма распределенных часов должна совпадать с расчетной супервизией.';
+    return 'Сумма часов, распределённых по типам супервизии, должна совпадать с рассчитанным количеством часов супервизии.';
   }
 
   if (
     roundHours(baseGroup + groupTotal) >
     getMaximumGroupHours(roundHours(baseSupervision + expectedSupervision))
   ) {
-    return 'Часов в группе может быть не более 50% от всех часов супервизии.';
+    return 'Часов групповой супервизии может быть не более 50% от всех часов супервизии.';
   }
 
   return null;

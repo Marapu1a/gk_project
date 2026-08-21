@@ -149,7 +149,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   const isRequirementCovered =
     requiredPractice > 0 && confirmedPractice + pendingPractice >= requiredPractice;
   const collapsedLabel = isRequirementConfirmed
-    ? 'Необходимое для сертификации количество часов набрано'
+    ? 'Необходимое для сертификации количество часов уже набрано'
     : isRequirementCovered
       ? 'Необходимое количество часов уже отправлено на проверку'
       : 'Добавить часы';
@@ -219,7 +219,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
   });
   const practiceLimitError =
     practiceLimit != null && practiceTotal > practiceLimit
-      ? `Можно добавить не более ${formatNumber(practiceLimit)} часов практики для текущего цикла.`
+      ? `Можно добавить не более ${formatNumber(practiceLimit)} часов практики для текущей сертификации.`
       : null;
   const distributionRuleError = getDistributionRuleError({
     expectedSupervision,
@@ -531,9 +531,9 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
 
                 {requiredPractice > 0 ? (
                   <p className="mt-2 text-[13px] text-[#66738F]">
-                    В цикле уже учтено: полевая практика — {formatNumber(currentImplementing)},
-                    работа с информацией — {formatNumber(currentProgramming)}. К завершению цикла
-                    каждого типа должно быть не менее {formatNumber(requiredPractice * 0.4)} часов.
+                    В текущей сертификации уже учтено: полевая практика —{' '}
+                    {formatNumber(currentImplementing)}, работа с информацией —{' '}
+                    {formatNumber(currentProgramming)}.
                   </p>
                 ) : null}
 
@@ -602,6 +602,12 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                         maxDecimals={1}
                       />
                     </Field>
+
+                    {practiceLocked && !distributionAvailability.directEnabled ? (
+                      <p className="text-[12px] leading-[1.35] text-[#66738F]">
+                        Чтобы указать часы супервизии с наблюдением, добавьте часы полевой практики.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div
@@ -632,8 +638,23 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                         maxDecimals={1}
                       />
                     </Field>
+
+                    {practiceLocked && !distributionAvailability.nonObservingEnabled ? (
+                      <p className="text-[12px] leading-[1.35] text-[#66738F]">
+                        Чтобы указать часы супервизии без наблюдения, добавьте часы работы с
+                        информацией.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
+
+                {practiceLocked && expectedSupervision === 0 ? (
+                  <p className="mt-3 text-[13px] leading-[1.4] text-[#66738F]">
+                    Часов практики недостаточно для расчёта 0,1 часа супервизии. При отправке такой
+                    заявки введённые вами часы практики сохранятся и будут учтены при следующем
+                    добавлении часов.
+                  </p>
+                ) : null}
 
                 {distributionRuleError ? (
                   <div className="mt-3 rounded-[10px] bg-white px-4 py-3 text-[13px] text-[#1F305E] shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
@@ -689,7 +710,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                   !isUsersLoading &&
                   matchedUsers.length === 0 ? (
                     <div className="absolute z-20 mt-1 w-full rounded-[10px] bg-white px-3 py-2 text-[13px] text-[#6B7894] shadow-[0_2px_12px_rgba(31,48,94,0.16)]">
-                      Супервизор не найден в системе.
+                      Супервизор не найден в реестре.
                     </div>
                   ) : null}
                 </Field>

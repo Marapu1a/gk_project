@@ -83,10 +83,10 @@ export function getCumulativePracticeBalanceError(params: {
   const nextProgramming = round2(current.programming + added.programming);
 
   if (added.implementing > 0 && nextImplementing > maximumEach) {
-    return `Полевой практики в текущем цикле может быть не более ${maximumEach} часов: оставьте не менее ${minimumEach} часов для работы с информацией.`;
+    return `Полевой практики может быть не более ${maximumEach} часов: оставьте не менее ${minimumEach} часов для работы с информацией.`;
   }
   if (added.programming > 0 && nextProgramming > maximumEach) {
-    return `Работы с информацией в текущем цикле может быть не более ${maximumEach} часов: оставьте не менее ${minimumEach} часов для полевой практики.`;
+    return `Работы с информацией может быть не более ${maximumEach} часов: оставьте не менее ${minimumEach} часов для полевой практики.`;
   }
 
   return null;

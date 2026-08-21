@@ -25,10 +25,10 @@ export function getDistributionPracticeLinkError(params: {
   );
 
   if (params.implementing <= 0 && directTotal > 0) {
-    return 'Часы с наблюдением можно указать только при наличии полевой практики.';
+    return 'Чтобы указать часы супервизии с наблюдением, добавьте часы полевой практики.';
   }
   if (params.programming <= 0 && nonObservingTotal > 0) {
-    return 'Часы без наблюдения можно указать только при наличии работы с информацией.';
+    return 'Чтобы указать часы супервизии без наблюдения, добавьте часы работы с информацией.';
   }
 
   return null;
@@ -68,14 +68,14 @@ export function getSupervisionDistributionError(params: {
   }
 
   if (Math.abs(expectedSupervision - distributionTotal) >= 0.01) {
-    return 'Сумма распределенных часов должна совпадать с расчетной супервизией.';
+    return 'Сумма часов, распределённых по типам супервизии, должна совпадать с рассчитанным количеством часов супервизии.';
   }
 
   if (
     roundDistributionHours(baseGroup + groupTotal) >
     getMaximumGroupHours(roundDistributionHours(baseSupervision + expectedSupervision))
   ) {
-    return 'Часов в группе может быть не более 50% от всех часов супервизии.';
+    return 'Часов групповой супервизии может быть не более 50% от всех часов супервизии.';
   }
 
   return null;

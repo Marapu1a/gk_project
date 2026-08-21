@@ -233,7 +233,7 @@ export function SupervisionContractBlock({ open, onClose }: SupervisionContractB
                 !isUsersLoading &&
                 matchedUsers.length === 0 ? (
                   <div className="absolute z-20 mt-1 w-full rounded-[10px] bg-white px-3 py-2 text-[13px] text-[#6B7894] shadow-[0_2px_12px_rgba(31,48,94,0.16)]">
-                    Супервизор не найден в системе.
+                    Супервизор не найден в реестре.
                   </div>
                 ) : null}
               </label>
