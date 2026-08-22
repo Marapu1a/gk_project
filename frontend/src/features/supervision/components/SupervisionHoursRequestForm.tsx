@@ -19,6 +19,7 @@ import {
   getDistributionAvailability,
   getDistributionRuleError,
   getCumulativePracticeRuleError,
+  getIncrementalSupervisionBreakdown,
   normalizeHoursInput,
   parseHours,
   resolvePracticeBalance,
@@ -195,6 +196,14 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
     requiredSupervision: summary?.required?.supervision,
     remainingSupervision: supervisionLimit,
   });
+  const supervisionEntitlementBase = round2(
+    (summary?.usable.supervision ?? 0) + (summary?.pending.supervision ?? 0),
+  );
+  const incrementalSupervisionBreakdown = getIncrementalSupervisionBreakdown({
+    baseEntitlement: supervisionEntitlementBase,
+    baseDistributedSupervision: distributedSupervisionBase,
+    expectedSupervision,
+  });
 
   const distribution = {
     directIndividual: parseHours(directIndividual),
@@ -234,6 +243,9 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
       (summary?.pendingDistribution?.nonObservingGroup ?? 0),
   });
   const isDistributionValid = !distributionRuleError;
+  const isDistributionComplete =
+    practiceLocked && expectedSupervision > 0 && isDistributionValid;
+  const isDistributionNotRequired = practiceLocked && expectedSupervision === 0;
   const canSubmit =
     practiceLocked &&
     practiceTotal > 0 &&
@@ -565,13 +577,44 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
               </div>
 
               <div className={!practiceLocked ? 'pointer-events-none opacity-50' : undefined}>
-                <div className="mb-3 rounded-[10px] bg-[#E7F1F4] px-4 py-3 text-[14px] text-[#1F305E]">
-                  Распределите <strong>{expectedSupervision}</strong> часов супервизии. Осталось:{' '}
-                  <strong className={distributionRemaining === 0 ? undefined : 'text-error'}>
-                    {distributionRemaining}
-                  </strong>
-                  .
-                </div>
+                {isDistributionComplete ? (
+                  <div className="mb-3 rounded-[10px] bg-[#EAF5EC] px-4 py-3 text-[14px] font-semibold text-[#2F6B3B]">
+                    Часы супервизии распределены верно. Можно выбрать супервизора и отправить
+                    заявку.
+                  </div>
+                ) : isDistributionNotRequired ? (
+                  <div className="mb-3 rounded-[10px] bg-[#E7F1F4] px-4 py-3 text-[13px] leading-[1.45] text-[#1F305E]">
+                    Распределять супервизию пока не нужно. Введённые часы практики сохранятся и
+                    будут учтены при следующем добавлении часов.
+                  </div>
+                ) : (
+                  <div className="mb-3 rounded-[10px] bg-[#E7F1F4] px-4 py-3 text-[14px] text-[#1F305E]">
+                    Всего к распределению: <strong>{expectedSupervision} ч.</strong> Осталось:{' '}
+                    <strong className={distributionRemaining === 0 ? undefined : 'text-error'}>
+                      {distributionRemaining} ч.
+                    </strong>
+                    .
+                    {practiceTotal > 0 ? (
+                      <div className="mt-2 border-t border-[#C9D8DD] pt-2 text-[13px] leading-[1.45]">
+                        <p>
+                          Текущая практика: <strong>{formatNumber(practiceTotal)} ч.</strong>{' '}
+                          Начислено супервизии:{' '}
+                          <strong>
+                            {formatNumber(incrementalSupervisionBreakdown.fromCurrentPractice)} ч.
+                          </strong>
+                        </p>
+                        {incrementalSupervisionBreakdown.fromPreviousPractice > 0 ? (
+                          <p className="mt-1">
+                            Из ранее накопленной практики осталось распределить:{' '}
+                            <strong>
+                              {formatNumber(incrementalSupervisionBreakdown.fromPreviousPractice)} ч.
+                            </strong>
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div
@@ -579,9 +622,15 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                       distributionAvailability.directEnabled ? '' : 'opacity-50'
                     }`}
                   >
-                    <Field label="С наблюдением">
-                      <input className="input-design h-[32px]" value={directTotal} disabled />
-                    </Field>
+                    <div
+                      className="rounded-[10px] border border-[#C9D8DD] bg-[#E7F1F4] px-3 py-2.5 text-[#1F305E]"
+                      aria-live="polite"
+                    >
+                      <span className="block text-[12px] font-semibold">Всего с наблюдением</span>
+                      <strong className="mt-1 block text-[18px] leading-none">
+                        {formatNumber(directTotal)} ч.
+                      </strong>
+                    </div>
 
                     <Field label="Индивидуально">
                       <NumberInput
@@ -615,9 +664,15 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                       distributionAvailability.nonObservingEnabled ? '' : 'opacity-50'
                     }`}
                   >
-                    <Field label="Без наблюдения">
-                      <input className="input-design h-[32px]" value={nonObservingTotal} disabled />
-                    </Field>
+                    <div
+                      className="rounded-[10px] border border-[#C9D8DD] bg-[#E7F1F4] px-3 py-2.5 text-[#1F305E]"
+                      aria-live="polite"
+                    >
+                      <span className="block text-[12px] font-semibold">Всего без наблюдения</span>
+                      <strong className="mt-1 block text-[18px] leading-none">
+                        {formatNumber(nonObservingTotal)} ч.
+                      </strong>
+                    </div>
 
                     <Field label="Индивидуально">
                       <NumberInput
@@ -647,14 +702,6 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
                     ) : null}
                   </div>
                 </div>
-
-                {practiceLocked && expectedSupervision === 0 ? (
-                  <p className="mt-3 text-[13px] leading-[1.4] text-[#66738F]">
-                    Часов практики недостаточно для расчёта 0,1 часа супервизии. При отправке такой
-                    заявки введённые вами часы практики сохранятся и будут учтены при следующем
-                    добавлении часов.
-                  </p>
-                ) : null}
 
                 {distributionRuleError ? (
                   <div className="mt-3 rounded-[10px] bg-white px-4 py-3 text-[13px] text-[#1F305E] shadow-[0_2px_12px_rgba(0,0,0,0.12)]">

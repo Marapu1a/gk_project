@@ -2,8 +2,10 @@ import { useNavigate } from 'react-router-dom';
 import { DashboardHelpTooltip } from '@/components/DashboardHelpTooltip';
 import { useSupervisionSummary } from '@/features/supervision/hooks/useSupervisionSummary';
 import {
+  calculateUndistributedSupervision,
   getPracticeRequirementState,
   resolvePracticeBalance,
+  roundHours,
 } from '@/features/supervision/model/hourCalculations';
 
 function formatNumber(value: number | null | undefined) {
@@ -290,6 +292,25 @@ export function HoursOverviewBlock({
     summary.supervisionBreakdown.total,
     summary.required?.supervision,
   );
+  const confirmedDistributionTotal = roundHours(summary.supervisionBreakdown.distributedTotal);
+  const pendingDistributionTotal = roundHours(
+    (summary.pendingDistribution?.directIndividual ?? 0) +
+      (summary.pendingDistribution?.directGroup ?? 0) +
+      (summary.pendingDistribution?.nonObservingIndividual ?? 0) +
+      (summary.pendingDistribution?.nonObservingGroup ?? 0),
+  );
+  const totalSupervisionEntitlement = roundHours(
+    summary.usable.supervision + summary.pending.supervision,
+  );
+  const totalDistributedSupervision = roundHours(
+    confirmedDistributionTotal + pendingDistributionTotal,
+  );
+  const undistributedSupervision = calculateUndistributedSupervision({
+    confirmedEntitlement: summary.usable.supervision,
+    pendingEntitlement: summary.pending.supervision,
+    confirmedDistribution: confirmedDistributionTotal,
+    pendingDistribution: pendingDistributionTotal,
+  });
   const isPracticeComplete = requiredPractice > 0 && practiceState.complete;
   const isSupervisionComplete = isRequirementComplete(
     summary.supervisionBreakdown.total,
@@ -351,7 +372,7 @@ export function HoursOverviewBlock({
           <div className="mb-3 flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
               <h3 className="dashboard-v2-title">Часы супервизии</h3>
-              <DashboardHelpTooltip content="Часы супервизии рассчитанные на основе подтвержденных супервизором часов практики." />
+              <DashboardHelpTooltip content="Часы супервизии, рассчитанные на основе подтверждённых супервизором часов практики." />
             </div>
 
             {showActions ? (
@@ -428,8 +449,18 @@ export function HoursOverviewBlock({
               </div>
             </div>
           </div>
+
         </div>
       </div>
+
+      {undistributedSupervision > 0 ? (
+        <p className="mt-4 rounded-[10px] bg-[#FFF3E8] px-3 py-2 text-[13px] font-semibold text-[#8A4B14]">
+          Все {formatNumber(totalSupervisionEntitlement)} ч. уже учтены в общем количестве. Из них{' '}
+          {formatNumber(totalDistributedSupervision)} ч. распределено по типам, а{' '}
+          {formatNumber(undistributedSupervision)} ч. пока не распределено. Этот остаток будет
+          предложен к распределению при следующем добавлении практики.
+        </p>
+      ) : null}
     </section>
   );
 }

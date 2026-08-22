@@ -3,9 +3,11 @@ import {
   calculateExpectedSupervision,
   calculateIncrementalSupervision,
   calculateRemainingHours,
+  calculateUndistributedSupervision,
   getDistributionAvailability,
   getDistributionRuleError,
   getCumulativePracticeRuleError,
+  getIncrementalSupervisionBreakdown,
   getPracticeRequirementState,
   parseHours,
   resolvePracticeBalance,
@@ -101,6 +103,60 @@ describe('hourCalculations', () => {
         requiredSupervision: 10,
       }),
     ).toBe(0.6);
+  });
+
+  it('explains the previous remainder separately from supervision earned by current practice', () => {
+    expect(
+      getIncrementalSupervisionBreakdown({
+        baseEntitlement: 6,
+        baseDistributedSupervision: 5,
+        expectedSupervision: 2,
+      }),
+    ).toEqual({
+      fromPreviousPractice: 1,
+      fromCurrentPractice: 1,
+    });
+  });
+
+  it('does not offer a previous remainder again when a pending request already distributed it', () => {
+    expect(
+      calculateIncrementalSupervision({
+        basePractice: 140,
+        addedPractice: 20,
+        baseDistributedSupervision: 7,
+        requiredPractice: 1500,
+        requiredSupervision: 75,
+      }),
+    ).toBe(1);
+    expect(
+      getIncrementalSupervisionBreakdown({
+        baseEntitlement: 7,
+        baseDistributedSupervision: 7,
+        expectedSupervision: 1,
+      }),
+    ).toEqual({
+      fromPreviousPractice: 0,
+      fromCurrentPractice: 1,
+    });
+  });
+
+  it('does not show a remainder that is already included in a pending request', () => {
+    expect(
+      calculateUndistributedSupervision({
+        confirmedEntitlement: 6,
+        pendingEntitlement: 1,
+        confirmedDistribution: 5,
+        pendingDistribution: 2,
+      }),
+    ).toBe(0);
+    expect(
+      calculateUndistributedSupervision({
+        confirmedEntitlement: 6,
+        pendingEntitlement: 0,
+        confirmedDistribution: 5,
+        pendingDistribution: 0,
+      }),
+    ).toBe(1);
   });
 
   it('checks the 40/40/20 rule against the accumulated cycle total', () => {

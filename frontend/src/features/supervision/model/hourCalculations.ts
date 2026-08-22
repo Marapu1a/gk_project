@@ -101,6 +101,42 @@ export function calculateIncrementalSupervision(params: {
     : Math.min(calculated, Math.max(0, remainingSupervision));
 }
 
+export function getIncrementalSupervisionBreakdown(params: {
+  baseEntitlement: number;
+  baseDistributedSupervision: number;
+  expectedSupervision: number;
+}) {
+  const previousUndistributed = roundHours(
+    Math.max(0, params.baseEntitlement - params.baseDistributedSupervision),
+  );
+  const fromPreviousPractice = roundHours(
+    Math.min(params.expectedSupervision, previousUndistributed),
+  );
+
+  return {
+    fromPreviousPractice,
+    fromCurrentPractice: roundHours(
+      Math.max(0, params.expectedSupervision - fromPreviousPractice),
+    ),
+  };
+}
+
+export function calculateUndistributedSupervision(params: {
+  confirmedEntitlement: number;
+  pendingEntitlement: number;
+  confirmedDistribution: number;
+  pendingDistribution: number;
+}) {
+  const totalEntitlement = roundHours(
+    params.confirmedEntitlement + params.pendingEntitlement,
+  );
+  const totalDistribution = roundHours(
+    params.confirmedDistribution + params.pendingDistribution,
+  );
+
+  return roundHours(Math.max(0, totalEntitlement - totalDistribution));
+}
+
 export function getCumulativePracticeRuleError(params: {
   requiredPractice?: number | null;
   currentImplementing: number;
