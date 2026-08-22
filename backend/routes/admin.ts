@@ -60,6 +60,7 @@ export async function usersRoutes(app: FastifyInstance) {
 
   // Supervision (admin-only)
   app.get('/admin/supervision/reviewer-candidates', { preHandler: [verifyToken, requireAdmin] }, getAdminReviewerCandidatesHandler);
+  app.patch('/admin/supervision/reviewer-candidates/:relationId/requests/:recordId/remove-pending', { preHandler: [verifyToken, requireAdmin] }, removePendingReviewerHoursAdminHandler);
   app.patch('/admin/supervision/reviewer-candidates/:relationId/remove-pending', { preHandler: [verifyToken, requireAdmin] }, removePendingReviewerHoursAdminHandler);
   app.get('/admin/supervision/reviewer-candidates/:relationId', { preHandler: [verifyToken, requireAdmin] }, getReviewerCandidateDetailsHandler);
   app.get('/admin/supervision/:userId/matrix', { preHandler: [verifyToken, requireAdmin] }, getUserSupervisionMatrixAdminHandler);

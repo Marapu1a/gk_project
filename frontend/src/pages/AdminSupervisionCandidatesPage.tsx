@@ -27,6 +27,11 @@ import {
   AdminPendingHoursDetailsModal,
   LegacyHoursDetailsModal,
 } from '@/features/admin/components/AdminSupervisionCandidateDetailsModals';
+import {
+  summarizeSupervisionRequests,
+  supervisionRequestHours,
+  type AdminSupervisionRequest,
+} from '@/features/admin/model/adminSupervisionRequestSummary';
 
 const KIND_LABELS: Record<AdminReviewerCandidateKind, string> = {
   supervision: 'Супервизия',
@@ -117,7 +122,10 @@ function hourStateClass(tone: HourStateTone) {
 function AdminSupervisionCandidatesContent() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedRow, setSelectedRow] = useState<AdminReviewerCandidateRow | null>(null);
-  const [removeTarget, setRemoveTarget] = useState<AdminReviewerCandidateRow | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{
+    row: AdminReviewerCandidateRow;
+    request: AdminSupervisionRequest;
+  } | null>(null);
   const removePendingHours = useRemovePendingReviewerHours();
 
   const rawKind = searchParams.get('kind');
@@ -227,14 +235,15 @@ function AdminSupervisionCandidatesContent() {
     if (!removeTarget) return;
 
     try {
-      const result = await removePendingHours.mutateAsync({
-        relationId: removeTarget.relationId,
+      await removePendingHours.mutateAsync({
+        relationId: removeTarget.row.relationId,
+        recordId: removeTarget.request.id,
         notifyUser,
       });
       toast.success(
         notifyUser
-          ? `${UI_TOAST_MESSAGES.admin.pendingHoursRemovedNotify} (${result.removedRecordsCount})`
-          : `${UI_TOAST_MESSAGES.admin.pendingHoursRemovedQuiet} (${result.removedRecordsCount})`,
+          ? 'Заявка убрана из проверки, уведомление отправлено пользователю.'
+          : 'Заявка убрана из проверки без уведомления пользователя.',
       );
       setSelectedRow(null);
       setRemoveTarget(null);
@@ -280,7 +289,7 @@ function AdminSupervisionCandidatesContent() {
           </div>
 
           <div className="dashboard-v2-text text-[#6B7894]">
-            Найдено: <span className="font-extrabold text-[#1F305E]">{total}</span>
+            Найдено связей: <span className="font-extrabold text-[#1F305E]">{total}</span>
             {isFetching && !isLoading ? <span className="ml-2">обновляю...</span> : null}
           </div>
         </div>
@@ -412,6 +421,7 @@ function AdminSupervisionCandidatesContent() {
                 {rows.map((row) => {
                   const date = row.latestPendingRequestAt ?? row.latestRequestAt;
                   const state = hourState(row);
+                  const requestSummary = summarizeSupervisionRequests(row.requests ?? []);
                   const hasLegacyRequest = row.pendingRequests.some(
                     (request) => request.source === 'LEGACY_VERSION',
                   );
@@ -455,6 +465,14 @@ function AdminSupervisionCandidatesContent() {
                         <span className={`dashboard-v2-caption ${hourStateClass(state.tone)}`}>
                           {state.text}
                         </span>
+                        {row.rowType === 'RELATION' && requestSummary.totalRequests > 0 ? (
+                          <span className="mt-1 block dashboard-v2-small text-[#8D96B5]">
+                            Всего заявок: {requestSummary.totalRequests}
+                            {requestSummary.confirmedRequests > 0
+                              ? ` · подтверждено: ${requestSummary.confirmedRequests}`
+                              : ''}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-3 py-3 text-center">
                         <ActionArrowButton
@@ -513,7 +531,7 @@ function AdminSupervisionCandidatesContent() {
             stateText={hourState(selectedRow).text}
             isPending={removePendingHours.isPending}
             onClose={() => setSelectedRow(null)}
-            onRemove={() => setRemoveTarget(selectedRow)}
+            onRemove={(request) => setRemoveTarget({ row: selectedRow, request })}
           />
         )
       ) : null}
@@ -521,7 +539,11 @@ function AdminSupervisionCandidatesContent() {
       {removeTarget ? (
         <AdminNotifyChoiceModal
           title="Убрать часы из проверки?"
-          message="Часы будут убраны из очереди проверяющего и останутся в истории пользователя с пометкой администратора."
+          message={`Заявка от ${formatDate(
+            removeTarget.request.supervisionDate ?? removeTarget.request.createdAt,
+          )} на ${supervisionRequestHours(removeTarget.request)} ч. у проверяющего ${
+            removeTarget.row.reviewer.email
+          } будет убрана из проверки и останется в истории как отклонённая администратором.`}
           danger
           isPending={removePendingHours.isPending}
           onClose={() => setRemoveTarget(null)}

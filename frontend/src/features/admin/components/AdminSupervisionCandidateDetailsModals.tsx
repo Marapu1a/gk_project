@@ -10,6 +10,12 @@ import {
   formatDateTimeRu as formatDateTime,
 } from '@/utils/dateFormat';
 import { LegacyVersionBadge } from '@/features/supervision/components/LegacyVersionBadge';
+import {
+  summarizeSupervisionRequests,
+  supervisionRequestState,
+  type AdminSupervisionRequest,
+  type AdminSupervisionRequestState,
+} from '@/features/admin/model/adminSupervisionRequestSummary';
 
 const HOUR_LABELS: Record<string, string> = {
   INSTRUCTOR: 'Практика',
@@ -27,6 +33,21 @@ const HOUR_STATUS_LABELS: Record<AdminReviewerHourStatus, string> = {
   REJECTED: 'Отклонено',
   SPENT: 'Использовано',
 };
+
+const REQUEST_STATE_LABELS: Record<AdminSupervisionRequestState, string> = {
+  PENDING: 'На проверке',
+  CONFIRMED: 'Подтверждена',
+  REJECTED: 'Отклонена',
+  SPENT: 'Использована',
+  MIXED: 'Обработана частично',
+};
+
+function requestStateClass(state: AdminSupervisionRequestState) {
+  if (state === 'PENDING') return 'bg-[#FFECEF] text-[var(--color-danger)]';
+  if (state === 'CONFIRMED' || state === 'SPENT') return 'bg-[#E8F4D6] text-[#58701C]';
+  if (state === 'REJECTED') return 'bg-[#F3F6F8] text-[#8D96B5]';
+  return 'bg-[#FFF3E6] text-[#A45B00]';
+}
 
 function formatNumber(value?: number | null) {
   if (value == null) return '—';
@@ -276,15 +297,14 @@ export function AdminPendingHoursDetailsModal({
   stateText: string;
   isPending: boolean;
   onClose: () => void;
-  onRemove: () => void;
+  onRemove: (request: AdminSupervisionRequest) => void;
 }) {
-  const pendingRequests = row.pendingRequests ?? [];
   // The full request list is the audit trail. Do not hide already processed
   // requests merely because the same reviewer relation has a new pending one.
   const requests = row.requests ?? [];
   const hasRequests = requests.length > 0;
-  const isHistory = pendingRequests.length === 0;
   const requestDateLabel = getSupervisionRequestDateLabel(row.kind);
+  const summary = summarizeSupervisionRequests(requests);
 
   return (
     <ModalShell
@@ -307,54 +327,103 @@ export function AdminPendingHoursDetailsModal({
         </div>
 
         {hasRequests ? (
+          <div className="mb-5 rounded-[12px] bg-[#F3F6F8] px-4 py-3 text-[#1F305E]">
+            <div className="flex flex-wrap gap-x-5 gap-y-2 dashboard-v2-caption">
+              <span>
+                Всего заявок: <strong>{summary.totalRequests}</strong>
+              </span>
+              <span>
+                Подтверждено: <strong>{summary.confirmedRequests}</strong>
+                {summary.confirmedRequests > 0 ? ` (${formatNumber(summary.confirmedHours)} ч.)` : ''}
+              </span>
+              <span className={summary.pendingRequests > 0 ? 'text-[var(--color-danger)]' : ''}>
+                На проверке: <strong>{summary.pendingRequests}</strong>
+                {summary.pendingRequests > 0 ? ` (${formatNumber(summary.pendingHours)} ч.)` : ''}
+              </span>
+              <span>
+                Отклонено: <strong>{summary.rejectedRequests}</strong>
+                {summary.rejectedRequests > 0 ? ` (${formatNumber(summary.rejectedHours)} ч.)` : ''}
+              </span>
+              {summary.otherRequests > 0 ? (
+                <span>
+                  Прочие состояния: <strong>{summary.otherRequests}</strong>
+                  {` (${formatNumber(summary.otherHours)} ч.)`}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {hasRequests ? (
           <div className="space-y-4">
-            {requests.map((request, index) => (
-              <section
-                key={request.id}
-                className="rounded-[14px] bg-[var(--color-blue-soft)] px-4 py-4 dashboard-v2-text"
-              >
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="dashboard-v2-title">
-                      {requests.length > 1 ? `Заявка ${index + 1}` : 'Заявка'}
-                    </h4>
-                    {request.source === 'LEGACY_VERSION' ? <LegacyVersionBadge /> : null}
-                  </div>
-                  <span className="dashboard-v2-caption text-[#8D96B5]">
-                    {requestDateLabel}: {formatDate(request.supervisionDate ?? request.createdAt)}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                  <div className="space-y-4">
-                    <HoursList hours={request.hours} showStatus />
-                    {row.kind === 'supervision' ? (
-                      <DistributionBlock distribution={request.distribution} />
-                    ) : null}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <CompactField
-                        label="Дата начала периода практики"
-                        value={formatDate(request.periodStartedAt)}
-                      />
-                      <CompactField
-                        label="Дата окончания периода практики"
-                        value={formatDate(request.periodEndedAt)}
-                      />
+            {requests.map((request, index) => {
+              const requestState = supervisionRequestState(request);
+              return (
+                <section
+                  key={request.id}
+                  className="rounded-[14px] bg-[var(--color-blue-soft)] px-4 py-4 dashboard-v2-text"
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="dashboard-v2-title">
+                        {requests.length > 1 ? `Заявка ${index + 1}` : 'Заявка'}
+                      </h4>
+                      {request.source === 'LEGACY_VERSION' ? <LegacyVersionBadge /> : null}
+                      <span
+                        className={`rounded-full px-2.5 py-1 dashboard-v2-small font-semibold ${requestStateClass(requestState)}`}
+                      >
+                        {REQUEST_STATE_LABELS[requestState]}
+                      </span>
                     </div>
-                    <CompactField label="Условия практики" value={request.treatmentSetting || '—'} />
-                    <div>
-                      <div className="dashboard-v2-small mb-1 text-[#8D96B5]">Описание</div>
-                      <div className="dashboard-v2-caption min-h-[76px] rounded-[8px] bg-white px-3 py-2 text-[#1F305E]">
-                        {request.description || '—'}
+                    <span className="dashboard-v2-caption text-[#8D96B5]">
+                      {requestDateLabel}: {formatDate(request.supervisionDate ?? request.createdAt)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                    <div className="space-y-4">
+                      <HoursList hours={request.hours} showStatus />
+                      {row.kind === 'supervision' ? (
+                        <DistributionBlock distribution={request.distribution} />
+                      ) : null}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <CompactField
+                          label="Дата начала периода практики"
+                          value={formatDate(request.periodStartedAt)}
+                        />
+                        <CompactField
+                          label="Дата окончания периода практики"
+                          value={formatDate(request.periodEndedAt)}
+                        />
+                      </div>
+                      <CompactField label="Условия практики" value={request.treatmentSetting || '—'} />
+                      <div>
+                        <div className="dashboard-v2-small mb-1 text-[#8D96B5]">Описание</div>
+                        <div className="dashboard-v2-caption min-h-[76px] rounded-[8px] bg-white px-3 py-2 text-[#1F305E]">
+                          {request.description || '—'}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </section>
-            ))}
+
+                  {requestState === 'PENDING' ? (
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => onRemove(request)}
+                        disabled={isPending}
+                        className="btn dashboard-v2-action dashboard-v2-action-secondary border-[var(--color-danger)] text-[var(--color-danger)] disabled:opacity-50"
+                      >
+                        Убрать эту заявку из проверки
+                      </button>
+                    </div>
+                  ) : null}
+                </section>
+              );
+            })}
           </div>
         ) : (
           <div className="dashboard-v2-text rounded-[12px] bg-[var(--color-blue-soft)] px-4 py-5 text-[#6B7894]">
@@ -362,18 +431,6 @@ export function AdminPendingHoursDetailsModal({
           </div>
         )}
 
-        {!isHistory && hasRequests ? (
-          <div className="mt-6 flex flex-wrap justify-end gap-3">
-            <button
-              type="button"
-              onClick={onRemove}
-              disabled={isPending}
-              className="btn dashboard-v2-action dashboard-v2-action-secondary border-[var(--color-danger)] text-[var(--color-danger)] disabled:opacity-50"
-            >
-              Убрать из проверки
-            </button>
-          </div>
-        ) : null}
     </ModalShell>
   );
 }
