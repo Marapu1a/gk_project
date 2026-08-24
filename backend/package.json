@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only server.ts",
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/utils/certificateLifecycle.test.js dist/utils/uploadValidation.test.js dist/utils/supervisionRequirements.test.js dist/lib/monitoringState.test.js dist/domain/ceu/duplicateFile.test.js dist/domain/ceu/reviewPolicy.test.js dist/domain/supervision/distributionRules.test.js dist/domain/supervision/historyPractice.test.js dist/domain/supervision/legacyPracticeRequest.test.js dist/domain/supervision/mentorshipBalance.test.js dist/domain/supervision/practiceBalance.test.js dist/domain/supervision/practiceBreakdown.test.js dist/handlers/admin/supervision/removePendingReviewerHoursAdminHandler.test.js",
+    "test": "npm run build && node --test dist/utils/certificateLifecycle.test.js dist/utils/uploadValidation.test.js dist/utils/supervisionRequirements.test.js dist/lib/monitoringState.test.js dist/domain/ceu/duplicateFile.test.js dist/domain/ceu/reviewPolicy.test.js dist/domain/supervision/distributionRules.test.js dist/domain/supervision/historyPractice.test.js dist/domain/supervision/legacyPracticeRequest.test.js dist/domain/supervision/mentorshipBalance.test.js dist/domain/supervision/practiceBalance.test.js dist/domain/supervision/practiceBreakdown.test.js dist/domain/supervision/undistributedSupervisionBackfill.test.js dist/handlers/admin/supervision/removePendingReviewerHoursAdminHandler.test.js",
     "start": "node dist/server.js",
     "migrate:deploy": "prisma migrate deploy",
     "backfill:ceu-file-hashes": "node dist/scripts/backfillCeuFileHashes.js",
     "backfill:ceu-file-hashes:build": "npm run build && npm run backfill:ceu-file-hashes",
     "legacy:supervision:dry-run": "node dist/scripts/normalizeLegacySupervisionRequests.js",
     "legacy:supervision:apply": "node dist/scripts/normalizeLegacySupervisionRequests.js --apply",
+    "supervision:distribution-backfill:dry-run": "node dist/scripts/backfillUndistributedSupervision.js",
+    "supervision:distribution-backfill:apply": "node dist/scripts/backfillUndistributedSupervision.js --apply",
     "postinstall": "prisma generate"
   },
   "prisma": {
