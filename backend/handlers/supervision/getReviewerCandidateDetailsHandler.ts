@@ -640,15 +640,18 @@ export async function getReviewerCandidateDetailsHandler(
     legacy: confirmedLegacyPractice,
   });
   const recordDistribution = supervisionTotals.practiceDistributionConfirmed;
-  const hasRecordDistribution =
-    recordDistribution.directIndividual > 0 ||
-    recordDistribution.directGroup > 0 ||
-    recordDistribution.nonObservingIndividual > 0 ||
-    recordDistribution.nonObservingGroup > 0;
-  const effectiveDistribution =
-    supervisionTotals.adminCorrection || hasRecordDistribution || !legacyDistribution
-      ? recordDistribution
-      : legacyDistribution;
+  const effectiveDistribution = supervisionTotals.adminCorrection
+    ? recordDistribution
+    : {
+        directIndividual:
+          recordDistribution.directIndividual + (legacyDistribution?.directIndividual ?? 0),
+        directGroup: recordDistribution.directGroup + (legacyDistribution?.directGroup ?? 0),
+        nonObservingIndividual:
+          recordDistribution.nonObservingIndividual +
+          (legacyDistribution?.nonObservingIndividual ?? 0),
+        nonObservingGroup:
+          recordDistribution.nonObservingGroup + (legacyDistribution?.nonObservingGroup ?? 0),
+      };
   const documentReviewStatus = documentReviewRequest
     ? resolveDocumentReviewRequestStatus(documentReviewRequest)
     : null;

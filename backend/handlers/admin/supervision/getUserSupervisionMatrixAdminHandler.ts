@@ -142,21 +142,16 @@ export async function getUserSupervisionMatrixAdminHandler(req: FastifyRequest<R
       },
     ),
   );
-  const hasRecordDistribution =
-    recordDistribution.directIndividual > 0 ||
-    recordDistribution.directGroup > 0 ||
-    recordDistribution.nonObservingIndividual > 0 ||
-    recordDistribution.nonObservingGroup > 0;
-  const preCorrectionDistribution = hasRecordDistribution
-    ? recordDistribution
-    : roundDistribution(
-        legacyDistribution ?? {
-          directIndividual: 0,
-          directGroup: 0,
-          nonObservingIndividual: 0,
-          nonObservingGroup: 0,
-        },
-      );
+  const preCorrectionDistribution = roundDistribution({
+    directIndividual:
+      recordDistribution.directIndividual + (legacyDistribution?.directIndividual ?? 0),
+    directGroup: recordDistribution.directGroup + (legacyDistribution?.directGroup ?? 0),
+    nonObservingIndividual:
+      recordDistribution.nonObservingIndividual +
+      (legacyDistribution?.nonObservingIndividual ?? 0),
+    nonObservingGroup:
+      recordDistribution.nonObservingGroup + (legacyDistribution?.nonObservingGroup ?? 0),
+  });
 
   // если по каким-то причинам required нет — отдаём только статистику
   if (!current || !targetRu || !required) {

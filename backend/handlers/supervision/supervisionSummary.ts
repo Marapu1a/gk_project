@@ -253,15 +253,19 @@ export async function supervisionSummaryHandler(req: FastifyRequest, reply: Fast
     recordDistribution.nonObservingIndividual > 0 ||
     recordDistribution.nonObservingGroup > 0;
 
-  const distribution: Distribution | null = hasRecordDistribution
+  const distribution: Distribution | null = practiceCorrection
     ? roundDistribution(recordDistribution)
-    : rawDistribution
-      ? {
-          directIndividual: rawDistribution.directIndividual,
-          directGroup: rawDistribution.directGroup,
-          nonObservingIndividual: rawDistribution.nonObservingIndividual,
-          nonObservingGroup: rawDistribution.nonObservingGroup,
-        }
+    : hasRecordDistribution || rawDistribution
+      ? roundDistribution({
+          directIndividual:
+            recordDistribution.directIndividual + (rawDistribution?.directIndividual ?? 0),
+          directGroup: recordDistribution.directGroup + (rawDistribution?.directGroup ?? 0),
+          nonObservingIndividual:
+            recordDistribution.nonObservingIndividual +
+            (rawDistribution?.nonObservingIndividual ?? 0),
+          nonObservingGroup:
+            recordDistribution.nonObservingGroup + (rawDistribution?.nonObservingGroup ?? 0),
+        })
       : null;
   const pendingDistribution = roundDistribution(cycleTotals.practiceDistributionPending);
 

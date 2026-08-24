@@ -316,7 +316,8 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
           PracticeLevel.IMPLEMENTING,
           PracticeLevel.PROGRAMMING,
         ];
-        const [confirmed, pending, correction, distributionRecords] = await Promise.all([
+        const [confirmed, pending, correction, legacyDistribution, distributionRecords] =
+          await Promise.all([
           tx.supervisionHour.groupBy({
             by: ['type'],
             where: {
@@ -350,6 +351,15 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
               nonObservingIndividual: true,
               nonObservingGroup: true,
               updatedAt: true,
+            },
+          }),
+          tx.supervisionDistribution.findUnique({
+            where: { cycleId: activeCycle.id },
+            select: {
+              directIndividual: true,
+              directGroup: true,
+              nonObservingIndividual: true,
+              nonObservingGroup: true,
             },
           }),
           tx.supervisionRecord.findMany({
@@ -442,10 +452,10 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
                   nonObservingGroup: correction.nonObservingGroup,
                 }
               : {
-                  directIndividual: 0,
-                  directGroup: 0,
-                  nonObservingIndividual: 0,
-                  nonObservingGroup: 0,
+                  directIndividual: legacyDistribution?.directIndividual ?? 0,
+                  directGroup: legacyDistribution?.directGroup ?? 0,
+                  nonObservingIndividual: legacyDistribution?.nonObservingIndividual ?? 0,
+                  nonObservingGroup: legacyDistribution?.nonObservingGroup ?? 0,
                 },
           );
           const calculateSupervision = (practiceHours: number) => {

@@ -226,12 +226,22 @@ async function buildPlan(): Promise<BackfillScan> {
     let storageTarget: StorageTarget;
     if (allocation.strategy === 'LEGACY_DISTRIBUTION') {
       const before = distributionFromNullable(legacyDistribution);
-      storageTarget = {
-        kind: 'LEGACY_DISTRIBUTION',
-        id: legacyDistribution?.id ?? null,
-        before,
-        after: addToNonObservingIndividual(before, allocation.remainder),
-      };
+      const emptyConfirmedRecord = !legacyDistribution ? records[0] : null;
+      if (emptyConfirmedRecord) {
+        storageTarget = {
+          kind: 'CONFIRMED_RECORD',
+          id: emptyConfirmedRecord.id,
+          before: distributionFromRecord(emptyConfirmedRecord),
+          after: allocation.effectiveAfter,
+        };
+      } else {
+        storageTarget = {
+          kind: 'LEGACY_DISTRIBUTION',
+          id: legacyDistribution?.id ?? null,
+          before,
+          after: addToNonObservingIndividual(before, allocation.remainder),
+        };
+      }
     } else {
       const targetRecord = records.find(
         (record) => supervisionDistributionTotal(distributionFromRecord(record)) > 0,

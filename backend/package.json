@@ -15,6 +15,8 @@
     "legacy:supervision:apply": "node dist/scripts/normalizeLegacySupervisionRequests.js --apply",
     "supervision:distribution-backfill:dry-run": "node dist/scripts/backfillUndistributedSupervision.js",
     "supervision:distribution-backfill:apply": "node dist/scripts/backfillUndistributedSupervision.js --apply",
+    "supervision:distribution-relocate:dry-run": "node dist/scripts/relocateBackfilledSupervisionDistributions.js",
+    "supervision:distribution-relocate:apply": "node dist/scripts/relocateBackfilledSupervisionDistributions.js --apply",
     "postinstall": "prisma generate"
   },
   "prisma": {
