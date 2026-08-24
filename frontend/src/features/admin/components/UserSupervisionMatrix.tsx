@@ -21,6 +21,7 @@ import {
   sanitizeHoursInput,
   summarizeSupervisionDistribution,
 } from '@/features/supervision/model/hourCalculations';
+import { getAdminSupervisionDistributionStatus } from '../model/adminSupervisionDistributionStatus';
 
 type Props = {
   userId: string;
@@ -175,6 +176,10 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
   const distributionAvailability = getDistributionAvailability({
     implementing: values.implementingValue,
     programming: values.programmingValue,
+  });
+  const distributionStatus = getAdminSupervisionDistributionStatus({
+    expectedSupervision: values.expectedActiveSupervision,
+    remainingSupervision: values.distributionRemaining,
   });
 
   const lockPractice = () => {
@@ -403,12 +408,24 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
                 .
               </span>
             ) : null}
-            Распределите <strong>{formatNumber(values.expectedActiveSupervision)}</strong> часов
-            супервизии. Осталось:{' '}
-            <strong className={values.distributionRemaining === 0 ? undefined : 'text-[var(--color-danger)]'}>
-              {formatNumber(values.distributionRemaining)}
-            </strong>
-            .
+            {distributionStatus === 'not-required' ? (
+              'Распределять часы супервизии пока не нужно.'
+            ) : distributionStatus === 'complete' ? (
+              <>
+                Распределено:{' '}
+                <strong>{formatNumber(values.distributionTotal)}</strong> из{' '}
+                <strong>{formatNumber(values.expectedActiveSupervision)}</strong> ч. Все часы
+                распределены.
+              </>
+            ) : (
+              <>
+                Распределите <strong>{formatNumber(values.expectedActiveSupervision)}</strong> ч.
+                супервизии. Осталось:{' '}
+                <strong className="text-[var(--color-danger)]">
+                  {formatNumber(values.distributionRemaining)} ч.
+                </strong>
+              </>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
