@@ -7,6 +7,7 @@ import { SpecialistContactModal } from './SpecialistContactModal';
 import { DashboardPagination } from '@/components/DashboardPagination';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
 import { smartApplicantSort, smartDefaultSort } from '@/utils/sortRegistry';
+import { getCertificateLogo } from '../utils/certificateLogo';
 
 type Props = { onOpenProfile?: (userId: string) => void; pageSize?: number };
 type RegistryTab = 'specialists' | 'applicants';
@@ -102,6 +103,13 @@ function RegistryListRow({
   const placeholder = '/avatar_placeholder.svg';
   const clickable = Boolean(onOpenProfile);
   const isApplicant = variant === 'applicants';
+  const badge = isApplicant ? null : getCertificateLogo(user);
+  // Keep the same space in all specialist rows so avatars and names stay aligned.
+  const logo = !isApplicant && (
+    <span className="flex w-[28px] shrink-0 items-center justify-center">
+      {badge && <img src={`/icons/${badge}.png`} alt={badge} className="h-auto max-h-[32px] w-full object-contain" />}
+    </span>
+  );
 
   const avatar = (
     <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#B8C1D6] bg-[#E7EAF0]">
@@ -159,18 +167,18 @@ function RegistryListRow({
 
   return (
     <>
-      {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
+      {/* Десктоп/планшет */}
       <div
         className={[
           'hidden sm:grid',
           isApplicant
             ? 'min-h-[52px] grid-cols-[38px_minmax(170px,1.25fr)_minmax(110px,0.8fr)_minmax(120px,0.9fr)_32px] items-center gap-4 px-2 py-2 text-[13px] text-[var(--color-blue-dark)] transition'
-            : 'min-h-[52px] grid-cols-[38px_minmax(170px,1.25fr)_minmax(90px,0.7fr)_minmax(110px,0.8fr)_minmax(150px,0.9fr)_30px] items-center gap-4 px-2 py-2 text-[13px] text-[var(--color-blue-dark)] transition',
+            : 'min-h-[52px] grid-cols-[74px_minmax(170px,1.25fr)_minmax(90px,0.7fr)_minmax(110px,0.8fr)_minmax(150px,0.9fr)_30px] items-center gap-4 px-2 py-2 text-[13px] text-[var(--color-blue-dark)] transition',
           clickable ? 'cursor-pointer hover:bg-[var(--color-blue-soft)]' : '',
         ].join(' ')}
         {...rowProps}
       >
-        {avatar}
+        <div className="flex items-center gap-2">{logo}{avatar}</div>
 
         <div className="min-w-0">
           <p className="line-clamp-2 text-[14px] font-extrabold leading-[1.1] text-[#222]">{user.fullName}</p>
@@ -195,7 +203,7 @@ function RegistryListRow({
         }`}
         {...rowProps}
       >
-        {avatar}
+        <div className="flex shrink-0 items-center gap-2">{logo}{avatar}</div>
 
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-[14px] font-extrabold leading-[1.1] text-[#222]">{user.fullName}</p>

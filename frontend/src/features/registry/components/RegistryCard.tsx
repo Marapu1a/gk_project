@@ -1,5 +1,7 @@
 import { Mail } from 'lucide-react';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
+import type { RegistryCard as RegistryCardData } from '../api/getRegistry';
+import { getCertificateLogo } from '../utils/certificateLogo';
 
 type Props = {
   id: string;
@@ -9,6 +11,7 @@ type Props = {
   city?: string | null;
   avatarUrl?: string | null;
   groupName?: string | null;
+  certificateStatus?: RegistryCardData['certificateStatus'];
   variant?: 'specialist' | 'applicant';
   onOpenProfile?: (userId: string) => void;
   onContact?: (user: { id: string; fullName: string }) => void;
@@ -22,6 +25,7 @@ export function RegistryCard({
   city,
   avatarUrl,
   groupName,
+  certificateStatus,
   variant = 'specialist',
   onOpenProfile,
   onContact,
@@ -31,11 +35,15 @@ export function RegistryCard({
   const placeholder = '/avatar_placeholder.svg';
   const clickable = Boolean(onOpenProfile);
   const isApplicant = variant === 'applicant';
+  const badge = isApplicant ? null : getCertificateLogo({ groupName, certificateStatus });
 
   return (
     <article
       className={[
-        'group grid h-[142px] grid-cols-[104px_minmax(0,1fr)_30px] items-center gap-4 rounded-[16px] bg-white px-4 py-3 shadow-soft transition',
+        'group grid h-[142px] items-center gap-4 rounded-[16px] bg-white px-4 py-3 shadow-soft transition',
+        badge
+          ? 'grid-cols-[104px_minmax(0,1fr)_clamp(32px,4vw,40px)]'
+          : 'grid-cols-[104px_minmax(0,1fr)_30px]',
         clickable ? 'cursor-pointer hover:bg-[var(--color-blue-soft)] hover:shadow-md' : '',
       ].join(' ')}
       onClick={() => onOpenProfile?.(id)}
@@ -75,7 +83,16 @@ export function RegistryCard({
         )}
       </div>
 
-      <div className="flex h-full items-end pb-3">
+      <div
+        className={`flex h-full flex-col justify-end pb-2 ${badge ? 'items-center' : 'items-end'}`}
+      >
+        {badge && (
+          <img
+            src={`/icons/${badge}.png`}
+            alt={badge}
+            className="mb-auto mt-1 h-auto w-full object-contain"
+          />
+        )}
         {isApplicant ? (
           <ActionArrowButton
             size={30}
