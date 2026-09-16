@@ -29,6 +29,7 @@ services:
       - ./backend/.env
     environment:
       NODE_ENV: production
+      REVIEWER_REMINDERS_ENABLED: ${REVIEWER_REMINDERS_ENABLED:-0}
       UPLOAD_DIR: /app/uploads
       UPLOAD_MIN_FREE_MB: ${UPLOAD_MIN_FREE_MB:-256}
     volumes:

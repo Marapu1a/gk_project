@@ -77,7 +77,9 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
     );
     return hasOpenReview || hasDeletionRequest;
   }).length;
-  const pendingExamCount = examApplications.filter((application) => application.status === 'PENDING').length;
+  const pendingExamCount = examApplications.filter(
+    (application) => application.status === 'PENDING',
+  ).length;
 
   const tasks: TaskItem[] = [
     { label: 'Управление пользователями', to: '/users' },
@@ -142,9 +144,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
         {/* Десктоп/планшет — без изменений относительно исходной вёрстки */}
         <div className="hidden grid-cols-[1fr_auto_1fr] items-center gap-4 sm:grid">
           <div />
-          <h1 className="dashboard-v2-page-title text-center">
-            Панель администратора
-          </h1>
+          <h1 className="dashboard-v2-page-title text-center">Панель администратора</h1>
           <div className="dashboard-v2-small flex min-w-0 items-center justify-end gap-3 text-[#8D96B5]">
             <span className="hidden max-w-[260px] truncate sm:block">{user.email}</span>
             <button
@@ -196,11 +196,13 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
           </nav>
         </AdminPanel>
 
-        <AdminPanel
-          title="Отчёты и выгрузки"
-          className="px-0 py-4 lg:col-start-1 lg:row-start-2"
-        >
+        <AdminPanel title="Отчёты и выгрузки" className="px-0 py-4 lg:col-start-1 lg:row-start-2">
           <div className="mt-1 space-y-1">
+            <ActionButton
+              icon={<Download size={16} />}
+              label="Напоминания проверяющим"
+              onClick={() => navigate('/admin/reviewer-reminders')}
+            />
             <ActionButton
               icon={<Download size={16} />}
               label="Выгрузка XLSX"
@@ -231,9 +233,7 @@ function AdminPanel({
 }) {
   return (
     <section className={`card-section shadow-soft ${className}`}>
-      <h2 className="dashboard-v2-title px-5 text-center">
-        {title}
-      </h2>
+      <h2 className="dashboard-v2-title px-5 text-center">{title}</h2>
       {children}
     </section>
   );
@@ -255,9 +255,7 @@ function TaskLink({ task }: { task: TaskItem }) {
     <Link
       to={task.to}
       className={`dashboard-v2-text flex min-h-[44px] items-center justify-between gap-3 px-5 py-2 text-[#222] transition hover:bg-[var(--color-blue-soft)] ${
-        task.separated
-          ? 'mt-3 border-t border-[var(--color-blue-soft)] pt-4 text-[#6B7894]'
-          : ''
+        task.separated ? 'mt-3 border-t border-[var(--color-blue-soft)] pt-4 text-[#6B7894]' : ''
       }`}
     >
       <span>{task.label}</span>
@@ -361,7 +359,7 @@ function AdminNotifications({ notifications }: { notifications: Notification[] }
         </button>
       </div>
 
-      <div className="notification-scroll mt-2 max-h-[390px] overflow-y-scroll pr-1">
+      <div className="notification-scroll mt-2 max-h-[520px] overflow-y-scroll pr-1">
         {notifications.map((notification) => (
           <NotificationRow key={notification.id} notification={notification} />
         ))}
@@ -414,7 +412,10 @@ function NotificationRow({ notification }: { notification: Notification }) {
   };
 
   const unreadDot = !notification.isRead ? (
-    <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--color-danger)]" aria-label="Не прочитано" />
+    <span
+      className="h-2 w-2 shrink-0 rounded-full bg-[var(--color-danger)]"
+      aria-label="Не прочитано"
+    />
   ) : null;
 
   const deleteButton = (

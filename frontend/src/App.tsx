@@ -47,6 +47,8 @@ const AdminExternalSupervisorClaimsPage = lazyWithReload(
 const SpecialistMessagesPage = lazyWithReload(() => import('./pages/SpecialistMessagesPage'));
 const AccessDeniedPage = lazyWithReload(() => import('./pages/AccessDeniedPage'));
 
+const AdminReviewerRemindersPage = lazyWithReload(() => import('./pages/AdminReviewerRemindersPage'));
+
 function RootRedirect() {
   const target = localStorage.getItem('token') ? '/dashboard-v2' : '/login';
   return <Navigate to={target} replace />;
@@ -100,6 +102,7 @@ const router = createBrowserRouter([
           { path: 'admin/document-review', element: <AdminDocumentReviewListPage /> },
           { path: 'admin/document-review/:id', element: <AdminDocumentReviewDetailsPage /> },
           { path: 'admin/user-banner', element: <AdminUserBannerPage /> },
+          { path: 'admin/reviewer-reminders', element: <AdminReviewerRemindersPage /> },
           { path: 'admin/supervision-candidates', element: <AdminSupervisionCandidatesPage /> },
           { path: 'admin/qualification-claims', element: <AdminExternalSupervisorClaimsPage /> },
           { path: 'users', element: <UsersPage /> },

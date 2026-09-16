@@ -7,6 +7,7 @@ import { formatCertificationLevelName } from '@/utils/labels';
 type Props = {
   value?: string;
   onChange?: (value: string) => void;
+  onSelect?: (user: { id: string; fullName: string | null; email: string }) => void;
   autoFocus?: boolean;
   className?: string;
   size?: 'compact' | 'large';
@@ -20,6 +21,7 @@ function cleanPhone(value?: string | null) {
 export function AdminUserSearch({
   value,
   onChange,
+  onSelect,
   autoFocus = false,
   className = '',
   size = 'compact',
@@ -94,6 +96,11 @@ export function AdminUserSearch({
 
   const openUser = (userId: string) => {
     setIsOpen(false);
+    if (onSelect) {
+      const user = suggestions.find((item) => item.id === userId);
+      if (user) onSelect({ id: user.id, fullName: user.fullName || null, email: user.email });
+      return;
+    }
     navigate(`/admin/users/${userId}`);
   };
 

@@ -29,6 +29,7 @@ import { specialistContactMessagesRoutes } from './routes/specialistContactMessa
 import { healthRoutes } from './routes/health';
 import { MAX_FILE_SIZE_MB, UPLOAD_ROOT } from './config/storage';
 import { startCertificateLifecycleScheduler } from './utils/certificateLifecycleNotifications';
+import { startReviewerReminderScheduler } from './utils/reviewerReminderDelivery';
 import {
   initializeErrorMonitoring,
   reportOperationalFailure,
@@ -149,4 +150,5 @@ app.listen({ port: +PORT, host: '0.0.0.0' }, (err, address) => {
   }
   app.log.info({ address, logLevel }, 'Server listening')
   startCertificateLifecycleScheduler(app.log)
+  startReviewerReminderScheduler(app.log)
 })

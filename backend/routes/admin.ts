@@ -1,5 +1,6 @@
 // /routes/admin.ts
 import { FastifyInstance } from 'fastify';
+import { reviewerRemindersHandler } from '../handlers/admin/reviewerReminders';
 import { toggleUserRoleHandler } from '../handlers/admin/userRoleHandler';
 import { getUsersHandler } from '../handlers/admin/getUsersHandler';
 import { getUserFullDetailsHandler } from '../handlers/admin/getUserDetailsHandler';
@@ -41,6 +42,7 @@ import { requireAdmin } from '../middlewares/requireRole';
 import { updateTargetLevelHandler } from '../handlers/admin/updateTargetLevel';
 
 export async function usersRoutes(app: FastifyInstance) {
+  app.get('/admin/reviewer-reminders', { preHandler: [verifyToken, requireAdmin] }, reviewerRemindersHandler);
   app.patch('/admin/users/:id/role', { preHandler: [verifyToken, requireAdmin] }, toggleUserRoleHandler);
   app.get('/admin/users/:id/details', { preHandler: [verifyToken, requireAdmin] }, getUserFullDetailsHandler);
   app.get('/admin/users/:id/action-log', { preHandler: [verifyToken, requireAdmin] }, getUserActionLogHandler);

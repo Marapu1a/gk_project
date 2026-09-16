@@ -165,6 +165,26 @@ enum UserBannerTone {
   SOFT
 }
 
+// Immutable task snapshot per attempt; no foreign keys so the audit survives deletion.
+model ReviewerReminderLog {
+  id String @id @default(cuid())
+  dedupeKey String @unique
+  reviewerId String
+  recipient String
+  intendedRecipient String
+  fullName String
+  slot String
+  isTest Boolean @default(false)
+  status String @default("SENDING")
+  tasks Json
+  createdAt DateTime @default(now())
+  finishedAt DateTime?
+  error String?
+
+  @@index([reviewerId, createdAt])
+  @@index([slot, isTest])
+}
+
 model User {
   id                 String  @id @default(cuid())
   email              String  @unique
