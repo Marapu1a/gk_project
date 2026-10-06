@@ -42,7 +42,10 @@ function normalizeCeuInput(value: string) {
     if (firstComma === -1) return cleaned.slice(0, 4);
 
     const before = cleaned.slice(0, firstComma).slice(0, 4);
-    const after = cleaned.slice(firstComma + 1).replace(/,/g, '').slice(0, 1);
+    const after = cleaned
+      .slice(firstComma + 1)
+      .replace(/,/g, '')
+      .slice(0, 1);
     return `${before},${after}`;
   })();
 
@@ -92,14 +95,16 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
 
   const save = async (notifyUser: boolean) => {
     const editableCategories = CATEGORIES.filter((category) => values[category.key].required > 0);
-    const changed = editableCategories.map((category) => {
-      const parsed = parseValue(values[category.key].draft);
-      return {
-        category: category.key,
-        value: parsed,
-        current: values[category.key].current,
-      };
-    }).filter((item) => item.value !== null && item.value !== item.current);
+    const changed = editableCategories
+      .map((category) => {
+        const parsed = parseValue(values[category.key].draft);
+        return {
+          category: category.key,
+          value: parsed,
+          current: values[category.key].current,
+        };
+      })
+      .filter((item) => item.value !== null && item.value !== item.current);
 
     if (!changed.length) {
       toast.info(UI_TOAST_MESSAGES.admin.noChanges);
@@ -131,7 +136,9 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
         CULTURAL_DIVERSITY: undefined,
         GENERAL: undefined,
       });
-      toast.success(notifyUser ? UI_TOAST_MESSAGES.ceu.adminSavedNotify : UI_TOAST_MESSAGES.ceu.adminSavedQuiet);
+      toast.success(
+        notifyUser ? UI_TOAST_MESSAGES.ceu.adminSavedNotify : UI_TOAST_MESSAGES.ceu.adminSavedQuiet,
+      );
       setIsNotifyChoiceOpen(false);
     } catch (err: any) {
       const errorCode = err?.response?.data?.errorCode ?? err?.response?.data?.error;
@@ -149,7 +156,7 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
 
   if (error || !data) {
     return (
-      <div className="rounded-[12px] bg-[rgba(255,83,100,0.08)] px-4 py-3 dashboard-v2-text text-[var(--color-danger)]">
+      <div className="rounded-xl bg-[rgba(255,83,100,0.08)] px-4 py-3 dashboard-v2-text text-(--color-danger)">
         Не удалось загрузить CEU-баллы. Возможно, у пользователя нет активного цикла.
       </div>
     );
@@ -173,7 +180,7 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
           return (
             <label
               key={category.key}
-              className="flex min-h-[86px] items-center justify-between gap-5 rounded-[10px] bg-[var(--color-blue-soft)] px-5 py-4"
+              className="flex min-h-[86px] items-center justify-between gap-5 rounded-[10px] bg-(--color-blue-soft) px-5 py-4"
             >
               <span className="min-w-0 text-[16px] font-extrabold leading-[1.2] text-[#1F305E]">
                 {category.label}
@@ -207,7 +214,7 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
                     setRestoreDraft((current) => ({ ...current, [category.key]: undefined }));
                   }}
                   inputMode="decimal"
-                  className="h-[38px] w-[82px] rounded-[10px] border border-[#B8C4D8] bg-white px-2 text-right text-[24px] font-extrabold leading-none text-[#1F305E] outline-none transition focus:border-[var(--color-blue-dark)] focus:shadow-[0_0_0_2px_rgba(31,48,94,0.12)] disabled:cursor-not-allowed disabled:border-[#D7DCE7] disabled:bg-[#EEF0F4] disabled:text-[#8D96B5]"
+                  className="h-[38px] w-[82px] rounded-[10px] border border-[#B8C4D8] bg-white px-2 text-right text-[24px] font-extrabold leading-none text-[#1F305E] outline-none transition focus:border-(--color-blue-dark) focus:shadow-[0_0_0_2px_rgba(31,48,94,0.12)] disabled:cursor-not-allowed disabled:border-[#D7DCE7] disabled:bg-[#EEF0F4] disabled:text-[#8D96B5]"
                   disabled={mutation.isPending || !isEditable}
                   aria-label={`${category.label}: подтвержденные CEU-баллы`}
                   title={isEditable ? undefined : 'Для этой категории баллы не требуются'}
