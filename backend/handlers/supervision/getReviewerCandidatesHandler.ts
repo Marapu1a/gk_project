@@ -19,6 +19,9 @@ type CandidateRelation = {
   status: ReviewerCandidateStatus;
   createdAt: Date;
   updatedAt: Date;
+  endedAt: Date | null;
+  endedById: string | null;
+  endReason: string | null;
   candidate: {
     id: string;
     fullName: string | null;
@@ -39,6 +42,9 @@ type CandidateAggregate = {
   pendingCount: number;
   submittedHours: number;
   status: ReviewerCandidateStatus;
+  endedAt: Date | null;
+  endedById: string | null;
+  endReason: string | null;
   sortRank: number;
 };
 
@@ -86,7 +92,7 @@ async function buildCandidates(params: {
     where: {
       reviewerId,
       kind: prismaKind(kind),
-      cycle: { status: CycleStatus.ACTIVE },
+      OR: [{ cycle: { status: CycleStatus.ACTIVE } }, { status: ReviewerCandidateStatus.ENDED }],
       candidate: { archivedAt: null },
     },
     select: {
@@ -94,6 +100,9 @@ async function buildCandidates(params: {
       status: true,
       createdAt: true,
       updatedAt: true,
+      endedAt: true,
+      endedById: true,
+      endReason: true,
       candidate: { select: { id: true, fullName: true, email: true } },
       cycle: { select: { id: true } },
     },
@@ -131,6 +140,9 @@ async function buildCandidates(params: {
       status: ReviewerCandidateStatus.ACCEPTED,
       createdAt: record.createdAt,
       updatedAt: record.createdAt,
+      endedAt: null,
+      endedById: null,
+      endReason: null,
       candidate: record.user,
       cycle: record.cycle,
     });
@@ -141,12 +153,26 @@ async function buildCandidates(params: {
     ...virtualRelations.values(),
   ];
 
+  const previousEndByRelation = new Map<string, Date | null>();
+  const latestEndByPair = new Map<string, Date>();
+  for (const relation of [...relations].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
+    const key = `${relation.candidate.id}:${relation.cycle.id}`;
+    previousEndByRelation.set(relation.id, latestEndByPair.get(key) ?? null);
+    if (relation.endedAt) latestEndByPair.set(key, relation.endedAt);
+  }
+
   const candidates = await Promise.all(
     relations.map(async (relation: CandidateRelation) => {
       const records = await prisma.supervisionRecord.findMany({
         where: {
           userId: relation.candidate.id,
           cycleId: relation.cycle.id,
+          createdAt: {
+            gte: previousEndByRelation.get(relation.id)
+              ? new Date(previousEndByRelation.get(relation.id)!.getTime() + 1)
+              : new Date(relation.createdAt.getTime() - 1000),
+            ...(relation.endedAt ? { lte: relation.endedAt } : {}),
+          },
           hours: {
             some: {
               reviewerId,
@@ -187,6 +213,9 @@ async function buildCandidates(params: {
         pendingCount,
         submittedHours,
         status: relation.status,
+        endedAt: relation.endedAt,
+        endedById: relation.endedById,
+        endReason: relation.endReason,
         sortRank: statusRank(relation.status, pendingCount),
       };
     }),
@@ -206,6 +235,7 @@ function serializeCandidate(candidate: CandidateAggregate) {
     ...serializedCandidate,
     latestRequestAt: candidate.latestRequestAt?.toISOString() ?? null,
     latestPendingRequestAt: candidate.latestPendingRequestAt?.toISOString() ?? null,
+    endedAt: candidate.endedAt?.toISOString() ?? null,
   };
 }
 

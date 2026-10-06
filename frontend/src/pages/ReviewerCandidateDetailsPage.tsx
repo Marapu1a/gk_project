@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { PageNav } from '@/components/PageNav';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { CandidateCeuCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateCeuCard';
 import { CandidateHoursOverviewCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateHoursOverviewCard';
 import { CandidateInfoCard } from '@/features/supervision/components/reviewer-candidate-details/CandidateInfoCard';
@@ -62,7 +63,7 @@ function ReviewerCandidateDetailsContent() {
           <PageNav />
         </div>
         <p className="dashboard-v2-text text-error">
-          {(error as any)?.response?.data?.error || 'Не удалось загрузить кандидата'}
+          {getUiErrorMessage(error, 'Не удалось загрузить данные кандидата. Обновите страницу и попробуйте ещё раз.')}
         </p>
       </div>
     );

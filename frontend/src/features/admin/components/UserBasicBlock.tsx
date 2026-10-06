@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { toast } from 'sonner';
 import PhoneInput from 'react-phone-input-2';
 import { isValidPhoneNumber } from 'libphonenumber-js';
@@ -210,7 +211,7 @@ export default function UserBasicBlock(props: Props) {
       toast.success(UI_TOAST_MESSAGES.profile.userDataSaved);
       setEdit(false);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.profile.userDataSaveFailed);
+      toast.error(getUiErrorMessage(e, UI_TOAST_MESSAGES.profile.userDataSaveFailed));
     }
   };
 

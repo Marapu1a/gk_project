@@ -9,6 +9,7 @@ import { MentorshipHoursRequestForm } from '@/features/supervision/components/Me
 import { SupervisionHoursRequestForm } from '@/features/supervision/components/SupervisionHoursRequestForm';
 import { SupervisionContractBlock } from '@/features/supervision/components/SupervisionContractBlock';
 import { SupervisionRecordHistoryBlock } from '@/features/supervision/components/SupervisionRecordHistoryBlock';
+import { MyCooperationsBlock } from '@/features/supervision/components/MyCooperationsBlock';
 
 function SupervisionHoursContent() {
   const [searchParams] = useSearchParams();
@@ -85,6 +86,7 @@ function SupervisionHoursContent() {
       </div>
 
       <HoursOverviewBlock showActions={false} />
+      <MyCooperationsBlock />
 
       {isMentorshipMode ? (
         <MentorshipHoursRequestForm defaultOpen={!isHistoryEntry} />

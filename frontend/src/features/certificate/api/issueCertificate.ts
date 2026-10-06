@@ -31,6 +31,8 @@ export type IssueCertificatePayload = {
   issuedAt: string;
   expiresAt: string;
   uploadedFileId: string;
+  confirmWarnings?: boolean;
+  warningReason?: string;
 };
 
 export async function issueCertificate(payload: IssueCertificatePayload): Promise<CertificateDTO> {

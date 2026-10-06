@@ -1,6 +1,6 @@
 import { api } from '@/lib/axios';
 
-export type ReviewerCandidateStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+export type ReviewerCandidateStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'ENDED';
 
 export type ReviewerCandidate = {
   relationId: string;
@@ -11,6 +11,9 @@ export type ReviewerCandidate = {
   latestPendingRequestAt: string | null;
   pendingCount: number;
   status: ReviewerCandidateStatus;
+  endedAt: string | null;
+  endedById: string | null;
+  endReason: string | null;
   sortRank: number;
 };
 

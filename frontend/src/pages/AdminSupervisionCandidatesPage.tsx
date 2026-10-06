@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
@@ -42,6 +43,7 @@ const RELATION_STATUS_LABELS: Record<AdminReviewerCandidateRow['relationStatus']
   PENDING: 'Сотрудничество ожидает подтверждения',
   ACCEPTED: 'Сотрудничество подтверждено',
   REJECTED: 'Сотрудничество отклонено',
+  ENDED: 'Сотрудничество завершено',
 };
 
 const HOUR_STATE_OPTIONS: Array<{ value: AdminReviewerHourState | 'ALL'; label: string }> = [
@@ -88,6 +90,9 @@ function hourState(row: AdminReviewerCandidateRow): { text: string; tone: HourSt
 
   const review = row.latestReview;
   if (review) {
+    if (review.status === 'REJECTED' && review.rejectedReason?.includes('сотрудничество завершено')) {
+      return { text: 'Отменено при завершении сотрудничества', tone: 'muted' };
+    }
     const action = review.status === 'REJECTED' ? 'Отклонено' : 'Подтверждено';
     if (review.reviewedByAdmin && review.reviewedBy?.email) {
       return {
@@ -107,6 +112,10 @@ function hourState(row: AdminReviewerCandidateRow): { text: string; tone: HourSt
 
   if (row.relationStatus === 'REJECTED') {
     return { text: 'Сотрудничество отклонено проверяющим', tone: 'muted' };
+  }
+
+  if (row.relationStatus === 'ENDED') {
+    return { text: 'Сотрудничество завершено', tone: 'muted' };
   }
 
   return { text: 'Нет часов на проверку', tone: 'muted' };
@@ -248,7 +257,7 @@ function AdminSupervisionCandidatesContent() {
       setSelectedRow(null);
       setRemoveTarget(null);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.pendingHoursRemoveFailed);
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.admin.pendingHoursRemoveFailed));
     }
   };
 
@@ -430,7 +439,7 @@ function AdminSupervisionCandidatesContent() {
                     <tr
                       key={row.relationId}
                       className={`group border-b border-[#DCE8EC] transition-colors hover:bg-white/70 last:border-b-0 ${
-                        row.relationStatus === 'REJECTED' ? 'text-[#8D96B5]' : ''
+                        row.relationStatus === 'REJECTED' || row.relationStatus === 'ENDED' ? 'text-[#8D96B5]' : ''
                       }`}
                     >
                       <td className="break-words px-3 py-3 font-extrabold leading-snug">

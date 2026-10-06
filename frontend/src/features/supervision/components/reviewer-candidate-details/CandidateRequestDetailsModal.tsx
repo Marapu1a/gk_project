@@ -74,6 +74,9 @@ export function CandidateRequestDetailsModal({
   const [rejectedReason, setRejectedReason] = useState('');
 
   const isPending = !!request.actionHourId;
+  const statusText = request.status === 'REJECTED' && request.rejectedReason?.includes('сотрудничество завершено')
+    ? 'Заявка отменена'
+    : STATUS_LABELS[request.status];
   const reviewer = request.hours.find((hour) => hour.reviewer)?.reviewer ?? null;
   const reviewedBy = request.hours.find((hour) => hour.reviewedBy)?.reviewedBy ?? null;
   const adminReviewNote =
@@ -159,7 +162,7 @@ export function CandidateRequestDetailsModal({
             label="Тип часов"
             value={kind === 'mentorship' ? 'Менторство' : 'Супервизия'}
           />
-          <ReadOnlyField label="Статус" value={STATUS_LABELS[request.status]} />
+          <ReadOnlyField label="Статус" value={statusText} />
         </div>
 
         {adminReviewNote ? (

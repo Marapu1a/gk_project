@@ -423,19 +423,22 @@ export async function getReviewerCandidateDetailsHandler(
 
   let relation = adminRelation
     ? { status: adminRelation.status }
-    : await prisma.reviewerCandidateRelation.findUnique({
+    : await prisma.reviewerCandidateRelation.findFirst({
         where: {
-          reviewerId_candidateId_cycleId_kind: {
-            reviewerId,
-            candidateId,
-            cycleId: activeCycle.id,
-            kind: prismaKind(requestedKind),
-          },
+          reviewerId,
+          candidateId,
+          cycleId: activeCycle.id,
+          kind: prismaKind(requestedKind),
+          status: { in: [ReviewerCandidateStatus.PENDING, ReviewerCandidateStatus.ACCEPTED] },
         },
         select: { status: true },
       });
 
   if (!relation && !adminMode) {
+    const storedHistory = await prisma.reviewerCandidateRelation.count({
+      where: { reviewerId, candidateId, cycleId: activeCycle.id, kind: prismaKind(requestedKind) },
+    });
+    if (storedHistory > 0) return reply.code(403).send({ error: 'Сотрудничество завершено или отклонено' });
     const historicalAccess = await prisma.supervisionRecord.count({
       where: {
         userId: candidateId,

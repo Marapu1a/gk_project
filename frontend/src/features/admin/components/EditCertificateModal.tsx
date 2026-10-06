@@ -11,6 +11,7 @@ import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { ModalCloseButton } from '@/components/ModalCloseButton';
 import { ModalShell } from '@/components/ModalShell';
 import { toCertificateDateInputValue } from '@/features/certificate/utils/certificateDates';
+import { CertificateWarningsPanel } from '@/features/certificate/components/CertificateWarningsPanel';
 import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
@@ -66,6 +67,8 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
   const [numberSuffix, setNumberSuffix] = useState(getCertificateNumberSuffix(certificate.number));
   const [issuedAt, setIssuedAt] = useState(toCertificateDateInputValue(certificate.issuedAt));
   const [expiresAt, setExpiresAt] = useState(toCertificateDateInputValue(certificate.expiresAt));
+  const [warningState, setWarningState] = useState<{ key: string; warnings: string[] } | null>(null);
+  const [warningReason, setWarningReason] = useState('');
 
   const [uploadedFileId, setUploadedFileId] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<UploadedCertificateFile | null>(null);
@@ -88,7 +91,7 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
       toast.success(UI_TOAST_MESSAGES.certificate.revoked);
       onClose();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.certificate.revokeFailed);
+      toast.error(getUiErrorMessage(e, UI_TOAST_MESSAGES.certificate.revokeFailed));
     }
   }
 
@@ -105,6 +108,17 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
 
       if (uploadedFileId) {
         payload.uploadedFileId = uploadedFileId;
+      }
+
+      const warningKey = JSON.stringify([payload.title, payload.number, issuedAt, expiresAt, uploadedFileId]);
+      const confirmWarnings = warningState?.key === warningKey && !!warningReason.trim();
+      if (warningState?.key === warningKey && !confirmWarnings) {
+        toast.error('Укажите причину подтверждения предупреждений.');
+        return;
+      }
+      if (confirmWarnings) {
+        payload.confirmWarnings = true;
+        payload.warningReason = warningReason.trim();
       }
 
       const updated = await updateMutation.mutateAsync({
@@ -126,7 +140,15 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
 
       onClose();
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.certificate.updateFailed);
+      if (e?.response?.data?.errorCode === 'CERTIFICATE_WARNINGS') {
+        setWarningState({
+          key: JSON.stringify([title.trim() || undefined, `${CERTIFICATE_NUMBER_PREFIX}${numberSuffix.trim()}`, issuedAt, expiresAt, uploadedFileId]),
+          warnings: e.response.data.warnings ?? [],
+        });
+        setWarningReason('');
+        return;
+      }
+      toast.error(getUiErrorMessage(e, UI_TOAST_MESSAGES.certificate.updateFailed));
     }
   }
 
@@ -324,6 +346,9 @@ export function EditCertificateModal({ userId, certificate, onClose, onUpdated }
             ) : null}
           </div>
 
+          {warningState?.key === JSON.stringify([title.trim() || undefined, `${CERTIFICATE_NUMBER_PREFIX}${numberSuffix.trim()}`, issuedAt, expiresAt, uploadedFileId]) ? (
+            <CertificateWarningsPanel warnings={warningState.warnings} reason={warningReason} onReasonChange={setWarningReason} />
+          ) : null}
           <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"

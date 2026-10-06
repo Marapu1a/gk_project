@@ -12,6 +12,10 @@ export const UI_CERTIFICATION_MESSAGES = {
 } as const;
 
 export const SERVER_ERROR_MESSAGES: Record<string, string> = {
+  duplicate_certificate: 'Не удалось сохранить сертификат из-за конфликта с другой записью. Обновите страницу и проверьте сертификаты пользователя. Если ошибка повторится, сообщите техническому специалисту.',
+  CERTIFICATE_SAVE_CONFLICT: 'Не удалось сохранить сертификат из-за конфликта с другой записью. Обновите страницу и проверьте сертификаты пользователя. Если ошибка повторится, сообщите техническому специалисту.',
+  CERTIFICATE_FILE_INVALID: 'Файл повреждён или не является PDF. Загрузите сертификат заново.',
+  CERTIFICATE_WARNINGS: 'Проверьте даты и возможные дубли сертификата перед сохранением.',
   ABANDON_REASON_REQUIRED: 'Укажите причину отмены активной сертификации.',
   ACTIVE_CYCLE_EXISTS:
     'Уже есть активная сертификация. Чтобы изменить цель или начать новую сертификацию, обратитесь в поддержку cspap@yandex.ru.',
@@ -259,7 +263,7 @@ export const UI_TOAST_MESSAGES = {
 } as const;
 
 function isCodeLike(value: string) {
-  return /^[A-Z0-9_]+$/.test(value.trim());
+  return /^[A-Za-z][A-Za-z0-9_]*$/.test(value.trim());
 }
 
 export function getServerErrorMessage(codeOrMessage: unknown) {
@@ -268,11 +272,17 @@ export function getServerErrorMessage(codeOrMessage: unknown) {
   const value = codeOrMessage.trim();
   if (!value) return undefined;
 
-  return SERVER_ERROR_MESSAGES[value] ?? (isCodeLike(value) ? SERVER_ERROR_MESSAGES.UNKNOWN_CODE_FALLBACK : value);
+  return SERVER_ERROR_MESSAGES[value] ?? (isCodeLike(value) || !/[А-Яа-яЁё]/.test(value)
+    ? SERVER_ERROR_MESSAGES.UNKNOWN_CODE_FALLBACK
+    : value);
 }
 
 export function getUiErrorMessage(error: any, fallback = 'Произошла ошибка. Попробуйте еще раз.') {
   const data = error?.response?.data;
+
+  if (!error?.response && (error?.code === 'ERR_NETWORK' || error?.message === 'Network Error')) {
+    return 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
+  }
 
   if (Number(error?.response?.status) >= 500) {
     const requestId =
@@ -281,10 +291,13 @@ export function getUiErrorMessage(error: any, fallback = 'Произошла о�
         : null;
 
     return requestId
-      ? `${fallback} Код ошибки: ${requestId}.`
+      ? `${fallback} Если повторится, сообщите техническому специалисту код ${requestId}.`
       : fallback;
   }
 
-  const raw = data?.errorCode ?? data?.error ?? data?.message ?? error?.message;
-  return getServerErrorMessage(raw) ?? fallback;
+  for (const raw of [data?.errorCode, data?.message, data?.error, error?.message]) {
+    const translated = getServerErrorMessage(raw);
+    if (translated && translated !== SERVER_ERROR_MESSAGES.UNKNOWN_CODE_FALLBACK) return translated;
+  }
+  return fallback;
 }

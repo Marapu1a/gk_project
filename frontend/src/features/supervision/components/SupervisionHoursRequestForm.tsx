@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { fetchCurrentUser } from '@/features/auth/api/me';
@@ -391,7 +392,7 @@ export function SupervisionHoursRequestForm({ defaultOpen = true }: { defaultOpe
       setIsOpen(false);
       setIsSuccessOpen(true);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.supervision.requestSendFailed);
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.supervision.requestSendFailed));
     }
   };
 

@@ -9,8 +9,9 @@ import { toast } from 'sonner';
 import { useUsers } from '@/features/admin/hooks/useUsers';
 import { useUserDetails } from '@/features/admin/hooks/useUserDetails';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import type { CertificateIssuedReport } from './CertificateIssuedModal';
+import { CertificateWarningsPanel } from './CertificateWarningsPanel';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 const MAX_CERTIFICATE_FILE_MB = 20;
@@ -65,6 +66,8 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
   const [uploadedFileId, setUploadedFileId] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<UploadedCertificateFile | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [warningState, setWarningState] = useState<{ key: string; warnings: string[] } | null>(null);
+  const [warningReason, setWarningReason] = useState('');
 
   const mutation = useIssueCertificate();
   const { confirm } = useConfirm();
@@ -143,9 +146,6 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
 
   const mapError = (err: any) => {
     const code = err?.response?.data?.errorCode ?? err?.response?.data?.error;
-    const message = err?.response?.data?.message;
-
-    if (typeof message === 'string' && message.trim()) return message;
     if (code === 'NO_ACTIVE_CYCLE') return 'Нет активного цикла — выдача сертификата невозможна.';
     if (code === 'CYCLE_ALREADY_HAS_CERTIFICATE') {
       return 'На этот цикл уже выдан сертификат.';
@@ -157,7 +157,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       return 'Файл сертификата поврежден или не является PDF. Загрузите корректный файл.';
     }
     if (code === 'TARGET_GROUP_NOT_CONFIGURED') return 'Целевая группа не настроена в системе.';
-    return err?.response?.data?.error || err?.message || UI_TOAST_MESSAGES.certificate.issueFailed;
+    return getUiErrorMessage(err, UI_TOAST_MESSAGES.certificate.issueFailed);
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -172,6 +172,12 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
 
     try {
       const certNumber = `${CERTIFICATE_NUMBER_PREFIX}${numberSuffix.trim()}`;
+      const warningKey = JSON.stringify([resolvedEmail.trim(), certNumber, issuedDate, expiresDate, uploadedFileId]);
+      const confirmWarnings = warningState?.key === warningKey && !!warningReason.trim();
+      if (warningState?.key === warningKey && !confirmWarnings) {
+        toast.error('Укажите причину подтверждения предупреждений.');
+        return;
+      }
       const res = await mutation.mutateAsync({
         email: resolvedEmail.trim(),
         title: title.trim(),
@@ -179,6 +185,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
         issuedAt: issuedDate,
         expiresAt: expiresDate,
         uploadedFileId,
+        ...(confirmWarnings ? { confirmWarnings: true, warningReason: warningReason.trim() } : {}),
       });
 
       const report: CertificateIssuedReport = {
@@ -193,6 +200,14 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
 
       onSuccess?.(report);
     } catch (err: any) {
+      if (err?.response?.data?.errorCode === 'CERTIFICATE_WARNINGS') {
+        setWarningState({
+          key: JSON.stringify([resolvedEmail.trim(), `${CERTIFICATE_NUMBER_PREFIX}${numberSuffix.trim()}`, issuedDate, expiresDate, uploadedFileId]),
+          warnings: err.response.data.warnings ?? [],
+        });
+        setWarningReason('');
+        return;
+      }
       toast.error(mapError(err));
     }
   }
@@ -235,7 +250,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       setUploadedFile(uploaded);
       setUploadedFileId(uploaded.id);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.certificate.uploadFailed);
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.certificate.uploadFailed));
     } finally {
       setIsUploadingFile(false);
     }
@@ -249,7 +264,7 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
       setUploadedFile(null);
       setUploadedFileId('');
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.certificate.deleteFileFailed);
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.certificate.deleteFileFailed));
     }
   };
 
@@ -463,6 +478,9 @@ export function AdminIssueCertificateForm({ defaultEmail = '', onSuccess }: Prop
         ) : null}
       </div>
 
+      {warningState?.key === JSON.stringify([resolvedEmail.trim(), `${CERTIFICATE_NUMBER_PREFIX}${numberSuffix.trim()}`, issuedDate, expiresDate, uploadedFileId]) ? (
+        <CertificateWarningsPanel warnings={warningState.warnings} reason={warningReason} onReasonChange={setWarningReason} />
+      ) : null}
       <button
         type="submit"
         disabled={!canSubmit || isBusy}

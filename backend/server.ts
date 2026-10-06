@@ -149,6 +149,8 @@ app.listen({ port: +PORT, host: '0.0.0.0' }, (err, address) => {
     process.exit(1)
   }
   app.log.info({ address, logLevel }, 'Server listening')
-  startCertificateLifecycleScheduler(app.log)
+  if (process.env.CERTIFICATE_LIFECYCLE_SCHEDULER_ENABLED !== '0') {
+    startCertificateLifecycleScheduler(app.log)
+  }
   startReviewerReminderScheduler(app.log)
 })

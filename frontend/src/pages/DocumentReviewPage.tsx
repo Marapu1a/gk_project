@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { toast } from 'sonner';
 
 import { ModalCloseButton } from '@/components/ModalCloseButton';
@@ -226,7 +227,7 @@ export default function DocumentReviewPage() {
               toast.success(UI_TOAST_MESSAGES.documents.deleteRequestSent);
               setDeleteRequestTarget(null);
             } catch (err: any) {
-              toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.documents.deleteRequestFailed);
+              toast.error(getUiErrorMessage(err, UI_TOAST_MESSAGES.documents.deleteRequestFailed));
             }
           }}
         />

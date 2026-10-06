@@ -13,6 +13,8 @@ import { parseCertificateExpiresAt, parseCertificateIssuedAt } from '../../utils
 import { isStoredPdfFile } from '../../utils/pdfValidation';
 import { ensureCertificatePreview } from '../../utils/certificatePreview';
 import { reportOperationalFailure } from '../../lib/errorMonitoring';
+import { getCertificateWarnings } from '../../utils/certificateWarnings';
+import { finishCooperation } from '../../domain/supervision/finishCooperation';
 
 interface IssueCertificateRoute extends RouteGenericInterface {
   Body: {
@@ -22,6 +24,8 @@ interface IssueCertificateRoute extends RouteGenericInterface {
     issuedAt: string; // YYYY-MM-DD
     expiresAt: string; // YYYY-MM-DD
     uploadedFileId: string; // UploadedFile.id
+    confirmWarnings?: boolean;
+    warningReason?: string;
   };
 }
 
@@ -122,6 +126,11 @@ export async function issueCertificateHandler(
     return reply.code(409).send({ error: 'Этот файл уже используется другим сертификатом' });
   }
 
+  const warnings = await getCertificateWarnings({ userId: user.id, number, issuedAt: iss, expiresAt: exp, fileId: file.id });
+  if (warnings.length && (!req.body.confirmWarnings || !req.body.warningReason?.trim())) {
+    return reply.code(409).send({ errorCode: 'CERTIFICATE_WARNINGS', warnings });
+  }
+
   const activeCycle = await prisma.certificationCycle.findFirst({
     where: { userId: user.id, status: CycleStatus.ACTIVE },
     select: { id: true, targetLevel: true, type: true },
@@ -164,6 +173,7 @@ export async function issueCertificateHandler(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${activeCycle.id}))`;
       const already = await tx.certificate.findUnique({
         where: { cycleId: activeCycle.id },
         select: { id: true },
@@ -220,6 +230,23 @@ export async function issueCertificateHandler(
         await tx.certificate.update({
           where: { id: next.id },
           data: { previousId: cert.id },
+        });
+      }
+
+      const openCooperations = await tx.reviewerCandidateRelation.findMany({
+        where: {
+          candidateId: user.id,
+          cycleId: activeCycle.id,
+          status: { in: ['PENDING', 'ACCEPTED'] },
+        },
+        select: { id: true, reviewerId: true, candidateId: true, cycleId: true, kind: true },
+      });
+      const endedAt = new Date();
+      for (const relation of openCooperations) {
+        await finishCooperation(tx, relation, {
+          endedById: null,
+          reason: 'CERTIFICATE_ISSUED',
+          endedAt,
         });
       }
 
@@ -309,6 +336,10 @@ export async function issueCertificateHandler(
 
     const created = result.cert;
 
+    if (warnings.length) {
+      req.log.info({ certificateId: created.id, userId: user.id, warnings, warningReason: req.body.warningReason?.trim(), actorId: actor.userId }, 'certificate warnings confirmed');
+    }
+
     void ensureCertificatePreview(created.id).catch((error) => {
       reportOperationalFailure(
         'certificate_preview_warmup',
@@ -349,8 +380,8 @@ export async function issueCertificateHandler(
     }
     if (e?.code === 'P2002') {
       return reply.code(409).send({
-        error: 'duplicate_certificate',
-        detail: 'Нарушено уникальное ограничение (fileId или previousId или cycleId)',
+        errorCode: 'CERTIFICATE_SAVE_CONFLICT',
+        requestId: req.id,
       });
     }
     reportOperationalFailure(

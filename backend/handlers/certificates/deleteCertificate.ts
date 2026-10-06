@@ -98,9 +98,13 @@ export async function deleteCertificateHandler(
           userId: cert.user.id,
           groupId: { in: chainGroupIds },
         },
-        orderBy: { issuedAt: 'asc' },
+        orderBy: [{ issuedAt: 'asc' }, { expiresAt: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         select: { id: true, groupId: true },
       });
+
+      for (const item of all) {
+        await tx.certificate.update({ where: { id: item.id }, data: { previousId: null } });
+      }
 
       for (let i = 0; i < all.length; i++) {
         const prevId = i === 0 ? null : all[i - 1].id;

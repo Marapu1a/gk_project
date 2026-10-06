@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { toast } from 'sonner';
 import { Check, X, UserCheck, Unlock } from 'lucide-react';
 
@@ -163,7 +164,7 @@ function AdminExternalSupervisorClaimsPageInner() {
       if (action === 'assign') toast.success('Обращение взято в работу');
       else toast.success('Обращение освобождено');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось выполнить действие');
+      toast.error(getUiErrorMessage(e, 'Не удалось выполнить действие'));
     }
   };
 
@@ -186,7 +187,7 @@ function AdminExternalSupervisorClaimsPageInner() {
       await updateClaim.mutateAsync({ userId: user.id, status });
       toast.success(approved ? 'Квалификация подтверждена' : 'Обращение отклонено');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось обработать обращение');
+      toast.error(getUiErrorMessage(e, 'Не удалось обработать обращение'));
     }
   };
 
@@ -203,7 +204,7 @@ function AdminExternalSupervisorClaimsPageInner() {
       await updateClaim.mutateAsync({ userId: user.id, status: 'SETUP_COMPLETE' });
       toast.success('Профиль пользователя разблокирован');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось завершить настройку');
+      toast.error(getUiErrorMessage(e, 'Не удалось завершить настройку'));
     }
   };
 

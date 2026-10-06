@@ -5,7 +5,7 @@ import { formatDateRu as formatDate } from '@/utils/dateFormat';
 import { StatusPill, type StatusPillTone } from '@/components/StatusPill';
 
 type RelationKind = 'SUPERVISION' | 'MENTORSHIP';
-type RelationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+type RelationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'ENDED';
 
 type Relation = {
   id: string;
@@ -29,6 +29,7 @@ const STATUS_LABELS: Record<RelationStatus, string> = {
   ACCEPTED: 'Сотрудничество подтверждено',
   PENDING: 'Ожидает подтверждения',
   REJECTED: 'Сотрудничество отклонено',
+  ENDED: 'Сотрудничество завершено',
 };
 
 function candidateName(name?: string | null) {
@@ -44,6 +45,7 @@ function candidateName(name?: string | null) {
 function statusTone(status: RelationStatus): StatusPillTone {
   if (status === 'ACCEPTED') return 'success';
   if (status === 'REJECTED') return 'danger';
+  if (status === 'ENDED') return 'neutral';
   return 'warning';
 }
 
@@ -99,7 +101,7 @@ function RelationsCard({
           <div>
             {relations.map((relation) => {
               const [surname, restName] = candidateName(relation.candidate.fullName);
-              const dimmed = relation.status === 'REJECTED';
+              const dimmed = relation.status === 'REJECTED' || relation.status === 'ENDED';
 
               return (
                 <div key={relation.id}>

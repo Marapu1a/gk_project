@@ -17,6 +17,7 @@ import { usePatchExamAppStatus } from '@/features/exam/hooks/usePatchExamAppStat
 import { examStatusLabels, formatCertificationLevelName } from '@/utils/labels';
 import {
   getServerErrorMessage,
+  getUiErrorMessage,
   UI_CERTIFICATION_MESSAGES,
   UI_TOAST_MESSAGES,
 } from '@/utils/uiMessages';
@@ -290,11 +291,7 @@ export function CertificationBlock({ user, onOpenPayment }: Props) {
           toast.success(UI_TOAST_MESSAGES.exam.requestSent);
         },
         onError: (error: any) => {
-          toast.error(
-            error?.response?.data?.message ||
-              error?.response?.data?.error ||
-              UI_TOAST_MESSAGES.exam.statusUpdateFailed,
-          );
+          toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.exam.statusUpdateFailed));
         },
       },
     );

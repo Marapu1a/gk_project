@@ -51,7 +51,7 @@ function statusLabel(record: SupervisionRecordHistoryItem, mode: HistoryMode = '
   }
 
   if (record.status === 'REJECTED') {
-    return 'Отклонено';
+    return record.rejectedReason?.includes('сотрудничество завершено') ? 'Отменено при завершении сотрудничества' : 'Отклонено';
   }
 
   if (record.status === 'SPENT') {

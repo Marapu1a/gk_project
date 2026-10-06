@@ -6,7 +6,7 @@ import { documentTypeLabels, type DocumentType } from '@/utils/documentTypeLabel
 import { useUpdateFileType } from '@/features/documentReview/hooks/useUpdateFileType';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 const EXIT_ICON = '/dashboard-v2/exit_btn.svg';
 
@@ -70,11 +70,9 @@ export function MultiFileUpload({ onChange, disabled }: Props) {
       saveState(updated);
       toast.success(UI_TOAST_MESSAGES.files.fileUploaded);
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.error ??
-        (err?.response?.status === 413
-          ? UI_TOAST_MESSAGES.files.tooLarge(MAX_SIZE_MB)
-          : UI_TOAST_MESSAGES.files.uploadFailed);
+      const msg = err?.response?.status === 413
+        ? UI_TOAST_MESSAGES.files.tooLarge(MAX_SIZE_MB)
+        : getUiErrorMessage(err, UI_TOAST_MESSAGES.files.uploadFailed);
 
       toast.error(msg);
     } finally {

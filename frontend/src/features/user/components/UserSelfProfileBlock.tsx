@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { toast } from 'sonner';
 import { useUpdateMe } from '@/features/user/hooks/useUpdateMe';
 import type { CurrentUser } from '@/features/auth/api/me';
@@ -136,7 +137,7 @@ export function UserSelfProfileBlock({ user }: { user: CurrentUser }) {
       toast.success(UI_TOAST_MESSAGES.profile.saved);
       setEdit(false);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.profile.saveFailed);
+      toast.error(getUiErrorMessage(e, UI_TOAST_MESSAGES.profile.saveFailed));
     }
   };
 

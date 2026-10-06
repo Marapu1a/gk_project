@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
@@ -175,7 +176,7 @@ export default function CeuReviewPage() {
       downloadBlob(blob);
       toast.success('CSV выгружен по выбранным фильтрам');
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Не удалось выгрузить CSV');
+      toast.error(getUiErrorMessage(err, 'Не удалось выгрузить CSV'));
     }
   };
 

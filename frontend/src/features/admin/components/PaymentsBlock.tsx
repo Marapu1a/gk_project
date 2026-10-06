@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getShortPaymentTypeLabel, paymentStatusLabels } from '@/utils/labels';
@@ -191,7 +192,7 @@ export default function PaymentsBlock({
             : UI_TOAST_MESSAGES.payment.canceledQuiet,
       );
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.payment.updateFailed);
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.payment.updateFailed));
     }
   };
 

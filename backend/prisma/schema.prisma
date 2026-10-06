@@ -43,6 +43,7 @@ enum ReviewerCandidateStatus {
   PENDING
   ACCEPTED
   REJECTED
+  ENDED
 }
 
 enum ExternalSupervisorClaimStatus {
@@ -389,10 +390,15 @@ model ReviewerCandidateRelation {
   kind   ReviewerCandidateKind
   status ReviewerCandidateStatus @default(PENDING)
 
+  endedAt DateTime?
+  endedById String?
+  endReason String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([reviewerId, candidateId, cycleId, kind])
+  // Единственный незавершённый период обеспечивается частичным индексом в миграции.
+  @@index([reviewerId, candidateId, cycleId, kind])
   @@index([reviewerId, kind, status])
   @@index([candidateId, cycleId])
 }

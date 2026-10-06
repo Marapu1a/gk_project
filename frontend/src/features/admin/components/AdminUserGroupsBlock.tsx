@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { useUserGroupsById } from '@/features/groups/hooks/useUserGroupsById';
@@ -116,7 +117,9 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
       [...(userDetails?.certificates ?? [])]
         .filter((certificate) => isCertificateActive(certificate.expiresAt))
         .sort(
-          (a, b) => new Date(b.issuedAt || 0).getTime() - new Date(a.issuedAt || 0).getTime(),
+          (a, b) =>
+            new Date(b.issuedAt || 0).getTime() - new Date(a.issuedAt || 0).getTime() ||
+            new Date(b.expiresAt || 0).getTime() - new Date(a.expiresAt || 0).getTime(),
         )[0] ?? null
     );
   }, [userDetails?.certificates]);
@@ -201,7 +204,7 @@ export default function AdminUserGroupsBlock({ userId }: { userId: string }) {
     try {
       await updateGroups.mutateAsync([selectedGroup.id]);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.admin.saveCurrentLevelFailed);
+      toast.error(getUiErrorMessage(e, UI_TOAST_MESSAGES.admin.saveCurrentLevelFailed));
     }
   };
 

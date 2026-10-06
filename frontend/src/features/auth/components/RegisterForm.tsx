@@ -15,7 +15,7 @@ import 'react-phone-input-2/lib/style.css';
 import { toast } from 'sonner';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 import { AuthCard, AuthField, AuthSubmitButton, PasswordInput } from './AuthLayout';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 // utils
 import { buildFullNameRu, buildFullNameLatin } from '@/features/user/utils/name';
@@ -174,9 +174,7 @@ export function RegisterForm() {
       navigate('/dashboard-v2');
     },
     onError: (error: any) => {
-      const backendMessage = error?.response?.data?.error;
-
-      toast.error(backendMessage || UI_TOAST_MESSAGES.auth.registerFailed);
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.auth.registerFailed));
     },
   });
 

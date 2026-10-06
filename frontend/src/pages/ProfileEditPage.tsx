@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -114,7 +115,7 @@ export default function ProfileEditPage() {
       toast.success(UI_TOAST_MESSAGES.profile.dataSaved);
       navigate('/dashboard-v2');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.profile.saveFailed);
+      toast.error(getUiErrorMessage(e, UI_TOAST_MESSAGES.profile.saveFailed));
     }
   });
 
@@ -131,7 +132,7 @@ export default function ProfileEditPage() {
       await archiveRequest.mutateAsync(undefined);
       toast.success(UI_TOAST_MESSAGES.profile.deleteRequestSent);
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || UI_TOAST_MESSAGES.profile.deleteRequestFailed);
+      toast.error(getUiErrorMessage(e, UI_TOAST_MESSAGES.profile.deleteRequestFailed));
     }
   };
 

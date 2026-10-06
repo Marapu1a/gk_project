@@ -93,6 +93,7 @@ export async function updateSupervisionHourHandler(
   if (!existing.record.cycleId) {
     return reply.code(400).send({ error: 'SUPERVISION_NOT_LINKED_TO_CYCLE' });
   }
+  const cycleId = existing.record.cycleId;
 
   const ownerActiveCycle = await prisma.certificationCycle.findFirst({
     where: { userId: recordOwnerId, status: CycleStatus.ACTIVE },
@@ -166,24 +167,39 @@ export async function updateSupervisionHourHandler(
 
   const reviewedAt = new Date();
 
-  const updatedHours = await prisma.$transaction(async (tx) => {
-    await tx.supervisionHour.updateMany({
-      where: {
-        id: { in: reviewableHours.map((hour) => hour.id) },
-      },
-      data: {
-        status: desiredStatus,
-        reviewedAt,
-        rejectedReason: desiredStatus === 'REJECTED' ? rejectedReason : null,
-        reviewedById: actorId,
-      },
-    });
+  let updatedHours;
+  try {
+    updatedHours = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${cycleId}))`;
+      const activeCycle = await tx.certificationCycle.findUnique({
+        where: { id: cycleId }, select: { status: true },
+      });
+      if (activeCycle?.status !== CycleStatus.ACTIVE) throw new Error('HOURS_ALREADY_PROCESSED');
+      const changed = await tx.supervisionHour.updateMany({
+        where: {
+          id: { in: reviewableHours.map((hour) => hour.id) },
+          status: 'UNCONFIRMED',
+        },
+        data: {
+          status: desiredStatus,
+          reviewedAt,
+          rejectedReason: desiredStatus === 'REJECTED' ? rejectedReason : null,
+          reviewedById: actorId,
+        },
+      });
+      if (changed.count !== reviewableHours.length) throw new Error('HOURS_ALREADY_PROCESSED');
 
-    return tx.supervisionHour.findMany({
-      where: { recordId: existing.recordId },
-      orderBy: { id: 'asc' },
+      return tx.supervisionHour.findMany({
+        where: { recordId: existing.recordId },
+        orderBy: { id: 'asc' },
+      });
     });
-  });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'HOURS_ALREADY_PROCESSED') {
+      return reply.code(409).send({ error: 'Заявка уже обработана или сотрудничество завершено. Обновите страницу.' });
+    }
+    throw error;
+  }
 
   try {
     const uniqueKinds = new Set(reviewableHours.map((hour) => normalizeNotificationType(hour.type)));

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { toast } from 'sonner';
 import type { ReactNode } from 'react';
 import { DatabaseBackup, Download, LogOut, Settings, Trash2, X } from 'lucide-react';
@@ -100,7 +101,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
       await exportUsers.mutateAsync();
       toast.success('Выгрузка пользователей скачана');
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось выгрузить пользователей');
+      toast.error(getUiErrorMessage(error, 'Не удалось выгрузить пользователей'));
     }
   };
 
@@ -109,7 +110,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
       const result = await backupDb.mutateAsync();
       toast.success(`Бэкап скачан: ${result.file}`);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || error?.message || 'Не удалось создать бэкап');
+      toast.error(getUiErrorMessage(error, 'Не удалось создать бэкап. Попробуйте ещё раз или сообщите техническому специалисту.'));
     }
   };
 
@@ -317,7 +318,7 @@ function AdminNotifications({ notifications }: { notifications: Notification[] }
       }
       toast.success('Все уведомления отмечены прочитанными');
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось отметить уведомления прочитанными');
+      toast.error(getUiErrorMessage(error, 'Не удалось отметить уведомления прочитанными'));
     }
   };
 
@@ -334,7 +335,7 @@ function AdminNotifications({ notifications }: { notifications: Notification[] }
       await deleteAllNotifications.mutateAsync();
       toast.success('Все уведомления удалены');
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось удалить уведомления');
+      toast.error(getUiErrorMessage(error, 'Не удалось удалить уведомления'));
     }
   };
 
@@ -407,7 +408,7 @@ function NotificationRow({ notification }: { notification: Notification }) {
       await deleteNotification.mutateAsync(notification.id);
       toast.success(UI_TOAST_MESSAGES.admin.notificationDeleted);
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || UI_TOAST_MESSAGES.admin.notificationDeleteFailed);
+      toast.error(getUiErrorMessage(error, UI_TOAST_MESSAGES.admin.notificationDeleteFailed));
     }
   };
 

@@ -7,6 +7,8 @@ export type UpdateCertificatePayload = {
   issuedAt?: string;       // ISO
   expiresAt?: string;      // ISO
   uploadedFileId?: string; // UploadedFile.id
+  confirmWarnings?: boolean;
+  warningReason?: string;
 };
 
 export type AdminCertificateGroup = {

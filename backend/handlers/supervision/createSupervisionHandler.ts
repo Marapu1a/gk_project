@@ -271,6 +271,11 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
       // Заявки одного цикла считаются последовательно, чтобы параллельные вкладки
       // не смогли использовать один и тот же остаток часов.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${activeCycle.id}))`;
+      const currentCycle = await tx.certificationCycle.findUnique({
+        where: { id: activeCycle.id },
+        select: { status: true },
+      });
+      if (currentCycle?.status !== CycleStatus.ACTIVE) throw new Error('CYCLE_CHANGED');
 
       if (isAuthorSimpleSupervisor) {
         const [mentorConfirmed, mentorPending, mentorCorrection] = await Promise.all([
@@ -516,6 +521,18 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
         });
       }
 
+      const relationKey = {
+        reviewerId: reviewer.id,
+        candidateId: userId,
+        cycleId: activeCycle.id,
+        kind: relationKind,
+      };
+      const existingRelation = await tx.reviewerCandidateRelation.findFirst({
+        where: { ...relationKey, status: { in: [ReviewerCandidateStatus.PENDING, ReviewerCandidateStatus.ACCEPTED] } },
+        select: { id: true },
+      });
+      if (!existingRelation) await tx.reviewerCandidateRelation.create({ data: relationKey });
+
       const createdRecord = await tx.supervisionRecord.create({
         data: {
           userId,
@@ -543,29 +560,12 @@ export async function createSupervisionHandler(req: FastifyRequest, reply: Fasti
         include: { hours: true },
       });
 
-      const relationKey = {
-        reviewerId: reviewer.id,
-        candidateId: userId,
-        cycleId: activeCycle.id,
-        kind: relationKind,
-      };
-      const existingRelation = await tx.reviewerCandidateRelation.findUnique({
-        where: { reviewerId_candidateId_cycleId_kind: relationKey },
-        select: { id: true, status: true },
-      });
-
-      if (!existingRelation) {
-        await tx.reviewerCandidateRelation.create({ data: relationKey });
-      } else if (existingRelation.status === ReviewerCandidateStatus.REJECTED) {
-        await tx.reviewerCandidateRelation.update({
-          where: { id: existingRelation.id },
-          data: { status: ReviewerCandidateStatus.PENDING },
-        });
-      }
-
       return createdRecord;
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'CYCLE_CHANGED') {
+      return reply.code(409).send({ error: 'Сертификация уже завершена. Обновите страницу перед отправкой часов.' });
+    }
     if (error instanceof SupervisionHoursLimitError) {
       return reply.code(400).send({ error: error.message, remaining: error.remaining });
     }

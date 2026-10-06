@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { toast } from 'sonner';
 import { useUserSupervisionMatrix } from '../hooks/supervision/useUserSupervisionMatrix';
 import { useUpdateUserSupervisionMatrix } from '../hooks/supervision/useUpdateUserSupervisionMatrix';
@@ -227,7 +228,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       );
       setPendingSaveMode(null);
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.supervision.saveHoursFailed);
+      toast.error(getUiErrorMessage(err, UI_TOAST_MESSAGES.supervision.saveHoursFailed));
     }
   };
 
@@ -255,7 +256,7 @@ export default function UserSupervisionMatrix({ userId, activeGroupName }: Props
       );
       setPendingSaveMode(null);
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || UI_TOAST_MESSAGES.supervision.saveMentorshipFailed);
+      toast.error(getUiErrorMessage(err, UI_TOAST_MESSAGES.supervision.saveMentorshipFailed));
     }
   };
 

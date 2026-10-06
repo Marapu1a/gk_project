@@ -1,7 +1,7 @@
 import { api } from '@/lib/axios';
 
 export type AdminReviewerCandidateKind = 'supervision' | 'mentorship';
-export type AdminReviewerCandidateStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+export type AdminReviewerCandidateStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'ENDED';
 export type AdminReviewerHourStatus = 'UNCONFIRMED' | 'CONFIRMED' | 'REJECTED' | 'SPENT';
 export type AdminReviewerHourState =
   | 'NEEDS_REVIEW'

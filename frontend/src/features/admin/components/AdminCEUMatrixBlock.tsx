@@ -4,7 +4,7 @@ import { useUserCEUMatrix } from '../hooks/ceu/useUserCEUMatrix';
 import { useUpdateUserCEUMatrix } from '../hooks/ceu/useUpdateUserCEUMatrix';
 import type { CEUCategory } from '../api/ceu/getUserCEUMatrix';
 import { AdminNotifyChoiceModal } from './AdminNotifyChoiceModal';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import {
   formatDecimalInput,
   getDecimalInputBlurValue,
@@ -138,7 +138,7 @@ export default function AdminCEUMatrixBlock({ userId, required }: Props) {
       const message =
         errorCode === 'NO_ACTIVE_CYCLE'
           ? UI_TOAST_MESSAGES.admin.noActiveCycleForEdit
-          : err?.response?.data?.error || UI_TOAST_MESSAGES.ceu.adminSaveFailed;
+          : getUiErrorMessage(err, UI_TOAST_MESSAGES.ceu.adminSaveFailed);
       toast.error(message);
     }
   };

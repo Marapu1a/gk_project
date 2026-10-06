@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 
 import { PageNav } from '@/components/PageNav';
 import { UserBannerView } from '@/features/userBanner/components/UserBannerView';
@@ -47,7 +48,7 @@ function AdminUserBannerPageInner() {
       });
       toast.success('Баннер сохранен');
     } catch (e: any) {
-      toast.error(e?.response?.data?.error || 'Не удалось сохранить баннер');
+      toast.error(getUiErrorMessage(e, 'Не удалось сохранить баннер'));
     }
   };
 

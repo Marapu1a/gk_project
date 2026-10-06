@@ -7,6 +7,7 @@ import { parseCertificateExpiresAt, parseCertificateIssuedAt } from '../../utils
 import { deleteCertificatePreviews, ensureCertificatePreview } from '../../utils/certificatePreview';
 import { reportOperationalFailure } from '../../lib/errorMonitoring';
 import { isStoredPdfFile } from '../../utils/pdfValidation';
+import { getCertificateWarnings } from '../../utils/certificateWarnings';
 
 interface UpdateCertificateRoute extends RouteGenericInterface {
   Params: { id: string };
@@ -16,6 +17,8 @@ interface UpdateCertificateRoute extends RouteGenericInterface {
     issuedAt?: string;       // YYYY-MM-DD
     expiresAt?: string;      // YYYY-MM-DD
     uploadedFileId?: string; // UploadedFile.id
+    confirmWarnings?: boolean;
+    warningReason?: string;
   };
 }
 
@@ -152,6 +155,23 @@ export async function updateCertificateHandler(
     }
   }
 
+  const warningRelevantChange =
+    nextNumber !== existing.number ||
+    nextIssuedAt.getTime() !== existing.issuedAt.getTime() ||
+    nextExpiresAt.getTime() !== existing.expiresAt.getTime() ||
+    newFileId !== existing.fileId;
+  const warnings = warningRelevantChange ? await getCertificateWarnings({
+    userId: existing.userId,
+    certificateId: existing.id,
+    number: nextNumber,
+    issuedAt: nextIssuedAt,
+    expiresAt: nextExpiresAt,
+    fileId: newFileId,
+  }) : [];
+  if (warnings.length && (!req.body.confirmWarnings || !req.body.warningReason?.trim())) {
+    return reply.code(409).send({ errorCode: 'CERTIFICATE_WARNINGS', warnings });
+  }
+
   const chainGroupNames = getChainGroupNames(existing.group.name);
   if (!chainGroupNames.length) {
     reportOperationalFailure(
@@ -221,9 +241,14 @@ export async function updateCertificateHandler(
           userId: existing.userId,
           groupId: { in: chainGroupIds },
         },
-        orderBy: { issuedAt: 'asc' },
+        orderBy: [{ issuedAt: 'asc' }, { expiresAt: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
         select: { id: true, groupId: true },
       });
+
+      // Освободить уникальные previousId до переназначения цепочки.
+      for (const item of all) {
+        await tx.certificate.update({ where: { id: item.id }, data: { previousId: null } });
+      }
 
       for (let i = 0; i < all.length; i++) {
         const prevId = i === 0 ? null : all[i - 1].id;
@@ -268,6 +293,10 @@ export async function updateCertificateHandler(
       });
     }
 
+    if (warnings.length) {
+      req.log.info({ certificateId: updated.id, userId: existing.userId, warnings, warningReason: req.body.warningReason?.trim(), actorId: actor.userId }, 'certificate warnings confirmed');
+    }
+
     return reply.send({
       id: updated.id,
       title: updated.title,
@@ -299,8 +328,8 @@ export async function updateCertificateHandler(
   } catch (e: any) {
     if (e?.code === 'P2002') {
       return reply.code(409).send({
-        error: 'duplicate_certificate',
-        detail: 'Нарушено уникальное ограничение (fileId или previousId)',
+        errorCode: 'CERTIFICATE_SAVE_CONFLICT',
+        requestId: req.id,
       });
     }
     reportOperationalFailure(

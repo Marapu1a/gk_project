@@ -10,7 +10,7 @@ import { loginSchema } from '../validation/loginSchema';
 import type { LoginDto } from '../validation/loginSchema';
 import { loginUser } from '../api/login';
 import { fetchCurrentUser } from '@/features/auth/api/me';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { normalizePostLoginRedirect } from '../utils/authRedirect';
 
 const ARCHIVED_ACCOUNT_MESSAGE = 'Аккаунт удалён, для восстановления свяжитесь с нами';
@@ -75,7 +75,7 @@ export function LoginForm() {
       navigate(normalizePostLoginRedirect(params.get('to')), { replace: true });
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.error || UI_TOAST_MESSAGES.auth.loginFailed;
+      const message = getUiErrorMessage(error, UI_TOAST_MESSAGES.auth.loginFailed);
       form.setError('root.serverError', { message });
       toast.error(message === ARCHIVED_ACCOUNT_MESSAGE ? <ArchivedAccountError /> : message);
     },

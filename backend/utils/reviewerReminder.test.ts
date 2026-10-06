@@ -19,9 +19,18 @@ test('deduplicates tasks and hides empty categories', () => {
   assert.match(result.text, /заявки часов на проверку — 1\./);
   assert.doesNotMatch(result.text, /запросы на сотрудничество/);
   assert.equal(result.subject, 'ЦС ПАП: заявки ожидают решения');
-  assert.match(result.text, /Добрый день, <Проверяющий>!/);
+  assert.match(result.text, /Добрый день!/);
   assert.match(result.text, /служба поддержки ЦС «ПАП»/);
   assert.doesNotMatch(result.html, /<Проверяющий>/);
+});
+test('greets by first name without surname or patronymic', () => {
+  const result = buildReviewerReminder({ ...base, fullName: 'Иванова Анна Петровна', tasks: [
+    { id: '1', kind: 'hours', createdAt: '2026-09-16' },
+  ] })!;
+  assert.match(result.text, /Добрый день, Анна!/);
+  assert.match(result.html, /Добрый день, Анна!/);
+  assert.doesNotMatch(result.text, /Иванова|Петровна/);
+  assert.doesNotMatch(result.html, /Иванова|Петровна/);
 });
 test('combines cooperation and hours and labels test messages', () => {
   const result = buildReviewerReminder({ ...base, tasks: [

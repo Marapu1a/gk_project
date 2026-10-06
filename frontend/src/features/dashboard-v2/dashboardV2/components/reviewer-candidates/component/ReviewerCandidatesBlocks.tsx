@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
+import { getUiErrorMessage } from '@/utils/uiMessages';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ActionArrowButton } from '@/components/ActionArrowButton';
@@ -8,6 +9,7 @@ import { CandidateRequestDetailsModal } from '@/features/supervision/components/
 import { useReviewerCandidates } from '@/features/supervision/hooks/useReviewerCandidates';
 import { useReviewerRequests } from '@/features/supervision/hooks/useReviewerRequests';
 import { useUpdateReviewerCandidateRelation } from '@/features/supervision/hooks/useUpdateReviewerCandidateRelation';
+import { useFinishCooperation } from '@/features/supervision/hooks/useFinishCooperation';
 import { getSupervisionRequestDateLabel } from '@/features/supervision/utils/requestDateLabels';
 import { NameSortButton, nextNameSortDirection, sortByFullName, type NameSortDirection } from '@/components/NameSortButton';
 import type { ReviewerCandidate } from '@/features/supervision/api/getReviewerCandidates';
@@ -205,6 +207,7 @@ function CandidatesTable({
 }) {
   const navigate = useNavigate();
   const mutation = useUpdateReviewerCandidateRelation();
+  const finish = useFinishCooperation();
   const { confirm } = useConfirm();
   const hasPending = candidates.some((candidate) => candidate.status === 'PENDING');
   const firstAcceptedIndex = candidates.findIndex((candidate) => candidate.status === 'ACCEPTED');
@@ -234,7 +237,26 @@ function CandidatesTable({
           : `Сотрудничество отклонено: ${candidate.email}`,
       );
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Не удалось изменить статус сотрудничества');
+      toast.error(getUiErrorMessage(error, 'Не удалось изменить статус сотрудничества'));
+    }
+  };
+
+  const finishRelation = async (candidate: ReviewerCandidate) => {
+    const ok = await confirm({
+      title: 'Завершить сотрудничество?',
+      message: `Завершить сотрудничество с ${candidate.fullName || candidate.email}?`,
+      description: 'Непроверенные заявки этого кандидата будут отменены. Подтверждённые часы останутся в истории.',
+      confirmLabel: 'Завершить',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const result = await finish.mutateAsync(candidate.relationId);
+      toast.success(result.cancelledHours
+        ? `Сотрудничество завершено. Отменено заявок часов: ${result.cancelledHours}.`
+        : 'Сотрудничество завершено.');
+    } catch (error) {
+      toast.error(getUiErrorMessage(error, 'Не удалось завершить сотрудничество. Обновите страницу и попробуйте ещё раз.'));
     }
   };
 
@@ -282,7 +304,7 @@ function CandidatesTable({
                     ) : null}
                     <tr className="border-b border-[#DCE8EC] last:border-b-0">
                     <td className="px-4 py-3">
-                      {isPending ? (
+                      {candidate.status !== 'ACCEPTED' ? (
                         <div className="min-w-0 leading-[1.15]">
                           <div className="font-extrabold">{nameLines[0]}</div>
                           {nameLines.slice(1).map((line) => (
@@ -313,7 +335,7 @@ function CandidatesTable({
                     </td>
                     <td className="px-4 py-3">
                       {isPending ? (
-                        <div className="flex flex-wrap justify-end gap-2">
+                        <div className="flex flex-wrap justify-center gap-2">
                           <button
                             type="button"
                             onClick={() => updateRelation(candidate, 'ACCEPTED')}
@@ -332,10 +354,21 @@ function CandidatesTable({
                           </button>
                         </div>
                       ) : (
-                        <div className="flex justify-center">
+                        <div className="flex flex-wrap justify-center gap-2">
                           <span className="dashboard-v2-caption rounded-full bg-[var(--color-blue-soft)] px-3 py-1">
-                            Сотрудничество подтверждено
+                            {candidate.status === 'ACCEPTED' ? 'Сотрудничество подтверждено' :
+                              candidate.status === 'ENDED' ? 'Сотрудничество завершено' : 'Сотрудничество отклонено'}
+                            {candidate.status === 'ENDED' && candidate.endedAt ? ` · ${formatDate(candidate.endedAt)}` : ''}
+                            {candidate.status === 'ENDED' ? candidate.endReason === 'CERTIFICATE_ISSUED'
+                              ? ' · при выдаче сертификата'
+                              : candidate.endedById === candidate.userId ? ' · кандидатом'
+                              : candidate.endedById ? ' · вами' : '' : ''}
                           </span>
+                          {candidate.status === 'ACCEPTED' ? (
+                            <button type="button" onClick={() => finishRelation(candidate)} disabled={finish.isPending} className="dashboard-v2-caption rounded-full border border-[#1F305E] px-3 py-1 disabled:opacity-50">
+                              Завершить
+                            </button>
+                          ) : null}
                         </div>
                       )}
                     </td>
@@ -344,16 +377,16 @@ function CandidatesTable({
                         onClick={() =>
                           navigate(`/reviewer/candidates/${kind}/${candidate.userId}`)
                         }
-                        disabled={isPending}
+                        disabled={candidate.status !== 'ACCEPTED'}
                         size={30}
                         title={
-                          isPending
-                            ? 'Сначала подтвердите сотрудничество'
+                          candidate.status !== 'ACCEPTED'
+                            ? 'Нет действующего сотрудничества'
                             : 'Открыть детали кандидата'
                         }
                         aria-label={
-                          isPending
-                            ? 'Сначала подтвердите сотрудничество'
+                          candidate.status !== 'ACCEPTED'
+                            ? 'Нет действующего сотрудничества'
                             : 'Открыть детали кандидата'
                         }
                       />

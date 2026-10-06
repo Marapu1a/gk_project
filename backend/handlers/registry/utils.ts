@@ -62,7 +62,7 @@ export async function getActiveCertificate(userId: string) {
 
   const cert = await prisma.certificate.findFirst({
     where: { userId, expiresAt: { gte: now } },
-    orderBy: { issuedAt: 'desc' },
+    orderBy: [{ issuedAt: 'desc' }, { expiresAt: 'desc' }, { createdAt: 'desc' }],
     select: {
       id: true,
       title: true,
@@ -127,7 +127,7 @@ export async function getRegistryList({
       groups: { include: { group: { select: { name: true, rank: true } } } },
       // Последний сертификат нужен и в течение 60 дней приостановки.
       certificates: {
-        orderBy: { issuedAt: 'desc' },
+        orderBy: [{ issuedAt: 'desc' }, { expiresAt: 'desc' }, { createdAt: 'desc' }],
         take: 1,
         select: { id: true, expiresAt: true },
       },
@@ -209,7 +209,7 @@ export async function getRegistryProfile(userId: string) {
       // активная группа
       groups: { include: { group: { select: { name: true, rank: true } } } },
       certificates: {
-        orderBy: { issuedAt: 'desc' },
+        orderBy: [{ issuedAt: 'desc' }, { expiresAt: 'desc' }, { createdAt: 'desc' }],
         take: 1,
         select: {
           id: true,

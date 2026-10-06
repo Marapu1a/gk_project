@@ -285,7 +285,10 @@ export async function getUserFullDetailsHandler(req: FastifyRequest, reply: Fast
   const latestCertificate =
     user.certificates
       .slice()
-      .sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime())[0] ?? null;
+      .sort((a, b) =>
+        new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime() ||
+        new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime()
+      )[0] ?? null;
 
   const examReadiness = await buildExamReadiness(user.id);
   const [supervisionPendingRequests, mentorshipPendingRequests] = await Promise.all([

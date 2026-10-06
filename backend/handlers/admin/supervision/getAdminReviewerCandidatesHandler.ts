@@ -46,6 +46,7 @@ type RelationRow = {
   status: ReviewerCandidateStatus;
   createdAt: Date;
   updatedAt: Date;
+  endedAt: Date | null;
   reviewerId: string;
   candidateId: string;
   reviewer: { id: string; email: string; fullName: string | null };
@@ -237,6 +238,7 @@ export async function getAdminReviewerCandidatesHandler(
       status: true,
       createdAt: true,
       updatedAt: true,
+      endedAt: true,
       reviewerId: true,
       candidateId: true,
       reviewer: { select: { id: true, email: true, fullName: true } },
@@ -303,6 +305,7 @@ export async function getAdminReviewerCandidatesHandler(
         status: ReviewerCandidateStatus.ACCEPTED,
         createdAt: record.createdAt,
         updatedAt: record.createdAt,
+        endedAt: null,
         reviewerId: hour.reviewerId,
         candidateId: record.userId,
         reviewer: hour.reviewer,
@@ -316,6 +319,14 @@ export async function getAdminReviewerCandidatesHandler(
     ...storedRelations,
     ...virtualRelationsByKey.values(),
   ];
+
+  const previousEndByRelation = new Map<string, Date | null>();
+  const latestEndByPair = new Map<string, Date>();
+  for (const relation of [...relations].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
+    const key = `${relation.candidateId}:${relation.cycle.id}:${relation.reviewerId}`;
+    previousEndByRelation.set(relation.id, latestEndByPair.get(key) ?? null);
+    if (relation.endedAt) latestEndByPair.set(key, relation.endedAt);
+  }
 
   const candidateIds = Array.from(new Set(relations.map((relation) => relation.candidateId)));
   const cycleIds = Array.from(new Set(relations.map((relation) => relation.cycle.id)));
@@ -431,9 +442,12 @@ export async function getAdminReviewerCandidatesHandler(
   }
 
   const rows = relations.map((relation: RelationRow) => {
-      const records =
-        recordsByRelationKey.get(`${relation.candidateId}:${relation.cycle.id}:${relation.reviewerId}`) ??
-        [];
+      const lowerBound = previousEndByRelation.get(relation.id)
+        ? new Date(previousEndByRelation.get(relation.id)!.getTime() + 1)
+        : new Date(relation.createdAt.getTime() - 1000);
+      const records = (
+        recordsByRelationKey.get(`${relation.candidateId}:${relation.cycle.id}:${relation.reviewerId}`) ?? []
+      ).filter((record) => record.createdAt >= lowerBound && (!relation.endedAt || record.createdAt <= relation.endedAt));
 
       const pendingRecords = records.filter((record) =>
         record.hours.some((hour) => hour.status === RecordStatus.UNCONFIRMED),

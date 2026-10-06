@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AuthCard, AuthField, AuthFooterLinks, AuthSubmitButton } from './AuthLayout';
-import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
+import { getUiErrorMessage, UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 
 type FormData = z.infer<typeof forgotPasswordSchema>;
 
@@ -29,7 +29,7 @@ export function ForgotPasswordForm() {
       setSubmitted(true);
       toast.info(UI_TOAST_MESSAGES.auth.resetLinkSent);
     } catch (err: any) {
-      const message = err?.response?.data?.error || 'Ошибка при отправке запроса';
+      const message = getUiErrorMessage(err, 'Не удалось отправить письмо для восстановления пароля. Попробуйте ещё раз.');
       setError('root.serverError', { message });
       toast.error(message);
     }

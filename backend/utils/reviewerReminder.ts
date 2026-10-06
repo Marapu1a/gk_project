@@ -15,6 +15,13 @@ const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!
 ));
 
+// В профиле ФИО хранится в порядке «Фамилия Имя Отчество».
+// Если имя нельзя уверенно выделить, используем нейтральное обращение.
+function greetingName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return parts.length >= 2 ? parts[1] : null;
+}
+
 export function buildReviewerReminder(snapshot: ReminderSnapshot, test = false) {
   const tasks = [...new Map(snapshot.tasks.map((task) => [`${task.kind}:${task.id}`, task])).values()];
   if (!tasks.length) return null;
@@ -24,7 +31,8 @@ export function buildReviewerReminder(snapshot: ReminderSnapshot, test = false) 
     cooperation ? `запросы на сотрудничество — ${cooperation}` : '',
     hours ? `заявки часов на проверку — ${hours}` : '',
   ].filter(Boolean).map((line, index, items) => `${line}${index === items.length - 1 ? '.' : ';'}`);
-  const heading = snapshot.fullName ? `Добрый день, ${snapshot.fullName}!` : 'Добрый день!';
+  const firstName = greetingName(snapshot.fullName);
+  const heading = firstName ? `Добрый день, ${firstName}!` : 'Добрый день!';
   const testNote = test ? `Тестовое письмо. Сводка для: ${snapshot.fullName} (${snapshot.email}).` : '';
   const footer = 'Данные актуальны на момент формирования письма.';
   return {
