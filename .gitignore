@@ -6,3 +6,4 @@ dist/
 local_reports/
 frontend/public/uploads/
 dev-guidance*.log
+backend/data/*.xlsx
