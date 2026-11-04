@@ -74,7 +74,7 @@ export function MyCertificatesBlock() {
                 <button
                   type="button"
                   onClick={() => copyCertificateNumber(cert.number)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-[#B8C4D8] hover:bg-[#E7F1F4]"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#B8C4D8] hover:bg-[#E7F1F4]"
                   title="Скопировать номер сертификата"
                   aria-label="Скопировать номер сертификата"
                 >
@@ -157,7 +157,7 @@ function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: ()
         <h2 id="my-certificate-preview-title" className="sr-only">Просмотр сертификата</h2>
 
         <div className="flex max-h-[calc(96vh-82px)] w-full items-center justify-center">
-          <div className="rounded-[6px] bg-white p-2 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
+          <div className="rounded-md bg-white p-2 shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
             <CertificatePreview cert={cert} mode="modal" className="max-h-[calc(96vh-98px)] w-[744px] max-w-full" />
           </div>
         </div>
@@ -166,7 +166,7 @@ function CertificateModal({ cert, onClose }: { cert: CertificateDTO; onClose: ()
           <a
             href={url}
             download={fileName(cert)}
-            className="btn h-[44px] min-w-[126px] rounded-[8px] border-2 border-white px-6 text-[14px] font-extrabold text-white hover:bg-white/10"
+            className="btn h-11 min-w-31.5 rounded-lg border-2 border-white px-6 text-[14px] font-extrabold text-white hover:bg-white/10"
           >
             Скачать
           </a>
@@ -196,7 +196,7 @@ function IconAction({
       onClick={onClick}
       title={title}
       aria-label={title}
-      className="btn h-[36px] w-[36px] rounded-[8px] border-2 border-white text-white hover:bg-white/10"
+      className="btn h-9 w-9 rounded-lg border-2 border-white text-white hover:bg-white/10"
     >
       {children}
     </button>
