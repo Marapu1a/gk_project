@@ -359,6 +359,14 @@ export default function CeuReviewPage() {
                       <div className="dashboard-v2-caption mt-1 text-[#8D96B5]">
                         событие: {formatDate(row.eventDate)}
                       </div>
+                      {row.potentialDuplicate ? (
+                        <span
+                          className="dashboard-v2-caption mt-2 inline-flex rounded-full bg-[#FFF0D9] px-2.5 py-1 font-semibold text-[#8A5200]"
+                          title="Есть похожая CEU-заявка этого пользователя. Сравните документы в деталях."
+                        >
+                          Похожая заявка · {row.potentialDuplicate.count}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3">
                       <AdminUserNameLink

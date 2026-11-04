@@ -113,6 +113,43 @@ export function AdminCeuDetailsModal({
         Детали CEU
       </h3>
 
+      {row.potentialDuplicate ? (
+        <div className="mb-5 rounded-[10px] border border-[#E8B45E] bg-[#FFF8E9] px-4 py-4 text-[#5F410E]">
+          <p className="dashboard-v2-text font-extrabold">
+            Проверьте возможный повтор CEU-заявки
+          </p>
+          <p className="dashboard-v2-caption mt-1">
+            У этого пользователя совпадают дата и название мероприятия. Сравните сертификаты перед подтверждением; совпадение само по себе не означает ошибку.
+          </p>
+          <div className="mt-3 space-y-2">
+            {row.potentialDuplicate.matches.map((match) => (
+              <div key={match.id} className="dashboard-v2-caption rounded-[8px] bg-white px-3 py-2">
+                <div className="font-semibold">{displayCeuEventName(match.eventName)}</div>
+                <div className="mt-1">
+                  Мероприятие: {formatDate(match.eventDate)} · Подано: {formatDateTime(match.createdAt)} · Баллы: {formatNumber(match.points)} · {recordStatusLabels[match.status] ?? match.status}
+                  {match.cycleId !== row.cycle?.id ? ' · Другой цикл' : ''}
+                </div>
+                {match.fileId ? (
+                  <a
+                    href={`/uploads/${match.fileId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-block font-semibold underline"
+                  >
+                    Открыть сертификат для сравнения
+                  </a>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          {row.potentialDuplicate.count > row.potentialDuplicate.matches.length ? (
+            <p className="dashboard-v2-caption mt-2">
+              Показаны первые {row.potentialDuplicate.matches.length} из {row.potentialDuplicate.count} совпадений.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <div className="space-y-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

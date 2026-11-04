@@ -1,6 +1,7 @@
 // src/features/certificate/components/MyCertificatesBlock.tsx
 import { useState, type ReactNode } from 'react';
-import { Printer } from 'lucide-react';
+import { toast } from 'sonner';
+import { Copy, Printer } from 'lucide-react';
 
 import { useMyCertificates } from '../hooks/useMyCertificates';
 import type { CertificateDTO } from '../api/issueCertificate';
@@ -16,6 +17,15 @@ function fileName(cert: CertificateDTO) {
   const safeTitle = cert.title?.trim() || 'certificate';
   const safeNumber = cert.number?.trim() || cert.id;
   return `${safeTitle}-${safeNumber}.pdf`.replace(/[\\/:*?"<>|]+/g, '-');
+}
+
+async function copyCertificateNumber(number: string) {
+  try {
+    await navigator.clipboard.writeText(number);
+    toast.success('Номер сертификата скопирован');
+  } catch {
+    toast.error('Не удалось скопировать номер сертификата');
+  }
 }
 
 export function MyCertificatesBlock() {
@@ -44,15 +54,35 @@ export function MyCertificatesBlock() {
     <>
       <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {certs.map((cert) => (
-          <button
+          <div
             key={cert.id}
-            type="button"
-            onClick={() => setSelected(cert)}
-            className="group flex min-h-[408px] cursor-pointer items-center justify-center rounded-[10px] border border-[#B8C4D8] bg-white p-5 transition hover:border-[var(--color-blue-dark)] hover:shadow-soft"
-            title="Открыть сертификат"
+            className="flex min-h-[408px] flex-col rounded-[10px] border border-[#B8C4D8] bg-white p-5"
           >
-            <CertificatePreview cert={cert} mode="card" className="h-full max-h-[368px] w-full" />
-          </button>
+            <button
+              type="button"
+              onClick={() => setSelected(cert)}
+              className="flex min-h-0 flex-1 cursor-pointer items-center justify-center transition hover:opacity-90"
+              title="Открыть сертификат"
+              aria-label="Открыть сертификат"
+            >
+              <CertificatePreview cert={cert} mode="card" className="h-full max-h-[340px] w-full" />
+            </button>
+            {cert.number?.trim() ? (
+              <div className="mt-3 flex items-center gap-2 border-t border-[#DCE8EC] pt-3 text-[13px] text-[#1F305E]">
+                <span className="shrink-0 text-[#6B7894]">Номер:</span>
+                <span className="min-w-0 flex-1 break-all font-medium" title={cert.number}>{cert.number}</span>
+                <button
+                  type="button"
+                  onClick={() => copyCertificateNumber(cert.number)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-[#B8C4D8] hover:bg-[#E7F1F4]"
+                  title="Скопировать номер сертификата"
+                  aria-label="Скопировать номер сертификата"
+                >
+                  <Copy size={16} aria-hidden="true" />
+                </button>
+              </div>
+            ) : null}
+          </div>
         ))}
       </section>
 

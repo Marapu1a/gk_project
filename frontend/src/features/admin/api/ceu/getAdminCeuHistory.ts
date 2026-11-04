@@ -39,6 +39,19 @@ export type AdminCeuHistoryParams = {
 export type AdminCeuHistoryRow = {
   entryId: string;
   recordId: string;
+  potentialDuplicate: {
+    count: number;
+    matches: {
+      id: string;
+      cycleId: string | null;
+      fileId: string | null;
+      eventName: string;
+      eventDate: string;
+      createdAt: string;
+      points: number;
+      status: AdminCeuStatus;
+    }[];
+  } | null;
   userId: string;
   email: string;
   fullName: string | null;

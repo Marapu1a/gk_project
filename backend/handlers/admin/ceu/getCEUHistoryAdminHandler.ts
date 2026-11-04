@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest, RouteGenericInterface } from 'fastify';
 import { CEUCategory, RecordStatus } from '@prisma/client';
 import { prisma } from '../../../lib/prisma';
 import { buildUserIdentitySearchWhere } from '../../../utils/userIdentitySearch';
+import { findPotentialCeuDuplicates } from '../../../domain/ceu/potentialDuplicates';
 
 type SortBy = 'createdAt' | 'eventDate' | 'email' | 'group' | 'category' | 'status' | 'points';
 type SortDir = 'asc' | 'desc';
@@ -320,6 +321,42 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
     },
   });
 
+  const userIds = [...new Set(records.map((record) => record.userId))];
+  const candidates = userIds.length
+    ? await prisma.cEURecord.findMany({
+        where: {
+          userId: { in: userIds },
+          entries: { some: { status: { not: RecordStatus.REJECTED }, isAdminCorrection: false } },
+        },
+        select: {
+          id: true,
+          userId: true,
+          cycleId: true,
+          fileId: true,
+          eventName: true,
+          eventDate: true,
+          createdAt: true,
+          entries: { select: { status: true, value: true, isAdminCorrection: true } },
+        },
+      })
+    : [];
+  const potentialDuplicates = findPotentialCeuDuplicates(candidates.map((record) => {
+    const entries = record.entries.filter(
+      (entry) => !entry.isAdminCorrection && entry.status !== RecordStatus.REJECTED,
+    );
+    return {
+      id: record.id,
+      userId: record.userId,
+      cycleId: record.cycleId,
+      fileId: record.fileId,
+      eventName: record.eventName,
+      eventDate: record.eventDate,
+      createdAt: record.createdAt,
+      points: entries.reduce((sum, entry) => sum + entry.value, 0),
+      status: aggregateCEURecordStatus(entries),
+    };
+  }));
+
   const fileIds = Array.from(
     new Set(records.map((record) => record.fileId).filter(Boolean) as string[])
   );
@@ -343,6 +380,7 @@ async function buildCEUHistoryRows(query: GetCEUHistoryAdminRoute['Querystring']
     return {
       entryId: record.entries[0]?.id ?? record.id,
       recordId: record.id,
+      potentialDuplicate: potentialDuplicates.get(record.id) ?? null,
       userId: record.user.id,
       email: record.user.email,
       fullName: record.user.fullName,
