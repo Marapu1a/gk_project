@@ -3,7 +3,6 @@ import archiver from 'archiver';
 import { randomBytes } from 'crypto';
 import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
-import os from 'os';
 import path from 'path';
 import { UPLOAD_ROOT } from '../../config/storage';
 import { pauseBackupWrites } from '../../lib/backupWriteGate';
@@ -13,13 +12,14 @@ const tickets = new Map<string, { userId: string; expiresAt: number }>();
 const TICKET_TTL_MS = 2 * 60_000;
 let backupActive = false;
 
-async function hardlinkTree(source: string, destination: string) {
+async function hardlinkTree(source: string, destination: string, skipAtRoot: string[] = []) {
   let count = 0;
   let bytes = 0;
   await fs.mkdir(destination, { recursive: true });
 
   async function visit(from: string, to: string) {
     for (const item of await fs.readdir(from, { withFileTypes: true })) {
+      if (from === source && skipAtRoot.includes(item.name)) continue;
       const fromPath = path.join(from, item.name);
       const toPath = path.join(to, item.name);
       if (item.isDirectory()) {
@@ -94,9 +94,9 @@ export async function downloadFullBackupHandler(req: FastifyRequest, reply: Fast
   let stage: string | undefined;
   let resumeWrites: (() => void) | undefined;
   try {
-    stage = await fs.mkdtemp(path.join(os.tmpdir(), 'cspap-full-backup-'));
+    stage = await fs.mkdtemp(path.join(path.dirname(UPLOAD_ROOT), '.cspap-full-backup-'));
     resumeWrites = await pauseBackupWrites();
-    const uploads = await hardlinkTree(UPLOAD_ROOT, path.join(stage, 'uploads'));
+    const uploads = await hardlinkTree(UPLOAD_ROOT, path.join(stage, 'uploads'), ['.previews']);
     const data = await hardlinkTree(path.join(process.cwd(), 'data'), path.join(stage, 'app-data'));
     await dumpDatabase(path.join(stage, 'database.dump'));
     resumeWrites();
@@ -110,6 +110,7 @@ export async function downloadFullBackupHandler(req: FastifyRequest, reply: Fast
       contents: ['database.dump', 'uploads/', 'app-data/', 'RESTORE.txt'],
       uploads,
       appData: data,
+      excluded: ['uploads/.previews/ (regenerable preview cache)'],
       note: 'Архив содержит персональные данные. Храните его в защищённом месте.',
     };
     await fs.writeFile(path.join(stage, 'manifest.json'), JSON.stringify(manifest, null, 2));
