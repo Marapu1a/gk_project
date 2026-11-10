@@ -23,6 +23,7 @@ import {
 import { useAllDocReviewRequests } from '@/features/documentReviewAdmin/hooks/useAllDocReviewRequests';
 import { useDownloadUsersExport } from '@/features/admin/hooks/useDownloadUsersExport';
 import { useCreateDbBackup } from '@/features/backup/hooks/useCreateDbBackup';
+import { useCreateFullBackup } from '@/features/backup/hooks/useCreateFullBackup';
 import { useConfirm } from '@/components/confirm/ConfirmProvider';
 import { UI_TOAST_MESSAGES } from '@/utils/uiMessages';
 import { useExternalSupervisorClaims } from '@/features/admin/hooks/useExternalSupervisorClaims';
@@ -70,6 +71,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
   const { data: examApplications = [] } = useExamApps('', ADMIN_TASKS_REFRESH_INTERVAL);
   const exportUsers = useDownloadUsersExport();
   const backupDb = useCreateDbBackup();
+  const backupFull = useCreateFullBackup();
 
   const documentCount = (documentRequests as DocumentReviewRequestRow[]).filter((request) => {
     const hasOpenReview = request.reviewState !== 'COMPLETED';
@@ -111,6 +113,15 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
       toast.success(`Бэкап скачан: ${result.file}`);
     } catch (error: any) {
       toast.error(getUiErrorMessage(error, 'Не удалось создать бэкап. Попробуйте ещё раз или сообщите техническому специалисту.'));
+    }
+  };
+
+  const onBackupFull = async () => {
+    try {
+      await backupFull.mutateAsync();
+      toast.info('Подготовка полного бэкапа началась. Дождитесь окончания загрузки и сохраните архив в защищённом месте.');
+    } catch (error: any) {
+      toast.error(getUiErrorMessage(error, 'Не удалось начать скачивание полного бэкапа.'));
     }
   };
 
@@ -215,6 +226,12 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
               label="Резервная копия БД"
               onClick={onBackupDb}
               disabled={backupDb.isPending}
+            />
+            <ActionButton
+              icon={<DatabaseBackup size={16} />}
+              label="Скачать полный бэкап"
+              onClick={onBackupFull}
+              disabled={backupFull.isPending}
             />
           </div>
         </AdminPanel>

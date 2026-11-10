@@ -28,6 +28,7 @@ import { userBannerRoutes } from './routes/userBanner';
 import { specialistContactMessagesRoutes } from './routes/specialistContactMessages';
 import { healthRoutes } from './routes/health';
 import { MAX_FILE_SIZE_MB, UPLOAD_ROOT } from './config/storage';
+import { enterBackupWriteGate } from './lib/backupWriteGate';
 import { startCertificateLifecycleScheduler } from './utils/certificateLifecycleNotifications';
 import { startReviewerReminderScheduler } from './utils/reviewerReminderDelivery';
 import {
@@ -63,6 +64,11 @@ setOperationalLogger(app.log);
 
 app.addHook('onRequest', async (req, reply) => {
   reply.header('X-Request-Id', req.id);
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    const release = await enterBackupWriteGate();
+    reply.raw.once('finish', release);
+    reply.raw.once('close', release);
+  }
 });
 
 app.register(cors, {
